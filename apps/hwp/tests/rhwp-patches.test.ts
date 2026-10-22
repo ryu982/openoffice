@@ -6,6 +6,7 @@ import { RENDERER_SCHEME } from '../../../packages/electron-utils/src/renderer-s
 import {
   AGENT_PLUGIN_MODULE,
   APP_SCHEME,
+  OPTION_KEYS,
   PASSWORD_FLAG,
   applyPatch,
   missingPluginHooks,
@@ -77,6 +78,42 @@ describe('rhwp plugin-allow patch', () => {
     expect(patched.indexOf("id === 'hwpctrl'")).toBeLessThan(patched.indexOf(AGENT_PLUGIN_ID))
     expect(patched).toContain("  if (import.meta.env.DEV && id === 'dev-probe') {")
     expect(patched.split('if (').length).toBe(source.split('if (').length + 1)
+  })
+})
+
+describe('rhwp option-keys patch', () => {
+  // rhwp v0.8.7 src/command/shortcut-map.ts, the line spacing and font size chords
+  const source = [
+    "  [{ key: 'a', alt: true, shift: true }, 'format:line-spacing-decrease'],",
+    "  [{ key: 'ㅁ', alt: true, shift: true }, 'format:line-spacing-decrease'],",
+    "  [{ key: 'z', alt: true, shift: true }, 'format:line-spacing-increase'],",
+    "  [{ key: 'ㅋ', alt: true, shift: true }, 'format:line-spacing-increase'],",
+    '',
+    "  [{ key: 'e', alt: true, shift: true }, 'format:font-size-increase'],",
+    "  [{ key: 'ㄷ', alt: true, shift: true }, 'format:font-size-increase'],",
+    "  [{ key: 'r', alt: true, shift: true }, 'format:font-size-decrease'],",
+    "  [{ key: 'ㄱ', alt: true, shift: true }, 'format:font-size-decrease'],",
+    '',
+  ].join('\n')
+
+  it('adds the physical key to the four chords Option rewrites on the Mac', () => {
+    const patched = applyPatch('studio-option-keys', source)
+    for (const [letter, command] of OPTION_KEYS) {
+      expect(patched).toContain(
+        `  [{ key: '${letter}', code: 'Key${letter.toUpperCase()}', alt: true, shift: true }, '${command}'],`,
+      )
+    }
+    // the Korean-layout entries stay as they were, and nothing else is added
+    expect(patched).toContain(
+      "  [{ key: 'ㅁ', alt: true, shift: true }, 'format:line-spacing-decrease'],",
+    )
+    expect(patched.split('\n').length).toBe(source.split('\n').length)
+    expect(patched.match(/code: /g)).toHaveLength(4)
+  })
+
+  it('fails when any one of the four lines changed upstream', () => {
+    const changed = source.replace("key: 'z', alt: true", "key: 'z', code: 'KeyZ', alt: true")
+    expect(() => applyPatch('studio-option-keys', changed)).toThrow(/rhwp patch studio-option-keys/)
   })
 })
 
