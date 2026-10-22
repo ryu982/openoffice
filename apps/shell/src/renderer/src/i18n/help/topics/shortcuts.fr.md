@@ -75,8 +75,10 @@ Remplacer est Ctrl+H sur les deux plateformes parce que `⌘H` masque la fenêtr
 | Police… (boîte de dialogue)                                | ⌘D       | Ctrl+D                |
 | Augmenter la taille de police                              | ⇧⌘.      | Ctrl+Shift+.          |
 | Réduire la taille de police                                | ⇧⌘,      | Ctrl+Shift+,          |
-| Augmenter la taille de police de 1 pt                      | ⌘]       | Ctrl+]                |
-| Réduire la taille de police de 1 pt                        | ⌘[       | Ctrl+[                |
+| Augmenter la taille de police de 1 pt                      | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Réduire la taille de police de 1 pt                        | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Étendre l’espacement des caractères                        | ⌥⇧W      | Alt+Shift+W           |
+| Condenser l’espacement des caractères                      | ⌥⇧N      | Alt+Shift+N           |
 | Exposant                                                   | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Indice                                                     | ⌘,       | Ctrl+,                |
 | Modifier la casse                                          | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Les deux combinaisons du pinceau de mise en forme sont le seul endroit où la to
 | Interligne 1,0                                       | ⌘1    | Ctrl+1          |
 | Interligne 1,5                                       | ⌘5    | Ctrl+5          |
 | Interligne 2,0                                       | ⌘2    | Ctrl+2          |
+| Augmenter l’interligne                               | ⌥⇧Z   | Alt+Shift+Z     |
+| Réduire l’interligne                                 | ⌥⇧A   | Alt+Shift+A     |
 | Augmenter le retrait                                 | ⌃M    | Ctrl+M          |
 | Diminuer le retrait                                  | ⌃⇧M   | Ctrl+Shift+M    |
 | Retrait suspendu                                     | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Les deux combinaisons du pinceau de mise en forme sont le seul endroit où la to
 | Élever l’élément de liste (au début d’un élément)    | ⇧Tab  | Shift+Tab       |
 
 Le retrait, le retrait suspendu et l’effacement de la mise en forme du paragraphe ne fonctionnent qu’avec Ctrl sur les deux plateformes : `⌘M` réduit la fenêtre et `⌘Q` quitte l’application, de sorte qu’une combinaison avec Commande serait une modification silencieuse au moment de sortir. Tab ne change de niveau de liste que lorsque le curseur se trouve au début d’un élément ou couvre plusieurs éléments ; dans le texte, il insère un caractère de tabulation, et `⇧Tab` élève toujours.
+
+Les combinaisons ⌥⇧ (Alt+Maj) + lettre viennent du traitement de texte coréen Hangul (HWP) : ⌥⇧Z / ⌥⇧A augmentent ou réduisent l’interligne de 0,1 ligne (1 pt avec Au moins ou Exactement), ⌥⇧W / ⌥⇧N l’espacement des caractères de 1 % de la taille de police, et ⌥⇧E / ⌥⇧R changent la taille de police de 1 pt, comme ⌘] / ⌘[.
 
 ### Insertion
 

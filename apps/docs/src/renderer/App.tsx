@@ -297,6 +297,7 @@ import {
   type RevisionDisplayMode,
   type ViewMode,
 } from './components/ribbon-tabs'
+import { formatStepForKey } from './components/format-step'
 import { ComparePanel } from './components/ComparePanel'
 import {
   EditorContextMenu,
@@ -952,6 +953,8 @@ export function App() {
   const ribbonActionsRef = useRef<{
     stepFontSize?: (dir: 1 | -1) => void
     nudgeFontSize?: (dir: 1 | -1) => void
+    stepLineSpacing?: (dir: 1 | -1) => void
+    stepCharSpacing?: (dir: 1 | -1) => void
   }>({})
   const [showComments, setShowComments] = useState(false)
   const [showStylesPane, setShowStylesPane] = useState(false)
@@ -5507,6 +5510,13 @@ export function App() {
           e.preventDefault()
           insertNote(note)
         }
+      }
+      // Hangul's formatting steps: ⌥⇧Z / ⌥⇧A line spacing, ⌥⇧W / ⌥⇧N character
+      // spacing, ⌥⇧E / ⌥⇧R font size by one point (Word's own ⌘] / ⌘[ nudge)
+      const formatStep = formatStepForKey(e)
+      if (formatStep && editor && canEdit) {
+        e.preventDefault()
+        ribbonActionsRef.current[formatStep.action]?.(formatStep.dir)
       }
       // Date / time fields ⌥⇧D / ⌥⇧T
       if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey && doc && canEdit) {

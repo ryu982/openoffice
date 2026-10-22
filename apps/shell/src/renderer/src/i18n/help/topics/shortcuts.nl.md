@@ -75,8 +75,10 @@ Vervangen is op beide platformen Ctrl+H omdat ⌘H op macOS het venster verbergt
 | Lettertype… (dialoogvenster)             | ⌘D       | Ctrl+D                |
 | Tekengrootte vergroten                   | ⇧⌘.      | Ctrl+Shift+.          |
 | Tekengrootte verkleinen                  | ⇧⌘,      | Ctrl+Shift+,          |
-| Tekengrootte 1 pt vergroten              | ⌘]       | Ctrl+]                |
-| Tekengrootte 1 pt verkleinen             | ⌘[       | Ctrl+[                |
+| Tekengrootte 1 pt vergroten              | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Tekengrootte 1 pt verkleinen             | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Tekenafstand vergroten                   | ⌥⇧W      | Alt+Shift+W           |
+| Tekenafstand verkleinen                  | ⌥⇧N      | Alt+Shift+N           |
 | Superscript                              | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Subscript                                | ⌘,       | Ctrl+,                |
 | Hoofdletters veranderen                  | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ De twee knoppen van de opmaakpainter zijn de enige plek waar de Windows-toets ge
 | Regelafstand 1,0                                | ⌘1    | Ctrl+1          |
 | Regelafstand 1,5                                | ⌘5    | Ctrl+5          |
 | Regelafstand 2,0                                | ⌘2    | Ctrl+2          |
+| Regelafstand vergroten                          | ⌥⇧Z   | Alt+Shift+Z     |
+| Regelafstand verkleinen                         | ⌥⇧A   | Alt+Shift+A     |
 | Inspringen vergroten                            | ⌃M    | Ctrl+M          |
 | Inspringen verkleinen                           | ⌃⇧M   | Ctrl+Shift+M    |
 | Hangende inspringing                            | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ De twee knoppen van de opmaakpainter zijn de enige plek waar de Windows-toets ge
 | Lijstitem verhogen (aan het begin van een item) | ⇧Tab  | Shift+Tab       |
 
 Inspringen, hangende inspringing en Alineaopmaak wissen werken op beide platformen alleen met Ctrl: ⌘M minimaliseert het venster en ⌘Q sluit af, dus een Command-combinatie zou een stille bewerking zijn op weg naar het einde. Tab verandert alleen een lijstniveau wanneer de caret aan het begin van een item staat of meerdere items omspant; in de tekst voegt het een tabteken in, en ⇧Tab verhoogt altijd.
+
+De ⌥⇧-lettercombinaties (Alt+Shift) komen uit het Koreaanse tekstverwerkingsprogramma Hangul (HWP): ⌥⇧Z / ⌥⇧A vergroten of verkleinen de regelafstand met 0,1 regel (1 pt bij Minimaal of Precies), ⌥⇧W / ⌥⇧N de tekenafstand met 1% van de tekengrootte, en ⌥⇧E / ⌥⇧R wijzigen de tekengrootte met 1 pt, net als ⌘] / ⌘[.
 
 ### Invoegen
 

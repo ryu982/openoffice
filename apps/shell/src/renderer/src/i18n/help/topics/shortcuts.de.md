@@ -75,8 +75,10 @@ Ersetzen ist auf beiden Plattformen Ctrl+H, weil `⌘H` auf macOS das Fenster au
 | Schriftart… (Dialog)                                         | ⌘D       | Ctrl+D                |
 | Schriftgröße erhöhen                                         | ⇧⌘.      | Ctrl+Shift+.          |
 | Schriftgröße verringern                                      | ⇧⌘,      | Ctrl+Shift+,          |
-| Schriftgröße um 1 pt erhöhen                                 | ⌘]       | Ctrl+]                |
-| Schriftgröße um 1 pt verringern                              | ⌘[       | Ctrl+[                |
+| Schriftgröße um 1 pt erhöhen                                 | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Schriftgröße um 1 pt verringern                              | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Zeichenabstand erweitern                                     | ⌥⇧W      | Alt+Shift+W           |
+| Zeichenabstand verringern                                    | ⌥⇧N      | Alt+Shift+N           |
 | Hochgestellt                                                 | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Tiefgestellt                                                 | ⌘,       | Ctrl+,                |
 | Groß-/Kleinschreibung ändern                                 | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Die beiden Tasten des Formatierungspinsels sind die einzige Stelle, an der die W
 | Zeilenabstand 1,0                                     | ⌘1    | Ctrl+1          |
 | Zeilenabstand 1,5                                     | ⌘5    | Ctrl+5          |
 | Zeilenabstand 2,0                                     | ⌘2    | Ctrl+2          |
+| Zeilenabstand vergrößern                              | ⌥⇧Z   | Alt+Shift+Z     |
+| Zeilenabstand verkleinern                             | ⌥⇧A   | Alt+Shift+A     |
 | Einzug vergrößern                                     | ⌃M    | Ctrl+M          |
 | Einzug verkleinern                                    | ⌃⇧M   | Ctrl+Shift+M    |
 | Hängender Einzug                                      | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Die beiden Tasten des Formatierungspinsels sind die einzige Stelle, an der die W
 | Listeneintrag hochstufen (am Anfang eines Eintrags)   | ⇧Tab  | Shift+Tab       |
 
 Einzug, hängender Einzug und das Entfernen der Absatzformatierung funktionieren auf beiden Plattformen nur mit Strg: `⌘M` minimiert das Fenster und `⌘Q` beendet die Anwendung, eine Command-Kombination wäre also eine stillschweigende Änderung kurz vor dem Beenden. Tab ändert die Listenebene nur, wenn der Cursor am Anfang eines Eintrags steht oder mehrere Einträge umspannt; im Text fügt es ein Tabulatorzeichen ein, und `⇧Tab` stuft immer hoch.
+
+Die ⌥⇧-Buchstabenkombinationen (Alt+Umschalt) stammen aus dem koreanischen Textprogramm Hangul (HWP): ⌥⇧Z / ⌥⇧A vergrößern bzw. verkleinern den Zeilenabstand um 0,1 Zeilen (bei „Mindestens“ oder „Genau“ um 1 pt), ⌥⇧W / ⌥⇧N den Zeichenabstand um 1 % des Schriftgrads, und ⌥⇧E / ⌥⇧R ändern den Schriftgrad wie ⌘] / ⌘[ um 1 pt.
 
 ### Einfügen
 

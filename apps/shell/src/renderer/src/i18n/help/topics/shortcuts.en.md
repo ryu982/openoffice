@@ -75,8 +75,10 @@ Replace is Ctrl+H on both platforms because ⌘H hides the window on macOS and n
 | Font… (dialog)                             | ⌘D       | Ctrl+D                |
 | Increase Font Size                         | ⇧⌘.      | Ctrl+Shift+.          |
 | Decrease Font Size                         | ⇧⌘,      | Ctrl+Shift+,          |
-| Increase Font Size 1 pt                    | ⌘]       | Ctrl+]                |
-| Decrease Font Size 1 pt                    | ⌘[       | Ctrl+[                |
+| Increase Font Size 1 pt                    | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Decrease Font Size 1 pt                    | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Expand Character Spacing                   | ⌥⇧W      | Alt+Shift+W           |
+| Condense Character Spacing                 | ⌥⇧N      | Alt+Shift+N           |
 | Superscript                                | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Subscript                                  | ⌘,       | Ctrl+,                |
 | Change Case                                | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ The two formatting-painter chords are the one place the Windows key is not a pla
 | Line Spacing 1.0                            | ⌘1    | Ctrl+1          |
 | Line Spacing 1.5                            | ⌘5    | Ctrl+5          |
 | Line Spacing 2.0                            | ⌘2    | Ctrl+2          |
+| Increase Line Spacing                       | ⌥⇧Z   | Alt+Shift+Z     |
+| Decrease Line Spacing                       | ⌥⇧A   | Alt+Shift+A     |
 | Increase Indent                             | ⌃M    | Ctrl+M          |
 | Decrease Indent                             | ⌃⇧M   | Ctrl+Shift+M    |
 | Hanging Indent                              | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ The two formatting-painter chords are the one place the Windows key is not a pla
 | Promote List Item (at the start of an item) | ⇧Tab  | Shift+Tab       |
 
 Indent, hanging indent and Clear Paragraph Formatting are Ctrl-only on both platforms: ⌘M minimizes the window and ⌘Q quits, so a Command chord would be a silent edit on the way out. Tab only changes a list level when the caret is at the start of an item or spans several items; inside the text it inserts a tab character, and ⇧Tab always promotes.
+
+The ⌥⇧ (Alt+Shift) letter chords come from Hangul (HWP), the Korean word processor: ⌥⇧Z / ⌥⇧A widen and narrow the line spacing by 0.1 line (1 pt under At least or Exactly), ⌥⇧W / ⌥⇧N the character spacing by 1% of the font size, and ⌥⇧E / ⌥⇧R change the font size by 1 pt, the same as ⌘] / ⌘[.
 
 ### Insert
 

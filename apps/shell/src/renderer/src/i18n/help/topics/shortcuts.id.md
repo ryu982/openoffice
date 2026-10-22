@@ -75,8 +75,10 @@ Ganti memakai Ctrl+H di kedua platform karena `⌘H` menyembunyikan jendela di m
 | Font… (dialog)                       | ⌘D       | Ctrl+D                |
 | Perbesar Ukuran Font                 | ⇧⌘.      | Ctrl+Shift+.          |
 | Perkecil Ukuran Font                 | ⇧⌘,      | Ctrl+Shift+,          |
-| Perbesar Ukuran Font 1 pt            | ⌘]       | Ctrl+]                |
-| Perkecil Ukuran Font 1 pt            | ⌘[       | Ctrl+[                |
+| Perbesar Ukuran Font 1 pt            | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Perkecil Ukuran Font 1 pt            | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Perlebar Spasi Karakter              | ⌥⇧W      | Alt+Shift+W           |
+| Persempit Spasi Karakter             | ⌥⇧N      | Alt+Shift+N           |
 | Superskrip                           | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Subskrip                             | ⌘,       | Ctrl+,                |
 | Ubah Huruf Besar-Kecil               | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Dua pintasan penyalin format adalah satu-satunya tempat tombol Windows bukan sek
 | Jarak Baris 1.0                             | ⌘1    | Ctrl+1          |
 | Jarak Baris 1.5                             | ⌘5    | Ctrl+5          |
 | Jarak Baris 2.0                             | ⌘2    | Ctrl+2          |
+| Perbesar Spasi Baris                        | ⌥⇧Z   | Alt+Shift+Z     |
+| Perkecil Spasi Baris                        | ⌥⇧A   | Alt+Shift+A     |
 | Tambah Indentasi                            | ⌃M    | Ctrl+M          |
 | Kurangi Indentasi                           | ⌃⇧M   | Ctrl+Shift+M    |
 | Indentasi Menggantung                       | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Dua pintasan penyalin format adalah satu-satunya tempat tombol Windows bukan sek
 | Naikkan Tingkat Daftar Item (di awal item)  | ⇧Tab  | Shift+Tab       |
 
 Indentasi, indentasi menggantung, dan Hapus Format Paragraf hanya memakai Ctrl di kedua platform: `⌘M` memperkecil jendela dan `⌘Q` keluar, jadi pintasan Command akan menjadi suntingan diam-diam di tengah jalan keluar. Tab hanya mengubah tingkat daftar ketika caret berada di awal sebuah item atau membentang di beberapa item; di dalam teks ia menyisipkan karakter tab, dan `⇧Tab` selalu menaikkan tingkat.
+
+Kombinasi ⌥⇧ (Alt+Shift) dengan huruf berasal dari pengolah kata Korea Hangul (HWP): ⌥⇧Z / ⌥⇧A memperbesar dan memperkecil spasi baris sebesar 0,1 baris (1 pt untuk Sedikitnya atau Persis), ⌥⇧W / ⌥⇧N spasi karakter sebesar 1% ukuran font, dan ⌥⇧E / ⌥⇧R mengubah ukuran font sebesar 1 pt, sama seperti ⌘] / ⌘[.
 
 ### Sisipkan
 

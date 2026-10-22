@@ -75,8 +75,10 @@ Thay thế là Ctrl+H trên cả hai nền tảng vì `⌘H` ẩn cửa sổ tr�
 | Phông chữ… (hộp thoại)                     | ⌘D       | Ctrl+D                |
 | Tăng cỡ phông chữ                          | ⇧⌘.      | Ctrl+Shift+.          |
 | Giảm cỡ phông chữ                          | ⇧⌘,      | Ctrl+Shift+,          |
-| Tăng cỡ phông chữ 1 pt                     | ⌘]       | Ctrl+]                |
-| Giảm cỡ phông chữ 1 pt                     | ⌘[       | Ctrl+[                |
+| Tăng cỡ phông chữ 1 pt                     | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Giảm cỡ phông chữ 1 pt                     | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Giãn khoảng cách ký tự                     | ⌥⇧W      | Alt+Shift+W           |
+| Co khoảng cách ký tự                       | ⌥⇧N      | Alt+Shift+N           |
 | Chỉ số trên                                | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Chỉ số dưới                                | ⌘,       | Ctrl+,                |
 | Đổi chữ hoa thường                         | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Hai tổ hợp của công cụ chép định dạng là chỗ duy nhất phím 
 | Giãn dòng 1.0                              | ⌘1    | Ctrl+1          |
 | Giãn dòng 1.5                              | ⌘5    | Ctrl+5          |
 | Giãn dòng 2.0                              | ⌘2    | Ctrl+2          |
+| Tăng giãn dòng                             | ⌥⇧Z   | Alt+Shift+Z     |
+| Giảm giãn dòng                             | ⌥⇧A   | Alt+Shift+A     |
 | Tăng thụt lề                               | ⌃M    | Ctrl+M          |
 | Giảm thụt lề                               | ⌃⇧M   | Ctrl+Shift+M    |
 | Thụt lề treo                               | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Hai tổ hợp của công cụ chép định dạng là chỗ duy nhất phím 
 | Nâng một cấp mục danh sách (ở đầu một mục) | ⇧Tab  | Shift+Tab       |
 
 Thụt lề, thụt lề treo và Xóa định dạng đoạn văn chỉ dùng phím Ctrl trên cả hai nền tảng: `⌘M` thu nhỏ cửa sổ và `⌘Q` thoát ứng dụng, nên một tổ hợp Command sẽ là một chỉnh sửa im lặng ngay lúc thoát. Tab chỉ đổi cấp danh sách khi con trỏ nằm ở đầu một mục hoặc trải trên nhiều mục; bên trong văn bản nó chèn một ký tự tab, còn `⇧Tab` luôn nâng cấp.
+
+Các tổ hợp ⌥⇧ (Alt+Shift) với chữ cái lấy từ trình soạn thảo Hàn Quốc Hangul (HWP): ⌥⇧Z / ⌥⇧A tăng và giảm giãn dòng 0,1 dòng mỗi lần (1 pt khi đặt Ít nhất hoặc Chính xác), ⌥⇧W / ⌥⇧N đổi khoảng cách ký tự 1% cỡ chữ, còn ⌥⇧E / ⌥⇧R đổi cỡ chữ 1 pt, giống ⌘] / ⌘[.
 
 ### Chèn
 

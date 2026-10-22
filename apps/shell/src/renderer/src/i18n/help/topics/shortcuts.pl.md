@@ -75,8 +75,10 @@ Zamień to na obu platformach Ctrl+H, ponieważ ⌘H ukrywa okno w macOS i nigdy
 | Czcionka… (okno dialogowe)                  | ⌘D       | Ctrl+D                |
 | Zwiększ rozmiar czcionki                    | ⇧⌘.      | Ctrl+Shift+.          |
 | Zmniejsz rozmiar czcionki                   | ⇧⌘,      | Ctrl+Shift+,          |
-| Zwiększ rozmiar czcionki o 1 pt             | ⌘]       | Ctrl+]                |
-| Zmniejsz rozmiar czcionki o 1 pt            | ⌘[       | Ctrl+[                |
+| Zwiększ rozmiar czcionki o 1 pt             | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Zmniejsz rozmiar czcionki o 1 pt            | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Zwiększ odstępy między znakami              | ⌥⇧W      | Alt+Shift+W           |
+| Zmniejsz odstępy między znakami             | ⌥⇧N      | Alt+Shift+N           |
 | Superskrypt                                 | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Podskrypt                                   | ⌘,       | Ctrl+,                |
 | Zmień wielkość liter                        | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Dwa skróty malarza formatów to jedyne miejsce, w którym klawisz Windows nie j
 | Odstęp wiersza 1,0                           | ⌘1    | Ctrl+1          |
 | Odstęp wiersza 1,5                           | ⌘5    | Ctrl+5          |
 | Odstęp wiersza 2,0                           | ⌘2    | Ctrl+2          |
+| Zwiększ interlinię                           | ⌥⇧Z   | Alt+Shift+Z     |
+| Zmniejsz interlinię                          | ⌥⇧A   | Alt+Shift+A     |
 | Zwiększ wcięcie                              | ⌃M    | Ctrl+M          |
 | Zmniejsz wcięcie                             | ⌃⇧M   | Ctrl+Shift+M    |
 | Wcięcie wiszące                              | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Dwa skróty malarza formatów to jedyne miejsce, w którym klawisz Windows nie j
 | Podnieś element listy (na początku elementu) | ⇧Tab  | Shift+Tab       |
 
 Wcięcie, wcięcie wiszące i Wyczyść formatowanie akapitu działają na obu platformach tylko przez Ctrl: ⌘M minimalizuje okno, a ⌘Q kończy pracę, więc skrót z Command byłby po cichu zmianą w tekście tuż przed zamknięciem. Tab zmienia poziom listy tylko wtedy, gdy kursor znajduje się na początku elementu lub obejmuje kilka elementów; w środku tekstu wstawia znak tabulacji, a ⇧Tab zawsze podnosi poziom.
+
+Kombinacje ⌥⇧ (Alt+Shift) z literą pochodzą z koreańskiego edytora tekstu Hangul (HWP): ⌥⇧Z / ⌥⇧A zwiększają lub zmniejszają interlinię o 0,1 wiersza (o 1 pkt przy ustawieniu Co najmniej lub Dokładnie), ⌥⇧W / ⌥⇧N odstępy między znakami o 1% rozmiaru czcionki, a ⌥⇧E / ⌥⇧R zmieniają rozmiar czcionki o 1 pkt, tak jak ⌘] / ⌘[.
 
 ### Wstawianie
 

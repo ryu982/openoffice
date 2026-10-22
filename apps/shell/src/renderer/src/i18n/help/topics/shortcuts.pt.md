@@ -75,8 +75,10 @@ Substituir é Ctrl+H em ambas as plataformas porque `⌘H` oculta a janela no ma
 | Tipo de letra… (caixa de diálogo)               | ⌘D       | Ctrl+D                |
 | Aumentar o tamanho da letra                     | ⇧⌘.      | Ctrl+Shift+.          |
 | Reduzir o tamanho da letra                      | ⇧⌘,      | Ctrl+Shift+,          |
-| Aumentar o tamanho da letra em 1 pt             | ⌘]       | Ctrl+]                |
-| Reduzir o tamanho da letra em 1 pt              | ⌘[       | Ctrl+[                |
+| Aumentar o tamanho da letra em 1 pt             | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Reduzir o tamanho da letra em 1 pt              | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Expandir Espaçamento de Caracteres              | ⌥⇧W      | Alt+Shift+W           |
+| Condensar Espaçamento de Caracteres             | ⌥⇧N      | Alt+Shift+N           |
 | Expoente                                        | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Índice                                          | ⌘,       | Ctrl+,                |
 | Alterar maiúsculas/minúsculas                   | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ As duas combinações do pincel de formatação são o único sítio onde a tecl
 | Entrelinha 1,0                                   | ⌘1    | Ctrl+1          |
 | Entrelinha 1,5                                   | ⌘5    | Ctrl+5          |
 | Entrelinha 2,0                                   | ⌘2    | Ctrl+2          |
+| Aumentar Espaçamento entre Linhas                | ⌥⇧Z   | Alt+Shift+Z     |
+| Diminuir Espaçamento entre Linhas                | ⌥⇧A   | Alt+Shift+A     |
 | Aumentar o avanço                                | ⌃M    | Ctrl+M          |
 | Reduzir o avanço                                 | ⌃⇧M   | Ctrl+Shift+M    |
 | Avanço pendente                                  | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ As duas combinações do pincel de formatação são o único sítio onde a tecl
 | Promover item de lista (no início de um item)    | ⇧Tab  | Shift+Tab       |
 
 O avanço, o avanço pendente e a limpeza da formatação do parágrafo só funcionam com Ctrl em ambas as plataformas: `⌘M` minimiza a janela e `⌘Q` sai da aplicação, pelo que uma combinação de Command seria uma edição silenciosa a caminho da saída. Tab só muda o nível da lista quando o cursor está no início de um item ou abrange vários itens; dentro do texto insere um carácter de tabulação, e `⇧Tab` promove sempre.
+
+As combinações de ⌥⇧ (Alt+Shift) com letra vêm do processador de texto coreano Hangul (HWP): ⌥⇧Z / ⌥⇧A aumentam ou diminuem o espaçamento entre linhas em 0,1 linha (1 pt com Pelo menos ou Exatamente), ⌥⇧W / ⌥⇧N o espaçamento entre caracteres em 1% do tamanho da fonte, e ⌥⇧E / ⌥⇧R mudam o tamanho da fonte em 1 pt, como ⌘] / ⌘[.
 
 ### Inserir
 
