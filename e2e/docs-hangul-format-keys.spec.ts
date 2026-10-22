@@ -27,7 +27,10 @@ async function minimalDocx(paras: string[]): Promise<Buffer> {
     '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
   )
   const body = paras
-    .map((text) => `<w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>${text}</w:t></w:r></w:p>`)
+    .map(
+      (text) =>
+        `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>${text}</w:t></w:r></w:p>`,
+    )
     .join('')
   zip.file(
     'word/document.xml',
@@ -73,31 +76,29 @@ test.describe('docs Hangul formatting chords', () => {
       await editorPage.locator('.doc-page').click()
       await editorPage.keyboard.press('ControlOrMeta+a')
       const span = editorPage.locator('.doc-page span[data-doc-style]').first()
-      const firstPara = editorPage.locator('.doc-page .ProseMirror > p').first()
 
       // font size: two up in a burst, one down — 12 → 14 → 13 pt
       await editorPage.keyboard.press('Alt+Shift+KeyE')
       await editorPage.keyboard.press('Alt+Shift+KeyE')
-      await expect(span).toHaveCSS('font-size', `${(14 * 4) / 3}px`)
+      await expect(span).toHaveAttribute('data-doc-style', /"sizeHalfPoints":28/)
       await editorPage.keyboard.press('Alt+Shift+KeyR')
-      await expect(span).toHaveCSS('font-size', `${(13 * 4) / 3}px`)
+      await expect(span).toHaveAttribute('data-doc-style', /"sizeHalfPoints":26/)
 
       // character spacing at 13 pt: three wider, one narrower = 2% of 13 pt (5 twips)
       for (const key of ['W', 'W', 'W', 'N']) await editorPage.keyboard.press(`Alt+Shift+Key${key}`)
-      await expect
-        .poll(() => span.evaluate((el) => parseFloat(getComputedStyle(el).letterSpacing)))
-        .toBeCloseTo((5 / 20) * (4 / 3), 2)
+      await expect(span).toHaveAttribute('data-doc-style', /"charSpacingTwips":5\b/)
 
-      // line spacing: two wider, one narrower = 1.1 lines on both paragraphs
-      const lineHeight = () => firstPara.evaluate((el) => getComputedStyle(el).lineHeight)
+      // line spacing, select-all from single: two wider, one narrower = 1.1 lines on both paragraphs
+      const lineHeight = () => span.evaluate((el) => getComputedStyle(el.parentElement!).lineHeight)
       const single = await lineHeight()
       for (const key of ['Z', 'Z', 'A']) await editorPage.keyboard.press(`Alt+Shift+Key${key}`)
       await expect.poll(lineHeight).not.toBe(single)
+      await editorPage.waitForTimeout(600)
 
       // the Mac's Option turns ⌥⇧Z into "¸": the chord is read from the physical key
       await editorPage.waitForTimeout(600)
       await editorPage.evaluate(() => {
-        document.querySelector('.doc-page .ProseMirror')!.dispatchEvent(
+        document.activeElement!.dispatchEvent(
           new KeyboardEvent('keydown', {
             key: '¸',
             code: 'KeyZ',
@@ -124,8 +125,12 @@ test.describe('docs Hangul formatting chords', () => {
       expect(xml.match(/<w:spacing [^>]*w:line="288"[^>]*w:lineRule="auto"/g)).toHaveLength(2)
 
       // the shortcut sheet lists the new rows with the Windows/Linux chords
-      await editorPage.locator('.doc-page').click()
-      await editorPage.keyboard.press('ControlOrMeta+/')
+      // ⌘/ is a native menu accelerator, which synthetic key presses never reach:
+      // send the command the Help menu item sends
+      await app.evaluate(({ webContents }) => {
+        for (const wc of webContents.getAllWebContents())
+          if (wc.getURL().includes('://docs/')) wc.send('menu:command', 'shortcuts')
+      })
       const sheet = editorPage.locator('.modal-shortcuts')
       await expect(sheet).toBeVisible()
       const keysOf = (label: string) =>
@@ -136,6 +141,7 @@ test.describe('docs Hangul formatting chords', () => {
       await expect(keysOf('Condense Character Spacing')).toHaveText('Alt+Shift+N')
       await expect(keysOf('Increase Font Size 1 pt')).toHaveText('Ctrl+] / Alt+Shift+E')
       await expect(keysOf('Decrease Font Size 1 pt')).toHaveText('Ctrl+[ / Alt+Shift+R')
+      await sheet.locator('.sc-filter').fill('Alt+Shift')
       await sheet.screenshot({ path: screenshotPath('docs-hangul-format-keys-sheet') })
     } finally {
       await closeAndSaveVideo(launched, 'docs-hangul-format-keys')

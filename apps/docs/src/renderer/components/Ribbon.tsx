@@ -167,9 +167,8 @@ import {
 import {
   burstStep,
   charSpacingAt,
-  effectiveLineSpacing,
+  lineSpacingAt,
   newStepBurst,
-  paragraphStyleDisplay,
   sameLineSpacing,
   stepCharSpacingTwips,
   stepLineSpacing,
@@ -1721,20 +1720,14 @@ function RibbonInner({
   const nudgeFontSize = (dir: 1 | -1) =>
     applyFontStep((base) => Math.min(Math.max(Math.round(base) + dir, 1), 1638))
 
-  /** Hangul's ⌥⇧Z / ⌥⇧A: the caret paragraph's line spacing one step, onto every selected paragraph */
+  /** Hangul's ⌥⇧Z / ⌥⇧A: the first selected paragraph's line spacing one step, onto every selected paragraph */
   const stepLineSpacingBy = (dir: 1 | -1) => {
     if (!canEdit) return
     const target = ed
-    const para = target.state.selection.$from.parent
-    const current = effectiveLineSpacing(
-      para.attrs,
-      paragraphStyleDisplay(styles, para.attrs.styleId),
-      docDefaults,
-    )
     burstStep(
       lineSpacingBurstRef.current,
       target,
-      current,
+      lineSpacingAt(target, styles, docDefaults),
       (base) => stepLineSpacing(base, dir),
       (value, deferred) => {
         if (!deferred) setParaAttr({ ...value })

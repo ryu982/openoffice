@@ -5,7 +5,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Editor } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import type { StyleInfo } from '@genoffice/docx-engine'
 import { editorExtensions } from '../src/renderer/editor/extensions'
 import { inlineToRuns } from '../src/renderer/editor/convert'
@@ -16,6 +16,7 @@ import {
   charSpacingAt,
   effectiveLineSpacing,
   formatStepForKey,
+  lineSpacingAt,
   newStepBurst,
   paragraphStyleDisplay,
   sameLineSpacing,
@@ -161,6 +162,22 @@ describe('line spacing step', () => {
     expect(stepLineSpacing(exact, -1)).toEqual(exact)
   })
 
+  it('reads the first paragraph of a select-all, not the doc node', () => {
+    const styles = styleMap({
+      styleId: 'Normal',
+      name: 'Normal',
+      type: 'paragraph',
+      isDefault: true,
+      display: { lineSpacing: 1.15 },
+    })
+    const editor = makeEditor([para('one', { lineSpacing: 1.5 }), para('two')])
+    editor.view.dispatch(editor.state.tr.setSelection(new AllSelection(editor.state.doc)))
+    expect(lineSpacingAt(editor, styles, undefined)).toEqual(multiple(1.5))
+    select(editor, 6, 6)
+    expect(lineSpacingAt(editor, styles, undefined)).toEqual(multiple(1.15))
+    editor.destroy()
+  })
+
   it('lands on every selected paragraph as a direct multiple', () => {
     const editor = makeEditor([para('one', { lineRule: 'exact', lineRawTwips: 400 }), para('two')])
     select(editor, 1, editor.state.doc.content.size - 1)
@@ -231,6 +248,12 @@ describe('character spacing step', () => {
     expect(at(2)).toEqual({ current: -10, inherited: -10 })
     expect(at(3)).toEqual({ current: 0, inherited: 0 })
     editor.destroy()
+
+    // select-all reads the first paragraph's style, not the doc node's
+    const all = makeEditor([para('spaced', { styleId: 'Spaced' }), para('plain')])
+    all.view.dispatch(all.state.tr.setSelection(new AllSelection(all.state.doc)))
+    expect(charSpacingAt(all, styles)).toEqual({ current: 40, inherited: 40 })
+    all.destroy()
   })
 
   it('saves as the run’s w:spacing', () => {

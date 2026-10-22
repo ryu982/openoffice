@@ -11,6 +11,7 @@
  */
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import type { EditorState } from '@tiptap/pm/state'
 import type { DocDefaults, StyleDisplay, StyleInfo } from '@genoffice/docx-engine'
 
 export type FormatStepAction = 'stepLineSpacing' | 'stepCharSpacing' | 'nudgeFontSize'
@@ -75,6 +76,33 @@ export function effectiveLineSpacing(
   )
 }
 
+/**
+ * The paragraph a step reads its current value from: the caret's, or the
+ * first one in the selection (an AllSelection starts in the doc node itself,
+ * whose attrs are no paragraph's)
+ */
+export function selectionParagraph(state: EditorState): PMNode | null {
+  const { $from, from, to } = state.selection
+  if ($from.parent.isTextblock) return $from.parent
+  let found: PMNode | null = null
+  state.doc.nodesBetween(from, to, (node) => {
+    if (found) return false
+    if (node.isTextblock) found = node
+    return !found
+  })
+  return found
+}
+
+/** The line spacing of the selection's first paragraph */
+export function lineSpacingAt(
+  editor: Editor,
+  styles: Map<string, StyleInfo> | undefined,
+  docDefaults: DocDefaults | undefined,
+): LineSpacingValue {
+  const attrs = selectionParagraph(editor.state)?.attrs ?? {}
+  return effectiveLineSpacing(attrs, paragraphStyleDisplay(styles, attrs.styleId), docDefaults)
+}
+
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
 
 /** One step wider (1) or narrower (-1), within the Paragraph dialog's ranges */
@@ -112,7 +140,7 @@ export function charSpacingAt(
   const attrs = editor.getAttributes('docTextStyle')
   const charStyle =
     typeof attrs.styleId === 'string' && attrs.styleId ? styles?.get(attrs.styleId) : undefined
-  const paraStyle = paragraphStyleDisplay(styles, editor.state.selection.$from.parent.attrs.styleId)
+  const paraStyle = paragraphStyleDisplay(styles, selectionParagraph(editor.state)?.attrs.styleId)
   const inherited = charStyle?.display?.charSpacingTwips ?? paraStyle?.charSpacingTwips ?? 0
   const own = attrs.charSpacingTwips
   return { current: typeof own === 'number' ? own : inherited, inherited }
