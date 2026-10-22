@@ -331,21 +331,25 @@ Tout sélectionner suit le focus : quand le volet des miniatures, le volet du pl
 
 Ces commandes agissent sur le texte d’une forme sélectionnée, ou sur le paragraphe où se trouve le curseur lorsque vous êtes dans la zone de texte.
 
-| Action                                                      | macOS | Windows / Linux |
-| ----------------------------------------------------------- | ----- | --------------- |
-| Gras                                                        | ⌘B    | Ctrl+B          |
-| Italique                                                    | ⌘I    | Ctrl+I          |
-| Souligné                                                    | ⌘U    | Ctrl+U          |
-| Aligner à gauche                                            | ⌘L    | Ctrl+L          |
-| Centrer                                                     | ⌘E    | Ctrl+E          |
-| Aligner à droite                                            | ⌘R    | Ctrl+R          |
-| Justifier                                                   | ⌘J    | Ctrl+J          |
-| Augmenter la taille de police de 1 pt                       | ⌘]    | Ctrl+]          |
-| Réduire la taille de police de 1 pt                         | ⌘[    | Ctrl+[          |
-| Agrandir la police jusqu’à la taille suivante de l’échelle  | ⇧⌘>   | Ctrl+Shift+>    |
-| Réduire la police jusqu’à la taille précédente de l’échelle | ⇧⌘<   | Ctrl+Shift+<    |
+| Action                                                      | macOS    | Windows / Linux      |
+| ----------------------------------------------------------- | -------- | -------------------- |
+| Gras                                                        | ⌘B       | Ctrl+B               |
+| Italique                                                    | ⌘I       | Ctrl+I               |
+| Souligné                                                    | ⌘U       | Ctrl+U               |
+| Aligner à gauche                                            | ⌘L       | Ctrl+L               |
+| Centrer                                                     | ⌘E       | Ctrl+E               |
+| Aligner à droite                                            | ⌘R       | Ctrl+R               |
+| Justifier                                                   | ⌘J       | Ctrl+J               |
+| Augmenter la taille de police de 1 pt                       | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Réduire la taille de police de 1 pt                         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Augmenter l’interligne                                      | ⌥⇧Z      | Alt+Shift+Z          |
+| Réduire l’interligne                                        | ⌥⇧A      | Alt+Shift+A          |
+| Agrandir la police jusqu’à la taille suivante de l’échelle  | ⇧⌘>      | Ctrl+Shift+>         |
+| Réduire la police jusqu’à la taille précédente de l’échelle | ⇧⌘<      | Ctrl+Shift+<         |
 
 Les touches de l’échelle de police acceptent aussi les touches . et , avec Maj enfoncé, pour les dispositions de clavier qui les signalent à la place des touches de ponctuation.
+
+⌥⇧E / ⌥⇧R et ⌥⇧Z / ⌥⇧A viennent du traitement de texte coréen Hangul (HWP) : ⌥⇧E / ⌥⇧R changent la taille de police de 1 pt, comme ⌘] / ⌘[, et ⌥⇧Z / ⌥⇧A l’interligne de 0,1 ligne.
 
 ### Presse-papiers et objets
 

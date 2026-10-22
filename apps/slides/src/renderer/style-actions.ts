@@ -19,8 +19,10 @@ import {
   applySelectionParagraphFormat,
   resizeSelectionFont,
   restoreEditSelection,
+  selectionFirstParagraph,
   setSelectionFontSizePt,
 } from './TextEditOverlay'
+import { stepLineSpacingPct } from '../shared/format-step'
 import type { FormatCmd } from './components/Ribbon'
 import type { SlideThemePreset } from './themes'
 import { t } from './i18n/locale'
@@ -237,6 +239,34 @@ export function onParagraphFormat(ctx: ActionCtx, patch: ParagraphFormatPatch): 
       ...(groupId ? { groupId } : {}),
     })
     .then((r) => r && ctx.applySlide(ctx.current, r))
+}
+
+/**
+ * Hangul's ⌥⇧Z / ⌥⇧A: line spacing one tenth of a line wider / narrower. While
+ * editing a text box it steps the covered paragraphs from the first one's
+ * spacing (committed with the edit, like the ribbon's line spacing); otherwise
+ * each selected element steps from its own first paragraph in the main process.
+ */
+export async function onLineSpacingStep(ctx: ActionCtx, dir: 1 | -1): Promise<void> {
+  const first = ctx.editing ? selectionFirstParagraph() : null
+  if (ctx.editing && first) {
+    const { sourceId, groupId } = ctx.editing
+    const cur =
+      first.lineSpacingPct ??
+      (await window.slidesApi.getLineSpacing(ctx.current, sourceId, groupId))[first.srcPara ?? 0] ??
+      100
+    onParagraphFormat(ctx, { lineSpacingPct: stepLineSpacingPct(cur, dir) })
+    return
+  }
+  if (!ctx.selectedIds.length) return
+  const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
+  const r = await window.slidesApi.setElementParagraphFormat({
+    slideIndex: ctx.current,
+    sourceIds: ctx.selectedIds,
+    lineSpacingStep: dir,
+    ...(groupId ? { groupId } : {}),
+  })
+  if (r) ctx.applySlide(ctx.current, r)
 }
 
 export async function onFill(

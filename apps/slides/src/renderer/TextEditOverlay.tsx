@@ -1452,6 +1452,39 @@ export function applySelectionRedaction(label: string | null): boolean {
 }
 
 /**
+ * The first paragraph the editing selection covers, for a step that starts from
+ * its current value (⌥⇧Z / ⌥⇧A): its source paragraph index and the line
+ * spacing already marked on it in this edit session. Null without a selection.
+ */
+export function selectionFirstParagraph(): {
+  srcPara: number | null
+  lineSpacingPct: number | null
+} | null {
+  const sel = window.getSelection()
+  if (!sel?.rangeCount) return null
+  const range = sel.getRangeAt(0)
+  const startEl =
+    range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement
+  const root =
+    startEl?.closest('[data-src-para]')?.parentElement ??
+    (startEl?.querySelector('[data-src-para]') ? startEl : null)
+  const block = root
+    ? Array.from(root.children).find(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement && el.tagName === 'DIV' && range.intersectsNode(el),
+      )
+    : undefined
+  if (!block) return null
+  const num = (v: string | undefined) => {
+    const n = parseFloat(v ?? '')
+    return Number.isNaN(n) ? null : n
+  }
+  return { srcPara: num(block.dataset.srcPara), lineSpacingPct: num(block.dataset.lineSpacingPct) }
+}
+
+/**
  * Per-paragraph format while editing: mark the paragraph divs covered by the
  * caret/selection; extractParagraphs carries the marks to the main process on commit.
  * Toggle-off (clicking the active bullet kind again) resolves against the first covered

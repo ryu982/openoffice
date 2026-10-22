@@ -331,21 +331,25 @@ Alles auswählen richtet sich nach dem Fokus: Ist das Miniaturenbereichsfenster,
 
 Diese Befehle wirken auf den Text einer ausgewählten Form oder auf den Absatz am Cursor, wenn Sie sich im Textfeld befinden.
 
-| Aktion                                                      | macOS | Windows / Linux |
-| ----------------------------------------------------------- | ----- | --------------- |
-| Fett                                                        | ⌘B    | Ctrl+B          |
-| Kursiv                                                      | ⌘I    | Ctrl+I          |
-| Unterstrichen                                               | ⌘U    | Ctrl+U          |
-| Linksbündig                                                 | ⌘L    | Ctrl+L          |
-| Zentriert                                                   | ⌘E    | Ctrl+E          |
-| Rechtsbündig                                                | ⌘R    | Ctrl+R          |
-| Blocksatz                                                   | ⌘J    | Ctrl+J          |
-| Schriftgröße um 1 pt erhöhen                                | ⌘]    | Ctrl+]          |
-| Schriftgröße um 1 pt verringern                             | ⌘[    | Ctrl+[          |
-| Schrift auf die nächste Stufe der Größenliste vergrößern    | ⇧⌘>   | Ctrl+Shift+>    |
-| Schrift auf die vorherige Stufe der Größenliste verkleinern | ⇧⌘<   | Ctrl+Shift+<    |
+| Aktion                                                      | macOS    | Windows / Linux      |
+| ----------------------------------------------------------- | -------- | -------------------- |
+| Fett                                                        | ⌘B       | Ctrl+B               |
+| Kursiv                                                      | ⌘I       | Ctrl+I               |
+| Unterstrichen                                               | ⌘U       | Ctrl+U               |
+| Linksbündig                                                 | ⌘L       | Ctrl+L               |
+| Zentriert                                                   | ⌘E       | Ctrl+E               |
+| Rechtsbündig                                                | ⌘R       | Ctrl+R               |
+| Blocksatz                                                   | ⌘J       | Ctrl+J               |
+| Schriftgröße um 1 pt erhöhen                                | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Schriftgröße um 1 pt verringern                             | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Zeilenabstand vergrößern                                    | ⌥⇧Z      | Alt+Shift+Z          |
+| Zeilenabstand verkleinern                                   | ⌥⇧A      | Alt+Shift+A          |
+| Schrift auf die nächste Stufe der Größenliste vergrößern    | ⇧⌘>      | Ctrl+Shift+>         |
+| Schrift auf die vorherige Stufe der Größenliste verkleinern | ⇧⌘<      | Ctrl+Shift+<         |
 
 Die Tasten der Größenliste verstehen auch die Tasten . und , mit gedrückter Umschalt-Taste, für die Tastaturbelegungen, die diese statt der Satzzeichentasten melden.
+
+⌥⇧E / ⌥⇧R und ⌥⇧Z / ⌥⇧A stammen aus dem koreanischen Textprogramm Hangul (HWP): ⌥⇧E / ⌥⇧R ändern den Schriftgrad wie ⌘] / ⌘[ um 1 pt, ⌥⇧Z / ⌥⇧A den Zeilenabstand um 0,1 Zeilen.
 
 ### Zwischenablage und Objekte
 

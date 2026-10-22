@@ -331,21 +331,25 @@ Chọn tất cả phụ thuộc vào tiêu điểm: khi khung hình thu nhỏ, k
 
 Những phím này tác động tới văn bản của một hình đang chọn, hoặc tới đoạn văn nơi con trỏ đứng khi bạn ở bên trong hộp văn bản.
 
-| Hành động                             | macOS | Windows / Linux |
-| ------------------------------------- | ----- | --------------- |
-| Đậm                                   | ⌘B    | Ctrl+B          |
-| Nghiêng                               | ⌘I    | Ctrl+I          |
-| Gạch chân                             | ⌘U    | Ctrl+U          |
-| Căn trái                              | ⌘L    | Ctrl+L          |
-| Căn giữa                              | ⌘E    | Ctrl+E          |
-| Căn phải                              | ⌘R    | Ctrl+R          |
-| Căn đều                               | ⌘J    | Ctrl+J          |
-| Tăng cỡ phông chử lên 1 pt            | ⌘]    | Ctrl+]          |
-| Giảm cỡ phông chữ xuống 1 pt          | ⌘[    | Ctrl+[          |
-| Tăng phông lên cỡ kế tiếp trong thang | ⇧⌘>   | Ctrl+Shift+>    |
-| Giảm phông xuống cỡ trước trong thang | ⇧⌘<   | Ctrl+Shift+<    |
+| Hành động                             | macOS    | Windows / Linux      |
+| ------------------------------------- | -------- | -------------------- |
+| Đậm                                   | ⌘B       | Ctrl+B               |
+| Nghiêng                               | ⌘I       | Ctrl+I               |
+| Gạch chân                             | ⌘U       | Ctrl+U               |
+| Căn trái                              | ⌘L       | Ctrl+L               |
+| Căn giữa                              | ⌘E       | Ctrl+E               |
+| Căn phải                              | ⌘R       | Ctrl+R               |
+| Căn đều                               | ⌘J       | Ctrl+J               |
+| Tăng cỡ phông chử lên 1 pt            | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Giảm cỡ phông chữ xuống 1 pt          | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Tăng giãn dòng                        | ⌥⇧Z      | Alt+Shift+Z          |
+| Giảm giãn dòng                        | ⌥⇧A      | Alt+Shift+A          |
+| Tăng phông lên cỡ kế tiếp trong thang | ⇧⌘>      | Ctrl+Shift+>         |
+| Giảm phông xuống cỡ trước trong thang | ⇧⌘<      | Ctrl+Shift+<         |
 
 Các phím thang phông cũng nhận phím . và , khi giữ Shift, dành cho những bố cục bàn phím báo hai phím đó thay vì các phím dấu câu.
+
+⌥⇧E / ⌥⇧R và ⌥⇧Z / ⌥⇧A lấy từ trình soạn thảo Hàn Quốc Hangul (HWP): ⌥⇧E / ⌥⇧R đổi cỡ chữ 1 pt, giống ⌘] / ⌘[, còn ⌥⇧Z / ⌥⇧A đổi giãn dòng 0,1 dòng mỗi lần.
 
 ### Bảng tạm và đối tượng
 

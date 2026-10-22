@@ -331,21 +331,25 @@ Seleccionar todo sigue al foco: con el foco en el panel de miniaturas, el panel 
 
 Actúan sobre el texto de una forma seleccionada, o sobre el párrafo donde esté el cursor cuando estás dentro del cuadro de texto.
 
-| Acción                                                    | macOS | Windows / Linux |
-| --------------------------------------------------------- | ----- | --------------- |
-| Negrita                                                   | ⌘B    | Ctrl+B          |
-| Cursiva                                                   | ⌘I    | Ctrl+I          |
-| Subrayado                                                 | ⌘U    | Ctrl+U          |
-| Alinear a la izquierda                                    | ⌘L    | Ctrl+L          |
-| Centrar                                                   | ⌘E    | Ctrl+E          |
-| Alinear a la derecha                                      | ⌘R    | Ctrl+R          |
-| Justificar                                                | ⌘J    | Ctrl+J          |
-| Aumentar el tamaño de fuente en 1 pt                      | ⌘]    | Ctrl+]          |
-| Reducir el tamaño de fuente en 1 pt                       | ⌘[    | Ctrl+[          |
-| Agrandar la fuente hasta el siguiente tamaño de la escala | ⇧⌘>   | Ctrl+Shift+>    |
-| Reducir la fuente hasta el tamaño anterior de la escala   | ⇧⌘<   | Ctrl+Shift+<    |
+| Acción                                                    | macOS    | Windows / Linux      |
+| --------------------------------------------------------- | -------- | -------------------- |
+| Negrita                                                   | ⌘B       | Ctrl+B               |
+| Cursiva                                                   | ⌘I       | Ctrl+I               |
+| Subrayado                                                 | ⌘U       | Ctrl+U               |
+| Alinear a la izquierda                                    | ⌘L       | Ctrl+L               |
+| Centrar                                                   | ⌘E       | Ctrl+E               |
+| Alinear a la derecha                                      | ⌘R       | Ctrl+R               |
+| Justificar                                                | ⌘J       | Ctrl+J               |
+| Aumentar el tamaño de fuente en 1 pt                      | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Reducir el tamaño de fuente en 1 pt                       | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Aumentar interlineado                                     | ⌥⇧Z      | Alt+Shift+Z          |
+| Reducir interlineado                                      | ⌥⇧A      | Alt+Shift+A          |
+| Agrandar la fuente hasta el siguiente tamaño de la escala | ⇧⌘>      | Ctrl+Shift+>         |
+| Reducir la fuente hasta el tamaño anterior de la escala   | ⇧⌘<      | Ctrl+Shift+<         |
 
 Las teclas de la escala de fuentes también aceptan las teclas . y , con Mayús pulsada, para las disposiciones de teclado que informan de esas en lugar de las teclas de puntuación.
+
+⌥⇧E / ⌥⇧R y ⌥⇧Z / ⌥⇧A provienen del procesador de textos coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambian el tamaño de fuente en 1 pt, igual que ⌘] / ⌘[, y ⌥⇧Z / ⌥⇧A el interlineado en 0,1 líneas.
 
 ### Portapapeles y objetos
 

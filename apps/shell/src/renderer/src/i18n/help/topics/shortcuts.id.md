@@ -331,21 +331,25 @@ Pilih semua mengikuti fokus: dengan rel thumbnail, kerangka garis besar, atau pe
 
 Ini berlaku pada teks bentuk yang terpilih, atau pada paragraf tempat caret berada ketika Anda di dalam kotak teks.
 
-| Tindakan                                     | macOS | Windows / Linux |
-| -------------------------------------------- | ----- | --------------- |
-| Tebal                                        | ⌘B    | Ctrl+B          |
-| Miring                                       | ⌘I    | Ctrl+I          |
-| Garis bawah                                  | ⌘U    | Ctrl+U          |
-| Rata kiri                                    | ⌘L    | Ctrl+L          |
-| Rata tengah                                  | ⌘E    | Ctrl+E          |
-| Rata kanan                                   | ⌘R    | Ctrl+R          |
-| Rata penuh                                   | ⌘J    | Ctrl+J          |
-| Perbesar ukuran font sebesar 1 pt            | ⌘]    | Ctrl+]          |
-| Perkecil ukuran font sebesar 1 pt            | ⌘[    | Ctrl+[          |
-| Besarkan font ke ukuran berikutnya di tangga | ⇧⌘>   | Ctrl+Shift+>    |
-| Perkecil font ke ukuran sebelumnya di tangga | ⇧⌘<   | Ctrl+Shift+<    |
+| Tindakan                                     | macOS    | Windows / Linux      |
+| -------------------------------------------- | -------- | -------------------- |
+| Tebal                                        | ⌘B       | Ctrl+B               |
+| Miring                                       | ⌘I       | Ctrl+I               |
+| Garis bawah                                  | ⌘U       | Ctrl+U               |
+| Rata kiri                                    | ⌘L       | Ctrl+L               |
+| Rata tengah                                  | ⌘E       | Ctrl+E               |
+| Rata kanan                                   | ⌘R       | Ctrl+R               |
+| Rata penuh                                   | ⌘J       | Ctrl+J               |
+| Perbesar ukuran font sebesar 1 pt            | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Perkecil ukuran font sebesar 1 pt            | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Perbesar spasi baris                         | ⌥⇧Z      | Alt+Shift+Z          |
+| Perkecil spasi baris                         | ⌥⇧A      | Alt+Shift+A          |
+| Besarkan font ke ukuran berikutnya di tangga | ⇧⌘>      | Ctrl+Shift+>         |
+| Perkecil font ke ukuran sebelumnya di tangga | ⇧⌘<      | Ctrl+Shift+<         |
 
 Tombol tangga font itu juga menerima tombol . dan , dengan Shift ditahan, untuk tata letak papan tik yang melaporkan keduanya di tempat tombol tanda baca.
+
+⌥⇧E / ⌥⇧R dan ⌥⇧Z / ⌥⇧A berasal dari pengolah kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R mengubah ukuran font sebesar 1 pt, sama seperti ⌘] / ⌘[, dan ⌥⇧Z / ⌥⇧A mengubah spasi baris sebesar 0,1 baris.
 
 ### Papan klip dan objek
 

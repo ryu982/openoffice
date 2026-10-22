@@ -331,21 +331,25 @@ Select all follows focus: with the thumbnail pane, outline pane or slide sorter 
 
 These act on the text of a selected shape, or on the caret's paragraph when you are inside the text box.
 
-| Action                                     | macOS | Windows / Linux |
-| ------------------------------------------ | ----- | --------------- |
-| Bold                                       | ⌘B    | Ctrl+B          |
-| Italic                                     | ⌘I    | Ctrl+I          |
-| Underline                                  | ⌘U    | Ctrl+U          |
-| Align left                                 | ⌘L    | Ctrl+L          |
-| Align centre                               | ⌘E    | Ctrl+E          |
-| Align right                                | ⌘R    | Ctrl+R          |
-| Justify                                    | ⌘J    | Ctrl+J          |
-| Increase font size by 1 pt                 | ⌘]    | Ctrl+]          |
-| Decrease font size by 1 pt                 | ⌘[    | Ctrl+[          |
-| Grow font to next size on the ladder       | ⇧⌘>   | Ctrl+Shift+>    |
-| Shrink font to previous size on the ladder | ⇧⌘<   | Ctrl+Shift+<    |
+| Action                                     | macOS    | Windows / Linux      |
+| ------------------------------------------ | -------- | -------------------- |
+| Bold                                       | ⌘B       | Ctrl+B               |
+| Italic                                     | ⌘I       | Ctrl+I               |
+| Underline                                  | ⌘U       | Ctrl+U               |
+| Align left                                 | ⌘L       | Ctrl+L               |
+| Align centre                               | ⌘E       | Ctrl+E               |
+| Align right                                | ⌘R       | Ctrl+R               |
+| Justify                                    | ⌘J       | Ctrl+J               |
+| Increase font size by 1 pt                 | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Decrease font size by 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Increase line spacing                      | ⌥⇧Z      | Alt+Shift+Z          |
+| Decrease line spacing                      | ⌥⇧A      | Alt+Shift+A          |
+| Grow font to next size on the ladder       | ⇧⌘>      | Ctrl+Shift+>         |
+| Shrink font to previous size on the ladder | ⇧⌘<      | Ctrl+Shift+<         |
 
 The font-ladder keys also take the . and , keys with Shift held, for the keyboard layouts that report those instead of the punctuation keys.
+
+⌥⇧E / ⌥⇧R and ⌥⇧Z / ⌥⇧A come from Hangul (HWP), the Korean word processor: ⌥⇧E / ⌥⇧R change the font size by 1 pt, the same as ⌘] / ⌘[, and ⌥⇧Z / ⌥⇧A the line spacing by 0.1 line.
 
 ### Clipboard and objects
 

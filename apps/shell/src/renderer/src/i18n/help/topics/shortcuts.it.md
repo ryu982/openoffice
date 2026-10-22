@@ -331,21 +331,25 @@ Seleziona tutto segue il focus: con il riquadro delle miniature, il riquadro del
 
 Agiscono sul testo di una forma selezionata, oppure sul paragrafo del cursore quando sei dentro la casella di testo.
 
-| Azione                                               | macOS | Windows / Linux |
-| ---------------------------------------------------- | ----- | --------------- |
-| Grassetto                                            | ⌘B    | Ctrl+B          |
-| Corsivo                                              | ⌘I    | Ctrl+I          |
-| Sottolineato                                         | ⌘U    | Ctrl+U          |
-| Allinea a sinistra                                   | ⌘L    | Ctrl+L          |
-| Centra                                               | ⌘E    | Ctrl+E          |
-| Allinea a destra                                     | ⌘R    | Ctrl+R          |
-| Giustifica                                           | ⌘J    | Ctrl+J          |
-| Aumenta la dimensione del carattere di 1 pt          | ⌘]    | Ctrl+]          |
-| Riduci la dimensione del carattere di 1 pt           | ⌘[    | Ctrl+[          |
-| Ingrandisci il carattere fino alla taglia successiva | ⇧⌘>   | Ctrl+Shift+>    |
-| Riduci il carattere fino alla taglia precedente      | ⇧⌘<   | Ctrl+Shift+<    |
+| Azione                                               | macOS    | Windows / Linux      |
+| ---------------------------------------------------- | -------- | -------------------- |
+| Grassetto                                            | ⌘B       | Ctrl+B               |
+| Corsivo                                              | ⌘I       | Ctrl+I               |
+| Sottolineato                                         | ⌘U       | Ctrl+U               |
+| Allinea a sinistra                                   | ⌘L       | Ctrl+L               |
+| Centra                                               | ⌘E       | Ctrl+E               |
+| Allinea a destra                                     | ⌘R       | Ctrl+R               |
+| Giustifica                                           | ⌘J       | Ctrl+J               |
+| Aumenta la dimensione del carattere di 1 pt          | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Riduci la dimensione del carattere di 1 pt           | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Aumenta interlinea                                   | ⌥⇧Z      | Alt+Shift+Z          |
+| Riduci interlinea                                    | ⌥⇧A      | Alt+Shift+A          |
+| Ingrandisci il carattere fino alla taglia successiva | ⇧⌘>      | Ctrl+Shift+>         |
+| Riduci il carattere fino alla taglia precedente      | ⇧⌘<      | Ctrl+Shift+<         |
 
 I tasti della scala dei caratteri accettano anche i tasti . e , con Shift premuto, per le disposizioni di tastiera che segnalano quelli al posto dei tasti di punteggiatura.
+
+⌥⇧E / ⌥⇧R e ⌥⇧Z / ⌥⇧A vengono dall’elaboratore di testi coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambiano la dimensione del carattere di 1 pt, come ⌘] / ⌘[, e ⌥⇧Z / ⌥⇧A l’interlinea di 0,1 righe.
 
 ### Appunti e oggetti
 

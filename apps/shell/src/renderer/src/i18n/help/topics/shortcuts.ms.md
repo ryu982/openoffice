@@ -331,21 +331,25 @@ Pilih semua mengikut fokus: dengan baris lakaran kenit, kerangka atau penyusun s
 
 Ini bertindak ke atas teks bentuk yang dipilih, atau ke atas perenggan caret apabila anda berada di dalam kotak teks.
 
-| Tindakan                                        | macOS | Windows / Linux |
-| ----------------------------------------------- | ----- | --------------- |
-| Tebal                                           | ⌘B    | Ctrl+B          |
-| Condong                                         | ⌘I    | Ctrl+I          |
-| Garis bawah                                     | ⌘U    | Ctrl+U          |
-| Sejajar kiri                                    | ⌘L    | Ctrl+L          |
-| Sejajar tengah                                  | ⌘E    | Ctrl+E          |
-| Sejajar kanan                                   | ⌘R    | Ctrl+R          |
-| Justifikasi                                     | ⌘J    | Ctrl+J          |
-| Besarkan saiz fon sebanyak 1 pt                 | ⌘]    | Ctrl+]          |
-| Perkecil saiz fon sebanyak 1 pt                 | ⌘[    | Ctrl+[          |
-| Besarkan fon kepada saiz seterusnya pada tangga | ⇧⌘>   | Ctrl+Shift+>    |
-| Perkecil fon kepada saiz sebelumnya pada tangga | ⇧⌘<   | Ctrl+Shift+<    |
+| Tindakan                                        | macOS    | Windows / Linux      |
+| ----------------------------------------------- | -------- | -------------------- |
+| Tebal                                           | ⌘B       | Ctrl+B               |
+| Condong                                         | ⌘I       | Ctrl+I               |
+| Garis bawah                                     | ⌘U       | Ctrl+U               |
+| Sejajar kiri                                    | ⌘L       | Ctrl+L               |
+| Sejajar tengah                                  | ⌘E       | Ctrl+E               |
+| Sejajar kanan                                   | ⌘R       | Ctrl+R               |
+| Justifikasi                                     | ⌘J       | Ctrl+J               |
+| Besarkan saiz fon sebanyak 1 pt                 | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Perkecil saiz fon sebanyak 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Besarkan jarak baris                            | ⌥⇧Z      | Alt+Shift+Z          |
+| Kecilkan jarak baris                            | ⌥⇧A      | Alt+Shift+A          |
+| Besarkan fon kepada saiz seterusnya pada tangga | ⇧⌘>      | Ctrl+Shift+>         |
+| Perkecil fon kepada saiz sebelumnya pada tangga | ⇧⌘<      | Ctrl+Shift+<         |
 
 Kekunci tangga fon itu juga menerima kekunci . dan , dengan Shift ditahan, untuk susun atur papan kekunci yang melaporkan kedua-duanya dan bukannya kekunci tanda baca.
+
+⌥⇧E / ⌥⇧R dan ⌥⇧Z / ⌥⇧A diambil daripada pemproses kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R menukar saiz fon sebanyak 1 pt, sama seperti ⌘] / ⌘[, dan ⌥⇧Z / ⌥⇧A menukar jarak baris sebanyak 0.1 baris.
 
 ### Papan keratan dan objek
 

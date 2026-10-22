@@ -331,21 +331,25 @@ Zaznacz wszystko zależy od fokusu: przy fokusie na panel miniatur, panelu konsp
 
 Działają na tekst zaznaczonego kształtu albo na akapit kursora, gdy jesteś w polu tekstowym.
 
-| Czynność                            | macOS | Windows / Linux |
-| ----------------------------------- | ----- | --------------- |
-| Pogrubienie                         | ⌘B    | Ctrl+B          |
-| Pochylenie                          | ⌘I    | Ctrl+I          |
-| Podkreślenie                        | ⌘U    | Ctrl+U          |
-| Wyrównaj do lewej                   | ⌘L    | Ctrl+L          |
-| Wyśrodkuj                           | ⌘E    | Ctrl+E          |
-| Wyrównaj do prawej                  | ⌘R    | Ctrl+R          |
-| Wyjustuj                            | ⌘J    | Ctrl+J          |
-| Zwiększ rozmiar czcionki o 1 pt     | ⌘]    | Ctrl+]          |
-| Zmniejsz rozmiar czcionki o 1 pt    | ⌘[    | Ctrl+[          |
-| Następny rozmiar czcionki na skali  | ⇧⌘>   | Ctrl+Shift+>    |
-| Poprzedni rozmiar czcionki na skali | ⇧⌘<   | Ctrl+Shift+<    |
+| Czynność                            | macOS    | Windows / Linux      |
+| ----------------------------------- | -------- | -------------------- |
+| Pogrubienie                         | ⌘B       | Ctrl+B               |
+| Pochylenie                          | ⌘I       | Ctrl+I               |
+| Podkreślenie                        | ⌘U       | Ctrl+U               |
+| Wyrównaj do lewej                   | ⌘L       | Ctrl+L               |
+| Wyśrodkuj                           | ⌘E       | Ctrl+E               |
+| Wyrównaj do prawej                  | ⌘R       | Ctrl+R               |
+| Wyjustuj                            | ⌘J       | Ctrl+J               |
+| Zwiększ rozmiar czcionki o 1 pt     | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Zmniejsz rozmiar czcionki o 1 pt    | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Zwiększ interlinię                  | ⌥⇧Z      | Alt+Shift+Z          |
+| Zmniejsz interlinię                 | ⌥⇧A      | Alt+Shift+A          |
+| Następny rozmiar czcionki na skali  | ⇧⌘>      | Ctrl+Shift+>         |
+| Poprzedni rozmiar czcionki na skali | ⇧⌘<      | Ctrl+Shift+<         |
 
 Klawisze skali czcionki przyjmują też klawisze . i , z wciśniętym Shift, w układach klawiatury, które zgłaszają je zamiast klawiszy interpunkcyjnych.
+
+⌥⇧E / ⌥⇧R i ⌥⇧Z / ⌥⇧A pochodzą z koreańskiego edytora tekstu Hangul (HWP): ⌥⇧E / ⌥⇧R zmieniają rozmiar czcionki o 1 pkt, tak jak ⌘] / ⌘[, a ⌥⇧Z / ⌥⇧A interlinię o 0,1 wiersza.
 
 ### Schowek i obiekty
 

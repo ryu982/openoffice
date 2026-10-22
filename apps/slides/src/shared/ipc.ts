@@ -255,6 +255,8 @@ export interface SetElementParagraphFormatOp {
   bulletColor?: string
   /** Line spacing (%, 100 = single) */
   lineSpacingPct?: number
+  /** Step each element's line spacing one tenth of a line from its first paragraph's (⌥⇧Z / ⌥⇧A); exclusive with lineSpacingPct */
+  lineSpacingStep?: 1 | -1
   /** Space before / after (pt) */
   spaceBeforePt?: number
   spaceAfterPt?: number
@@ -1377,6 +1379,8 @@ export interface SlidesApi {
   setElementFont: (op: SetElementFontOp) => Promise<RenderSlide | null>
   /** Change paragraph format on selected elements (bullet/line spacing/paragraph spacing/align; elements without text ignored) */
   setElementParagraphFormat: (op: SetElementParagraphFormatOp) => Promise<RenderSlide | null>
+  /** Each paragraph's line spacing (%, 100 = single; a fixed height reads as 100) of an element: a text box, a group child, or a table's first text cell */
+  getLineSpacing: (slideIndex: number, sourceId: string, groupId?: string) => Promise<number[]>
   /** Replace (when count=0, slides is null and no history step is created) */
   findReplace: (
     op: FindReplaceOp,

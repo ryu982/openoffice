@@ -331,21 +331,25 @@ Alles selecteren volgt de focus: met het miniatuurpaneel, overzichtspaneel of de
 
 Deze werken op de tekst van een geselecteerde vorm, of op de alinea van de caret wanneer je in het tekstvak zit.
 
-| Actie                                            | macOS | Windows / Linux |
-| ------------------------------------------------ | ----- | --------------- |
-| Vet                                              | ⌘B    | Ctrl+B          |
-| Cursief                                          | ⌘I    | Ctrl+I          |
-| Onderstrepen                                     | ⌘U    | Ctrl+U          |
-| Links uitlijnen                                  | ⌘L    | Ctrl+L          |
-| Centreren                                        | ⌘E    | Ctrl+E          |
-| Rechts uitlijnen                                 | ⌘R    | Ctrl+R          |
-| Uitvullen                                        | ⌘J    | Ctrl+J          |
-| Tekengrootte met 1 pt vergroten                  | ⌘]    | Ctrl+]          |
-| Tekengrootte met 1 pt verkleinen                 | ⌘[    | Ctrl+[          |
-| Lettertype naar de volgende grootte op de ladder | ⇧⌘>   | Ctrl+Shift+>    |
-| Lettertype naar de vorige grootte op de ladder   | ⇧⌘<   | Ctrl+Shift+<    |
+| Actie                                            | macOS    | Windows / Linux      |
+| ------------------------------------------------ | -------- | -------------------- |
+| Vet                                              | ⌘B       | Ctrl+B               |
+| Cursief                                          | ⌘I       | Ctrl+I               |
+| Onderstrepen                                     | ⌘U       | Ctrl+U               |
+| Links uitlijnen                                  | ⌘L       | Ctrl+L               |
+| Centreren                                        | ⌘E       | Ctrl+E               |
+| Rechts uitlijnen                                 | ⌘R       | Ctrl+R               |
+| Uitvullen                                        | ⌘J       | Ctrl+J               |
+| Tekengrootte met 1 pt vergroten                  | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Tekengrootte met 1 pt verkleinen                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Regelafstand vergroten                           | ⌥⇧Z      | Alt+Shift+Z          |
+| Regelafstand verkleinen                          | ⌥⇧A      | Alt+Shift+A          |
+| Lettertype naar de volgende grootte op de ladder | ⇧⌘>      | Ctrl+Shift+>         |
+| Lettertype naar de vorige grootte op de ladder   | ⇧⌘<      | Ctrl+Shift+<         |
 
 De toetsen van de lettertype-ladder nemen ook de toetsen . en , met Shift vast, voor de toetsenbordindelingen die die in plaats van de leestekentoetsen melden.
+
+⌥⇧E / ⌥⇧R en ⌥⇧Z / ⌥⇧A komen uit het Koreaanse tekstverwerkingsprogramma Hangul (HWP): ⌥⇧E / ⌥⇧R wijzigen de tekengrootte met 1 pt, net als ⌘] / ⌘[, en ⌥⇧Z / ⌥⇧A de regelafstand met 0,1 regel.
 
 ### Klembord en objecten
 

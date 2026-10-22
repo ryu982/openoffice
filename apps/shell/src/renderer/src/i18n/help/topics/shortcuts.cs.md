@@ -331,21 +331,25 @@ Vybrat vše sleduje fokus: s fokusem na panel náhledů, panel osnovy nebo tří
 
 Ty působí na text vybraného tvaru, nebo na odstavec s kurzorem, když jste uvnitř textového pole.
 
-| Akce                                  | macOS | Windows / Linux |
-| ------------------------------------- | ----- | --------------- |
-| Tučné                                 | ⌘B    | Ctrl+B          |
-| Kurzíva                               | ⌘I    | Ctrl+I          |
-| Podtržení                             | ⌘U    | Ctrl+U          |
-| Zarovnat doleva                       | ⌘L    | Ctrl+L          |
-| Vycentrovat                           | ⌘E    | Ctrl+E          |
-| Zarovnat doprava                      | ⌘R    | Ctrl+R          |
-| Zarovnat přes šířku                   | ⌘J    | Ctrl+J          |
-| Zvětšit velikost písma o 1 pt         | ⌘]    | Ctrl+]          |
-| Zmenšit velikost písma o 1 pt         | ⌘[    | Ctrl+[          |
-| Písmo na další velikost v žebříku     | ⇧⌘>   | Ctrl+Shift+>    |
-| Písmo na předchozí velikost v žebříku | ⇧⌘<   | Ctrl+Shift+<    |
+| Akce                                  | macOS    | Windows / Linux      |
+| ------------------------------------- | -------- | -------------------- |
+| Tučné                                 | ⌘B       | Ctrl+B               |
+| Kurzíva                               | ⌘I       | Ctrl+I               |
+| Podtržení                             | ⌘U       | Ctrl+U               |
+| Zarovnat doleva                       | ⌘L       | Ctrl+L               |
+| Vycentrovat                           | ⌘E       | Ctrl+E               |
+| Zarovnat doprava                      | ⌘R       | Ctrl+R               |
+| Zarovnat přes šířku                   | ⌘J       | Ctrl+J               |
+| Zvětšit velikost písma o 1 pt         | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Zmenšit velikost písma o 1 pt         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Zvětšit řádkování                     | ⌥⇧Z      | Alt+Shift+Z          |
+| Zmenšit řádkování                     | ⌥⇧A      | Alt+Shift+A          |
+| Písmo na další velikost v žebříku     | ⇧⌘>      | Ctrl+Shift+>         |
+| Písmo na předchozí velikost v žebříku | ⇧⌘<      | Ctrl+Shift+<         |
 
 Klávesy žebříku písma berou také klávesy . a , s drženým Shift, pro rozvržení klávesnice, které je hlásí místo kláves s interpunkcí.
+
+⌥⇧E / ⌥⇧R a ⌥⇧Z / ⌥⇧A pocházejí z korejského textového editoru Hangul (HWP): ⌥⇧E / ⌥⇧R mění velikost písma o 1 b. stejně jako ⌘] / ⌘[ a ⌥⇧Z / ⌥⇧A řádkování o 0,1 řádku.
 
 ### Schránka a objekty
 
