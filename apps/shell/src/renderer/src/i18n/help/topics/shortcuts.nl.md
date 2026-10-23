@@ -344,12 +344,14 @@ Deze werken op de tekst van een geselecteerde vorm, of op de alinea van de caret
 | Tekengrootte met 1 pt verkleinen                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Regelafstand vergroten                           | ⌥⇧Z      | Alt+Shift+Z          |
 | Regelafstand verkleinen                          | ⌥⇧A      | Alt+Shift+A          |
+| Tekenafstand vergroten                           | ⌥⇧W      | Alt+Shift+W          |
+| Tekenafstand verkleinen                          | ⌥⇧N      | Alt+Shift+N          |
 | Lettertype naar de volgende grootte op de ladder | ⇧⌘>      | Ctrl+Shift+>         |
 | Lettertype naar de vorige grootte op de ladder   | ⇧⌘<      | Ctrl+Shift+<         |
 
 De toetsen van de lettertype-ladder nemen ook de toetsen . en , met Shift vast, voor de toetsenbordindelingen die die in plaats van de leestekentoetsen melden.
 
-⌥⇧E / ⌥⇧R en ⌥⇧Z / ⌥⇧A komen uit het Koreaanse tekstverwerkingsprogramma Hangul (HWP): ⌥⇧E / ⌥⇧R wijzigen de tekengrootte met 1 pt, net als ⌘] / ⌘[, en ⌥⇧Z / ⌥⇧A de regelafstand met 0,1 regel.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A en ⌥⇧W / ⌥⇧N komen uit het Koreaanse tekstverwerkingsprogramma Hangul (HWP): ⌥⇧E / ⌥⇧R wijzigen de tekengrootte met 1 pt, net als ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A de regelafstand met 0,1 regel en ⌥⇧W / ⌥⇧N de tekenafstand met 1% van de tekengrootte (in een tekstvak die van de geselecteerde tekst).
 
 ### Klembord en objecten
 

@@ -344,12 +344,14 @@ Diese Befehle wirken auf den Text einer ausgewählten Form oder auf den Absatz a
 | Schriftgröße um 1 pt verringern                             | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Zeilenabstand vergrößern                                    | ⌥⇧Z      | Alt+Shift+Z          |
 | Zeilenabstand verkleinern                                   | ⌥⇧A      | Alt+Shift+A          |
+| Zeichenabstand erweitern                                    | ⌥⇧W      | Alt+Shift+W          |
+| Zeichenabstand verringern                                   | ⌥⇧N      | Alt+Shift+N          |
 | Schrift auf die nächste Stufe der Größenliste vergrößern    | ⇧⌘>      | Ctrl+Shift+>         |
 | Schrift auf die vorherige Stufe der Größenliste verkleinern | ⇧⌘<      | Ctrl+Shift+<         |
 
 Die Tasten der Größenliste verstehen auch die Tasten . und , mit gedrückter Umschalt-Taste, für die Tastaturbelegungen, die diese statt der Satzzeichentasten melden.
 
-⌥⇧E / ⌥⇧R und ⌥⇧Z / ⌥⇧A stammen aus dem koreanischen Textprogramm Hangul (HWP): ⌥⇧E / ⌥⇧R ändern den Schriftgrad wie ⌘] / ⌘[ um 1 pt, ⌥⇧Z / ⌥⇧A den Zeilenabstand um 0,1 Zeilen.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A und ⌥⇧W / ⌥⇧N stammen aus dem koreanischen Textprogramm Hangul (HWP): ⌥⇧E / ⌥⇧R ändern den Schriftgrad wie ⌘] / ⌘[ um 1 pt, ⌥⇧Z / ⌥⇧A den Zeilenabstand um 0,1 Zeilen und ⌥⇧W / ⌥⇧N den Zeichenabstand um 1 % des Schriftgrads (in einem Textfeld den des markierten Texts).
 
 ### Zwischenablage und Objekte
 

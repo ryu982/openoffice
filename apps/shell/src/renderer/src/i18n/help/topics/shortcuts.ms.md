@@ -344,12 +344,14 @@ Ini bertindak ke atas teks bentuk yang dipilih, atau ke atas perenggan caret apa
 | Perkecil saiz fon sebanyak 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Besarkan jarak baris                            | ⌥⇧Z      | Alt+Shift+Z          |
 | Kecilkan jarak baris                            | ⌥⇧A      | Alt+Shift+A          |
+| Kembangkan jarak aksara                         | ⌥⇧W      | Alt+Shift+W          |
+| Mampatkan jarak aksara                          | ⌥⇧N      | Alt+Shift+N          |
 | Besarkan fon kepada saiz seterusnya pada tangga | ⇧⌘>      | Ctrl+Shift+>         |
 | Perkecil fon kepada saiz sebelumnya pada tangga | ⇧⌘<      | Ctrl+Shift+<         |
 
 Kekunci tangga fon itu juga menerima kekunci . dan , dengan Shift ditahan, untuk susun atur papan kekunci yang melaporkan kedua-duanya dan bukannya kekunci tanda baca.
 
-⌥⇧E / ⌥⇧R dan ⌥⇧Z / ⌥⇧A diambil daripada pemproses kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R menukar saiz fon sebanyak 1 pt, sama seperti ⌘] / ⌘[, dan ⌥⇧Z / ⌥⇧A menukar jarak baris sebanyak 0.1 baris.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A dan ⌥⇧W / ⌥⇧N diambil daripada pemproses kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R menukar saiz fon sebanyak 1 pt, sama seperti ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A menukar jarak baris sebanyak 0.1 baris, dan ⌥⇧W / ⌥⇧N menukar jarak aksara sebanyak 1% saiz fon (di dalam kotak teks, bagi teks yang dipilih).
 
 ### Papan keratan dan objek
 

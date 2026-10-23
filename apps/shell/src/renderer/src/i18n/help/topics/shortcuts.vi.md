@@ -344,12 +344,14 @@ Những phím này tác động tới văn bản của một hình đang chọn,
 | Giảm cỡ phông chữ xuống 1 pt          | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Tăng giãn dòng                        | ⌥⇧Z      | Alt+Shift+Z          |
 | Giảm giãn dòng                        | ⌥⇧A      | Alt+Shift+A          |
+| Giãn khoảng cách ký tự                | ⌥⇧W      | Alt+Shift+W          |
+| Co khoảng cách ký tự                  | ⌥⇧N      | Alt+Shift+N          |
 | Tăng phông lên cỡ kế tiếp trong thang | ⇧⌘>      | Ctrl+Shift+>         |
 | Giảm phông xuống cỡ trước trong thang | ⇧⌘<      | Ctrl+Shift+<         |
 
 Các phím thang phông cũng nhận phím . và , khi giữ Shift, dành cho những bố cục bàn phím báo hai phím đó thay vì các phím dấu câu.
 
-⌥⇧E / ⌥⇧R và ⌥⇧Z / ⌥⇧A lấy từ trình soạn thảo Hàn Quốc Hangul (HWP): ⌥⇧E / ⌥⇧R đổi cỡ chữ 1 pt, giống ⌘] / ⌘[, còn ⌥⇧Z / ⌥⇧A đổi giãn dòng 0,1 dòng mỗi lần.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A và ⌥⇧W / ⌥⇧N lấy từ trình soạn thảo Hàn Quốc Hangul (HWP): ⌥⇧E / ⌥⇧R đổi cỡ chữ 1 pt, giống ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A đổi giãn dòng 0,1 dòng, còn ⌥⇧W / ⌥⇧N đổi khoảng cách ký tự 1% cỡ chữ mỗi lần (trong hộp văn bản, cho phần chữ được chọn).
 
 ### Bảng tạm và đối tượng
 

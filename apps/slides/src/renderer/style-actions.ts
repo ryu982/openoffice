@@ -21,6 +21,7 @@ import {
   restoreEditSelection,
   selectionFirstParagraph,
   setSelectionFontSizePt,
+  stepSelectionLetterSpacing,
 } from './TextEditOverlay'
 import { stepLineSpacingPct } from '../shared/format-step'
 import type { FormatCmd } from './components/Ribbon'
@@ -63,6 +64,27 @@ export function onFontSize(ctx: ActionCtx, pt: number): void {
       slideIndex: ctx.current,
       sourceIds: ctx.selectedIds,
       fontSizePt: pt,
+      ...(groupId ? { groupId } : {}),
+    })
+    .then((r) => r && ctx.applySlide(ctx.current, r))
+}
+
+/**
+ * Hangul's ⌥⇧W / ⌥⇧N: character spacing 1% of the font size wider / narrower — the
+ * editing selection, or each selected element from its own first run.
+ */
+export function onCharSpacingStep(ctx: ActionCtx, dir: 1 | -1): void {
+  if (ctx.editing || ctx.editingCell) {
+    stepSelectionLetterSpacing(dir)
+    return
+  }
+  if (!ctx.selectedIds.length) return
+  const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
+  void window.slidesApi
+    .setElementFont({
+      slideIndex: ctx.current,
+      sourceIds: ctx.selectedIds,
+      letterSpacingStep: dir,
       ...(groupId ? { groupId } : {}),
     })
     .then((r) => r && ctx.applySlide(ctx.current, r))

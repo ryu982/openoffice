@@ -344,12 +344,14 @@ Działają na tekst zaznaczonego kształtu albo na akapit kursora, gdy jesteś w
 | Zmniejsz rozmiar czcionki o 1 pt    | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Zwiększ interlinię                  | ⌥⇧Z      | Alt+Shift+Z          |
 | Zmniejsz interlinię                 | ⌥⇧A      | Alt+Shift+A          |
+| Zwiększ odstępy między znakami      | ⌥⇧W      | Alt+Shift+W          |
+| Zmniejsz odstępy między znakami     | ⌥⇧N      | Alt+Shift+N          |
 | Następny rozmiar czcionki na skali  | ⇧⌘>      | Ctrl+Shift+>         |
 | Poprzedni rozmiar czcionki na skali | ⇧⌘<      | Ctrl+Shift+<         |
 
 Klawisze skali czcionki przyjmują też klawisze . i , z wciśniętym Shift, w układach klawiatury, które zgłaszają je zamiast klawiszy interpunkcyjnych.
 
-⌥⇧E / ⌥⇧R i ⌥⇧Z / ⌥⇧A pochodzą z koreańskiego edytora tekstu Hangul (HWP): ⌥⇧E / ⌥⇧R zmieniają rozmiar czcionki o 1 pkt, tak jak ⌘] / ⌘[, a ⌥⇧Z / ⌥⇧A interlinię o 0,1 wiersza.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A i ⌥⇧W / ⌥⇧N pochodzą z koreańskiego edytora tekstu Hangul (HWP): ⌥⇧E / ⌥⇧R zmieniają rozmiar czcionki o 1 pkt, tak jak ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A interlinię o 0,1 wiersza, a ⌥⇧W / ⌥⇧N odstępy między znakami o 1% rozmiaru czcionki (w polu tekstowym – zaznaczonego tekstu).
 
 ### Schowek i obiekty
 

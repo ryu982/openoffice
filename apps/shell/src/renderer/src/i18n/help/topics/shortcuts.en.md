@@ -344,12 +344,14 @@ These act on the text of a selected shape, or on the caret's paragraph when you 
 | Decrease font size by 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Increase line spacing                      | ⌥⇧Z      | Alt+Shift+Z          |
 | Decrease line spacing                      | ⌥⇧A      | Alt+Shift+A          |
+| Expand character spacing                   | ⌥⇧W      | Alt+Shift+W          |
+| Condense character spacing                 | ⌥⇧N      | Alt+Shift+N          |
 | Grow font to next size on the ladder       | ⇧⌘>      | Ctrl+Shift+>         |
 | Shrink font to previous size on the ladder | ⇧⌘<      | Ctrl+Shift+<         |
 
 The font-ladder keys also take the . and , keys with Shift held, for the keyboard layouts that report those instead of the punctuation keys.
 
-⌥⇧E / ⌥⇧R and ⌥⇧Z / ⌥⇧A come from Hangul (HWP), the Korean word processor: ⌥⇧E / ⌥⇧R change the font size by 1 pt, the same as ⌘] / ⌘[, and ⌥⇧Z / ⌥⇧A the line spacing by 0.1 line.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A and ⌥⇧W / ⌥⇧N come from Hangul (HWP), the Korean word processor: ⌥⇧E / ⌥⇧R change the font size by 1 pt, the same as ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A the line spacing by 0.1 line, and ⌥⇧W / ⌥⇧N the character spacing by 1% of the font size (inside a text box, of the selected text).
 
 ### Clipboard and objects
 

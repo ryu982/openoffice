@@ -1,7 +1,8 @@
 /**
- * Hangul's ⌥⇧Z / ⌥⇧A in the slide editor: the key mapping, the step, and the
- * main-process path that steps each selected element from its own first
- * paragraph and saves it as a:lnSpc.
+ * Hangul's ⌥⇧Z / ⌥⇧A (line spacing) and ⌥⇧W / ⌥⇧N (character spacing) in the
+ * slide editor: the key mapping, the steps, and the main-process paths that
+ * step each selected element from its own first paragraph / run and save them
+ * as a:lnSpc and a:rPr spc.
  */
 import { tmpdir } from 'node:os'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -47,7 +48,12 @@ import { createBlankPptx, openPptx, savePptx } from '@genoffice/pptx-engine'
 import { runTxn } from '@genoffice/pptx-ops'
 import { registerSlidesIpc } from '../src/main/slides-main'
 import { sessions, type Session } from '../src/main/session-state'
-import { formatStepForKey, lineSpacingPctOf, stepLineSpacingPct } from '../src/shared/format-step'
+import {
+  formatStepForKey,
+  lineSpacingPctOf,
+  stepLetterSpacingPt,
+  stepLineSpacingPct,
+} from '../src/shared/format-step'
 
 const WC = 1
 const event = { sender: { id: WC } } as never
@@ -69,9 +75,11 @@ const chord = (code: string, mods: Partial<KeyboardEventInit> = {}) =>
   } as KeyboardEvent)
 
 describe('formatStepForKey', () => {
-  it('maps the four Hangul letters the slide editor takes', () => {
+  it('maps the six Hangul letters', () => {
     expect(chord('KeyZ')).toEqual({ action: 'lineSpacing', dir: 1 })
     expect(chord('KeyA')).toEqual({ action: 'lineSpacing', dir: -1 })
+    expect(chord('KeyW')).toEqual({ action: 'charSpacing', dir: 1 })
+    expect(chord('KeyN')).toEqual({ action: 'charSpacing', dir: -1 })
     expect(chord('KeyE')).toEqual({ action: 'fontSize', dir: 1 })
     expect(chord('KeyR')).toEqual({ action: 'fontSize', dir: -1 })
   })
@@ -88,9 +96,8 @@ describe('formatStepForKey', () => {
     expect(chord('KeyZ', { shiftKey: false })).toBeNull()
     expect(chord('KeyZ', { ctrlKey: true })).toBeNull()
     expect(chord('KeyZ', { metaKey: true })).toBeNull()
-    // character spacing is not offered here
-    expect(chord('KeyW')).toBeNull()
-    expect(chord('KeyN')).toBeNull()
+    // the other Alt+Shift letters stay free
+    expect(chord('KeyD')).toBeNull()
   })
 })
 
@@ -113,7 +120,25 @@ describe('line spacing step', () => {
   })
 })
 
-describe('slides:set-element-paragraph-format with lineSpacingStep', () => {
+describe('character spacing step', () => {
+  it('moves 1% of the font size, in hundredths of a point', () => {
+    expect(stepLetterSpacingPt(0, 20, 1)).toBe(0.2)
+    expect(stepLetterSpacingPt(0.2, 20, 1)).toBe(0.4)
+    expect(stepLetterSpacingPt(0, 24, -1)).toBe(-0.24)
+    // off the grid: the step lands on the next percent line
+    expect(stepLetterSpacingPt(2.25, 20, -1)).toBe(2)
+  })
+
+  it('stops at Hangul’s ±50% but walks back from spacing set wider', () => {
+    expect(stepLetterSpacingPt(10, 20, 1)).toBe(10)
+    expect(stepLetterSpacingPt(-10, 20, -1)).toBe(-10)
+    expect(stepLetterSpacingPt(16, 20, -1)).toBe(15.8)
+    // a size under a point still moves a hundredth per press
+    expect(stepLetterSpacingPt(0, 0.5, 1)).toBe(0.01)
+  })
+})
+
+describe('main-process steps', () => {
   let session: Session
 
   beforeAll(() => {
@@ -194,6 +219,29 @@ describe('slides:set-element-paragraph-format with lineSpacingStep', () => {
     })
     expect(paragraphsOf(a)[0]!.lineHeight).toBe(110)
     expect(paragraphsOf(b)[0]!.lineHeight).toBe(160)
+  })
+
+  it('steps character spacing from each element’s first run and saves spc', async () => {
+    const a = addBox(['first', 'second'])
+    const b = addBox(['other'])
+    for (const dir of [1, 1, -1] as const)
+      expect(
+        ipc('slides:set-element-font', { slideIndex: 0, sourceIds: [a], letterSpacingStep: dir }),
+      ).not.toBeNull()
+    const runsOf = (id: string) =>
+      (
+        session.opened.deck.slides[0]!.elements.find((e) => e.id === id) as {
+          text: { paragraphs: Array<{ runs: Array<{ letterSpacing?: number }> }> }
+        }
+      ).text.paragraphs.flatMap((p) => p.runs.map((r) => r.letterSpacing))
+    // 24 pt: 1% is 0.24 pt
+    expect(runsOf(a)).toEqual([0.24, 0.24])
+    expect(runsOf(b)).toEqual([undefined])
+    expect(session.undoStack).toHaveLength(3)
+
+    const zip = await JSZip.loadAsync(await savePptx(session.opened))
+    const slideXml = await zip.file('ppt/slides/slide1.xml')!.async('string')
+    expect(slideXml.match(/ spc="24"/g)).toHaveLength(2)
   })
 
   it('reads nothing for an element that is not there', () => {

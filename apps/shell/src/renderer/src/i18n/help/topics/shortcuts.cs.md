@@ -344,12 +344,14 @@ Ty působí na text vybraného tvaru, nebo na odstavec s kurzorem, když jste uv
 | Zmenšit velikost písma o 1 pt         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Zvětšit řádkování                     | ⌥⇧Z      | Alt+Shift+Z          |
 | Zmenšit řádkování                     | ⌥⇧A      | Alt+Shift+A          |
+| Zvětšit mezery mezi znaky             | ⌥⇧W      | Alt+Shift+W          |
+| Zmenšit mezery mezi znaky             | ⌥⇧N      | Alt+Shift+N          |
 | Písmo na další velikost v žebříku     | ⇧⌘>      | Ctrl+Shift+>         |
 | Písmo na předchozí velikost v žebříku | ⇧⌘<      | Ctrl+Shift+<         |
 
 Klávesy žebříku písma berou také klávesy . a , s drženým Shift, pro rozvržení klávesnice, které je hlásí místo kláves s interpunkcí.
 
-⌥⇧E / ⌥⇧R a ⌥⇧Z / ⌥⇧A pocházejí z korejského textového editoru Hangul (HWP): ⌥⇧E / ⌥⇧R mění velikost písma o 1 b. stejně jako ⌘] / ⌘[ a ⌥⇧Z / ⌥⇧A řádkování o 0,1 řádku.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A a ⌥⇧W / ⌥⇧N pocházejí z korejského textového editoru Hangul (HWP): ⌥⇧E / ⌥⇧R mění velikost písma o 1 b. stejně jako ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A řádkování o 0,1 řádku a ⌥⇧W / ⌥⇧N mezery mezi znaky o 1 % velikosti písma (v textovém poli u vybraného textu).
 
 ### Schránka a objekty
 

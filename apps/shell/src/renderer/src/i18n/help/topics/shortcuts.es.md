@@ -344,12 +344,14 @@ Actúan sobre el texto de una forma seleccionada, o sobre el párrafo donde est�
 | Reducir el tamaño de fuente en 1 pt                       | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Aumentar interlineado                                     | ⌥⇧Z      | Alt+Shift+Z          |
 | Reducir interlineado                                      | ⌥⇧A      | Alt+Shift+A          |
+| Expandir espaciado entre caracteres                       | ⌥⇧W      | Alt+Shift+W          |
+| Comprimir espaciado entre caracteres                      | ⌥⇧N      | Alt+Shift+N          |
 | Agrandar la fuente hasta el siguiente tamaño de la escala | ⇧⌘>      | Ctrl+Shift+>         |
 | Reducir la fuente hasta el tamaño anterior de la escala   | ⇧⌘<      | Ctrl+Shift+<         |
 
 Las teclas de la escala de fuentes también aceptan las teclas . y , con Mayús pulsada, para las disposiciones de teclado que informan de esas en lugar de las teclas de puntuación.
 
-⌥⇧E / ⌥⇧R y ⌥⇧Z / ⌥⇧A provienen del procesador de textos coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambian el tamaño de fuente en 1 pt, igual que ⌘] / ⌘[, y ⌥⇧Z / ⌥⇧A el interlineado en 0,1 líneas.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A y ⌥⇧W / ⌥⇧N provienen del procesador de textos coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambian el tamaño de fuente en 1 pt, igual que ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A el interlineado en 0,1 líneas y ⌥⇧W / ⌥⇧N el espaciado entre caracteres en un 1 % del tamaño de fuente (dentro de un cuadro de texto, el del texto seleccionado).
 
 ### Portapapeles y objetos
 

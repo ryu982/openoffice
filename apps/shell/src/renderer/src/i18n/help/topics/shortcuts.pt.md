@@ -344,12 +344,14 @@ Atuam sobre o texto de uma forma selecionada, ou sobre o parágrafo onde está o
 | Reduzir o tamanho da letra em 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Aumentar espaçamento entre linhas                  | ⌥⇧Z      | Alt+Shift+Z          |
 | Diminuir espaçamento entre linhas                  | ⌥⇧A      | Alt+Shift+A          |
+| Expandir espaçamento de caracteres                 | ⌥⇧W      | Alt+Shift+W          |
+| Condensar espaçamento de caracteres                | ⌥⇧N      | Alt+Shift+N          |
 | Aumentar a letra para o tamanho seguinte da escala | ⇧⌘>      | Ctrl+Shift+>         |
 | Reduzir a letra para o tamanho anterior da escala  | ⇧⌘<      | Ctrl+Shift+<         |
 
 As teclas da escala de letras também aceitam as teclas . e , com Shift premido, para as disposições de teclado que reportam essas em vez das teclas de pontuação.
 
-⌥⇧E / ⌥⇧R e ⌥⇧Z / ⌥⇧A vêm do processador de texto coreano Hangul (HWP): ⌥⇧E / ⌥⇧R mudam o tamanho da fonte em 1 pt, como ⌘] / ⌘[, e ⌥⇧Z / ⌥⇧A o espaçamento entre linhas em 0,1 linha.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A e ⌥⇧W / ⌥⇧N vêm do processador de texto coreano Hangul (HWP): ⌥⇧E / ⌥⇧R mudam o tamanho da fonte em 1 pt, como ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A o espaçamento entre linhas em 0,1 linha e ⌥⇧W / ⌥⇧N o espaçamento entre caracteres em 1% do tamanho da fonte (dentro de uma caixa de texto, o do texto selecionado).
 
 ### Área de transferência e objetos
 

@@ -344,12 +344,14 @@ Ces commandes agissent sur le texte d’une forme sélectionnée, ou sur le para
 | Réduire la taille de police de 1 pt                         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Augmenter l’interligne                                      | ⌥⇧Z      | Alt+Shift+Z          |
 | Réduire l’interligne                                        | ⌥⇧A      | Alt+Shift+A          |
+| Étendre l’espacement des caractères                         | ⌥⇧W      | Alt+Shift+W          |
+| Condenser l’espacement des caractères                       | ⌥⇧N      | Alt+Shift+N          |
 | Agrandir la police jusqu’à la taille suivante de l’échelle  | ⇧⌘>      | Ctrl+Shift+>         |
 | Réduire la police jusqu’à la taille précédente de l’échelle | ⇧⌘<      | Ctrl+Shift+<         |
 
 Les touches de l’échelle de police acceptent aussi les touches . et , avec Maj enfoncé, pour les dispositions de clavier qui les signalent à la place des touches de ponctuation.
 
-⌥⇧E / ⌥⇧R et ⌥⇧Z / ⌥⇧A viennent du traitement de texte coréen Hangul (HWP) : ⌥⇧E / ⌥⇧R changent la taille de police de 1 pt, comme ⌘] / ⌘[, et ⌥⇧Z / ⌥⇧A l’interligne de 0,1 ligne.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A et ⌥⇧W / ⌥⇧N viennent du traitement de texte coréen Hangul (HWP) : ⌥⇧E / ⌥⇧R changent la taille de police de 1 pt, comme ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A l’interligne de 0,1 ligne et ⌥⇧W / ⌥⇧N l’espacement des caractères de 1 % de la taille de police (dans une zone de texte, celui du texte sélectionné).
 
 ### Presse-papiers et objets
 

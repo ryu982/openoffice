@@ -63,6 +63,7 @@ import {
   type TxnResult,
   mapScriptOps,
 } from '@genoffice/pptx-ops'
+import { DEFAULT_FONT_SIZE_PT } from '@genoffice/pptx-ops/font-size'
 import { matchesElementRef } from '@genoffice/pptx-engine/identity'
 import { buildPagePptx, parsePageSpec } from '@genoffice/pipelines/slides'
 import { sniffImageMime } from './media-mime'
@@ -134,7 +135,7 @@ import {
   type TableElement,
   type TextElement,
 } from '@genoffice/pptx-engine'
-import { lineSpacingPctOf, stepLineSpacingPct } from '../shared/format-step'
+import { lineSpacingPctOf, stepLetterSpacingPt, stepLineSpacingPct } from '../shared/format-step'
 import {
   buildRenderSlide,
   layoutText,
@@ -1613,13 +1614,25 @@ export function registerSlidesIpc(): void {
       underline: op.underline,
       color: op.color,
     }
+    // ⌥⇧W / ⌥⇧N: every element steps from its own first run, read before any op runs
+    const slide = session.opened.deck.slides[op.slideIndex]
+    const fontOf = (id: string) => {
+      if (!op.letterSpacingStep || !slide) return font
+      const run = elementParagraphs(slide, id, op.groupId)[0]?.runs[0]
+      const letterSpacing = stepLetterSpacingPt(
+        run?.letterSpacing ?? 0,
+        run?.fontSize ?? DEFAULT_FONT_SIZE_PT,
+        op.letterSpacingStep,
+      )
+      return { ...font, letterSpacing }
+    }
     pushHistory(session)
     const r = journaledTxn(session, 'edit', {
       isolation: 'per_op',
       ops: op.sourceIds.map((id) => ({
         op: 'setFont',
         target: { slide: op.slideIndex, el: id },
-        font,
+        font: fontOf(id),
         ...(op.groupId ? { group: op.groupId } : {}),
       })),
     })

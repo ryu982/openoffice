@@ -223,6 +223,8 @@ export interface SetElementFontOp {
   strike?: boolean
   /** Font color #RRGGBB */
   color?: string
+  /** Step each element's character spacing 1% of the size from its first run's (⌥⇧W / ⌥⇧N) */
+  letterSpacingStep?: 1 | -1
   /** In-group editing: all sourceIds are direct children of that group */
   groupId?: string
 }

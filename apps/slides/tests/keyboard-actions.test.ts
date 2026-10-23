@@ -29,6 +29,7 @@ vi.mock('../src/renderer/style-actions', () => ({
   onAlign: vi.fn(),
   onFontSizeStep: vi.fn(),
   onLineSpacingStep: vi.fn(),
+  onCharSpacingStep: vi.fn(),
   onTextToggle: vi.fn(),
 }))
 
@@ -1206,6 +1207,14 @@ describe('Hangul formatting chords', () => {
     expect(styleActions.onLineSpacingStep).toHaveBeenNthCalledWith(2, ctx, -1)
   })
 
+  it('steps the character spacing with Alt+Shift+W / N', () => {
+    const ctx = makeCtx({ selectedIds: ['a'] })
+    handleGlobalKeydown(ctx, chord('KeyW'), 'Win32')
+    handleGlobalKeydown(ctx, chord('KeyN', { key: '˜' }), 'MacIntel')
+    expect(styleActions.onCharSpacingStep).toHaveBeenNthCalledWith(1, ctx, 1)
+    expect(styleActions.onCharSpacingStep).toHaveBeenNthCalledWith(2, ctx, -1)
+  })
+
   it('acts inside the text edit overlay', () => {
     const box = document.createElement('div')
     box.className = 'slide-text-editor'
@@ -1228,7 +1237,7 @@ describe('Hangul formatting chords', () => {
       [makeCtx(), chord('KeyZ')],
       [makeCtx({ selectedIds: ['a'], viewMode: 'reading' }), chord('KeyZ')],
       [makeCtx({ selectedIds: ['a'], masterItems: [] }), chord('KeyE')],
-      [makeCtx({ selectedIds: ['a'] }), chord('KeyW')],
+      [makeCtx({ selectedIds: ['a'] }), chord('KeyQ')],
       [makeCtx({ selectedIds: ['a'] }), chord('KeyZ', { ctrlKey: true })],
     ] as const) {
       handleGlobalKeydown(ctx, e)
@@ -1240,5 +1249,6 @@ describe('Hangul formatting chords', () => {
     expect(typed.defaultPrevented).toBe(false)
     expect(styleActions.onFontSizeStep).not.toHaveBeenCalled()
     expect(styleActions.onLineSpacingStep).not.toHaveBeenCalled()
+    expect(styleActions.onCharSpacingStep).not.toHaveBeenCalled()
   })
 })

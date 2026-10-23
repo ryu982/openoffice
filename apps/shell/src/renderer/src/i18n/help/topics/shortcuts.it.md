@@ -344,12 +344,14 @@ Agiscono sul testo di una forma selezionata, oppure sul paragrafo del cursore qu
 | Riduci la dimensione del carattere di 1 pt           | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Aumenta interlinea                                   | ⌥⇧Z      | Alt+Shift+Z          |
 | Riduci interlinea                                    | ⌥⇧A      | Alt+Shift+A          |
+| Espandi spaziatura caratteri                         | ⌥⇧W      | Alt+Shift+W          |
+| Condensa spaziatura caratteri                        | ⌥⇧N      | Alt+Shift+N          |
 | Ingrandisci il carattere fino alla taglia successiva | ⇧⌘>      | Ctrl+Shift+>         |
 | Riduci il carattere fino alla taglia precedente      | ⇧⌘<      | Ctrl+Shift+<         |
 
 I tasti della scala dei caratteri accettano anche i tasti . e , con Shift premuto, per le disposizioni di tastiera che segnalano quelli al posto dei tasti di punteggiatura.
 
-⌥⇧E / ⌥⇧R e ⌥⇧Z / ⌥⇧A vengono dall’elaboratore di testi coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambiano la dimensione del carattere di 1 pt, come ⌘] / ⌘[, e ⌥⇧Z / ⌥⇧A l’interlinea di 0,1 righe.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A e ⌥⇧W / ⌥⇧N vengono dall’elaboratore di testi coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambiano la dimensione del carattere di 1 pt, come ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A l’interlinea di 0,1 righe e ⌥⇧W / ⌥⇧N la spaziatura dei caratteri dell’1% della dimensione del carattere (in una casella di testo, quella del testo selezionato).
 
 ### Appunti e oggetti
 

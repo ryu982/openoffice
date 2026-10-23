@@ -7,9 +7,10 @@ import { addElement, createBlankPptx, openPptx, savePptx } from '@genoffice/pptx
 import { launchShell, closeAndSaveVideo, screenshotPath, waitForPageWithUrl } from './helpers'
 
 /**
- * Hangul's formatting chords in Slides: ⌥⇧E / ⌥⇧R step the font size by 1 pt
- * and ⌥⇧Z / ⌥⇧A the line spacing by 0.1 line, on a selected text box and on
- * the paragraphs of a text edit; the result saves as sz and a:lnSpc.
+ * Hangul's formatting chords in Slides: ⌥⇧E / ⌥⇧R step the font size by 1 pt,
+ * ⌥⇧Z / ⌥⇧A the line spacing by 0.1 line and ⌥⇧W / ⌥⇧N the character spacing
+ * by 1% of the size, on a selected text box and inside a text edit; the result
+ * saves as sz, a:lnSpc and spc.
  */
 
 interface SlidesWindow {
@@ -43,7 +44,7 @@ const lineSpacing = (page: Page) =>
     return api.getLineSpacing(0, id)
   })
 
-test('Alt+Shift E/R and Z/A step size and line spacing in Slides', async () => {
+test('Alt+Shift E/R, Z/A and W/N step size, line and character spacing in Slides', async () => {
   test.setTimeout(150_000)
   const dir = await mkdtemp(join(tmpdir(), 'genoffice-e2e-slides-keys-'))
   const deck = await textBoxDeck(dir)
@@ -65,6 +66,8 @@ test('Alt+Shift E/R and Z/A step size and line spacing in Slides', async () => {
 
     // font size by one point: 20 → 22 → 21
     for (const key of ['E', 'E', 'R']) await page.keyboard.press(`Alt+Shift+Key${key}`)
+    // character spacing at 21 pt: two wider, one narrower = 1% (0.21 pt)
+    for (const key of ['W', 'W', 'N']) await page.keyboard.press(`Alt+Shift+Key${key}`)
 
     // inside the text edit (F2 selects all of it): the covered paragraphs, from the
     // first one's spacing, committed with the edit; the Mac's Option letter too
@@ -91,6 +94,30 @@ test('Alt+Shift E/R and Z/A step size and line spacing in Slides', async () => {
         ),
       )
       .toEqual(['120', '120'])
+    // ⌥⇧W from the Mac's Option letter: the selected text one percent wider, to 2% (0.42 pt)
+    await page.evaluate(() =>
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: '„',
+          code: 'KeyW',
+          altKey: true,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    )
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              '.slide-text-editor [data-letter-spacing-pt]',
+            ),
+          ].map((el) => el.dataset.letterSpacingPt),
+        ),
+      )
+      .toEqual(['0.42', '0.42'])
     await page.screenshot({ path: screenshotPath('slides-hangul-format-keys-editing') })
     await page.keyboard.press('Escape')
     await expect.poll(() => lineSpacing(page)).toEqual([120, 120])
@@ -104,6 +131,7 @@ test('Alt+Shift E/R and Z/A step size and line spacing in Slides', async () => {
       .async('string')
     expect(xml.match(/<a:lnSpc><a:spcPct val="120000"\/><\/a:lnSpc>/g)).toHaveLength(2)
     expect(xml.match(/ sz="2100"/g)).toHaveLength(2)
+    expect(xml.match(/ spc="42"/g)).toHaveLength(2)
     expect(xml).not.toContain(' sz="2000"')
     expect(xml).toContain('First paragraph')
     await page.screenshot({ path: screenshotPath('slides-hangul-format-keys') })

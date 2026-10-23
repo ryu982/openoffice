@@ -203,7 +203,7 @@ export function handleGlobalKeydown(
     }
   }
   // Hangul's formatting chords: ⌥⇧E / ⌥⇧R the ⌘] / ⌘[ point step, ⌥⇧Z / ⌥⇧A line
-  // spacing; same targets as the ⌘ formatting keys above
+  // spacing, ⌥⇧W / ⌥⇧N character spacing; same targets as the ⌘ formatting keys above
   const formatStep = formatStepForKey(e)
   if (
     formatStep &&
@@ -217,6 +217,8 @@ export function handleGlobalKeydown(
       e.preventDefault()
       if (formatStep.action === 'fontSize')
         styleActions.onFontSizeStep(ctx, { dir: formatStep.dir, mode: 'point' })
+      else if (formatStep.action === 'charSpacing')
+        styleActions.onCharSpacingStep(ctx, formatStep.dir)
       else void styleActions.onLineSpacingStep(ctx, formatStep.dir)
       return
     }

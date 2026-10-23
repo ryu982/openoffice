@@ -344,12 +344,14 @@ Ini berlaku pada teks bentuk yang terpilih, atau pada paragraf tempat caret bera
 | Perkecil ukuran font sebesar 1 pt            | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
 | Perbesar spasi baris                         | ⌥⇧Z      | Alt+Shift+Z          |
 | Perkecil spasi baris                         | ⌥⇧A      | Alt+Shift+A          |
+| Perlebar spasi karakter                      | ⌥⇧W      | Alt+Shift+W          |
+| Persempit spasi karakter                     | ⌥⇧N      | Alt+Shift+N          |
 | Besarkan font ke ukuran berikutnya di tangga | ⇧⌘>      | Ctrl+Shift+>         |
 | Perkecil font ke ukuran sebelumnya di tangga | ⇧⌘<      | Ctrl+Shift+<         |
 
 Tombol tangga font itu juga menerima tombol . dan , dengan Shift ditahan, untuk tata letak papan tik yang melaporkan keduanya di tempat tombol tanda baca.
 
-⌥⇧E / ⌥⇧R dan ⌥⇧Z / ⌥⇧A berasal dari pengolah kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R mengubah ukuran font sebesar 1 pt, sama seperti ⌘] / ⌘[, dan ⌥⇧Z / ⌥⇧A mengubah spasi baris sebesar 0,1 baris.
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A, dan ⌥⇧W / ⌥⇧N berasal dari pengolah kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R mengubah ukuran font sebesar 1 pt, sama seperti ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A mengubah spasi baris sebesar 0,1 baris, dan ⌥⇧W / ⌥⇧N mengubah spasi karakter sebesar 1% ukuran font (di dalam kotak teks, untuk teks yang dipilih).
 
 ### Papan klip dan objek
 
