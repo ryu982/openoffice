@@ -28,6 +28,8 @@ vi.mock('../src/renderer/show-actions', () => ({ startSlideShow: vi.fn() }))
 vi.mock('../src/renderer/style-actions', () => ({
   onAlign: vi.fn(),
   onFontSizeStep: vi.fn(),
+  onLineSpacingStep: vi.fn(),
+  onCharSpacingStep: vi.fn(),
   onTextToggle: vi.fn(),
 }))
 
@@ -1168,5 +1170,85 @@ describe('Enter / F2 on a selected text shape', () => {
     handleGlobalKeydown(field, key('Enter'))
     handleGlobalKeydown(field, key('F2'))
     expect(field.setEditing).not.toHaveBeenCalled()
+  })
+})
+
+describe('Hangul formatting chords', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+  })
+
+  const chord = (code: string, init: KeyboardEventInit = {}) =>
+    new KeyboardEvent('keydown', {
+      key: code.slice(3).toLowerCase(),
+      code,
+      altKey: true,
+      shiftKey: true,
+      cancelable: true,
+      ...init,
+    })
+
+  it('steps the font size by one point with Alt+Shift+E / R', () => {
+    const ctx = makeCtx({ selectedIds: ['a'] })
+    const up = chord('KeyE')
+    handleGlobalKeydown(ctx, up, 'Win32')
+    handleGlobalKeydown(ctx, chord('KeyR'), 'Win32')
+    expect(up.defaultPrevented).toBe(true)
+    expect(styleActions.onFontSizeStep).toHaveBeenNthCalledWith(1, ctx, { dir: 1, mode: 'point' })
+    expect(styleActions.onFontSizeStep).toHaveBeenNthCalledWith(2, ctx, { dir: -1, mode: 'point' })
+  })
+
+  it('steps the line spacing with Alt+Shift+Z / A, from the Option letters on the Mac too', () => {
+    const ctx = makeCtx({ selectedIds: ['a'] })
+    handleGlobalKeydown(ctx, chord('KeyZ', { key: '¸' }), 'MacIntel')
+    handleGlobalKeydown(ctx, chord('KeyA', { key: 'Å' }), 'MacIntel')
+    expect(styleActions.onLineSpacingStep).toHaveBeenNthCalledWith(1, ctx, 1)
+    expect(styleActions.onLineSpacingStep).toHaveBeenNthCalledWith(2, ctx, -1)
+  })
+
+  it('steps the character spacing with Alt+Shift+W / N', () => {
+    const ctx = makeCtx({ selectedIds: ['a'] })
+    handleGlobalKeydown(ctx, chord('KeyW'), 'Win32')
+    handleGlobalKeydown(ctx, chord('KeyN', { key: '˜' }), 'MacIntel')
+    expect(styleActions.onCharSpacingStep).toHaveBeenNthCalledWith(1, ctx, 1)
+    expect(styleActions.onCharSpacingStep).toHaveBeenNthCalledWith(2, ctx, -1)
+  })
+
+  it('acts inside the text edit overlay', () => {
+    const box = document.createElement('div')
+    box.className = 'slide-text-editor'
+    box.tabIndex = 0
+    box.contentEditable = 'true'
+    Object.defineProperty(box, 'isContentEditable', { value: true })
+    document.body.appendChild(box)
+    box.focus()
+    const ctx = makeCtx({ editing: { sourceId: 'a' } })
+    const e = chord('KeyZ')
+    handleGlobalKeydown(ctx, e)
+    expect(e.defaultPrevented).toBe(true)
+    expect(styleActions.onLineSpacingStep).toHaveBeenCalledWith(ctx, 1)
+  })
+
+  it('leaves the keys alone without a target, in fields, in other views and on other letters', () => {
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    for (const [ctx, e] of [
+      [makeCtx(), chord('KeyZ')],
+      [makeCtx({ selectedIds: ['a'], viewMode: 'reading' }), chord('KeyZ')],
+      [makeCtx({ selectedIds: ['a'], masterItems: [] }), chord('KeyE')],
+      [makeCtx({ selectedIds: ['a'] }), chord('KeyQ')],
+      [makeCtx({ selectedIds: ['a'] }), chord('KeyZ', { ctrlKey: true })],
+    ] as const) {
+      handleGlobalKeydown(ctx, e)
+      expect(e.defaultPrevented).toBe(false)
+    }
+    input.focus()
+    const typed = chord('KeyZ')
+    handleGlobalKeydown(makeCtx({ selectedIds: ['a'] }), typed)
+    expect(typed.defaultPrevented).toBe(false)
+    expect(styleActions.onFontSizeStep).not.toHaveBeenCalled()
+    expect(styleActions.onLineSpacingStep).not.toHaveBeenCalled()
+    expect(styleActions.onCharSpacingStep).not.toHaveBeenCalled()
   })
 })

@@ -22,6 +22,13 @@
  *   production build that list holds its own HwpCtrl plugin alone. The AI
  *   panel edits the document through this app's plugin
  *   (studio-plugin/agent-plugin.mjs), so the list gains that one name.
+ *
+ * studio-option-keys
+ *   The studio matches Hangul's Alt+Shift chords on the typed letter, and on
+ *   the Mac Option rewrites that letter (⌥⇧A types Å), so line spacing
+ *   (⌥⇧A / ⌥⇧Z) and font size (⌥⇧E / ⌥⇧R) never fired there. The studio's
+ *   own character spacing and width chords already carry the physical key
+ *   (`code: 'KeyW'`); these four gain theirs the same way.
  */
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
@@ -32,6 +39,14 @@ export const PASSWORD_FLAG = 'passwordProtected'
 
 /** Module specifier the studio-plugin-allow patch imports; build-studio.mjs aliases it. */
 export const AGENT_PLUGIN_MODULE = '@ieum/agent-plugin'
+
+/** The Alt+Shift chords the studio matches on the typed letter alone, and their commands. */
+export const OPTION_KEYS = [
+  ['a', 'format:line-spacing-decrease'],
+  ['z', 'format:line-spacing-increase'],
+  ['e', 'format:font-size-increase'],
+  ['r', 'format:font-size-decrease'],
+]
 
 const PATCHES = {
   'sdk-scheme': {
@@ -57,6 +72,13 @@ const PATCHES = {
       `    return (await import('${AGENT_PLUGIN_MODULE}')).agentPlugin as StudioPlugin;\n` +
       '  }\n' +
       "  if (import.meta.env.DEV && id === 'dev-probe') {",
+  },
+  'studio-option-keys': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]shortcut-map\.ts$/,
+    edits: OPTION_KEYS.map(([letter, command]) => ({
+      find: `  [{ key: '${letter}', alt: true, shift: true }, '${command}'],`,
+      replace: `  [{ key: '${letter}', code: 'Key${letter.toUpperCase()}', alt: true, shift: true }, '${command}'],`,
+    })),
   },
 }
 
@@ -134,14 +156,19 @@ export function missingPluginHooks(read) {
 export function applyPatch(name, code) {
   const patch = PATCHES[name]
   if (!patch) throw new Error(`rhwp patch: unknown patch "${name}"`)
-  const first = code.indexOf(patch.find)
-  if (first === -1 || code.indexOf(patch.find, first + 1) !== -1) {
-    throw new Error(
-      `rhwp patch ${name}: expected exactly one occurrence of the text to replace; ` +
-        'the upstream source changed, review apps/hwp/scripts/rhwp-patches.mjs',
-    )
+  let next = code
+  // a patch is one replacement, or several in the same file (`edits`)
+  for (const { find, replace } of patch.edits ?? [patch]) {
+    const first = next.indexOf(find)
+    if (first === -1 || next.indexOf(find, first + 1) !== -1) {
+      throw new Error(
+        `rhwp patch ${name}: expected exactly one occurrence of the text to replace; ` +
+          'the upstream source changed, review apps/hwp/scripts/rhwp-patches.mjs',
+      )
+    }
+    next = next.replace(find, replace)
   }
-  return code.replace(patch.find, patch.replace)
+  return next
 }
 
 /**

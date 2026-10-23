@@ -75,8 +75,10 @@ Reemplazar es Ctrl+H en ambas plataformas porque `⌘H` oculta la ventana en mac
 | Fuente… (diálogo)                         | ⌘D       | Ctrl+D                |
 | Aumentar el tamaño de fuente              | ⇧⌘.      | Ctrl+Shift+.          |
 | Reducir el tamaño de fuente               | ⇧⌘,      | Ctrl+Shift+,          |
-| Aumentar el tamaño de fuente en 1 pt      | ⌘]       | Ctrl+]                |
-| Reducir el tamaño de fuente en 1 pt       | ⌘[       | Ctrl+[                |
+| Aumentar el tamaño de fuente en 1 pt      | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Reducir el tamaño de fuente en 1 pt       | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Expandir espaciado entre caracteres       | ⌥⇧W      | Alt+Shift+W           |
+| Comprimir espaciado entre caracteres      | ⌥⇧N      | Alt+Shift+N           |
 | Superíndice                               | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Subíndice                                 | ⌘,       | Ctrl+,                |
 | Cambiar mayúsculas y minúsculas           | ⇧F3      | Shift+F3              |
@@ -97,6 +99,8 @@ Las dos combinaciones del pincel de formato son el único sitio donde la tecla d
 | Interlineado 1,0                                         | ⌘1    | Ctrl+1          |
 | Interlineado 1,5                                         | ⌘5    | Ctrl+5          |
 | Interlineado 2,0                                         | ⌘2    | Ctrl+2          |
+| Aumentar interlineado                                    | ⌥⇧Z   | Alt+Shift+Z     |
+| Reducir interlineado                                     | ⌥⇧A   | Alt+Shift+A     |
 | Aumentar la sangría                                      | ⌃M    | Ctrl+M          |
 | Reducir la sangría                                       | ⌃⇧M   | Ctrl+Shift+M    |
 | Sangría francesa                                         | ⌘T    | Ctrl+T          |
@@ -113,6 +117,8 @@ Las dos combinaciones del pincel de formato son el único sitio donde la tecla d
 | Subir un elemento de lista (al principio de un elemento) | ⇧Tab  | Shift+Tab       |
 
 La sangría, la sangría francesa y borrar el formato de párrafo funcionan solo con Ctrl en ambas plataformas: `⌘M` minimiza la ventana y `⌘Q` sale de la aplicación, así que una combinación de Command sería una edición silenciosa justo al salir. Tab solo cambia el nivel de lista cuando el cursor está al principio de un elemento o abarca varios elementos; dentro del texto inserta un carácter de tabulación, y `⇧Tab` siempre sube.
+
+Las combinaciones de ⌥⇧ (Alt+Mayús) con letra provienen del procesador de textos coreano Hangul (HWP): ⌥⇧Z / ⌥⇧A aumentan o reducen el interlineado en 0,1 líneas (1 pt con Mínimo o Exacto), ⌥⇧W / ⌥⇧N el espaciado entre caracteres en un 1 % del tamaño de fuente, y ⌥⇧E / ⌥⇧R cambian el tamaño de fuente en 1 pt, igual que ⌘] / ⌘[.
 
 ### Insertar
 
@@ -325,21 +331,27 @@ Seleccionar todo sigue al foco: con el foco en el panel de miniaturas, el panel 
 
 Actúan sobre el texto de una forma seleccionada, o sobre el párrafo donde esté el cursor cuando estás dentro del cuadro de texto.
 
-| Acción                                                    | macOS | Windows / Linux |
-| --------------------------------------------------------- | ----- | --------------- |
-| Negrita                                                   | ⌘B    | Ctrl+B          |
-| Cursiva                                                   | ⌘I    | Ctrl+I          |
-| Subrayado                                                 | ⌘U    | Ctrl+U          |
-| Alinear a la izquierda                                    | ⌘L    | Ctrl+L          |
-| Centrar                                                   | ⌘E    | Ctrl+E          |
-| Alinear a la derecha                                      | ⌘R    | Ctrl+R          |
-| Justificar                                                | ⌘J    | Ctrl+J          |
-| Aumentar el tamaño de fuente en 1 pt                      | ⌘]    | Ctrl+]          |
-| Reducir el tamaño de fuente en 1 pt                       | ⌘[    | Ctrl+[          |
-| Agrandar la fuente hasta el siguiente tamaño de la escala | ⇧⌘>   | Ctrl+Shift+>    |
-| Reducir la fuente hasta el tamaño anterior de la escala   | ⇧⌘<   | Ctrl+Shift+<    |
+| Acción                                                    | macOS    | Windows / Linux      |
+| --------------------------------------------------------- | -------- | -------------------- |
+| Negrita                                                   | ⌘B       | Ctrl+B               |
+| Cursiva                                                   | ⌘I       | Ctrl+I               |
+| Subrayado                                                 | ⌘U       | Ctrl+U               |
+| Alinear a la izquierda                                    | ⌘L       | Ctrl+L               |
+| Centrar                                                   | ⌘E       | Ctrl+E               |
+| Alinear a la derecha                                      | ⌘R       | Ctrl+R               |
+| Justificar                                                | ⌘J       | Ctrl+J               |
+| Aumentar el tamaño de fuente en 1 pt                      | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Reducir el tamaño de fuente en 1 pt                       | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Aumentar interlineado                                     | ⌥⇧Z      | Alt+Shift+Z          |
+| Reducir interlineado                                      | ⌥⇧A      | Alt+Shift+A          |
+| Expandir espaciado entre caracteres                       | ⌥⇧W      | Alt+Shift+W          |
+| Comprimir espaciado entre caracteres                      | ⌥⇧N      | Alt+Shift+N          |
+| Agrandar la fuente hasta el siguiente tamaño de la escala | ⇧⌘>      | Ctrl+Shift+>         |
+| Reducir la fuente hasta el tamaño anterior de la escala   | ⇧⌘<      | Ctrl+Shift+<         |
 
 Las teclas de la escala de fuentes también aceptan las teclas . y , con Mayús pulsada, para las disposiciones de teclado que informan de esas en lugar de las teclas de puntuación.
+
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A y ⌥⇧W / ⌥⇧N provienen del procesador de textos coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambian el tamaño de fuente en 1 pt, igual que ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A el interlineado en 0,1 líneas y ⌥⇧W / ⌥⇧N el espaciado entre caracteres en un 1 % del tamaño de fuente (dentro de un cuadro de texto, el del texto seleccionado).
 
 ### Portapapeles y objetos
 

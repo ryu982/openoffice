@@ -63,6 +63,7 @@ import {
   type TxnResult,
   mapScriptOps,
 } from '@genoffice/pptx-ops'
+import { DEFAULT_FONT_SIZE_PT } from '@genoffice/pptx-ops/font-size'
 import { matchesElementRef } from '@genoffice/pptx-engine/identity'
 import { buildPagePptx, parsePageSpec } from '@genoffice/pipelines/slides'
 import { sniffImageMime } from './media-mime'
@@ -128,10 +129,13 @@ import {
   type SectionInfo,
   type ElementClipboardItem,
   type OpenedPptx,
+  type GroupElement,
   type Paragraph,
   type Slide,
+  type TableElement,
   type TextElement,
 } from '@genoffice/pptx-engine'
+import { lineSpacingPctOf, stepLetterSpacingPt, stepLineSpacingPct } from '../shared/format-step'
 import {
   buildRenderSlide,
   layoutText,
@@ -1076,6 +1080,24 @@ function findEl(slide: Slide, sourceId: string): TextElement | undefined {
   return undefined
 }
 
+/** The model paragraphs a line spacing step reads: a text box's, a group child's, or a table's first text cell's */
+function elementParagraphs(slide: Slide, sourceId: string, groupId?: string): Paragraph[] {
+  const group = groupId
+    ? (slide.elements.find((e) => e.type === 'group' && matchesElementRef(e, groupId)) as
+        GroupElement | undefined)
+    : undefined
+  const el = (groupId ? (group?.children ?? []) : slide.elements).find((e) =>
+    matchesElementRef(e, sourceId),
+  )
+  if (el?.type === 'text' || el?.type === 'shape') return (el as TextElement).text?.paragraphs ?? []
+  if (el?.type === 'table') {
+    for (const row of (el as TableElement).rows)
+      for (const cell of row)
+        if (!cell.merged && cell.text?.paragraphs.length) return cell.text.paragraphs
+  }
+  return []
+}
+
 // The single funnel for non-dry transactions in this module: every applied
 // batch lands in the session's op journal (collab groundwork).
 function journaledTxn(
@@ -1592,13 +1614,25 @@ export function registerSlidesIpc(): void {
       underline: op.underline,
       color: op.color,
     }
+    // ⌥⇧W / ⌥⇧N: every element steps from its own first run, read before any op runs
+    const slide = session.opened.deck.slides[op.slideIndex]
+    const fontOf = (id: string) => {
+      if (!op.letterSpacingStep || !slide) return font
+      const run = elementParagraphs(slide, id, op.groupId)[0]?.runs[0]
+      const letterSpacing = stepLetterSpacingPt(
+        run?.letterSpacing ?? 0,
+        run?.fontSize ?? DEFAULT_FONT_SIZE_PT,
+        op.letterSpacingStep,
+      )
+      return { ...font, letterSpacing }
+    }
     pushHistory(session)
     const r = journaledTxn(session, 'edit', {
       isolation: 'per_op',
       ops: op.sourceIds.map((id) => ({
         op: 'setFont',
         target: { slide: op.slideIndex, el: id },
-        font,
+        font: fontOf(id),
         ...(op.groupId ? { group: op.groupId } : {}),
       })),
     })
@@ -1613,6 +1647,14 @@ export function registerSlidesIpc(): void {
     }
     return rendered
   })
+
+  ipcMain.handle(
+    'slides:get-line-spacing',
+    (e, slideIndex: number, sourceId: string, groupId?: string) => {
+      const slide = sessions.get(e.sender.id)?.opened.deck.slides[slideIndex]
+      return slide ? elementParagraphs(slide, sourceId, groupId).map(lineSpacingPctOf) : []
+    },
+  )
 
   // Shim over the canonical setParagraphFormat op (same per_op selection semantics as setFont).
   ipcMain.handle('slides:set-element-paragraph-format', (e, op: SetElementParagraphFormatOp) => {
@@ -1635,13 +1677,23 @@ export function registerSlidesIpc(): void {
       rtl: op.rtl,
       indentDelta: op.indentDelta,
     }
+    // ⌥⇧Z / ⌥⇧A: every element steps from its own first paragraph, read before any op runs
+    const slide = session.opened.deck.slides[op.slideIndex]
+    const formatOf = (id: string) => {
+      if (!op.lineSpacingStep || !slide) return format
+      const first = elementParagraphs(slide, id, op.groupId)[0]
+      return {
+        ...format,
+        lineSpacingPct: stepLineSpacingPct(lineSpacingPctOf(first), op.lineSpacingStep),
+      }
+    }
     pushHistory(session)
     const r = journaledTxn(session, 'edit', {
       isolation: 'per_op',
       ops: op.sourceIds.map((id) => ({
         op: 'setParagraphFormat',
         target: { slide: op.slideIndex, el: id },
-        format,
+        format: formatOf(id),
         ...(op.groupId ? { group: op.groupId } : {}),
       })),
     })

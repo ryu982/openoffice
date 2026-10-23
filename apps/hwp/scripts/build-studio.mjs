@@ -154,7 +154,14 @@ async function buildStudio() {
     },
     // upstream registers a service worker for its website build; this build
     // leaves that plugin out, a custom scheme cannot register one
-    plugins: [rhwpPatches('studio-scheme', 'studio-password-flag', 'studio-plugin-allow')],
+    plugins: [
+      rhwpPatches(
+        'studio-scheme',
+        'studio-password-flag',
+        'studio-plugin-allow',
+        'studio-option-keys',
+      ),
+    ],
     build: { outDir: OUT, emptyOutDir: true, chunkSizeWarningLimit: 4096 },
   })
   // the licenses travel with the build: rhwp's own, and the list of what its WASM links in

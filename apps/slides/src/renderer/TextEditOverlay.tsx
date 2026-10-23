@@ -18,6 +18,7 @@ import {
   type FontSizeStep,
 } from '@genoffice/pptx-ops/font-size'
 import { bulletRunText } from './bullet-presets'
+import { stepLetterSpacingPt } from '../shared/format-step'
 
 interface Props {
   node: ShapeRenderNode
@@ -1031,6 +1032,7 @@ function sameRunFormat(a: EditRun, b: EditRun): boolean {
     a.underline === b.underline &&
     a.strike === b.strike &&
     a.baseline === b.baseline &&
+    a.letterSpacing === b.letterSpacing &&
     a.fontSize === b.fontSize &&
     a.fontFamily === b.fontFamily &&
     a.color === b.color &&
@@ -1116,6 +1118,7 @@ export function extractParagraphs(root: HTMLElement, norm: number): EditParagrap
           strike: !!inherited.strike,
           baseline: inherited.baseline ?? 0,
           ...(inherited.fontSize != null ? { fontSize: inherited.fontSize } : {}),
+          ...(inherited.letterSpacing != null ? { letterSpacing: inherited.letterSpacing } : {}),
           ...(inherited.fontFamily ? { fontFamily: inherited.fontFamily } : {}),
           ...(inherited.color ? { color: inherited.color } : {}),
           ...(inherited.srcRun != null ? { srcRun: inherited.srcRun } : {}),
@@ -1190,6 +1193,10 @@ export function extractParagraphs(root: HTMLElement, norm: number): EditParagrap
     // (what applySelectionRedaction creates) marks the text under it without touching srcRun.
     const redactLabel = el.dataset?.redact
     if (redactLabel) next.redact = redactLabel
+    // Character spacing set in this session (stepSelectionLetterSpacing) — the layout's display
+    // spacing on the fragments is never read back, the source run keeps its own
+    const spacingPt = parseFloat(el.dataset?.letterSpacingPt ?? '')
+    if (!Number.isNaN(spacingPt)) next.letterSpacing = spacingPt
     if (el.tagName === 'A') {
       const link = decodeLinkTarget(el.getAttribute('href'))
       if (link) next.link = link
@@ -1449,6 +1456,39 @@ export function applySelectionRedaction(label: string | null): boolean {
   const range = sel.getRangeAt(0)
   if (range.collapsed) return false
   return label === null ? unmarkRange(range) : markRange(range, label)
+}
+
+/**
+ * The first paragraph the editing selection covers, for a step that starts from
+ * its current value (⌥⇧Z / ⌥⇧A): its source paragraph index and the line
+ * spacing already marked on it in this edit session. Null without a selection.
+ */
+export function selectionFirstParagraph(): {
+  srcPara: number | null
+  lineSpacingPct: number | null
+} | null {
+  const sel = window.getSelection()
+  if (!sel?.rangeCount) return null
+  const range = sel.getRangeAt(0)
+  const startEl =
+    range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement
+  const root =
+    startEl?.closest('[data-src-para]')?.parentElement ??
+    (startEl?.querySelector('[data-src-para]') ? startEl : null)
+  const block = root
+    ? Array.from(root.children).find(
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement && el.tagName === 'DIV' && range.intersectsNode(el),
+      )
+    : undefined
+  if (!block) return null
+  const num = (v: string | undefined) => {
+    const n = parseFloat(v ?? '')
+    return Number.isNaN(n) ? null : n
+  }
+  return { srcPara: num(block.dataset.srcPara), lineSpacingPct: num(block.dataset.lineSpacingPct) }
 }
 
 /**
@@ -1725,6 +1765,80 @@ export function resizeSelectionFont(dir: 1 | -1, mode: FontSizeStep['mode'] = 'l
     // The resized text's canvas-measured advances are stale: free the enclosing/contained fragments
     releaseFragment(span.closest('[data-layout-fragment]'))
     span.querySelectorAll<HTMLElement>('[data-layout-fragment]').forEach(releaseFragment)
+    spans.push(span)
+  })
+  reselectSpans(spans)
+}
+
+/**
+ * Character spacing step while editing (Hangul's ⌥⇧W / ⌥⇧N): the selection is wrapped the way a
+ * size step wraps it, and each wrapper span carries the new spacing in data-letter-spacing-pt,
+ * which extractParagraphs commits; the layout's display spacing inside it is dropped so the
+ * span's own value shows. The base is the nearest marked ancestor's value, else the spacing
+ * the run is laid out with; both are snapshotted per text node before execCommand reflows them.
+ */
+export function stepSelectionLetterSpacing(dir: 1 | -1): void {
+  const root = document.activeElement
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) return
+  const norm = parseFloat(root.dataset.norm ?? '') || 1
+  const toPt = (px: number) => Math.round(((px * 72) / (96 * norm)) * 100) / 100
+  const sel = window.getSelection()
+  const selRange = sel && sel.rangeCount ? sel.getRangeAt(0) : null
+  if (!selRange || selRange.collapsed) return
+  /** spacing and size at an element: a mark set in this session wins over the laid-out spacing */
+  const baseAt = (el: HTMLElement) => {
+    const cs = window.getComputedStyle(el)
+    const marked = el.closest<HTMLElement>('[data-letter-spacing-pt]')
+    return {
+      spacingPt:
+        marked && root.contains(marked)
+          ? parseFloat(marked.dataset.letterSpacingPt!) || 0
+          : toPt(parseFloat(cs.letterSpacing) || 0),
+      sizePt: toPt(parseFloat(cs.fontSize)) || DEFAULT_FONT_SIZE_PT,
+    }
+  }
+  // execCommand replaces a span the selection exactly covers (our own mark from the last
+  // press), so read each selected text node's base before it reflows; a node split by the
+  // wrap misses the snapshot and reads its new parent instead, as resizeSelectionFont does
+  const pre = new Map<Node, { spacingPt: number; sizePt: number }>()
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const node = walker.currentNode
+    if (selRange.intersectsNode(node) && node.parentElement)
+      pre.set(node, baseAt(node.parentElement))
+  }
+  document.execCommand('styleWithCSS', false, 'false')
+  document.execCommand('fontSize', false, '7')
+  const spans: HTMLElement[] = []
+  root.querySelectorAll('font[size="7"]').forEach((f) => {
+    const font = f as HTMLElement
+    let base: { spacingPt: number; sizePt: number } | undefined
+    const inner = document.createTreeWalker(font, NodeFilter.SHOW_TEXT)
+    while (!base && inner.nextNode()) base = pre.get(inner.currentNode)
+    base ??= baseAt(font.parentElement ?? root)
+    const pt = stepLetterSpacingPt(base.spacingPt, base.sizePt, dir)
+    // a press on the mark of the previous one restyles it instead of nesting a new mark inside
+    const outer = font.parentElement
+    const reuse =
+      outer?.dataset.letterSpacingPt != null && outer.childNodes.length === 1 && outer !== root
+    const span = reuse ? outer! : document.createElement('span')
+    span.dataset.letterSpacingPt = String(pt)
+    span.style.letterSpacing = `${(pt * 96 * norm) / 72}px`
+    if (reuse) font.replaceWith(...Array.from(font.childNodes))
+    else {
+      while (font.firstChild) span.appendChild(font.firstChild)
+      font.replaceWith(span)
+    }
+    // an older mark or the layout's display spacing inside would override the new value
+    span.querySelectorAll<HTMLElement>('[data-letter-spacing-pt]').forEach((el) => {
+      delete el.dataset.letterSpacingPt
+      el.style.letterSpacing = ''
+    })
+    span.querySelectorAll<HTMLElement>('[data-layout-fragment]').forEach((el) => {
+      el.style.letterSpacing = ''
+      releaseFragment(el)
+    })
+    releaseFragment(span.closest('[data-layout-fragment]'))
     spans.push(span)
   })
   reselectSpans(spans)
