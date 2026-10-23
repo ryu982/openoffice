@@ -15,6 +15,8 @@ export interface EditRun {
   strike?: boolean
   /** Super/subscript baseline % (positive = superscript; 0 = none, used to disable explicitly) */
   baseline?: number
+  /** Character spacing in pt set during this edit session (0 = normal); undefined = keep the original run's */
+  letterSpacing?: number
   /** Text outline (for WordArt), width in EMU */
   outline?: { color: string; widthEmu: number }
   /** Dynamic field (slidenum / datetime1…); text is the cached value */
