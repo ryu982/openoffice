@@ -5,7 +5,7 @@
  * by position (when the browser splits a div on Enter, the data attributes are copied along, so
  * both halves inherit from the same source); the ...oldRun
  * spread preserves fields the editor cannot express
- * (letterSpacing/field/outline, and hyperlinks whose rId didn't resolve).
+ * (field/outline, letterSpacing unless the edit set it, and hyperlinks whose rId didn't resolve).
  */
 import {
   encodeRunLink,
@@ -112,6 +112,7 @@ export function applyEditParagraphs(oldParas: Paragraph[], edited: EditParagraph
           if (r.baseline === 0) delete merged.baseline
           else merged.baseline = r.baseline
         }
+        if (r.letterSpacing != null) merged.letterSpacing = r.letterSpacing
         if (merged.strike === false) delete merged.strikeStyle
         if (merged.rawXml && r.text !== oldRun?.text) delete merged.rawXml
         // The editor always returns the resolved display color; treat it as an explicit color

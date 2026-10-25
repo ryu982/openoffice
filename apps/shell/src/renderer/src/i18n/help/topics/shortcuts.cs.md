@@ -81,8 +81,10 @@ Nahradit je na obou platformách Ctrl+H, protože ⌘H na macOS skrývá okno a 
 | Písmo… (dialogové okno)                       | ⌘D       | Ctrl+D                |
 | Zvětšit velikost písma                        | ⇧⌘.      | Ctrl+Shift+.          |
 | Zmenšit velikost písma                        | ⇧⌘,      | Ctrl+Shift+,          |
-| Zvětšit velikost písma o 1 pt                 | ⌘]       | Ctrl+]                |
-| Zmenšit velikost písma o 1 pt                 | ⌘[       | Ctrl+[                |
+| Zvětšit velikost písma o 1 pt                 | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Zmenšit velikost písma o 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Zvětšit mezery mezi znaky                     | ⌥⇧W      | Alt+Shift+W           |
+| Zmenšit mezery mezi znaky                     | ⌥⇧N      | Alt+Shift+N           |
 | Horní index                                   | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Dolní index                                   | ⌘,       | Ctrl+,                |
 | Změnit velikost písmen                        | ⇧F3      | Shift+F3              |
@@ -103,6 +105,8 @@ Dvě zkratky malíře formátování jsou jediné místo, kde klávesa Windows n
 | Řádkování 1,0                                       | ⌘1    | Ctrl+1          |
 | Řádkování 1,5                                       | ⌘5    | Ctrl+5          |
 | Řádkování 2,0                                       | ⌘2    | Ctrl+2          |
+| Zvětšit řádkování                                   | ⌥⇧Z   | Alt+Shift+Z     |
+| Zmenšit řádkování                                   | ⌥⇧A   | Alt+Shift+A     |
 | Zvětšit odsazení                                    | ⌃M    | Ctrl+M          |
 | Zmenšit odsazení                                    | ⌃⇧M   | Ctrl+Shift+M    |
 | Převislé odsazení                                   | ⌘T    | Ctrl+T          |
@@ -119,6 +123,8 @@ Dvě zkratky malíře formátování jsou jediné místo, kde klávesa Windows n
 | Přesunout položku seznamu výše (na začátku položky) | ⇧Tab  | Shift+Tab       |
 
 Odsazení, převislé odsazení a Vymazat formátování odstavce fungují na obou platformách jen přes Ctrl: ⌘M okno minimalizuje a ⌘Q ukončí aplikaci, takže chord s Command by byl tichou úpravou při ukončování. Tab změní úroveň seznamu jen tehdy, když je kurzor na začátku položky nebo přesahuje několik položek; uvnitř textu vloží tabulátorový znak a ⇧Tab vždy zvedne úroveň.
+
+Kombinace ⌥⇧ (Alt+Shift) s písmenem pocházejí z korejského textového editoru Hangul (HWP): ⌥⇧Z / ⌥⇧A zvětšují a zmenšují řádkování o 0,1 řádku (o 1 b. u řádkování Nejméně nebo Přesně), ⌥⇧W / ⌥⇧N mezery mezi znaky o 1 % velikosti písma a ⌥⇧E / ⌥⇧R mění velikost písma o 1 b. stejně jako ⌘] / ⌘[.
 
 ### Vkládání
 
@@ -331,21 +337,27 @@ Vybrat vše sleduje fokus: s fokusem na panel náhledů, panel osnovy nebo tří
 
 Ty působí na text vybraného tvaru, nebo na odstavec s kurzorem, když jste uvnitř textového pole.
 
-| Akce                                  | macOS | Windows / Linux |
-| ------------------------------------- | ----- | --------------- |
-| Tučné                                 | ⌘B    | Ctrl+B          |
-| Kurzíva                               | ⌘I    | Ctrl+I          |
-| Podtržení                             | ⌘U    | Ctrl+U          |
-| Zarovnat doleva                       | ⌘L    | Ctrl+L          |
-| Vycentrovat                           | ⌘E    | Ctrl+E          |
-| Zarovnat doprava                      | ⌘R    | Ctrl+R          |
-| Zarovnat přes šířku                   | ⌘J    | Ctrl+J          |
-| Zvětšit velikost písma o 1 pt         | ⌘]    | Ctrl+]          |
-| Zmenšit velikost písma o 1 pt         | ⌘[    | Ctrl+[          |
-| Písmo na další velikost v žebříku     | ⇧⌘>   | Ctrl+Shift+>    |
-| Písmo na předchozí velikost v žebříku | ⇧⌘<   | Ctrl+Shift+<    |
+| Akce                                  | macOS    | Windows / Linux      |
+| ------------------------------------- | -------- | -------------------- |
+| Tučné                                 | ⌘B       | Ctrl+B               |
+| Kurzíva                               | ⌘I       | Ctrl+I               |
+| Podtržení                             | ⌘U       | Ctrl+U               |
+| Zarovnat doleva                       | ⌘L       | Ctrl+L               |
+| Vycentrovat                           | ⌘E       | Ctrl+E               |
+| Zarovnat doprava                      | ⌘R       | Ctrl+R               |
+| Zarovnat přes šířku                   | ⌘J       | Ctrl+J               |
+| Zvětšit velikost písma o 1 pt         | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Zmenšit velikost písma o 1 pt         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Zvětšit řádkování                     | ⌥⇧Z      | Alt+Shift+Z          |
+| Zmenšit řádkování                     | ⌥⇧A      | Alt+Shift+A          |
+| Zvětšit mezery mezi znaky             | ⌥⇧W      | Alt+Shift+W          |
+| Zmenšit mezery mezi znaky             | ⌥⇧N      | Alt+Shift+N          |
+| Písmo na další velikost v žebříku     | ⇧⌘>      | Ctrl+Shift+>         |
+| Písmo na předchozí velikost v žebříku | ⇧⌘<      | Ctrl+Shift+<         |
 
 Klávesy žebříku písma berou také klávesy . a , s drženým Shift, pro rozvržení klávesnice, které je hlásí místo kláves s interpunkcí.
+
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A a ⌥⇧W / ⌥⇧N pocházejí z korejského textového editoru Hangul (HWP): ⌥⇧E / ⌥⇧R mění velikost písma o 1 b. stejně jako ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A řádkování o 0,1 řádku a ⌥⇧W / ⌥⇧N mezery mezi znaky o 1 % velikosti písma (v textovém poli u vybraného textu).
 
 ### Schránka a objekty
 

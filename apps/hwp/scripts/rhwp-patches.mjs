@@ -23,6 +23,13 @@
  *   panel edits the document through this app's plugin
  *   (studio-plugin/agent-plugin.mjs), so the list gains that one name.
  *
+ * studio-option-keys
+ *   The studio matches Hangul's Alt+Shift chords on the typed letter, and on
+ *   the Mac Option rewrites that letter (⌥⇧A types Å), so line spacing
+ *   (⌥⇧A / ⌥⇧Z) and font size (⌥⇧E / ⌥⇧R) never fired there. The studio's
+ *   own character spacing and width chords already carry the physical key
+ *   (`code: 'KeyW'`); these four gain theirs the same way.
+ *
  * studio-table-delete-at, studio-nested-table-delete, studio-nested-table-cut,
  * studio-nested-table-command
  *   The studio cannot delete a table that sits in another table's cell (a form
@@ -70,6 +77,13 @@ export const PASSWORD_FLAG = 'passwordProtected'
 /** Module specifier the studio-plugin-allow patch imports; build-studio.mjs aliases it. */
 export const AGENT_PLUGIN_MODULE = '@ieum/agent-plugin'
 
+/** The Alt+Shift chords the studio matches on the typed letter alone, and their commands. */
+export const OPTION_KEYS = [
+  ['a', 'format:line-spacing-decrease'],
+  ['z', 'format:line-spacing-increase'],
+  ['e', 'format:font-size-increase'],
+  ['r', 'format:font-size-decrease'],
+]
 /** Module specifier the studio-hancom-* patches import; build-studio.mjs aliases it. */
 export { HANCOM_KEYS_MODULE }
 
@@ -97,6 +111,13 @@ const PATCHES = {
       `    return (await import('${AGENT_PLUGIN_MODULE}')).agentPlugin as StudioPlugin;\n` +
       '  }\n' +
       "  if (import.meta.env.DEV && id === 'dev-probe') {",
+  },
+  'studio-option-keys': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]shortcut-map\.ts$/,
+    edits: OPTION_KEYS.map(([letter, command]) => ({
+      find: `  [{ key: '${letter}', alt: true, shift: true }, '${command}'],`,
+      replace: `  [{ key: '${letter}', code: 'Key${letter.toUpperCase()}', alt: true, shift: true }, '${command}'],`,
+    })),
   },
   'studio-table-delete-at': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
@@ -364,6 +385,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-scheme',
   'studio-password-flag',
   'studio-plugin-allow',
+  'studio-option-keys',
   'studio-table-delete-at',
   'studio-nested-table-delete',
   'studio-nested-table-cut',

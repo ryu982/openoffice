@@ -164,6 +164,16 @@ import {
   setParaAttrs,
   toggleParaSpace as toggleParaSpaceImpl,
 } from './ribbon-tabs'
+import {
+  burstStep,
+  charSpacingAt,
+  lineSpacingAt,
+  newStepBurst,
+  sameLineSpacing,
+  stepCharSpacingTwips,
+  stepLineSpacing,
+  type LineSpacingValue,
+} from './format-step'
 import { WRAP_OPTIONS } from './ContextMenu'
 import { CropDialog, CutoutDialog } from './PictureDialogs'
 import {
@@ -243,6 +253,8 @@ interface RibbonProps {
   actionsRef?: React.MutableRefObject<{
     stepFontSize?: (dir: 1 | -1) => void
     nudgeFontSize?: (dir: 1 | -1) => void
+    stepLineSpacing?: (dir: 1 | -1) => void
+    stepCharSpacing?: (dir: 1 | -1) => void
   }>
   /** Quick-access area on the tab row's left (save/undo-redo/autosave), matching the WPS/Office QAT */
   quickActions?: React.ReactNode
@@ -855,6 +867,8 @@ function RibbonInner({
     head: number
     doc: PMNode | null
   }>({ pending: null, applied: null, timer: null, anchor: -1, head: -1, doc: null })
+  const lineSpacingBurstRef = useRef(newStepBurst<LineSpacingValue>())
+  const charSpacingBurstRef = useRef(newStepBurst<number>())
   /** Font / size combo drafts: null = box mirrors the selection; Esc and blur drop the draft */
   const [fontDraft, setFontDraft] = useState<string | null>(null)
   const [fontHighlight, setFontHighlight] = useState<string | null>(null)
@@ -1710,10 +1724,50 @@ function RibbonInner({
   const nudgeFontSize = (dir: 1 | -1) =>
     applyFontStep((base) => Math.min(Math.max(Math.round(base) + dir, 1), 1638))
 
+  /** Hangul's ⌥⇧Z / ⌥⇧A: the first selected paragraph's line spacing one step, onto every selected paragraph */
+  const stepLineSpacingBy = (dir: 1 | -1) => {
+    if (!canEdit) return
+    const target = ed
+    burstStep(
+      lineSpacingBurstRef.current,
+      target,
+      lineSpacingAt(target, styles, docDefaults),
+      (base) => stepLineSpacing(base, dir),
+      (value, deferred) => {
+        if (!deferred) setParaAttr({ ...value })
+        // an explicit range: a deferred apply must never pull focus back
+        else if (canEdit) setParaAttrs(target, { ...value }, target.state.selection)
+      },
+      sameLineSpacing,
+    )
+  }
+
+  /** Hangul's ⌥⇧W / ⌥⇧N: character spacing by 1% of the font size */
+  const stepCharSpacingBy = (dir: 1 | -1) => {
+    if (!canEdit) return
+    const target = ed
+    const { current, inherited } = charSpacingAt(target, styles)
+    burstStep(
+      charSpacingBurstRef.current,
+      target,
+      current,
+      (base) => stepCharSpacingTwips(base, currentSize, dir),
+      (twips, deferred) => {
+        // back at the style's own value: drop the direct formatting
+        const patch = { charSpacingTwips: twips === inherited ? null : twips }
+        if (!deferred) setTextStyle(patch)
+        else if (canEdit) target.chain().setMark('docTextStyle', patch).run()
+      },
+      Object.is,
+    )
+  }
+
   useEffect(() => {
     if (!actionsRef) return
     actionsRef.current.stepFontSize = stepFontSize
     actionsRef.current.nudgeFontSize = nudgeFontSize
+    actionsRef.current.stepLineSpacing = stepLineSpacingBy
+    actionsRef.current.stepCharSpacing = stepCharSpacingBy
   })
 
   const toggleVertAlign = (kind: 'superscript' | 'subscript') => {

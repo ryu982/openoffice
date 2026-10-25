@@ -19,8 +19,11 @@ import {
   applySelectionParagraphFormat,
   resizeSelectionFont,
   restoreEditSelection,
+  selectionFirstParagraph,
   setSelectionFontSizePt,
+  stepSelectionLetterSpacing,
 } from './TextEditOverlay'
+import { stepLineSpacingPct } from '../shared/format-step'
 import type { FormatCmd } from './components/Ribbon'
 import type { SlideThemePreset } from './themes'
 import { t } from './i18n/locale'
@@ -61,6 +64,27 @@ export function onFontSize(ctx: ActionCtx, pt: number): void {
       slideIndex: ctx.current,
       sourceIds: ctx.selectedIds,
       fontSizePt: pt,
+      ...(groupId ? { groupId } : {}),
+    })
+    .then((r) => r && ctx.applySlide(ctx.current, r))
+}
+
+/**
+ * Hangul's ⌥⇧W / ⌥⇧N: character spacing 1% of the font size wider / narrower — the
+ * editing selection, or each selected element from its own first run.
+ */
+export function onCharSpacingStep(ctx: ActionCtx, dir: 1 | -1): void {
+  if (ctx.editing || ctx.editingCell) {
+    stepSelectionLetterSpacing(dir)
+    return
+  }
+  if (!ctx.selectedIds.length) return
+  const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
+  void window.slidesApi
+    .setElementFont({
+      slideIndex: ctx.current,
+      sourceIds: ctx.selectedIds,
+      letterSpacingStep: dir,
       ...(groupId ? { groupId } : {}),
     })
     .then((r) => r && ctx.applySlide(ctx.current, r))
@@ -237,6 +261,34 @@ export function onParagraphFormat(ctx: ActionCtx, patch: ParagraphFormatPatch): 
       ...(groupId ? { groupId } : {}),
     })
     .then((r) => r && ctx.applySlide(ctx.current, r))
+}
+
+/**
+ * Hangul's ⌥⇧Z / ⌥⇧A: line spacing one tenth of a line wider / narrower. While
+ * editing a text box it steps the covered paragraphs from the first one's
+ * spacing (committed with the edit, like the ribbon's line spacing); otherwise
+ * each selected element steps from its own first paragraph in the main process.
+ */
+export async function onLineSpacingStep(ctx: ActionCtx, dir: 1 | -1): Promise<void> {
+  const first = ctx.editing ? selectionFirstParagraph() : null
+  if (ctx.editing && first) {
+    const { sourceId, groupId } = ctx.editing
+    const cur =
+      first.lineSpacingPct ??
+      (await window.slidesApi.getLineSpacing(ctx.current, sourceId, groupId))[first.srcPara ?? 0] ??
+      100
+    onParagraphFormat(ctx, { lineSpacingPct: stepLineSpacingPct(cur, dir) })
+    return
+  }
+  if (!ctx.selectedIds.length) return
+  const groupId = ctx.groupIdOf(ctx.selectedIds[0]!)
+  const r = await window.slidesApi.setElementParagraphFormat({
+    slideIndex: ctx.current,
+    sourceIds: ctx.selectedIds,
+    lineSpacingStep: dir,
+    ...(groupId ? { groupId } : {}),
+  })
+  if (r) ctx.applySlide(ctx.current, r)
 }
 
 export async function onFill(

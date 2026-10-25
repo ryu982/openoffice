@@ -78,8 +78,12 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   { id: 'font-dialog', group: 'text', labelKey: 'appFontDialogTitle', keys: '⌘D' },
   { id: 'grow-font', group: 'text', labelKey: 'ribbonGrowFont', keys: '⇧⌘.' },
   { id: 'shrink-font', group: 'text', labelKey: 'ribbonShrinkFont', keys: '⇧⌘,' },
-  { id: 'grow-font-1pt', group: 'text', labelKey: 'appScGrowFont1', keys: '⌘]' },
-  { id: 'shrink-font-1pt', group: 'text', labelKey: 'appScShrinkFont1', keys: '⌘[' },
+  // ⌥⇧E / ⌥⇧R are Hangul's chords for the same one-point step
+  { id: 'grow-font-1pt', group: 'text', labelKey: 'appScGrowFont1', keys: '⌘] / ⌥⇧E' },
+  { id: 'shrink-font-1pt', group: 'text', labelKey: 'appScShrinkFont1', keys: '⌘[ / ⌥⇧R' },
+  // Hangul's character spacing chords: 1% of the font size per press
+  { id: 'char-spacing-up', group: 'text', labelKey: 'appScCharSpacingUp', keys: '⌥⇧W' },
+  { id: 'char-spacing-down', group: 'text', labelKey: 'appScCharSpacingDown', keys: '⌥⇧N' },
   { id: 'superscript', group: 'text', labelKey: 'ribbonSuperscript', keys: '⇧⌘= / ⌘.' },
   { id: 'subscript', group: 'text', labelKey: 'ribbonSubscript', keys: '⌘,' },
   { id: 'change-case', group: 'text', labelKey: 'ribbonChangeCase', keys: '⇧F3' },
@@ -120,6 +124,9 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     labelSuffix: ' 2.0',
     keys: '⌘2',
   },
+  // Hangul's line spacing chords: 0.1 line per press (1 pt under At least / Exactly)
+  { id: 'line-spacing-up', group: 'para', labelKey: 'appScLineSpacingUp', keys: '⌥⇧Z' },
+  { id: 'line-spacing-down', group: 'para', labelKey: 'appScLineSpacingDown', keys: '⌥⇧A' },
   // ⌘M is macOS' Minimize accelerator, so the indent chord is Control+M there
   // (Windows/Linux: plain Ctrl+M)
   { id: 'indent', group: 'para', labelKey: 'ribbonIncreaseIndent', keys: '⌃M', win: 'Ctrl+M' },

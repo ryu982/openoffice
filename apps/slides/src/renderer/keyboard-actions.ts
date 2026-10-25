@@ -19,6 +19,7 @@ import { flushActiveEdit } from './file-actions'
 import { shouldRouteHistoryToDeck } from './undo-routing'
 import { rangeSelection } from '../shared/slide-selection'
 import { nextPreset, prevPreset } from './zoom-steps'
+import { formatStepForKey } from '../shared/format-step'
 
 /** Whether focus is in a text input (input/textarea/contentEditable) — these cases use native undo/delete */
 function inTextField(): boolean {
@@ -199,6 +200,27 @@ export function handleGlobalKeydown(
         styleActions.onTextToggle(ctx, toggle)
         return
       }
+    }
+  }
+  // Hangul's formatting chords: ⌥⇧E / ⌥⇧R the ⌘] / ⌘[ point step, ⌥⇧Z / ⌥⇧A line
+  // spacing, ⌥⇧W / ⌥⇧N character spacing; same targets as the ⌘ formatting keys above
+  const formatStep = formatStepForKey(e)
+  if (
+    formatStep &&
+    !e.defaultPrevented &&
+    !ctx.masterItems &&
+    ctx.viewMode !== 'reading' &&
+    !ctx.cropTarget
+  ) {
+    const inEditor = !!(editing || ctx.editingCell) && inEditorOverlay()
+    if (inEditor || (!inField && selectedIds.length > 0)) {
+      e.preventDefault()
+      if (formatStep.action === 'fontSize')
+        styleActions.onFontSizeStep(ctx, { dir: formatStep.dir, mode: 'point' })
+      else if (formatStep.action === 'charSpacing')
+        styleActions.onCharSpacingStep(ctx, formatStep.dir)
+      else void styleActions.onLineSpacingStep(ctx, formatStep.dir)
+      return
     }
   }
   // Zoom shortcut fallback

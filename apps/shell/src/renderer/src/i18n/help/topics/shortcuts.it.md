@@ -81,8 +81,10 @@ Sostituisci è Ctrl+H su entrambe le piattaforme perché `⌘H` nasconde la fine
 | Carattere… (finestra)                                      | ⌘D       | Ctrl+D                |
 | Aumenta dimensione carattere                               | ⇧⌘.      | Ctrl+Shift+.          |
 | Riduci dimensione carattere                                | ⇧⌘,      | Ctrl+Shift+,          |
-| Aumenta dimensione carattere di 1 pt                       | ⌘]       | Ctrl+]                |
-| Riduci dimensione carattere di 1 pt                        | ⌘[       | Ctrl+[                |
+| Aumenta dimensione carattere di 1 pt                       | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Riduci dimensione carattere di 1 pt                        | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Espandi spaziatura caratteri                               | ⌥⇧W      | Alt+Shift+W           |
+| Condensa spaziatura caratteri                              | ⌥⇧N      | Alt+Shift+N           |
 | Apice                                                      | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Pedice                                                     | ⌘,       | Ctrl+,                |
 | Cambia maiuscole/minuscole                                 | ⇧F3      | Shift+F3              |
@@ -103,6 +105,8 @@ Le due combinazioni del pennello di formattazione sono l’unico punto in cui il
 | Interlinea 1,0                                       | ⌘1    | Ctrl+1          |
 | Interlinea 1,5                                       | ⌘5    | Ctrl+5          |
 | Interlinea 2,0                                       | ⌘2    | Ctrl+2          |
+| Aumenta interlinea                                   | ⌥⇧Z   | Alt+Shift+Z     |
+| Riduci interlinea                                    | ⌥⇧A   | Alt+Shift+A     |
 | Aumenta rientro                                      | ⌃M    | Ctrl+M          |
 | Riduci rientro                                       | ⌃⇧M   | Ctrl+Shift+M    |
 | Rientro sporgente                                    | ⌘T    | Ctrl+T          |
@@ -119,6 +123,8 @@ Le due combinazioni del pennello di formattazione sono l’unico punto in cui il
 | Promuovi elemento elenco (all’inizio di un elemento) | ⇧Tab  | Shift+Tab       |
 
 Il rientro, il rientro sporgente e la cancellazione della formattazione del paragrafo funzionano solo con Ctrl su entrambe le piattaforme: `⌘M` riduce a icona la finestra e `⌘Q` esce, quindi una combinazione con Command sarebbe una modifica silenziosa mentre esci. Tab cambia il livello dell’elenco solo quando il cursore è all’inizio di un elemento o si estende su più elementi; nel testo inserisce un carattere di tabulazione, e `⇧Tab` promuove sempre.
+
+Le combinazioni ⌥⇧ (Alt+Maiusc) + lettera vengono dall’elaboratore di testi coreano Hangul (HWP): ⌥⇧Z / ⌥⇧A aumentano o riducono l’interlinea di 0,1 righe (1 pt con Minima o Esatta), ⌥⇧W / ⌥⇧N la spaziatura dei caratteri dell’1% della dimensione del carattere, e ⌥⇧E / ⌥⇧R cambiano la dimensione del carattere di 1 pt, come ⌘] / ⌘[.
 
 ### Inserimento
 
@@ -331,21 +337,27 @@ Seleziona tutto segue il focus: con il riquadro delle miniature, il riquadro del
 
 Agiscono sul testo di una forma selezionata, oppure sul paragrafo del cursore quando sei dentro la casella di testo.
 
-| Azione                                               | macOS | Windows / Linux |
-| ---------------------------------------------------- | ----- | --------------- |
-| Grassetto                                            | ⌘B    | Ctrl+B          |
-| Corsivo                                              | ⌘I    | Ctrl+I          |
-| Sottolineato                                         | ⌘U    | Ctrl+U          |
-| Allinea a sinistra                                   | ⌘L    | Ctrl+L          |
-| Centra                                               | ⌘E    | Ctrl+E          |
-| Allinea a destra                                     | ⌘R    | Ctrl+R          |
-| Giustifica                                           | ⌘J    | Ctrl+J          |
-| Aumenta la dimensione del carattere di 1 pt          | ⌘]    | Ctrl+]          |
-| Riduci la dimensione del carattere di 1 pt           | ⌘[    | Ctrl+[          |
-| Ingrandisci il carattere fino alla taglia successiva | ⇧⌘>   | Ctrl+Shift+>    |
-| Riduci il carattere fino alla taglia precedente      | ⇧⌘<   | Ctrl+Shift+<    |
+| Azione                                               | macOS    | Windows / Linux      |
+| ---------------------------------------------------- | -------- | -------------------- |
+| Grassetto                                            | ⌘B       | Ctrl+B               |
+| Corsivo                                              | ⌘I       | Ctrl+I               |
+| Sottolineato                                         | ⌘U       | Ctrl+U               |
+| Allinea a sinistra                                   | ⌘L       | Ctrl+L               |
+| Centra                                               | ⌘E       | Ctrl+E               |
+| Allinea a destra                                     | ⌘R       | Ctrl+R               |
+| Giustifica                                           | ⌘J       | Ctrl+J               |
+| Aumenta la dimensione del carattere di 1 pt          | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Riduci la dimensione del carattere di 1 pt           | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Aumenta interlinea                                   | ⌥⇧Z      | Alt+Shift+Z          |
+| Riduci interlinea                                    | ⌥⇧A      | Alt+Shift+A          |
+| Espandi spaziatura caratteri                         | ⌥⇧W      | Alt+Shift+W          |
+| Condensa spaziatura caratteri                        | ⌥⇧N      | Alt+Shift+N          |
+| Ingrandisci il carattere fino alla taglia successiva | ⇧⌘>      | Ctrl+Shift+>         |
+| Riduci il carattere fino alla taglia precedente      | ⇧⌘<      | Ctrl+Shift+<         |
 
 I tasti della scala dei caratteri accettano anche i tasti . e , con Shift premuto, per le disposizioni di tastiera che segnalano quelli al posto dei tasti di punteggiatura.
+
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A e ⌥⇧W / ⌥⇧N vengono dall’elaboratore di testi coreano Hangul (HWP): ⌥⇧E / ⌥⇧R cambiano la dimensione del carattere di 1 pt, come ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A l’interlinea di 0,1 righe e ⌥⇧W / ⌥⇧N la spaziatura dei caratteri dell’1% della dimensione del carattere (in una casella di testo, quella del testo selezionato).
 
 ### Appunti e oggetti
 

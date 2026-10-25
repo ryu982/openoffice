@@ -81,8 +81,10 @@ Ganti ialah Ctrl+H pada kedua-dua platform kerana `⌘H` menyembunyikan tetingka
 | Fon… (dialog)                                  | ⌘D       | Ctrl+D                |
 | Besarkan Saiz Fon                              | ⇧⌘.      | Ctrl+Shift+.          |
 | Perkecil Saiz Fon                              | ⇧⌘,      | Ctrl+Shift+,          |
-| Besarkan Saiz Fon 1 pt                         | ⌘]       | Ctrl+]                |
-| Perkecil Saiz Fon 1 pt                         | ⌘[       | Ctrl+[                |
+| Besarkan Saiz Fon 1 pt                         | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Perkecil Saiz Fon 1 pt                         | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Kembangkan Jarak Aksara                        | ⌥⇧W      | Alt+Shift+W           |
+| Mampatkan Jarak Aksara                         | ⌥⇧N      | Alt+Shift+N           |
 | Superskrip                                     | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Subskrip                                       | ⌘,       | Ctrl+,                |
 | Tukar Huruf Besar-Kecil                        | ⇧F3      | Shift+F3              |
@@ -103,6 +105,8 @@ Dua pintasan pelukis pemformatan itu ialah satu-satunya tempat kekunci Windows b
 | jarak Baris 1.0                            | ⌘1    | Ctrl+1          |
 | jarak Baris 1.5                            | ⌘5    | Ctrl+5          |
 | Jarak Baris 2.0                            | ⌘2    | Ctrl+2          |
+| Besarkan Jarak Baris                       | ⌥⇧Z   | Alt+Shift+Z     |
+| Kecilkan Jarak Baris                       | ⌥⇧A   | Alt+Shift+A     |
 | Tambah Inden                               | ⌃M    | Ctrl+M          |
 | Kurangkan Inden                            | ⌃⇧M   | Ctrl+Shift+M    |
 | Inden Gantung                              | ⌘T    | Ctrl+T          |
@@ -119,6 +123,8 @@ Dua pintasan pelukis pemformatan itu ialah satu-satunya tempat kekunci Windows b
 | Naikkan Tahap Perkaraian (pada awal item)  | ⇧Tab  | Shift+Tab       |
 
 Inden, inden gantung dan Kosongkan Pemformatan Perenggan menggunakan Ctrl sahaja pada kedua-dua platform: `⌘M` mengecilkan tetingkap dan `⌘Q` keluar, jadi pintasan Command akan menjadi suntingan senyap dalam perjalanan keluar. Tab hanya menukar tahap perkaraian apabila caret berada pada awal sesuatu item atau merangkumi beberapa item; dalam teks ia menyisipkan aksara tab, dan `⇧Tab` sentiasa menaikkan.
+
+Gabungan ⌥⇧ (Alt+Shift) dengan huruf diambil daripada pemproses kata Korea Hangul (HWP): ⌥⇧Z / ⌥⇧A membesarkan dan mengecilkan jarak baris sebanyak 0.1 baris (1 pt bagi Sekurang-kurangnya atau Tepat), ⌥⇧W / ⌥⇧N jarak aksara sebanyak 1% saiz fon, dan ⌥⇧E / ⌥⇧R menukar saiz fon sebanyak 1 pt, sama seperti ⌘] / ⌘[.
 
 ### Sisip
 
@@ -331,21 +337,27 @@ Pilih semua mengikut fokus: dengan baris lakaran kenit, kerangka atau penyusun s
 
 Ini bertindak ke atas teks bentuk yang dipilih, atau ke atas perenggan caret apabila anda berada di dalam kotak teks.
 
-| Tindakan                                        | macOS | Windows / Linux |
-| ----------------------------------------------- | ----- | --------------- |
-| Tebal                                           | ⌘B    | Ctrl+B          |
-| Condong                                         | ⌘I    | Ctrl+I          |
-| Garis bawah                                     | ⌘U    | Ctrl+U          |
-| Sejajar kiri                                    | ⌘L    | Ctrl+L          |
-| Sejajar tengah                                  | ⌘E    | Ctrl+E          |
-| Sejajar kanan                                   | ⌘R    | Ctrl+R          |
-| Justifikasi                                     | ⌘J    | Ctrl+J          |
-| Besarkan saiz fon sebanyak 1 pt                 | ⌘]    | Ctrl+]          |
-| Perkecil saiz fon sebanyak 1 pt                 | ⌘[    | Ctrl+[          |
-| Besarkan fon kepada saiz seterusnya pada tangga | ⇧⌘>   | Ctrl+Shift+>    |
-| Perkecil fon kepada saiz sebelumnya pada tangga | ⇧⌘<   | Ctrl+Shift+<    |
+| Tindakan                                        | macOS    | Windows / Linux      |
+| ----------------------------------------------- | -------- | -------------------- |
+| Tebal                                           | ⌘B       | Ctrl+B               |
+| Condong                                         | ⌘I       | Ctrl+I               |
+| Garis bawah                                     | ⌘U       | Ctrl+U               |
+| Sejajar kiri                                    | ⌘L       | Ctrl+L               |
+| Sejajar tengah                                  | ⌘E       | Ctrl+E               |
+| Sejajar kanan                                   | ⌘R       | Ctrl+R               |
+| Justifikasi                                     | ⌘J       | Ctrl+J               |
+| Besarkan saiz fon sebanyak 1 pt                 | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Perkecil saiz fon sebanyak 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Besarkan jarak baris                            | ⌥⇧Z      | Alt+Shift+Z          |
+| Kecilkan jarak baris                            | ⌥⇧A      | Alt+Shift+A          |
+| Kembangkan jarak aksara                         | ⌥⇧W      | Alt+Shift+W          |
+| Mampatkan jarak aksara                          | ⌥⇧N      | Alt+Shift+N          |
+| Besarkan fon kepada saiz seterusnya pada tangga | ⇧⌘>      | Ctrl+Shift+>         |
+| Perkecil fon kepada saiz sebelumnya pada tangga | ⇧⌘<      | Ctrl+Shift+<         |
 
 Kekunci tangga fon itu juga menerima kekunci . dan , dengan Shift ditahan, untuk susun atur papan kekunci yang melaporkan kedua-duanya dan bukannya kekunci tanda baca.
+
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A dan ⌥⇧W / ⌥⇧N diambil daripada pemproses kata Korea Hangul (HWP): ⌥⇧E / ⌥⇧R menukar saiz fon sebanyak 1 pt, sama seperti ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A menukar jarak baris sebanyak 0.1 baris, dan ⌥⇧W / ⌥⇧N menukar jarak aksara sebanyak 1% saiz fon (di dalam kotak teks, bagi teks yang dipilih).
 
 ### Papan keratan dan objek
 

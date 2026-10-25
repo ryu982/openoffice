@@ -237,6 +237,8 @@ const api: SlidesApi = {
   setElementFont: (op: SetElementFontOp) => ipcRenderer.invoke('slides:set-element-font', op),
   setElementParagraphFormat: (op: SetElementParagraphFormatOp) =>
     ipcRenderer.invoke('slides:set-element-paragraph-format', op),
+  getLineSpacing: (slideIndex: number, sourceId: string, groupId?: string) =>
+    ipcRenderer.invoke('slides:get-line-spacing', slideIndex, sourceId, groupId),
   findReplace: (op: FindReplaceOp) => ipcRenderer.invoke('slides:find-replace', op),
   setSlideLayout: (op: SetSlideLayoutOp) => ipcRenderer.invoke('slides:set-slide-layout', op),
   setSlideSize: (op: SetSlideSizeOp) => ipcRenderer.invoke('slides:set-slide-size', op),

@@ -391,6 +391,10 @@ function patchRunProps(runXml: string, run: TextRun): string {
       run.fontSize != null && !run.fontSizeImplicit ? szAttr(run.fontSize) : undefined,
       /\ssz="[^"]*"/,
     )
+    // Character spacing comes only from the run's own spc (never inherited), so an
+    // untouched run already holds the value it has and keeps its bytes
+    const spc = run.letterSpacing != null ? String(Math.round(run.letterSpacing * 100)) : undefined
+    if (spc !== /\sspc="([^"]*)"/.exec(tag)?.[1]) tag = setAttr(tag, 'spc', spc, /\sspc="[^"]*"/)
     return tag
   }
 

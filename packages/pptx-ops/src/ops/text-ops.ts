@@ -248,8 +248,22 @@ register({
     if (typeof op.font !== 'object' || op.font === null) {
       throw new GuidedError('op "setFont" needs "font": an ElementFontPatch object.')
     }
-    const font = op.font as { color?: unknown; fontSizePt?: unknown; fontSizeStep?: unknown }
+    const font = op.font as {
+      color?: unknown
+      fontSizePt?: unknown
+      fontSizeStep?: unknown
+      letterSpacing?: unknown
+    }
     if (font.color !== undefined) requireHexColor(font.color, 'setFont', 'font.color')
+    // ST_TextPoint: ±4000 pt in hundredths
+    if (font.letterSpacing !== undefined) {
+      requireFinite(font.letterSpacing, 'setFont', 'font.letterSpacing')
+      if (Math.abs(font.letterSpacing) > 4000) {
+        throw new GuidedError(
+          'op "setFont": "font.letterSpacing" must be -4000..4000 (points; 0 = normal spacing).',
+        )
+      }
+    }
     if (font.fontSizePt !== undefined) {
       requireFinite(font.fontSizePt, 'setFont', 'font.fontSizePt')
       if (font.fontSizePt < FONT_SIZE_PT_MIN || font.fontSizePt > FONT_SIZE_PT_MAX) {

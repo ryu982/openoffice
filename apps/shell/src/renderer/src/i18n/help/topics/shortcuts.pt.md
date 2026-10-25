@@ -81,8 +81,10 @@ Substituir é Ctrl+H em ambas as plataformas porque `⌘H` oculta a janela no ma
 | Tipo de letra… (caixa de diálogo)               | ⌘D       | Ctrl+D                |
 | Aumentar o tamanho da letra                     | ⇧⌘.      | Ctrl+Shift+.          |
 | Reduzir o tamanho da letra                      | ⇧⌘,      | Ctrl+Shift+,          |
-| Aumentar o tamanho da letra em 1 pt             | ⌘]       | Ctrl+]                |
-| Reduzir o tamanho da letra em 1 pt              | ⌘[       | Ctrl+[                |
+| Aumentar o tamanho da letra em 1 pt             | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E  |
+| Reduzir o tamanho da letra em 1 pt              | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R  |
+| Expandir Espaçamento de Caracteres              | ⌥⇧W      | Alt+Shift+W           |
+| Condensar Espaçamento de Caracteres             | ⌥⇧N      | Alt+Shift+N           |
 | Expoente                                        | ⇧⌘= / ⌘. | Ctrl+Shift+= / Ctrl+. |
 | Índice                                          | ⌘,       | Ctrl+,                |
 | Alterar maiúsculas/minúsculas                   | ⇧F3      | Shift+F3              |
@@ -103,6 +105,8 @@ As duas combinações do pincel de formatação são o único sítio onde a tecl
 | Entrelinha 1,0                                   | ⌘1    | Ctrl+1          |
 | Entrelinha 1,5                                   | ⌘5    | Ctrl+5          |
 | Entrelinha 2,0                                   | ⌘2    | Ctrl+2          |
+| Aumentar Espaçamento entre Linhas                | ⌥⇧Z   | Alt+Shift+Z     |
+| Diminuir Espaçamento entre Linhas                | ⌥⇧A   | Alt+Shift+A     |
 | Aumentar o avanço                                | ⌃M    | Ctrl+M          |
 | Reduzir o avanço                                 | ⌃⇧M   | Ctrl+Shift+M    |
 | Avanço pendente                                  | ⌘T    | Ctrl+T          |
@@ -119,6 +123,8 @@ As duas combinações do pincel de formatação são o único sítio onde a tecl
 | Promover item de lista (no início de um item)    | ⇧Tab  | Shift+Tab       |
 
 O avanço, o avanço pendente e a limpeza da formatação do parágrafo só funcionam com Ctrl em ambas as plataformas: `⌘M` minimiza a janela e `⌘Q` sai da aplicação, pelo que uma combinação de Command seria uma edição silenciosa a caminho da saída. Tab só muda o nível da lista quando o cursor está no início de um item ou abrange vários itens; dentro do texto insere um carácter de tabulação, e `⇧Tab` promove sempre.
+
+As combinações de ⌥⇧ (Alt+Shift) com letra vêm do processador de texto coreano Hangul (HWP): ⌥⇧Z / ⌥⇧A aumentam ou diminuem o espaçamento entre linhas em 0,1 linha (1 pt com Pelo menos ou Exatamente), ⌥⇧W / ⌥⇧N o espaçamento entre caracteres em 1% do tamanho da fonte, e ⌥⇧E / ⌥⇧R mudam o tamanho da fonte em 1 pt, como ⌘] / ⌘[.
 
 ### Inserir
 
@@ -331,21 +337,27 @@ Selecionar tudo segue o foco: com o painel de miniaturas, o painel de esquema ou
 
 Atuam sobre o texto de uma forma selecionada, ou sobre o parágrafo onde está o cursor quando está dentro da caixa de texto.
 
-| Ação                                               | macOS | Windows / Linux |
-| -------------------------------------------------- | ----- | --------------- |
-| Negrito                                            | ⌘B    | Ctrl+B          |
-| Itálico                                            | ⌘I    | Ctrl+I          |
-| Sublinhado                                         | ⌘U    | Ctrl+U          |
-| Alinhar à esquerda                                 | ⌘L    | Ctrl+L          |
-| Centrar                                            | ⌘E    | Ctrl+E          |
-| Alinhar à direita                                  | ⌘R    | Ctrl+R          |
-| Justificar                                         | ⌘J    | Ctrl+J          |
-| Aumentar o tamanho da letra em 1 pt                | ⌘]    | Ctrl+]          |
-| Reduzir o tamanho da letra em 1 pt                 | ⌘[    | Ctrl+[          |
-| Aumentar a letra para o tamanho seguinte da escala | ⇧⌘>   | Ctrl+Shift+>    |
-| Reduzir a letra para o tamanho anterior da escala  | ⇧⌘<   | Ctrl+Shift+<    |
+| Ação                                               | macOS    | Windows / Linux      |
+| -------------------------------------------------- | -------- | -------------------- |
+| Negrito                                            | ⌘B       | Ctrl+B               |
+| Itálico                                            | ⌘I       | Ctrl+I               |
+| Sublinhado                                         | ⌘U       | Ctrl+U               |
+| Alinhar à esquerda                                 | ⌘L       | Ctrl+L               |
+| Centrar                                            | ⌘E       | Ctrl+E               |
+| Alinhar à direita                                  | ⌘R       | Ctrl+R               |
+| Justificar                                         | ⌘J       | Ctrl+J               |
+| Aumentar o tamanho da letra em 1 pt                | ⌘] / ⌥⇧E | Ctrl+] / Alt+Shift+E |
+| Reduzir o tamanho da letra em 1 pt                 | ⌘[ / ⌥⇧R | Ctrl+[ / Alt+Shift+R |
+| Aumentar espaçamento entre linhas                  | ⌥⇧Z      | Alt+Shift+Z          |
+| Diminuir espaçamento entre linhas                  | ⌥⇧A      | Alt+Shift+A          |
+| Expandir espaçamento de caracteres                 | ⌥⇧W      | Alt+Shift+W          |
+| Condensar espaçamento de caracteres                | ⌥⇧N      | Alt+Shift+N          |
+| Aumentar a letra para o tamanho seguinte da escala | ⇧⌘>      | Ctrl+Shift+>         |
+| Reduzir a letra para o tamanho anterior da escala  | ⇧⌘<      | Ctrl+Shift+<         |
 
 As teclas da escala de letras também aceitam as teclas . e , com Shift premido, para as disposições de teclado que reportam essas em vez das teclas de pontuação.
+
+⌥⇧E / ⌥⇧R, ⌥⇧Z / ⌥⇧A e ⌥⇧W / ⌥⇧N vêm do processador de texto coreano Hangul (HWP): ⌥⇧E / ⌥⇧R mudam o tamanho da fonte em 1 pt, como ⌘] / ⌘[, ⌥⇧Z / ⌥⇧A o espaçamento entre linhas em 0,1 linha e ⌥⇧W / ⌥⇧N o espaçamento entre caracteres em 1% do tamanho da fonte (dentro de uma caixa de texto, o do texto selecionado).
 
 ### Área de transferência e objetos
 

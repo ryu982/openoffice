@@ -3130,6 +3130,8 @@ export interface ElementFontPatch {
   underline?: boolean
   /** #RRGGBB (explicit color: clears theme-link/inheritance flags) */
   color?: string
+  /** Character spacing <a:rPr spc> in pt (negative condenses, 0 = normal) */
+  letterSpacing?: number
 }
 
 /** Per-run size rewrite (relative grow/shrink); undefined = the run inherits its size. */
@@ -3193,6 +3195,7 @@ function applyFontPatch(
         delete r.colorInherited
         delete r.colorNodeXml
       }
+      if (patch.letterSpacing !== undefined) r.letterSpacing = patch.letterSpacing
     }
   }
 }
