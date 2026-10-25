@@ -7,7 +7,7 @@ import JSZip from 'jszip'
 import { afterAll, beforeAll, test } from 'vitest'
 import type { Browser } from 'playwright-core'
 
-import { convertHtmlToDocx, EXTRACTOR_SOURCE, mapFont } from '../src'
+import { convertHtmlToDocx, EXTRACTOR_SOURCE, mapFont, runFont } from '../src'
 import { launchChrome, PlaywrightDriver } from '../src/drivers/playwright'
 
 const A4 = { width: 794, height: 1123, deviceScaleFactor: 2 }
@@ -997,6 +997,23 @@ test('maps kana extensions, radicals, and astral CJK to CJK fonts', () => {
   assert.equal(mapFont('', false, 'hello'), 'Arial')
 })
 
+test('keeps Latin proportional when a run maps to a CJK font', () => {
+  assert.deepEqual(runFont('"Noto Serif SC", "Songti SC", serif', false, '\u6458\u8981 ABSTRACT'), {
+    ascii: 'Times New Roman',
+    hAnsi: 'Times New Roman',
+    cs: 'Times New Roman',
+    eastAsia: 'SimSun',
+  })
+  assert.deepEqual(runFont('', false, '\u6807\u9898 Title'), {
+    ascii: 'Arial',
+    hAnsi: 'Arial',
+    cs: 'Arial',
+    eastAsia: 'Microsoft YaHei',
+  })
+  assert.equal(runFont('"Open Sans", sans-serif', false, 'hello'), 'Arial')
+  assert.equal(runFont('Menlo', true, '\u4ee3\u7801'), 'Consolas')
+})
+
 test('preserves colored literal bullets as editable runs', async () => {
   const { xml } = await convertHtml(
     `<!doctype html><html><body>
@@ -1034,6 +1051,20 @@ test('keeps broken image alt text as an editable fallback', async () => {
   const documentXml = await xml('word/document.xml')
   assert.match(documentXml, /Rocket/)
   assert.match(documentXml, /FAUGET CO\./)
+})
+
+test('does not wait out the image timeout for an image that already failed', async () => {
+  // the page-side image wait gives each pending image 15 s; a broken image is
+  // complete from the start and must not take that long
+  const started = Date.now()
+  await convertHtml(
+    `<!doctype html><html><body>
+      <img src="file:///definitely-missing-timing-image.png" alt="Missing">
+      <p>Text after the image</p>
+    </body></html>`,
+    'broken-image-timing',
+  )
+  assert.ok(Date.now() - started < 10_000, `took ${Date.now() - started} ms`)
 })
 
 test('rasterizes painted broken-image placeholders at their authored size', async () => {

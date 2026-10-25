@@ -24,8 +24,13 @@ export interface DocPickerInit {
   theme: DocPickerTheme
 }
 
-export type DocItemGroup = 'open' | 'recent'
-export type DocItemState = 'ok' | 'missing' | 'unsaved'
+/** pane: the document in the other split pane / open: an open tab / recent: the recent list */
+export type DocItemGroup = 'pane' | 'open' | 'recent'
+/**
+ * Only `ok` can be picked. missing: the saved file is gone / unsaved: never
+ * saved / modified: a saved document with unsaved changes.
+ */
+export type DocItemState = 'ok' | 'missing' | 'unsaved' | 'modified'
 
 export interface DocListItem {
   /** 저장됐으면 그 경로. 저장 안 한 문서면 'unsaved:<탭 식별자>' */

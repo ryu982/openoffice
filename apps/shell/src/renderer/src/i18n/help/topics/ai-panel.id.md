@@ -26,6 +26,16 @@ Setiap editor bisa memunculkan panel AI: pilih sesuatu, beri instruksi, dan liha
 - **Markdown / HTML**: menulis ulang, mengembangkan, menerjemahkan.
 - **Beranda ▸ Ask AI** menjawab dari berkas berbintang Anda dan mengutipnya — panel basis pengetahuan punya bagiannya sendiri di bab Beranda, dan panel AI Docs membawa keterampilan yang sama.
 
+## Melampirkan dokumen yang terbuka
+
+Di panel AI editor Docs, Sheets, Slides, Hangul, HTML, dan peta pikiran, Anda dapat melampirkan dokumen lain yang sedang terbuka di GenOffice, atau yang baru-baru ini dibuka, sebagai bahan. Dokumen yang dilampirkan diperlakukan sama persis seperti berkas yang dipilih dari PC Anda.
+
+- **`@` di kotak masukan**: ketik `@` di awal kotak masukan atau setelah spasi untuk membuka daftar dokumen. Jika jendela dibagi, dokumen di panel sebelah muncul paling atas, lalu dokumen lain yang terbuka dan dokumen terbaru; dokumen yang sedang Anda kerjakan tidak ikut ditampilkan. Persempit dengan beberapa huruf dari namanya (spasi boleh) lalu pilih dengan Enter atau klik: `@nama dokumen` masuk ke kotak masukan dan dokumennya terlampir. **Cari lainnya…** di bagian paling bawah membuka jendela pemilih dokumen yang dijelaskan di bawah.
+- **Lampirkan dari dokumen GenOffice**: tombol di samping tombol lampiran ini membuka daftar yang sama dalam jendela, tempat Anda dapat mencentang beberapa dokumen dan melampirkannya sekaligus.
+- Dokumen yang punya perubahan belum disimpan dan dokumen baru yang belum pernah disimpan tampak redup dan tidak dapat dipilih. Simpan dulu, lalu pilih lagi — AI membaca berkas yang tersimpan.
+- Jika dua dokumen bernama sama tetapi berada di folder berbeda, nama folder tepat di atasnya ikut ditambahkan, seperti `@rencana.docx(Semester 2)`, dan nama folder itu juga diberikan kepada AI.
+- Editor PDF dan Markdown belum memiliki lampiran, jadi kedua cara itu tidak tersedia di sana.
+
 ## Pengembalian dan keamanan
 
 - Panel Docs menyimpan **daftar versi**: satu snapshot per putaran, Anda bisa mundur ke mana pun, dan rollback itu sendiri bisa dibatalkan dengan Ctrl+Z. Snapshot tetap ada setelah dokumen ditutup lalu dibuka kembali.

@@ -41,13 +41,13 @@
  * and then hangs: the second launch never gets its own window. Each run does
  * use a fresh userData, so this is not the single-instance lock the argv comment
  * above is about — whatever it is, the honest workaround is one language per
- * invocation, which is how both committed figures were produced.
+ * invocation.
  */
 import { _electron as electron, type CDPSession, type Page } from '@playwright/test'
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { delimiter, join, resolve } from 'node:path'
 
 import { HOME_DIR_NAME } from '../packages/cli/src/names'
 import { buildBlankDocx } from '../packages/docx-engine/src/blank'
@@ -57,7 +57,31 @@ const SHELL_DIR = join(REPO, 'apps/shell')
 const OUT_DIR = join(REPO, 'apps/shell/src/renderer/src/i18n/help/topics/img')
 
 const LANGS = process.argv.slice(2).filter((a) => !a.startsWith('-'))
-const TARGET_LANGS = LANGS.length ? LANGS : ['zh', 'en']
+// English only by default: the manual ships `<name>.en.png` and the registry
+// falls back to it for every other language.
+const TARGET_LANGS = LANGS.length ? LANGS : ['en']
+
+/**
+ * The host environment with the Claude and Codex programs out of reach, as in
+ * gen-help-screenshots.ts: the AI panel behind the sheet would otherwise show
+ * the capturing machine's subscription, and neither program is started.
+ */
+const AI_PROGRAMS = ['claude', 'codex'].flatMap((n) => [n, `${n}.exe`, `${n}.cmd`, `${n}.ps1`])
+function withoutAiPrograms(env: NodeJS.ProcessEnv, home: string): NodeJS.ProcessEnv {
+  const out = { ...env }
+  const pathKey = Object.keys(out).find((k) => k.toLowerCase() === 'path') ?? 'PATH'
+  out[pathKey] = (out[pathKey] ?? '')
+    .split(delimiter)
+    .filter((dir) => dir && !AI_PROGRAMS.some((name) => existsSync(join(dir, name))))
+    .join(delimiter)
+  if (process.platform === 'win32') {
+    out.USERPROFILE = home
+    out.APPDATA = join(home, 'AppData', 'Roaming')
+    out.LOCALAPPDATA = join(home, 'AppData', 'Local')
+    delete out.LocalAppData
+  }
+  return out
+}
 
 async function capture(page: Page, cdp: CDPSession): Promise<Buffer> {
   const { data } = await cdp.send('Page.captureScreenshot', {
@@ -101,7 +125,7 @@ async function main(): Promise<void> {
       executablePath: require('electron') as unknown as string,
       args,
       env: {
-        ...hostEnv,
+        ...withoutAiPrograms(hostEnv, home),
         HOME: home,
         GENOFFICE_USER_DATA: userData,
         GENOFFICE_AUTH_DIR: join(home, HOME_DIR_NAME),

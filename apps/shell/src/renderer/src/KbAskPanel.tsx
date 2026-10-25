@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   AgentLoop,
+  CREATE_DOCUMENT_TOOL,
+  USE_SKILL_TOOL,
+  USER_SKILL_TOOL_NAMES,
+  composeSkills,
+  createDocumentSkill,
   createIpcTransport,
   createKnowledgeBaseSkill,
+  type CreateDocumentFormat,
   type KbFileInfo,
 } from '@genoffice/agent-core'
 import {
@@ -16,7 +22,15 @@ import {
   aiSubscriptionText,
   createFileNav,
   Markdown,
+  NO_SKILL_USE,
+  SentSkillChips,
+  panelUserSkills,
+  useComposerSkills,
+  useSkillProposals,
+  useSkillTemplates,
   type AiTokenUsageView,
+  type SkillChipRef,
+  type SkillUse,
 } from '@genoffice/ui'
 import type { AiSettings } from '@genoffice/ai-provider'
 import {
@@ -59,7 +73,8 @@ import sendStop from './assets/send-stop.png'
 /** one tool a turn used, badge-shaped; the icon follows the call name */
 interface ToolNote {
   label: string
-  kind: 'search' | 'read'
+  /** 'skill': "<title> skill used"; 'create': a new document was made */
+  kind: 'search' | 'read' | 'skill' | 'create'
 }
 
 interface AskMessage {
@@ -70,10 +85,16 @@ interface AskMessage {
   isError?: boolean
   /** tokens the provider billed for this answer, summed across its turns (absent when unreported) */
   usage?: AiTokenUsageView
+  /** the "save as" buttons' outcome for this answer */
+  saved?: { path: string; name: string } | { error: string } | 'saving'
   /** the run stopped because its connection cannot go on: shown as the blocked notice */
   blocked?: AskBlockedRun
   /** the reason as the transport worded it, for a kind the notice has no text of its own for */
   blockedReason?: string
+  /** skill chips a question carried */
+  skills?: SkillChipRef[]
+  /** skill cards the model proposed in this answer (keys of useSkillProposals) */
+  skillProposals?: string[]
 }
 
 export function KbAskPanel({
@@ -114,6 +135,28 @@ export function KbAskPanel({
   const [connectAsked, setConnectAsked] = useState(false)
   /** a question sent while the connection was still being checked: it waits for the answer */
   const heldRef = useRef<string | null>(null)
+  /** the skills called with `/` or `$` in the composer, and the text a question gets for them */
+  const skills = useComposerSkills({
+    lang,
+    // a chip whose skill has a template opens its copy in a new tab (spec 9.7)
+    onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
+  })
+  /** the skill cards `propose_skill` shows; nothing is written before their Save. The
+   *  home panel has no document, so a card never offers a template here */
+  const skillCards = useSkillProposals({ lang })
+  const skillCardsRef = useRef(skillCards)
+  skillCardsRef.current = skillCards
+  /**
+   * The template flow without a document (spec 5.7, 9.7): a template skill
+   * runs in a new tab of its editor, and one the model used offers its new
+   * document. Nothing is ever handed to this panel.
+   */
+  const skillTemplates = useSkillTemplates({ lang, editor: null, setComposer: setDraft })
+  const skillTemplatesRef = useRef(skillTemplates)
+  skillTemplatesRef.current = skillTemplates
+  /** the skills of the held question, and of the last question asked (continue with ...) */
+  const heldSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
+  const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
   /** structured cause of the failure the loop is about to report through onError */
   const streamErrorRef = useRef<AskBlockedRun | null>(null)
   const langRef = useRef(lang)
@@ -196,6 +239,9 @@ export function KbAskPanel({
       })
       .catch(() => setCorpusCount(0))
     refreshSettings()
+    const docSkill = createDocumentSkill({
+      create: (request) => window.aiOffice.kbCreateDocument(request),
+    })
     loopRef.current = new AgentLoop({
       transport: createIpcTransport<AiSettings>({
         onStream: (listener) => window.aiOffice.onAiStream(listener),
@@ -209,24 +255,52 @@ export function KbAskPanel({
           streamErrorRef.current = askBlockedRunOf(error)
         },
       }),
-      skill: createKnowledgeBaseSkill({
-        listFiles: () => corpusRef.current,
-        // a narrowed run's calls carry its scope; main keeps them to the group
-        search: (query, limit) =>
-          window.aiOffice.kbSearch({ q: query, limit }, runScopeRef.current),
-        read: (path, offset) => window.aiOffice.kbRead(path, offset, runScopeRef.current),
-      }),
+      skill: composeSkills('kb+skills', '', [
+        createKnowledgeBaseSkill({
+          listFiles: () => corpusRef.current,
+          // a narrowed run's calls carry its scope; main keeps them to the group
+          search: (query, limit) =>
+            window.aiOffice.kbSearch({ q: query, limit }, runScopeRef.current),
+          read: (path, offset) => window.aiOffice.kbRead(path, offset, runScopeRef.current),
+          alsoCitable: () => docSkill.createdPaths(),
+        }),
+        // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
+        ...panelUserSkills({
+          lang: () => langRef.current,
+          messages: () => loopRef.current?.messages ?? [],
+          // a template skill the model used offers its new document (spec 5.7)
+          onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          onProposal: (proposal) => {
+            skillCardsRef.current.add(proposal)
+            patchLast((last) => ({
+              skillProposals: [...(last.skillProposals ?? []), proposal.key],
+            }))
+          },
+        }),
+        docSkill,
+      ]),
       events: {
         onText: (text) => patchLast({ text }),
-        onToolStart: (call) =>
+        onToolStart: (call) => {
+          // the skill tools show their own line once they ran
+          if (USER_SKILL_TOOL_NAMES.has(call.name)) return
           patchLast((last) => ({
             toolNotes: [
               ...last.toolNotes,
               call.name === 'search_knowledge_base'
                 ? { label: t('askToolSearch'), kind: 'search' as const }
-                : { label: t('askToolRead'), kind: 'read' as const },
+                : call.name === CREATE_DOCUMENT_TOOL
+                  ? { label: t('askToolCreate'), kind: 'create' as const }
+                  : { label: t('askToolRead'), kind: 'read' as const },
             ],
-          })),
+          }))
+        },
+        onToolExecuted: ({ call, execution }) => {
+          if (call.name !== USE_SKILL_TOOL || execution.isError) return
+          patchLast((last) => ({
+            toolNotes: [...last.toolNotes, { label: execution.summary, kind: 'skill' as const }],
+          }))
+        },
         onDone: () => {
           endRunScope()
           finishLast()
@@ -291,12 +365,18 @@ export function KbAskPanel({
     setBusy(false)
   }
 
-  /** `again`: a question asked before, sent once more; `known`: settings just written, ahead of the props */
-  const ask = async (again?: string, known?: AiSettings): Promise<void> => {
+  /** `again`: a question asked before, sent once more; `known`: settings just written, ahead of the props;
+      `skillUse`: the chosen skills (their text goes to the model, their chips onto the question) */
+  const ask = async (
+    again?: string,
+    known?: AiSettings,
+    skillUse: SkillUse = NO_SKILL_USE,
+  ): Promise<void> => {
     const instruction = (again ?? draft).trim()
     if (!instruction || busy) return
     const gate = askSendGate(known ?? aiSettings, connection.statuses, noticeDue)
     heldRef.current = gate === 'checking' ? instruction : null
+    heldSkillUseRef.current = gate === 'checking' ? skillUse : NO_SKILL_USE
     if (gate !== 'run') {
       // nothing is sent: the question stays in the composer while the panel shows what
       // is missing (a connection) or the home screen shows what must be read first
@@ -309,6 +389,15 @@ export function KbAskPanel({
     streamErrorRef.current = null
     // a held question was left in the composer while it waited: it is sent now
     if (again === undefined || draft.trim() === instruction) setDraft('')
+    skills.consume(skillUse)
+    lastSkillUseRef.current = skillUse
+    skillTemplatesRef.current.noteRequest(instruction)
+    const asked: AskMessage = {
+      role: 'user',
+      text: instruction,
+      toolNotes: [],
+      ...(skillUse.chips.length > 0 ? { skills: skillUse.chips } : {}),
+    }
     setBusy(true)
     refreshSettings()
     const seq = ++askSeqRef.current
@@ -326,7 +415,7 @@ export function KbAskPanel({
         if (askSeqRef.current !== seq) return
         setMessages((prev) => [
           ...prev,
-          { role: 'user', text: instruction, toolNotes: [] },
+          asked,
           { role: 'assistant', text: t('askScopeGone'), toolNotes: [], isError: true },
         ])
         setBusy(false)
@@ -358,7 +447,7 @@ export function KbAskPanel({
       endRunScope()
       setMessages((prev) => [
         ...prev,
-        { role: 'user', text: instruction, toolNotes: [] },
+        asked,
         scope === undefined
           ? { role: 'assistant', text: t('askEmptyCorpus'), toolNotes: [] }
           : { role: 'assistant', text: t('askScopeGone'), toolNotes: [], isError: true },
@@ -368,11 +457,12 @@ export function KbAskPanel({
     }
     setMessages((prev) => [
       ...prev,
-      { role: 'user', text: instruction, toolNotes: [] },
+      asked,
       { role: 'assistant', text: '', toolNotes: [], streaming: true },
     ])
     try {
-      await loopRef.current!.run(instruction)
+      // the skill text rides with this question only; the question shows the chips
+      await loopRef.current!.run(instruction + skillUse.text)
     } catch {
       finishLast()
     }
@@ -386,7 +476,7 @@ export function KbAskPanel({
     const step = askHeldStep(gateNow)
     if (step === 'keep') return
     heldRef.current = null
-    if (step === 'start') void ask(held)
+    if (step === 'start') void ask(held, undefined, heldSkillUseRef.current)
     // the check answered "not connected": the prompt takes over
     else if (gateNow === 'connect') setConnectAsked(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only a move of the gate matters
@@ -399,8 +489,30 @@ export function KbAskPanel({
     void changeAiSettings((current) => withContinuedProvider(current, provider)).then((next) => {
       if (!next) return
       settingsRef.current = next
-      if (question) void ask(question.text, next)
+      if (question) void ask(question.text, next, lastSkillUseRef.current)
     })
+  }
+
+  // the deterministic half of "keep this answer": the question becomes the
+  // file name, the answer's markdown the body, same write path as the tool
+  const saveAnswer = async (index: number, format: CreateDocumentFormat): Promise<void> => {
+    const answer = messages[index]
+    if (!answer || answer.saved === 'saving') return
+    const question = [...messages.slice(0, index)].reverse().find((m) => m.role === 'user')
+    const title = (question?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)
+    const patchAt = (saved: AskMessage['saved']): void =>
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, saved } : m)))
+    patchAt('saving')
+    try {
+      const { path } = await window.aiOffice.kbCreateDocument({
+        title,
+        format,
+        content: answer.text,
+      })
+      patchAt({ path, name: path.split(/[\\/]/).pop() ?? path })
+    } catch (error) {
+      patchAt({ error: error instanceof Error ? error.message : String(error) })
+    }
   }
 
   const fileNav = createFileNav((path) => onOpenPath(path))
@@ -475,17 +587,27 @@ export function KbAskPanel({
         )}
         {messages.map((m, i) => (
           <div key={i} className={`kb-ask-msg kb-ask-${m.role}${m.isError ? ' kb-ask-error' : ''}`}>
+            {m.role === 'user' && (
+              <SentSkillChips lang={lang} chips={m.skills} isAvailable={skills.isAvailable} />
+            )}
             {m.role === 'assistant' && m.toolNotes.length > 0 && (
               <div className="kb-ask-tools">
                 {m.toolNotes.map((note, j) => (
                   <span key={j} className="kb-ask-tool-note">
-                    {note.kind === 'search' ? <IconSearch /> : <IconFileText />}
+                    {note.kind === 'search' ? (
+                      <IconSearch />
+                    ) : note.kind === 'read' ? (
+                      <IconFileText />
+                    ) : note.kind === 'create' ? (
+                      <IconFilePlus />
+                    ) : null}
                     {note.label}
                     {m.streaming && j === m.toolNotes.length - 1 ? '…' : ''}
                   </span>
                 ))}
               </div>
             )}
+            {m.skillProposals?.map((key) => skillCards.render(key))}
             {m.text ? (
               m.role === 'assistant' ? (
                 <Markdown text={m.text} navs={[fileNav]} />
@@ -498,6 +620,46 @@ export function KbAskPanel({
             {m.role === 'assistant' && m.usage && (
               <div className="ai-message-usage">
                 <AiUsageChip usage={m.usage} lang={lang} />
+              </div>
+            )}
+            {m.role === 'assistant' && m.text && !m.streaming && !m.isError && (
+              <div className="kb-ask-actions">
+                {m.saved && typeof m.saved === 'object' && 'path' in m.saved ? (
+                  <button
+                    type="button"
+                    className="kb-ask-action kb-ask-action-saved"
+                    onClick={() => onOpenPath((m.saved as { path: string }).path)}
+                  >
+                    <IconFileText />
+                    {t('askSavedAs', { name: m.saved.name })}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="kb-ask-action"
+                      disabled={m.saved === 'saving'}
+                      onClick={() => void saveAnswer(i, 'md')}
+                    >
+                      <IconFilePlus />
+                      {t('askSaveMd')}
+                    </button>
+                    <button
+                      type="button"
+                      className="kb-ask-action"
+                      disabled={m.saved === 'saving'}
+                      onClick={() => void saveAnswer(i, 'docx')}
+                    >
+                      <IconFilePlus />
+                      {t('askSaveDocx')}
+                    </button>
+                    {m.saved && typeof m.saved === 'object' && 'error' in m.saved && (
+                      <span className="kb-ask-action-error">
+                        {t('askSaveFailed', { error: m.saved.error })}
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
             )}
             {m.blocked && (
@@ -515,6 +677,7 @@ export function KbAskPanel({
             )}
           </div>
         ))}
+        {skillTemplates.notes}
         {connectPromptOpen && (
           <>
             <AiConnectPrompt
@@ -530,6 +693,7 @@ export function KbAskPanel({
               onRecheck={connection.recheck}
               onAcceptMetered={(provider) => void connection.acceptMetered(provider)}
               onOpenInstallHelp={connection.openInstallHelp}
+              onOpenConnectHelp={connection.openConnectHelp}
             />
             {AI_SUBSCRIPTION_PROVIDERS.map(
               (provider) =>
@@ -584,7 +748,12 @@ export function KbAskPanel({
           sessionUsage ? <AiUsageChip usage={sessionUsage} session lang={lang} /> : undefined
         }
         onChange={setDraft}
-        onSend={() => void ask()}
+        onSend={() => {
+          const text = draft.trim()
+          if (!text || busy) return
+          skills.withSkills(text, (skillUse) => void ask(undefined, undefined, skillUse))
+        }}
+        skills={skills.composer}
         onStop={() => {
           askSeqRef.current++
           loopRef.current?.cancel()
@@ -690,6 +859,27 @@ function IconInfo(): React.JSX.Element {
     >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8.2v.01M12 11.5V16" />
+    </svg>
+  )
+}
+
+function IconFilePlus(): React.JSX.Element {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="12" y1="18" x2="12" y2="12" />
+      <line x1="9" y1="15" x2="15" y2="15" />
     </svg>
   )
 }

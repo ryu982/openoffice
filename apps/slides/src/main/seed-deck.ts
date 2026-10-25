@@ -24,7 +24,7 @@ import {
   type Session,
 } from './session-state'
 import { shapedMetricsReady } from './shaped-metrics'
-import { takeSlidesSeed } from './seed-queue'
+import { takeSlidesSeedEntry } from './seed-queue'
 
 /**
  * The pending-open step for a view with a queued deck: the view's session
@@ -36,12 +36,24 @@ export async function openSlidesSeed(
   fitWidthPx: number,
   defaultFontOf: (opened: OpenedPptx) => string | undefined,
 ): Promise<OpenResult | null> {
-  const bytes = takeSlidesSeed(wc.id)
-  if (!bytes) return null
+  const entry = takeSlidesSeedEntry(wc.id)
+  if (!entry) return null
+  const bytes = entry.deck
   // lay out only after the complex-script metrics are ready, like any open
   await shapedMetricsReady()
   const opened = await openPptx(bytes)
-  const session: Session = { path: '', opened, fitWidthPx, undoStack: [], redoStack: [] }
+  const session: Session = {
+    path: '',
+    opened,
+    fitWidthPx,
+    undoStack: [],
+    redoStack: [],
+    ...(entry.options.askPathOnFirstSave
+      ? { askPathOnFirstSave: true, firstSaveName: entry.options.suggestedName }
+      : {}),
+    ...(entry.options.recoveryId ? { recoveryId: entry.options.recoveryId } : {}),
+    ...(entry.options.password === undefined ? {} : { password: entry.options.password }),
+  }
   // never saved: the deck holds what the disk does not
   markMetaDirty(session)
   sessions.set(wc.id, session)

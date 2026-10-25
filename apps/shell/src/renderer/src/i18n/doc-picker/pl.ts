@@ -2,11 +2,13 @@ import type { zh } from './zh'
 
 export const pl = {
   docPickTitle: 'Załącz z dokumentów GenOffice',
+  docPickPane: 'Drugie okienko',
   docPickOpen: 'Otwarte dokumenty',
   docPickRecent: 'Ostatnie dokumenty',
   docPickEmpty: 'Brak dokumentów do załączenia.',
   docPickMissing: 'Nie znaleziono pliku.',
   docPickUnsaved: 'Najpierw go zapisz.',
+  docPickModified: 'Zapisz, aby załączyć.',
   docPickUnavailable: 'Nie udało się odczytać listy dokumentów.',
   docPickLimit: 'Można wybrać maksymalnie 20 dokumentów.',
   docPickSelected: 'Zaznaczono: {n}',

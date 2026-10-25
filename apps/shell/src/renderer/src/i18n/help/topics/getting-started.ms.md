@@ -1,6 +1,6 @@
 # Mula pantas: antara muka dan asas
 
-GenOffice ialah satu pek pejabat yang berjalan sepenuhnya pada mesin anda: satu tingkap, satu baris tab, dengan enam editor — Docs (penyuntingan teks), Sheets (hamparan), Slides (persembahan), PDF, Markdown dan HTML. Fail yang digunakan ialah fail .docx / .xlsx / .pptx / .pdf yang sebenar, serasi sepenuhnya dengan Word, Excel dan PowerPoint. Tiada rangkaian diperlukan.
+GenOffice ialah satu pek pejabat yang berjalan pada mesin anda: satu tingkap, satu baris tab, dengan lapan editor — Docs (penyuntingan teks), Sheets (hamparan), Slides (persembahan), PDF, Markdown dan teks biasa, HTML, HWP/HWPX (dokumen Hangul) dan peta minda (.xmind). Setiap editor membuka dan menyimpan fail dalam formatnya sendiri: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx dan .xmind. Penyuntingan tidak memerlukan rangkaian; ciri AI memerlukannya.
 
 ## Gambaran keseluruhan antara muka
 

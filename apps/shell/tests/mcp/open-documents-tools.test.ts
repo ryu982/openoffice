@@ -15,9 +15,9 @@ import {
 } from '../../src/main/mcp/tools/open-documents-tools'
 
 /**
- * `open_documents` over a real MCP session: the list/read/close actions against
- * a fake control, plus the pure helpers (target resolution, the default save
- * path an untitled dirty document is written to before closing).
+ * `open_documents` over a real MCP session: the list/read/save/close actions
+ * against a fake control, plus the pure helpers (target resolution, the default
+ * save path an untitled dirty document is written to before closing).
  */
 
 let service: McpServerService | undefined
@@ -105,6 +105,7 @@ const DOCUMENTS: OpenDocumentTab[] = [
     filePath: 'C:/maps/plan.xmind',
     dirty: true,
   }),
+  doc({ id: 't9', kind: 'epub', title: 'novel.epub', filePath: 'C:/books/novel.epub' }),
 ]
 
 function controlOf(overrides: Partial<OpenDocumentsControl> = {}): OpenDocumentsControl {
@@ -112,6 +113,7 @@ function controlOf(overrides: Partial<OpenDocumentsControl> = {}): OpenDocuments
     list: vi.fn(async () => DOCUMENTS),
     read: vi.fn(async (tab: OpenDocumentTab) => ({ content: `live:${tab.id}` })),
     close: vi.fn(async () => ({})),
+    save: vi.fn(async () => ({ savedPath: 'C:/docs/four.md' })),
     ...overrides,
   }
 }
@@ -216,6 +218,15 @@ describe('open_documents tool', () => {
       t5: 'HTML page',
       t6: 'PDF document',
       t8: 'mind map',
+      t9: 'e-book',
+    })
+    // a book tab keeps its own kind and format
+    expect(documents.find((d) => d.id === 't9')).toMatchObject({
+      kind: 'epub',
+      format: 'epub',
+      path: 'C:/books/novel.epub',
+      saved: true,
+      dirty: false,
     })
     // a mind map tab keeps its own kind
     expect(documents.find((d) => d.id === 't8')).toMatchObject({
@@ -275,6 +286,32 @@ describe('open_documents tool', () => {
     expect(result.path).toBeNull()
   })
 
+  it('saves an open document in place, reporting where it landed and leaving it open', async () => {
+    const save = vi.fn(async () => ({ savedPath: 'C:/docs/four.md' }))
+    await startService(controlOf({ save }))
+    const result = jsonOf(
+      await client!.callTool({
+        name: 'open_documents',
+        arguments: { action: 'save', target: 'C:/docs/four.md' },
+      }),
+    )
+    expect(result.saved).toBe(true)
+    expect(result.savedTo).toBe('C:/docs/four.md')
+    // saving is not closing: no `closed` flag, and the control's save was the one called
+    expect(result.closed).toBeUndefined()
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 't4' }))
+  })
+
+  it('refuses to save a PDF, naming the reason', async () => {
+    await startService(controlOf())
+    const result = await client!.callTool({
+      name: 'open_documents',
+      arguments: { action: 'save', target: 'C:/docs/six.pdf' },
+    })
+    expect(result.isError).toBe(true)
+    expect(textOf(result.content)).toContain('viewer')
+  })
+
   it('closes with save by default, reporting where it was saved', async () => {
     const close = vi.fn(async () => ({ savedPath: 'C:/docs/three.pptx' }))
     await startService(controlOf({ close }))
@@ -314,6 +351,18 @@ describe('open_documents tool', () => {
     expect(textOf(result.content)).toContain('viewer')
   })
 
+  it('reads an open book, its unsaved edits included', async () => {
+    const read = vi.fn(async (tab: OpenDocumentTab) => `# Chapter 1 of ${tab.title}`)
+    await startService(controlOf({ read }))
+    const result = await client!.callTool({
+      name: 'open_documents',
+      arguments: { action: 'read', target: 'C:/books/novel.epub' },
+    })
+    expect(result.isError).toBeFalsy()
+    expect(textOf(result.content)).toContain('# Chapter 1 of novel.epub')
+    expect(read).toHaveBeenCalledWith(expect.objectContaining({ id: 't9', kind: 'epub' }))
+  })
+
   it('lists an open HWP document and reads its live content', async () => {
     const hwp = doc({ id: 't8', kind: 'hwp', title: 'eight.hwpx', filePath: 'C:/docs/eight.hwpx' })
     const read = vi.fn(async () => '제목\n구분 | 연락처')
@@ -341,9 +390,9 @@ describe('open_documents tool', () => {
     expect(message).toContain('C:/docs/one.docx')
   })
 
-  it('requires a target for read and close', async () => {
+  it('requires a target for read, save and close', async () => {
     await startService(controlOf())
-    for (const action of ['read', 'close']) {
+    for (const action of ['read', 'save', 'close']) {
       const result = await client!.callTool({ name: 'open_documents', arguments: { action } })
       expect(result.isError).toBe(true)
       expect(textOf(result.content)).toContain('needs a target')

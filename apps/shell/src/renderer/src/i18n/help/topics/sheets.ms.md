@@ -1,6 +1,6 @@
 # Sheets: hamparan
 
-Sheets ialah editor yang menyerupai Excel. Pengiraan dijalankan dalam proses berasingan yang menggunakan enjin ditulis dalam Rust, jadipersekitaran yang rosak di sana tidak akan menjatuhkan aplikasi ini. Ia membuka dan menyimpan fail .xlsx yang sebenar, manakala .csv dan .tsv dibuka sebagai jadual.
+Sheets ialah editor hamparan. Pengiraan dijalankan dalam proses berasingan yang menggunakan enjin ditulis dalam Rust, jadi kerosakan di sana tidak akan menjatuhkan aplikasi ini. Ia membuka dan menyimpan fail .xlsx, manakala .csv dan .tsv dibuka sebagai jadual.
 
 ## Antara muka
 

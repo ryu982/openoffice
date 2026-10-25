@@ -1,6 +1,6 @@
 # Sheets: fogli di calcolo
 
-Sheets è l'editor simile a Excel; il calcolo avviene in un processo separato, un motore scritto in Rust (un eventuale crash lì non porta giù l'app). Apre e salva veri file .xlsx; i file .csv e .tsv si aprono come tabelle.
+Sheets è l'editor di fogli di calcolo; il calcolo avviene in un processo separato, un motore scritto in Rust (un eventuale crash lì non porta giù l'app). Apre e salva file .xlsx; i file .csv e .tsv si aprono come tabelle.
 
 ## L'interfaccia
 

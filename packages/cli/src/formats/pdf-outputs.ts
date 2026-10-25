@@ -74,6 +74,7 @@ export interface EpubOptions {
   title: string
   author?: string
   cover: boolean
+  pageBreaks?: boolean
 }
 
 /** An EPUB 3 book; the cover is the document's first page. */
@@ -93,6 +94,7 @@ export async function writeEpubFile(
         title: options.title,
         ...(options.author ? { author: options.author } : {}),
         cover: options.cover,
+        ...(options.pageBreaks ? { pageBreaks: true } : {}),
       },
     },
     deps,
@@ -125,6 +127,8 @@ export async function writeTranslatedPdfFile(
   tree: DocumentTree,
   translated: DocumentTree,
   outPath: string,
+  /** each source page beside its translated page (decision 0057) */
+  bilingual: boolean,
   onProgress?: (done: number, total: number) => void,
 ): Promise<WritebackReport> {
   const engine = ocr()
@@ -135,6 +139,7 @@ export async function writeTranslatedPdfFile(
       tree,
       translated,
       ...(engine ? { ocr: engine } : {}),
+      ...(bilingual ? { bilingual } : {}),
       ...(onProgress ? { onProgress } : {}),
     })
     writeOutput(outPath, result.pdf)

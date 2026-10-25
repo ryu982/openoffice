@@ -18,7 +18,7 @@ Licht / Donker / Systeem volgen. Systeem volgen volgt het uiterlijk van het best
 ## Algemeen
 
 - **Positie AI-zijbalk** (links of rechts), **Tekstgrootte AI-paneel** en **Spellingcontrole in AI-chat**.
-- **AI-paneel openen in nieuwe documenten** — uit, een nieuw document begint met het paneel ingeklapt, één klik verderop.
+- **AI-paneel** — Uit, Ingeklapt of Laatste status.
 - **Alle documenten automatisch opslaan** zet AutoSave standaard aan in elke editor; u kunt het voor één venster nog steeds uitschakelen.
 - **Opslaglocatie** met de knop **Wijzigen** en **Standaardapp voor Office-documenten** om .docx / .xlsx / .pptx aan GenOffice toe te kennen.
 
@@ -44,7 +44,7 @@ Met de instellingen kun je GenOffice registreren als verwerker van .docx / .xlsx
 ## Mededelingen over software van derden en updates
 
 - Help ▸ Kennisgevingen over software van derden: het volledige overzicht van opensourcelicenties dat met de app is meegeleverd.
-- Help ▸ Controleren op updates…: start een handmatige controle; bij een nieuwere versie wordt je gevraagd die te installeren.
+- Menu (☰) ▸ Controleren op updates… (op een Mac Help ▸ Controleren op updates…): start een handmatige controle; bij een nieuwere versie wordt je gevraagd die te installeren.
 
 ## MCP-integratie (voor gevorderde gebruikers / AI-clients)
 

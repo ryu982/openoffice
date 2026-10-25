@@ -1,6 +1,6 @@
 # Docs : traitement de texte
 
-Docs est le processeur de texte analogue à Word : il lit et écrit de vrais .docx, avec une pagination en WYSIWYG fidèle.
+Docs est le traitement de texte : il ouvre et enregistre des fichiers .docx, avec une pagination en WYSIWYG.
 
 ## Le ruban
 

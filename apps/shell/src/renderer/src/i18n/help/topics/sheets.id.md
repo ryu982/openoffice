@@ -1,6 +1,6 @@
 # Sheets: spreadsheet
 
-Sheets adalah editor mirip Excel; perhitungan dijalankan di proses mesin Rust tersendiri (kalau proses itu tumbang, aplikasi tidak ikut tumbang). Membuka dan menyimpan .xlsx asli; .csv dan .tsv terbuka sebagai tabel.
+Sheets adalah editor spreadsheet; perhitungan dijalankan di proses mesin Rust tersendiri (kalau proses itu tumbang, aplikasi tidak ikut tumbang). Membuka dan menyimpan file .xlsx; .csv dan .tsv terbuka sebagai tabel.
 
 ## Antarmuka
 

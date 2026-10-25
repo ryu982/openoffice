@@ -47,7 +47,7 @@ Seis herramientas: **Dibujar, Rectángulo, Elipse, Flecha, Nota**, más **Censur
 ## Notas adhesivas y cadenas de comentarios
 
 - La **herramienta Nota** clava un chinchete y abre una tarjeta en el margen para ese texto (el nombre del autor es configurable); al confirmar, se guarda como una anotación de texto PDF estándar.
-- Haga clic en un chinchete para abrir la cadena: **Responder** (cadenas planas al estilo de WPS/Acrobat), **Editar** su comentario, **Eliminar** un comentario o una cadena entera.
+- Haga clic en un chinchete para abrir la cadena: **Responder** (las respuestas forman una sola lista plana, sin anidar), **Editar** su comentario, **Eliminar** un comentario o una cadena entera.
 - Las ediciones en curso sobreviven hasta que el guardado escribe el texto nuevo en la misma anotación del archivo, con lo que se mantienen intactas las cadenas de respuestas.
 
 ## Editar el contenido del PDF (Editar)

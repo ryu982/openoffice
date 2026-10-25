@@ -1,6 +1,6 @@
 # 快速上手：介面與基本操作
 
-GenOffice 是一套完全在你電腦上運作的辦公套件：單一視窗、一排分頁，裡面裝著六個編輯器——Docs（文字處理）、Sheets（試算表）、Slides（簡報）、PDF、Markdown 與 HTML。檔案就是真正的 .docx / .xlsx / .pptx / .pdf，與 Word、Excel、PowerPoint 完全互通，不需要連網。
+GenOffice 是一套在你電腦上運作的辦公套件：單一視窗、一排分頁，裡面裝著八個編輯器——Docs（文字處理）、Sheets（試算表）、Slides（簡報）、PDF、Markdown 與純文字、HTML、HWP/HWPX（韓文文件）以及心智圖（.xmind）。每個編輯器都會開啟並儲存各自格式的檔案：.docx、.xlsx、.pptx、.pdf、.md、.html、.hwp/.hwpx 和 .xmind。編輯文件不需要連網，AI 功能則需要。
 
 ## 介面總覽
 

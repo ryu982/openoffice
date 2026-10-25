@@ -47,7 +47,7 @@ Sechs Werkzeuge: **Freihand, Rechteck, Ellipse, Pfeil, Notiz** sowie **Bereich s
 ## Haftnotizen und Kommentarverläufe
 
 - Das **Notiz-Werkzeug** setzt eine Stecknadel und öffnet eine Randkarte für den Text (Autorenname einstellbar); nach dem Bestätigen wird sie als Standard-PDF-Textannotierung gespeichert.
-- Klicken Sie auf eine Stecknadel, um den Verlauf zu öffnen: **Antworten** (flache Verläufe im WPS-/Acrobat-Stil), **Bearbeiten** Ihres Kommentars, **Löschen** eines Kommentars oder eines ganzen Verlaufs.
+- Klicken Sie auf eine Stecknadel, um den Verlauf zu öffnen: **Antworten** (Antworten bilden eine flache Liste ohne Verschachtelung), **Bearbeiten** Ihres Kommentars, **Löschen** eines Kommentars oder eines ganzen Verlaufs.
 - In Bearbeitung befindliche Inhalte bleiben erhalten, bis das Speichern den neuen Text in dieselbe Annotierung der Datei zurückschreibt; so bleiben die Antwortketten intakt.
 
 ## PDF-Inhalte bearbeiten (Bearbeiten)

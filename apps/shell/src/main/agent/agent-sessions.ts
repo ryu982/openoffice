@@ -4,11 +4,14 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import type {
+  AgentCodexWebSearch,
   AgentPermissionAnswer,
   AgentPermissionMode,
   AgentSession,
   AgentSessionEvent,
   AgentSessionOptions,
+  AgentSkillBundle,
+  AgentSkillEntry,
 } from '@genoffice/ai-provider/agent-session'
 import { comparablePath, isInsidePath } from '@genoffice/ai-provider/agent-session'
 import type {
@@ -17,6 +20,8 @@ import type {
   AiSubscriptionStatus,
 } from '@genoffice/ai-provider'
 import { subscriptionConnection } from '@genoffice/ai-provider'
+import type { AgentSessionSkill } from '../../shared/agent-api'
+import { agentSessionSkillsOf } from './agent-skills'
 
 /**
  * Agent sessions of the shell (decision 0032): one per agent window, each the
@@ -39,10 +44,15 @@ export interface AgentStartRequest {
   provider: AiSubscriptionProviderId
   projectRoot: string
   mode: AgentPermissionMode
+  /**
+   * Codex only: its web search and whether commands reach the internet, as
+   * remembered for the project folder; the Codex app's defaults when absent
+   */
+  codex?: { webSearch: AgentCodexWebSearch; network: boolean } | undefined
 }
 
 export type AgentStartResult =
-  | { ok: true; sessionId: string }
+  | { ok: true; sessionId: string; skills: AgentSessionSkill[] }
   | {
       ok: false
       reason: AgentStartFailure
@@ -56,7 +66,11 @@ export interface AgentRunners {
     onEvent: (event: AgentSessionEvent) => void,
   ) => Promise<AgentSession>
   codex: (
-    options: AgentSessionOptions & { meteredAccepted: boolean },
+    options: AgentSessionOptions & {
+      meteredAccepted: boolean
+      webSearch: AgentCodexWebSearch
+      network: boolean
+    },
     onEvent: (event: AgentSessionEvent) => void,
   ) => Promise<AgentSession>
 }
@@ -72,14 +86,29 @@ export interface AgentManagerDeps {
   homeDir?: string | undefined
   /** the screen language, for the reply-language line of the instructions */
   language: () => string
-  /** start the session's own MCP server; absent when the app has no editors to offer */
+  /**
+   * start the session's own MCP server; absent when the app has no editors to
+   * offer. `session` names the window and session its skill tools answer to
+   */
   startAppMcp?:
-    | ((projectRoot: string) => Promise<{ url: string; token: string; stop(): Promise<void> }>)
+    | ((
+        projectRoot: string,
+        session: AgentMcpSession,
+      ) => Promise<{ url: string; token: string; stop(): Promise<void> }>)
     | undefined
-  /** refresh the skill copy for Claude and return its folder; absent to give no skills */
-  buildSkills?: ((projectRoot: string) => Promise<string | undefined>) | undefined
+  /**
+   * refresh the copy of the enabled skills (and the project's) as they are now, and return it;
+   * both programs get it. Absent, or undefined, to give no skills
+   */
+  buildSkills?: ((projectRoot: string) => Promise<AgentSkillBundle | undefined>) | undefined
   emit: (ownerId: number, sessionId: string, event: AgentSessionEvent) => void
   platform?: NodeJS.Platform | undefined
+}
+
+/** The session a session MCP server serves: its window and its identifier */
+export interface AgentMcpSession {
+  ownerId: number
+  sessionId: string
 }
 
 /** Folders no session may use or reach: sign-in stores, the original app, this app's data */
@@ -123,6 +152,36 @@ export function projectFolderProblem(
 const PROJECT_NOTE_FILES = ['CLAUDE.md', 'AGENTS.md']
 const MAX_PROJECT_NOTES_CHARS = 32_000
 
+function oneLine(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * The skills of a Codex session, for its instructions: Codex lists no skills
+ * of its own here (its skill instructions are off), so the app names the ones
+ * in the session's copy, with where each SKILL.md is and whether the person
+ * must call it.
+ */
+export function codexSkillInstructions(skills: readonly AgentSkillEntry[]): string[] {
+  if (skills.length === 0) return []
+  const lines = [
+    '',
+    'Skills: each skill below is a folder with a SKILL.md of instructions. When a skill is relevant to the task, or the person asks for it, read its SKILL.md first and follow it; paths in it are relative to its folder. A skill marked "manual" is used only when the person asks for it by name. To change a skill with propose_skill, give its name or its id as targetId.',
+  ]
+  for (const skill of skills) {
+    const title = oneLine(skill.title)
+    const named =
+      title && title !== skill.name
+        ? `${skill.name} (id: ${skill.id}; title: ${title})`
+        : `${skill.name} (id: ${skill.id})`
+    const manual = skill.invoke === 'manual' ? '; manual: only when the person asks' : ''
+    lines.push(
+      `- ${named}: ${oneLine(skill.description) || 'no description'}; SKILL.md: ${skill.skillMd}${manual}`,
+    )
+  }
+  return lines
+}
+
 /**
  * What the app adds to the program's own instructions. English, as all model
  * prompts in this app; the reply language follows the screen.
@@ -132,6 +191,7 @@ export async function agentInstructions(
   projectRoot: string,
   language: string,
   withAppTools: boolean,
+  skills: readonly AgentSkillEntry[] = [],
 ): Promise<string> {
   const lines = [
     'You are working for the person inside an office app, in the project folder they chose.',
@@ -144,8 +204,11 @@ export async function agentInstructions(
       'To read or change a document that is open in the app, use the ieumoffice-editor tools: open_documents (action "list") shows what is open; pass a document\'s id or path as `document` to read_document / insert_content / replace_blocks / apply_ops (Word), read_sheet / apply_sheet_ops (Excel), read_deck / apply_slide_ops (PowerPoint). Changes made this way show in the editor and the person can undo them.',
       'Some words may read as {{label}}: the person withheld them from AI. Keep every such marker exactly as it is, never guess what it stands for, and never write a marker into a file.',
       'read_hwp and read_pdf read Hangul and PDF files of the project folder.',
+      'When the person asks to keep the work as a skill, or to make or change a skill, call propose_skill: the app shows them a card to check and save; never write skill files yourself. To install a skill from GitHub, call propose_skill_install with its address: the app shows the person a preview and they decide; never install skills with a command.',
     )
   }
+  // Claude Code finds the skills in the plugin it is given; Codex is told about them
+  if (provider === 'codex') lines.push(...codexSkillInstructions(skills))
   // Claude Code runs with no project settings, so it does not read these files itself; Codex
   // reads AGENTS.md on its own, so only CLAUDE.md is added for it
   const files = provider === 'claude-code' ? PROJECT_NOTE_FILES : ['CLAUDE.md']
@@ -171,6 +234,8 @@ interface LiveSession {
   sessionDir: string
   appMcp?: { stop(): Promise<void> } | undefined
   projectRoot: string
+  /** the skills of the session's copy, once built */
+  skills?: readonly AgentSkillEntry[] | undefined
 }
 
 export interface AgentManager {
@@ -184,6 +249,8 @@ export interface AgentManager {
   stopAll(): void
   /** the project folder of a live session, for opening its files in tabs */
   projectRootOf(ownerId: number, sessionId: string): string | undefined
+  /** the skills a live session got, by their names in its copy (empty before the copy is built) */
+  skillsOf(ownerId: number, sessionId: string): readonly AgentSkillEntry[]
 }
 
 export function createAgentManager(deps: AgentManagerDeps): AgentManager {
@@ -231,12 +298,13 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
       const entry: LiveSession = { id, ownerId, session: undefined, sessionDir, projectRoot }
       live.set(id, entry)
       try {
-        const appMcp = deps.startAppMcp ? await deps.startAppMcp(projectRoot) : undefined
+        const appMcp = deps.startAppMcp
+          ? await deps.startAppMcp(projectRoot, { ownerId, sessionId: id })
+          : undefined
         entry.appMcp = appMcp
-        const skillBundleDir =
-          request.provider === 'claude-code' && deps.buildSkills
-            ? await deps.buildSkills(projectRoot)
-            : undefined
+        // the skills as they are now: a change made during the session applies to the next one
+        const skills = deps.buildSkills ? await deps.buildSkills(projectRoot) : undefined
+        entry.skills = skills?.skills
         const config = settings.providers[request.provider]
         const options: AgentSessionOptions = {
           projectRoot,
@@ -248,10 +316,11 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
             projectRoot,
             deps.language(),
             appMcp !== undefined,
+            skills?.skills,
           ),
           openDocuments: deps.openDocuments(),
           protectedPaths,
-          skillBundleDir,
+          skillBundleDir: skills?.dir,
           appMcp: appMcp ? { url: appMcp.url, token: appMcp.token } : undefined,
           sessionDir,
         }
@@ -263,10 +332,20 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
           request.provider === 'claude-code'
             ? await deps.runners.claude(options, onEvent)
             : await deps.runners.codex(
-                { ...options, meteredAccepted: connection === 'metered' },
+                {
+                  ...options,
+                  meteredAccepted: connection === 'metered',
+                  webSearch: request.codex?.webSearch ?? 'cached',
+                  network: request.codex?.network === true,
+                },
                 onEvent,
               )
-        return { ok: true, sessionId: id }
+        return {
+          ok: true,
+          sessionId: id,
+          // the window's `/` list: what the session got, with the paths a chip names
+          skills: skills ? await agentSessionSkillsOf(skills.skills) : [],
+        }
       } catch (error) {
         cleanup(entry)
         return {
@@ -314,6 +393,10 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
 
     projectRootOf(ownerId, sessionId) {
       return own(ownerId, sessionId)?.projectRoot
+    },
+
+    skillsOf(ownerId, sessionId) {
+      return own(ownerId, sessionId)?.skills ?? []
     },
   }
 }

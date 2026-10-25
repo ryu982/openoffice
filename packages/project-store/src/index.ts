@@ -3,6 +3,7 @@ export type {
   ChatMessage,
   ChatMeta,
   ChatScope,
+  ChatSkillChip,
   ProjectData,
   ProjectIndex,
   ProjectInfo,

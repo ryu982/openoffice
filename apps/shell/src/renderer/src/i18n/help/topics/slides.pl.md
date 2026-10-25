@@ -1,6 +1,6 @@
 # Slides: prezentacje
 
-Slides to edytor podobny do PowerPointa: otwiera i zapisuje prawdziwe pliki.pptx.
+Slides to edytor prezentacji: otwiera i zapisuje pliki .pptx.
 
 ## Interfejs
 

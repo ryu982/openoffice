@@ -1,6 +1,6 @@
 # Slides: présentations
 
-Slides est l’éditeur analogue à PowerPoint: il lit et écrit de vrais.pptx.
+Slides est l’éditeur de présentations : il ouvre et enregistre des fichiers .pptx.
 
 ## L’interface
 

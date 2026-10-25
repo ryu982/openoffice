@@ -36,17 +36,35 @@ Seja qual for a opção, o agente nunca:
 
 ## Claude Code e Codex
 
-- O **Codex** executa os comandos no seu próprio espaço isolado, incluindo os que permitir. Só pode gravar na pasta do projeto, a internet fica bloqueada e não consegue ler os seus ficheiros pessoais fora do projeto. Quando uma sessão começa, o GenOffice verifica primeiro se este isolamento funciona neste PC, e não inicia se não funcionar.
+- O **Codex** executa os comandos no seu próprio espaço isolado, incluindo os que permitir. Só pode gravar na pasta do projeto, a internet fica bloqueada a menos que a ative, e não consegue ler os seus ficheiros pessoais fora do projeto. Quando uma sessão começa, o GenOffice verifica primeiro se este isolamento funciona neste PC, e não inicia se não funcionar.
 - O **Claude Code** não consegue isolar comandos no Windows. Um comando que permitir pode chegar a todo o PC e à internet. É por isso que, em **Confiar neste projeto**, é o próprio revisor do Claude Code que verifica cada ação no seu lugar.
 
 Um documento que alguém lhe enviou pode trazer instruções escondidas que mandam a IA fazer outra coisa. Numa pasta com material que não conhece, use uma das opções que perguntam.
 
+## Pesquisa na web e internet
+
+- O **Claude Code** pode pesquisar na web e ler páginas web, mas pergunta antes. Pergunta na primeira vez que pesquisa e por cada site cujas páginas lê. Na pergunta, **Permitir pesquisas nesta sessão** ou **Permitir este site nesta sessão** faz com que deixe de perguntar durante o resto da sessão. Em **Confiar neste projeto**, quem decide é o próprio revisor do Claude Code.
+- Quando escolhe o **Codex**, o ecrã de início mostra mais duas definições.
+
+| Definição                          | Opções                                         | No início         |
+| ---------------------------------- | ---------------------------------------------- | ----------------- |
+| **Pesquisa na web**                | Resultados salvos / Em tempo real / Desativada | Resultados salvos |
+| **Acesso à internet dos comandos** | Desativado / Ativado                           | Desativado        |
+
+- Resultados salvos vêm de conteúdo web recolhido previamente; Em tempo real pesquisa a web tal como está agora.
+- As duas definições são memorizadas para cada pasta de projeto. Uma pasta usada pela primeira vez começa com os valores acima.
+- Com o acesso à internet dos comandos ativado, os comandos que o Codex executa podem chegar à internet. Em **Confiar neste projeto** chegam lá sem perguntar, e instruções escondidas num documento recebido podem levá-los a enviar os seus dados para fora. Este aviso aparece quando o ativa. Ative-o só quando precisar. A habilidade integrada «Encontrar habilidades» só funciona com esta definição ativada.
+
 ## Notas do projeto e habilidades
 
 - Se a pasta tiver um `CLAUDE.md` ou um `AGENTS.md`, o conteúdo é entregue ao agente como instruções. Escreva lá o que deve valer sempre: o tom, os termos, o formato dos documentos a criar.
-- O Claude Code recebe uma cópia das habilidades destes locais: `.claude/skills` na pasta do projeto, `.ieumoffice/skills` e `.claude/skills` na sua pasta pessoal, e as habilidades dos plugins do Claude instalados. O número de habilidades disponíveis aparece por baixo da linha que indica que a sessão começou.
-- O Codex lê sozinho a sua própria pasta de habilidades.
+- A janela do agente usa as habilidades ativadas em **Configurações ▸ Habilidades**. O Claude Code e o Codex recebem a mesma lista. Há mais sobre habilidades em [Habilidades](help://skills).
+- As habilidades em `.claude/skills` e `.agents/skills` da pasta do projeto são usadas nessa sessão sem precisarem de ser ativadas.
+- Se escolher uma habilidade com `/` ou `$` na caixa de entrada, é colocada antes do seu pedido uma instrução para ler e seguir essa habilidade.
+- A lista de habilidades fica fixa quando a sessão começa. Se ativar ou desativar habilidades durante uma sessão, aparece «As habilidades alteradas valem a partir da próxima sessão».
+- Quando o agente cria uma habilidade, aparece um cartão de habilidade na janela; quando encontra uma habilidade que vale a pena instalar, aparece uma pré-visualização de instalação. Nada é guardado nem instalado até clicar em **Salvar** ou **Instalar**, e uma habilidade instalada fica disponível a partir da próxima sessão.
 - Os programas que os scripts de uma habilidade usam (Python, etc.) têm de estar instalados neste PC.
+- Se usou o agente numa versão anterior, na primeira vez que abrir a janela do agente aparece, uma única vez, este aviso: «As habilidades agora são ativadas e desativadas em Configurações → Habilidades. As habilidades das pastas de habilidades do Claude e do Codex começam desativadas.» **Abrir configurações** leva-o diretamente lá.
 
 ## Ficheiros novos e documentos abertos
 
@@ -57,6 +75,7 @@ Um documento que alguém lhe enviou pode trazer instruções escondidas que mand
 ## Privacidade e utilização
 
 - O que ocultou da IA só fica oculto quando a aplicação lê para o agente um documento aberto no GenOffice. Os ficheiros que o agente lê sozinho da pasta são enviados tal como estão.
+- Os termos pesquisados na web e os endereços das páginas lidas vão para a empresa do programa e para esses sites. Com o acesso à internet dos comandos do Codex ativado, os dados podem ir para onde quer que um comando se ligue.
 - O agente trabalha em muitos passos, por isso gasta mais do limite da sua assinatura do que o painel de IA. Quando o limite se esgota, o pedido falha; o agente nunca passa para outra IA nem para uma conexão paga.
 
 ## Se algo correr mal

@@ -1,6 +1,6 @@
 # Docs: procesamiento de texto
 
-Docs es el procesador de texto similar a Word: lee y escribe .docx reales con una paginación WYSIWYG fiel.
+Docs es el procesador de texto: abre y guarda archivos .docx con paginación WYSIWYG.
 
 ## La cinta de opciones
 

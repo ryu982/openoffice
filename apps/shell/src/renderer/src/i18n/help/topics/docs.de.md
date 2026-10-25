@@ -1,6 +1,6 @@
 # Docs: Textverarbeitung
 
-Docs ist der Word-ähnliche Textprozessor: Er liest und schreibt echte .docx mit treuem WYSIWYG-Seitenumbruch.
+Docs ist die Textverarbeitung: Sie öffnet und speichert .docx-Dateien mit WYSIWYG-Seitenumbruch.
 
 ## Das Menüband
 

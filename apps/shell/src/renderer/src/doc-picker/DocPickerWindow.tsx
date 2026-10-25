@@ -1,19 +1,42 @@
 import { useEffect, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import type { DocItemGroup, DocListItem, DocPickerApi } from '../../../shared/doc-picker-api'
+import type {
+  DocItemGroup,
+  DocItemState,
+  DocListItem,
+  DocPickerApi,
+} from '../../../shared/doc-picker-api'
 import { docPickerText, type DocPickerStringKey } from '../i18n/strings-doc-picker'
 
 /** How many documents one attach may carry (the plan caps the picker here) */
 export const DOC_PICK_MAX = 20
 
-const GROUPS: ReadonlyArray<{ group: DocItemGroup; label: DocPickerStringKey }> = [
+/** the groups in the order they are shown: the other split pane, open documents, recent ones */
+export const DOC_PICK_GROUPS: ReadonlyArray<{ group: DocItemGroup; label: DocPickerStringKey }> = [
+  { group: 'pane', label: 'docPickPane' },
   { group: 'open', label: 'docPickOpen' },
   { group: 'recent', label: 'docPickRecent' },
 ]
 
+/** why a row cannot be picked; null for a row that can */
+export function docPickReason(state: DocItemState): DocPickerStringKey | null {
+  switch (state) {
+    case 'missing':
+      return 'docPickMissing'
+    case 'unsaved':
+      return 'docPickUnsaved'
+    case 'modified':
+      return 'docPickModified'
+    case 'ok':
+      return null
+  }
+}
+
 /**
- * Tick the open and recent documents the shell offers, then attach them to the
- * AI panel that asked. The window deals in ids only; it never sees a path.
+ * Tick the documents the shell offers (the other split pane, open tabs, recent
+ * files), then attach them to the AI panel that asked. The window deals in ids
+ * only (a saved document's id is its path; the shell accepts only ids it
+ * just listed, decision 0051).
  */
 export function DocPickerWindow({ lang, api }: { lang: Lang; api: DocPickerApi }) {
   const t = (key: DocPickerStringKey, params?: Record<string, string>) =>
@@ -47,8 +70,9 @@ export function DocPickerWindow({ lang, api }: { lang: Lang; api: DocPickerApi }
 
   const toggle = (item: DocListItem) => {
     // a document that cannot be attached is not ticked; say why instead
-    if (item.state !== 'ok') {
-      setNotice(item.state === 'missing' ? 'docPickMissing' : 'docPickUnsaved')
+    const reason = docPickReason(item.state)
+    if (reason) {
+      setNotice(reason)
       return
     }
     if (!selected.has(item.id) && selected.size >= DOC_PICK_MAX) {
@@ -83,7 +107,7 @@ export function DocPickerWindow({ lang, api }: { lang: Lang; api: DocPickerApi }
         ) : items.length === 0 ? (
           <p className="doc-note">{t('docPickEmpty')}</p>
         ) : (
-          GROUPS.map(({ group, label }) => {
+          DOC_PICK_GROUPS.map(({ group, label }) => {
             const inGroup = items.filter((item) => item.group === group)
             if (inGroup.length === 0) return null
             return (
@@ -92,13 +116,8 @@ export function DocPickerWindow({ lang, api }: { lang: Lang; api: DocPickerApi }
                 <ul className="doc-list">
                   {inGroup.map((item) => {
                     const picked = selected.has(item.id)
-                    const blocked = item.state !== 'ok'
-                    const reason =
-                      item.state === 'missing'
-                        ? 'docPickMissing'
-                        : item.state === 'unsaved'
-                          ? 'docPickUnsaved'
-                          : null
+                    const reason = docPickReason(item.state)
+                    const blocked = reason !== null
                     return (
                       <li key={item.id}>
                         <button

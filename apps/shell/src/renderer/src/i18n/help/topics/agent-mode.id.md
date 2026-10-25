@@ -36,17 +36,35 @@ Apa pun pilihan Anda, agen tidak akan:
 
 ## Claude Code dan Codex
 
-- **Codex** menjalankan perintah di ruang terisolasinya sendiri, termasuk perintah yang Anda izinkan. Codex hanya dapat menulis di folder proyek, internet diblokir, dan file pribadi Anda di luar proyek tidak dapat dibacanya. Saat sesi dimulai, GenOffice lebih dulu memeriksa apakah isolasi ini berfungsi di PC ini, dan tidak memulai sesi jika tidak berfungsi.
+- **Codex** menjalankan perintah di ruang terisolasinya sendiri, termasuk perintah yang Anda izinkan. Codex hanya dapat menulis di folder proyek, internet diblokir kecuali Anda mengaktifkannya, dan file pribadi Anda di luar proyek tidak dapat dibacanya. Saat sesi dimulai, GenOffice lebih dulu memeriksa apakah isolasi ini berfungsi di PC ini, dan tidak memulai sesi jika tidak berfungsi.
 - **Claude Code** tidak dapat mengisolasi perintah di Windows. Perintah yang Anda izinkan dapat menjangkau seluruh PC dan internet. Karena itu, pada **Percayai proyek ini**, pemeriksa milik Claude Code sendiri yang memeriksa setiap tindakan menggantikan Anda.
 
 Dokumen yang dikirim orang lain kepada Anda bisa berisi instruksi tersembunyi yang menyuruh AI melakukan hal lain. Di folder berisi bahan yang tidak Anda kenal, gunakan salah satu pilihan yang bertanya.
 
+## Pencarian web dan internet
+
+- **Claude Code** dapat mencari di web dan membaca halaman web, tetapi bertanya dulu. Claude Code bertanya saat pertama kali mencari, dan untuk setiap situs yang halamannya akan dibaca. Dalam pertanyaan itu, **Izinkan pencarian selama sesi ini** atau **Izinkan situs ini selama sesi ini** membuatnya tidak bertanya lagi sampai sesi berakhir. Pada **Percayai proyek ini**, pemeriksa milik Claude Code sendiri yang memutuskan.
+- Saat Anda memilih **Codex**, layar awal menampilkan dua pengaturan tambahan.
+
+| Pengaturan                        | Pilihan                               | Awalnya         |
+| --------------------------------- | ------------------------------------- | --------------- |
+| **Pencarian web**                 | Hasil tersimpan / Langsung / Nonaktif | Hasil tersimpan |
+| **Akses internet untuk perintah** | Nonaktif / Aktif                      | Nonaktif        |
+
+- Hasil tersimpan berasal dari konten web yang dikumpulkan sebelumnya; Langsung mencari web sebagaimana adanya sekarang.
+- Kedua pengaturan ini diingat untuk setiap folder proyek. Folder yang baru pertama kali dipakai dimulai dengan nilai di atas.
+- Jika akses internet untuk perintah aktif, perintah yang dijalankan Codex dapat menjangkau internet. Pada **Percayai proyek ini**, perintah menjangkaunya tanpa bertanya, dan instruksi tersembunyi dalam dokumen yang Anda terima bisa membuatnya mengirim data Anda keluar. Peringatan ini muncul saat Anda mengaktifkannya. Aktifkan hanya bila diperlukan. Skill bawaan "Cari skill" hanya berfungsi jika pengaturan ini aktif.
+
 ## Catatan proyek dan skill
 
 - Jika folder berisi `CLAUDE.md` atau `AGENTS.md`, isinya diberikan kepada agen sebagai instruksi. Tuliskan hal yang harus berlaku setiap kali: nada, istilah, format dokumen yang akan dibuat.
-- Claude Code mendapat salinan skill dari tempat-tempat ini: `.claude/skills` di folder proyek, `.ieumoffice/skills` dan `.claude/skills` di folder pengguna Anda, serta skill dari plugin Claude yang terpasang. Jumlah skill yang tersedia muncul di bawah baris yang menyatakan sesi sudah dimulai.
-- Codex membaca folder skill miliknya sendiri.
+- Jendela agen memakai skill yang diaktifkan di **Pengaturan ▸ Skill**. Claude Code dan Codex mendapat daftar yang sama. Penjelasan lebih lengkap tentang skill ada di [Skill](help://skills).
+- Skill di `.claude/skills` dan `.agents/skills` pada folder proyek dipakai dalam sesi itu tanpa perlu diaktifkan.
+- Pilih skill dengan `/` atau `$` di kotak input, maka instruksi untuk membaca dan mengikuti skill itu ditempatkan di depan permintaan Anda.
+- Daftar skill ditetapkan saat sesi dimulai. Jika Anda mengaktifkan atau menonaktifkan skill selama sesi berjalan, muncul "Skill yang diubah berlaku mulai sesi berikutnya".
+- Saat agen membuat skill, kartu skill muncul di jendela; saat agen menemukan skill yang layak dipasang, muncul pratinjau pemasangan. Tidak ada yang disimpan atau dipasang sebelum Anda mengeklik **Simpan** atau **Pasang**, dan skill yang dipasang tersedia mulai sesi berikutnya.
 - Program yang dipakai skrip sebuah skill (Python dan sebagainya) harus terpasang di PC ini.
+- Jika Anda pernah memakai agen di versi sebelumnya, saat pertama kali membuka jendela agen muncul pemberitahuan satu kali: "Skill kini diaktifkan dan dinonaktifkan di Pengaturan → Skill. Skill di folder skill Claude dan Codex awalnya nonaktif." **Buka Pengaturan** langsung membawa Anda ke sana.
 
 ## File baru dan dokumen yang terbuka
 
@@ -57,6 +75,7 @@ Dokumen yang dikirim orang lain kepada Anda bisa berisi instruksi tersembunyi ya
 ## Privasi dan pemakaian
 
 - Bagian yang Anda sembunyikan dari AI tetap tersembunyi hanya jika aplikasi yang membacakan dokumen yang terbuka di GenOffice untuk agen. File yang dibaca agen sendiri dari folder dikirim apa adanya.
+- Kata kunci pencarian web dan alamat halaman yang dibaca dikirim ke perusahaan pembuat program itu dan ke situs-situs tersebut. Jika akses internet untuk perintah Codex aktif, data dapat terkirim ke mana pun perintah terhubung.
 - Agen bekerja dalam banyak langkah, jadi memakai lebih banyak kuota langganan Anda dibandingkan panel AI. Jika kuota habis, permintaan gagal; agen tidak pernah beralih ke AI lain atau ke koneksi yang berbayar.
 
 ## Jika terjadi masalah

@@ -247,6 +247,9 @@ export async function convertHtmlToDocx(
         if (image.complete && image.naturalWidth > 0) {
           return image.decode?.().catch(() => {})
         }
+        // complete without pixels is a broken image whose error event already
+        // fired: a listener added now would only ever see the timeout
+        if (image.complete) return undefined
         return new Promise<void>((resolve) => {
           const finish = () => resolve()
           image.addEventListener('load', finish, { once: true })

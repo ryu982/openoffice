@@ -22,6 +22,19 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  NO_SKILL_USE,
+  SentSkillChips,
+  skillChipRefsOf,
+  useComposerSkills,
+  panelUserSkills,
+  SkillUsedNotes,
+  useSkillProposals,
+  useSkillTemplates,
+  type TemplateDocument,
+  type SkillChipRef,
+  type SkillUse,
+  docMentionActions,
+  type AiComposerDocs,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type {
@@ -124,6 +137,10 @@ interface ChatEntry {
   attachments?: AttachmentMeta[]
   /** the selection this message was about, frozen at send */
   scope?: AiScopeQuoteData
+  /** skill chips this user message carried */
+  skills?: SkillChipRef[]
+  /** skill cards the model proposed in this turn (keys of useSkillProposals) */
+  skillProposals?: string[]
 }
 
 const MODEL_BRIDGE: AiModelPickerBridge = {
@@ -137,12 +154,18 @@ export function AiPanel({
   bridge,
   filePath,
   onCollapse,
+  templateDocument,
+  onSkillHandoff,
 }: {
   /** the document operations of the open editor */
   bridge: AgentBridge
   /** the file of the open document: the conversation is kept with it */
   filePath: string | null
   onCollapse: () => void
+  /** the document while it can go along as a skill's template (spec 5.7) */
+  templateDocument?: TemplateDocument | null
+  /** this tab took a request handed over by the template flow: show the panel */
+  onSkillHandoff?: () => void
 }): ReactElement {
   const { lang, t } = useI18n()
   const [chat, setChat] = useState<ChatEntry[]>([])
@@ -160,7 +183,13 @@ export function AiPanel({
   const chatIdsRef = useRef<{ projectId: string; chatId: string } | null>(null)
   /** messages sent before that was known, written once it is */
   const pendingPersistRef = useRef<
-    { role: 'user' | 'assistant'; text: string; tools?: ToolActivity[]; scope?: AiScopeQuoteData }[]
+    {
+      role: 'user' | 'assistant'
+      text: string
+      tools?: ToolActivity[]
+      scope?: AiScopeQuoteData
+      skills?: SkillChipRef[]
+    }[]
   >([])
   /** what the tools of the run in flight did, kept with its reply */
   const runToolsRef = useRef<ToolActivity[]>([])
@@ -171,12 +200,13 @@ export function AiPanel({
     text: string,
     tools?: ToolActivity[],
     scope?: AiScopeQuoteData,
+    skills?: SkillChipRef[],
   ): void => {
     const api = window.projectApi
     if (!api) return
     const ids = chatIdsRef.current
     if (!ids) {
-      pendingPersistRef.current.push({ role, text, tools, scope })
+      pendingPersistRef.current.push({ role, text, tools, scope, skills })
       return
     }
     void api
@@ -196,6 +226,7 @@ export function AiPanel({
             }
           : {}),
         ...(scope ? { scope } : {}),
+        ...(skills && skills.length > 0 ? { skills } : {}),
       })
       .catch(() => {
         // the conversation goes on without its record
@@ -211,6 +242,7 @@ export function AiPanel({
     attachments: AttachmentMeta[]
     /** what was selected when the message was queued; checked again when it is changed */
     scope: SelectionScope | null
+    skillUse: SkillUse
   }>({
     busy,
     submit: (text, queued) => {
@@ -219,11 +251,44 @@ export function AiPanel({
       // nothing can run right now: the message stays queued, and in front of "not connected"
       // the queue is paused so it does not start by itself after a sign-in
       if (!sendGateRef.current.admitQueued(() => msgQueueRef.current.setPaused(true))) return false
-      return send(text, queued.attachments, queued.scope)
+      return send(text, queued.attachments, queued.scope, queued.skillUse)
     },
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
+  const skills = useComposerSkills({
+    lang,
+    // a chip whose skill has a template runs in a new tab (spec 5.7)
+    onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
+  })
+  const skillsRef = useRef(skills)
+  skillsRef.current = skills
+  /** the skill cards `propose_skill` shows; nothing is written before their Save */
+  const skillCards = useSkillProposals({
+    lang,
+    // the document goes along as a template while it can be one (spec 5.7)
+    templateDocument: templateDocument ?? null,
+    persistSaved: (record) => persistMessage('assistant', '', [record]),
+  })
+  const skillCardsRef = useRef(skillCards)
+  skillCardsRef.current = skillCards
+  /**
+   * The template flow (spec 5.6, 5.7): a chip whose skill has a template runs
+   * in a new tab, a template the model used offers its new document, and the
+   * request a new tab was opened for runs here once through the send gate.
+   */
+  const skillTemplates = useSkillTemplates({
+    lang,
+    editor: 'hwp',
+    cards: skillCards,
+    busy,
+    send: (text, use) => send(text, undefined, undefined, use),
+    onTaken: onSkillHandoff,
+    setComposer: setPrompt,
+  })
+  const skillTemplatesRef = useRef(skillTemplates)
+  skillTemplatesRef.current = skillTemplates
 
   // ---- attachments: files the user hands over as reference material ----
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
@@ -285,6 +350,17 @@ export function AiPanel({
       accepted: added?.accepted ?? [],
       rejected: [...(added?.rejected ?? []), ...notes],
     })
+  }
+
+  /** The `@` document list in the input attaches through the same route as the buttons */
+  const docMention: AiComposerDocs = {
+    lang,
+    ...docMentionActions({
+      lang,
+      add: async (paths) => (await window.hwpApi.addAttachmentPaths(paths)) ?? null,
+      merge: mergeAttachments,
+    }),
+    attachments,
   }
 
   const onDrop = async (e: ReactDragEvent): Promise<void> => {
@@ -406,12 +482,13 @@ export function AiPanel({
     text: string
     attachments?: AttachmentMeta[]
     scope: SelectionScope | null
+    skillUse: SkillUse
   }>({
     settings: aiSettings,
     statuses,
     store: MODEL_BRIDGE,
     start: (held) => {
-      send(held.text, held.attachments, held.scope)
+      send(held.text, held.attachments, held.scope, held.skillUse)
     },
     onNotConnected: () => refreshSubscriptionRef.current(),
     onSettingsSaved: setAiSettings,
@@ -519,6 +596,19 @@ export function AiPanel({
       skill: composeWithDrive('hwp+files', '', () => loopRef.current?.messages ?? [], [
         skillRef.current.skill,
         createFilesSkill(() => availableAttachmentsRef.current()),
+        // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
+        ...panelUserSkills({
+          lang: () => langRef.current,
+          messages: () => loopRef.current?.messages ?? [],
+          // a template skill the model used offers its new document (spec 5.7)
+          onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          onProposal: (proposal) => {
+            skillCardsRef.current.add(proposal)
+            patchLast((last) => ({
+              skillProposals: [...(last.skillProposals ?? []), proposal.key],
+            }))
+          },
+        }),
       ]),
       systemSuffix: () => aiLangDirective(langRef.current),
       events: {
@@ -640,6 +730,8 @@ export function AiPanel({
 
   /** the attachments of the run in progress, for a retry of it */
   const runAttachmentsRef = useRef<AttachmentMeta[]>([])
+  /** the skills of the run in progress: a retry sends the same skill text */
+  const runSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
 
   /** Returns false when no run was started (the text stays with the caller). */
   const send = (
@@ -647,6 +739,8 @@ export function AiPanel({
     attachmentsOverride?: AttachmentMeta[],
     /** undefined: what is selected now; a value: what was selected when the message was written */
     scopeOverride?: SelectionScope | null,
+    /** the chosen skills: their text goes to the model, their chips onto the bubble */
+    skillUse: SkillUse = NO_SKILL_USE,
   ): boolean => {
     const instruction = text.trim()
     const loop = loopRef.current
@@ -656,7 +750,12 @@ export function AiPanel({
     // is kept. Either way nothing is sent now and the text stays with the caller.
     const sentScope = scopeOverride === undefined ? scopeRef.current : scopeOverride
     if (
-      !sendGate.admit({ text: instruction, attachments: attachmentsOverride, scope: sentScope })
+      !sendGate.admit({
+        text: instruction,
+        attachments: attachmentsOverride,
+        scope: sentScope,
+        skillUse,
+      })
     ) {
       showWhatHoldsTheSend()
       return false
@@ -690,7 +789,7 @@ export function AiPanel({
         }
       : undefined
     runToolsRef.current = []
-    persistMessage('user', instruction, undefined, scopeQuote)
+    persistMessage('user', instruction, undefined, scopeQuote, skillUse.chips)
     setChat((prev) => [
       ...prev,
       {
@@ -698,10 +797,14 @@ export function AiPanel({
         text: instruction,
         ...(sentAtts.length > 0 ? { attachments: sentAtts } : {}),
         ...(scopeQuote ? { scope: scopeQuote } : {}),
+        ...(skillUse.chips.length > 0 ? { skills: skillUse.chips } : {}),
       },
       { role: 'assistant', text: '', streaming: true },
     ])
     setPrompt('')
+    skillsRef.current.consume(skillUse)
+    skillTemplatesRef.current.noteRequest(text)
+    runSkillUseRef.current = skillUse
     setBusy(true)
     void (async () => {
       try {
@@ -717,8 +820,10 @@ export function AiPanel({
         setAiSettings(settings)
         const noted = revertedNoteDueRef.current
         revertedNoteDueRef.current = false
+        // the skill text rides with this request only; the bubble and the record keep the chips
+        const asked = instruction + skillUse.text
         loop.run(
-          noted ? `${REVERTED_NOTE}\n\n${instruction}` : instruction,
+          noted ? `${REVERTED_NOTE}\n\n${asked}` : asked,
           images.length > 0 ? images : undefined,
         )
       } catch (err) {
@@ -743,15 +848,35 @@ export function AiPanel({
   const enqueueDraft = () => {
     const text = prompt.trim()
     if (!text) return
+    skills.withSkills(text, (skillUse) => enqueueWith(text, skillUse))
+  }
+  const enqueueWith = (text: string, skillUse: SkillUse) => {
+    skillsRef.current.consume(skillUse)
     // the queued message owns the composer's attachments and the selection it was written
     // about; the pump hands them back to send
-    msgQueue.enqueue(text, { attachments: attachmentsRef.current, scope: scopeRef.current })
+    msgQueue.enqueue(text, {
+      attachments: attachmentsRef.current,
+      scope: scopeRef.current,
+      skillUse,
+    })
     setAttachments([])
     setPrompt('')
   }
 
   const retry = (): void => {
-    send(runInstructionRef.current, runAttachmentsRef.current, runScopeRef.current)
+    send(
+      runInstructionRef.current,
+      runAttachmentsRef.current,
+      runScopeRef.current,
+      runSkillUseRef.current,
+    )
+  }
+
+  /** A send typed in the composer: the chosen skills are read first, then it goes out. */
+  const sendPrompt = (): void => {
+    const text = prompt.trim()
+    if (!text) return
+    skills.withSkills(text, (skillUse) => send(text, undefined, undefined, skillUse))
   }
 
   /** "Continue with …" on a blocked run: that provider becomes the selection, then the request reruns */
@@ -774,6 +899,8 @@ export function AiPanel({
     }
     return -1
   })()
+  /** the newest user message: the one the last run (and its skills) belongs to */
+  const lastUserIdx = chat.map((entry) => entry.role).lastIndexOf('user')
 
   const revert = (idx: number): void => {
     const changes = chat[idx]?.changes
@@ -809,15 +936,17 @@ export function AiPanel({
       .then((ids) => {
         chatIdsRef.current = ids
         for (const msg of pendingPersistRef.current.splice(0)) {
-          persistMessage(msg.role, msg.text, msg.tools, msg.scope)
+          persistMessage(msg.role, msg.text, msg.tools, msg.scope, msg.skills)
         }
         return api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
       })
-      .then((messages) => {
-        if (!mountedRef.current || messages.length === 0) return
+      .then((stored) => {
+        if (!mountedRef.current || stored.length === 0) return
         // a message the user sent while the record loaded is not replaced. Decided here and
         // not in the state update, which React runs later: the model is to get the same
         if (chatNowRef.current.length > 0 || loopRef.current?.busy) return
+        // skill cards come back closed; a saved card's record is not part of the conversation
+        const messages = skillCardsRef.current.restore(stored)
         setChat(
           messages.map((message) => ({
             role: message.role,
@@ -833,7 +962,17 @@ export function AiPanel({
                 }
               : {}),
             ...(message.scope ? { scope: message.scope } : {}),
+            ...(message.role === 'user' && skillChipRefsOf(message.skills).length > 0
+              ? { skills: skillChipRefsOf(message.skills) }
+              : {}),
+            ...(message.skillProposals ? { skillProposals: message.skillProposals } : {}),
           })),
+        )
+        // the next request re-reads the current text of the skills this conversation used
+        skillsRef.current.restoreHistory(
+          messages.map((message) =>
+            message.role === 'user' ? skillChipRefsOf(message.skills) : undefined,
+          ),
         )
         loopRef.current?.restore(
           messages.map((message) => ({ role: message.role, text: message.text })),
@@ -958,6 +1097,9 @@ export function AiPanel({
                 setScopeCleared(null)
                 setBusy(false)
                 setChat([])
+                skills.resetConversation()
+                skillCards.reset()
+                skillTemplates.reset()
                 clearMarks()
               }}
               data-tip={t('aiNewChat')}
@@ -997,6 +1139,7 @@ export function AiPanel({
             return (
               <div key={i} className="ai-msg ai-msg-user">
                 {entry.scope && <AiScopeQuote scope={entry.scope} />}
+                <SentSkillChips lang={lang} chips={entry.skills} isAvailable={skills.isAvailable} />
                 {entry.attachments && entry.attachments.length > 0 && (
                   <div className="ai-msg-attachments">
                     <AttachmentList atts={entry.attachments} previews={attachmentPreviews} />
@@ -1009,7 +1152,15 @@ export function AiPanel({
                     {!busy && (
                       <button
                         className="ai-retry-btn"
-                        onClick={() => send(entry.text, entry.attachments ?? [], null)}
+                        onClick={() =>
+                          send(
+                            entry.text,
+                            entry.attachments ?? [],
+                            null,
+                            // the newest message is the run that failed: its skills go again
+                            i === lastUserIdx ? runSkillUseRef.current : NO_SKILL_USE,
+                          )
+                        }
                       >
                         {t('aiRetry')}
                       </button>
@@ -1057,6 +1208,8 @@ export function AiPanel({
                 )
               )}
               {hasTools && <ToolChipList tools={entry.tools!} />}
+              <SkillUsedNotes tools={entry.tools} />
+              {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.changes && (
                 <RunChangesCard
                   changes={entry.changes}
@@ -1081,6 +1234,7 @@ export function AiPanel({
             </div>
           )
         })}
+        {skillTemplates.notes}
         {sendGate.connectChoice && (
           <AiConnectPrompt
             choice={sendGate.connectChoice}
@@ -1096,6 +1250,7 @@ export function AiPanel({
             onRecheck={subscription.recheck}
             onAcceptMetered={subscription.acceptMetered}
             onOpenInstallHelp={subscription.openInstallHelp}
+            onOpenConnectHelp={subscription.openConnectHelp}
           />
         )}
         {sendGate.noticeDue && (
@@ -1190,6 +1345,7 @@ export function AiPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={statuses ?? {}}
+                onRefreshSubscriptions={subscription.refresh}
               />
               <AiSubscriptionUsageLine usage={subscriptionUsage} lang={lang} />
               <button
@@ -1211,7 +1367,9 @@ export function AiPanel({
           stopIcon={<img src={sendStop} alt="" aria-hidden />}
           textareaRef={inputRef}
           onChange={setPrompt}
-          onSend={() => send(prompt)}
+          onSend={sendPrompt}
+          skills={skills.composer}
+          docs={docMention}
           onStop={stop}
         />
       </div>

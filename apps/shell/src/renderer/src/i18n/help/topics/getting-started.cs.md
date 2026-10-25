@@ -1,6 +1,6 @@
 # Rychlý start: rozhraní a základy
 
-GenOffice je kancelářský balík, který běží celý na vašem počítači: jedno okno, jeden řádek karet a v něm šest editorů — Docs (textový editor), Sheets (tabulky), Slides (prezentace), PDF, Markdown a HTML. Soubory jsou skutečné soubory .docx / .xlsx / .pptx / .pdf, plně zaměnitelné s Wordem, Excelem a PowerPointem. Není potřeba žádné připojení k síti.
+GenOffice je kancelářský balík, který běží na vašem počítači: jedno okno, jeden řádek karet a v něm osm editorů — Docs (textový editor), Sheets (tabulky), Slides (prezentace), PDF, Markdown a prostý text, HTML, HWP/HWPX (dokumenty Hangul) a myšlenkové mapy (.xmind). Každý editor otevírá a ukládá soubory ve svém formátu: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx a .xmind. Úpravy síť nepotřebují, funkce AI ano.
 
 ## Přehled rozhraní
 

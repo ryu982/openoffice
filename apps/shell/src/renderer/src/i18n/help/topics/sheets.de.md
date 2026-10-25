@@ -1,6 +1,6 @@
 # Sheets: Tabellenkalkulation
 
-Sheets ist der Excel-ähnliche Editor; die Berechnung läuft in einem separaten Rust-Engine-Prozess (ein Absturz dort bringt die App nie zum Absturz). Er öffnet und speichert echte .xlsx; .csv und .tsv öffnen sich als Tabellen.
+Sheets ist der Tabellen-Editor; die Berechnung läuft in einem separaten Rust-Engine-Prozess (ein Absturz dort bringt die App nie zum Absturz). Er öffnet und speichert .xlsx-Dateien; .csv und .tsv öffnen sich als Tabellen.
 
 ## Die Oberfläche
 

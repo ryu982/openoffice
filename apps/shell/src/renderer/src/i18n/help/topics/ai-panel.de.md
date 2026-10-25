@@ -26,6 +26,16 @@ Jeder Editor kann den KI-Bereich aufrufen: Etwas auswählen, eine Anweisung gebe
 - **Markdown / HTML**: umformulieren, ausbauen, übersetzen.
 - **Start ▸ Ask AI** antwortet aus Ihren markierten Dateien und nennt die Quellen — das Wissensbasis-Panel hat im Start-Kapitel einen eigenen Abschnitt, und das Docs-KI-Panel beherrscht dieselbe Fähigkeit.
 
+## Geöffnete Dokumente anhängen
+
+Im KI-Bereich der Editoren Docs, Sheets, Slides, Hangul, HTML und Mindmaps können Sie andere in GenOffice geöffnete oder kürzlich geöffnete Dokumente als Material anhängen. Ein angehängtes Dokument wird genau wie eine Datei behandelt, die Sie auf Ihrem PC ausgewählt haben.
+
+- **`@` im Eingabefeld**: Tippen Sie `@` am Anfang des Eingabefelds oder nach einem Leerzeichen, um eine Dokumentenliste zu öffnen. Ist das Fenster geteilt, steht das Dokument im anderen Bereich zuerst, danach die übrigen geöffneten und die zuletzt verwendeten Dokumente; das Dokument, in dem Sie gerade arbeiten, fehlt. Grenzen Sie die Liste mit ein paar Buchstaben des Namens ein (Leerzeichen sind erlaubt) und wählen Sie mit Enter oder per Klick: `@Dokumentname` landet im Eingabefeld, und das Dokument wird angehängt. **Weitere suchen…** ganz unten öffnet die unten beschriebene Dokumentauswahl.
+- **Aus GenOffice-Dokumenten anhängen**: Diese Schaltfläche neben der Anhang-Schaltfläche öffnet dieselbe Liste in einem Fenster, in dem Sie mehrere Dokumente anhaken und auf einmal anhängen können.
+- Dokumente mit ungespeicherten Änderungen und neue, noch nie gespeicherte Dokumente erscheinen abgeblendet und lassen sich nicht auswählen. Speichern Sie sie und wählen Sie erneut – die KI liest die gespeicherte Datei.
+- Haben zwei Dokumente denselben Namen, liegen aber in verschiedenen Ordnern, wird der Name des direkt übergeordneten Ordners angefügt, etwa `@Plan.docx(2. Halbjahr)`, und auch die KI erhält diesen Ordnernamen.
+- Die Editoren für PDF und Markdown haben noch keine Anhänge, daher gibt es dort keinen der beiden Wege.
+
 ## Zurückrollen und Sicherheit
 
 - Der Docs-Bereich führt eine **Versionsliste**: einen Snapshot pro Durchgang, Sie können zu jedem davon zurückrollen, und auch das Zurückrollen selbst lässt sich mit Strg+Z rückgängig machen. Snapshots überstehen das erneute Öffnen des Dokuments.

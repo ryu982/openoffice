@@ -1,6 +1,6 @@
 # Docs: tekstverwerking
 
-Docs is de Word-achtige tekstverwerker: leest en schrijft echte .docx-bestanden met echte WYSIWYG-paginering.
+Docs is de tekstverwerker: opent en bewaart .docx-bestanden met WYSIWYG-paginering.
 
 ## Het lint
 

@@ -2,11 +2,13 @@ import type { zh } from './zh'
 
 export const de = {
   docPickTitle: 'Aus GenOffice-Dokumenten anhängen',
+  docPickPane: 'Anderer Bereich',
   docPickOpen: 'Geöffnete Dokumente',
   docPickRecent: 'Zuletzt verwendete Dokumente',
   docPickEmpty: 'Es gibt keine Dokumente zum Anhängen.',
   docPickMissing: 'Die Datei wurde nicht gefunden.',
   docPickUnsaved: 'Bitte zuerst speichern.',
+  docPickModified: 'Zum Anhängen zuerst speichern.',
   docPickUnavailable: 'Die Dokumentliste konnte nicht gelesen werden.',
   docPickLimit: 'Es lassen sich höchstens 20 Dokumente auswählen.',
   docPickSelected: '{n} ausgewählt',

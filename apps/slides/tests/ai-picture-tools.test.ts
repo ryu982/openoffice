@@ -1,6 +1,9 @@
 /** AI picture tool replace_image: dispatch and guards (crop/opacity moved to apply_ops setPictureSrcRect/setPictureOpacity). */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { createSlidesSkill, type DeckAccess } from '../src/renderer/ai/slides-skill'
+import { createFilesSkill } from '../src/renderer/ai/files-skill'
 import type { RenderSlide, PlacedBox } from '@genoffice/pptx-render'
 import type { AgentToolCall } from '../src/shared/ipc'
 
@@ -156,6 +159,40 @@ describe('attachment:// references (r182 family: embed the original file, never 
     expect(r.mutated).toBeFalsy()
     expect(String(r.output)).toContain('missing.png')
     expect(api().replacePictureUrl).not.toHaveBeenCalled()
+  })
+
+  it('looks up a same-named attachment by its plain file name, never by the folder note', async () => {
+    const attachments = [
+      { path: 'C:\\pics\\2024\\logo.png', name: 'logo.png', ext: 'png', sizeBytes: 900 },
+      { path: 'C:\\pics\\2025\\logo.png', name: 'logo.png', ext: 'png', sizeBytes: 900 },
+    ]
+    // The model's attachment list names the folders because the file names collide...
+    expect(createFilesSkill(() => attachments).buildContext?.()).toContain(
+      '0 | logo.png (folder: 2024) | .png | 900B',
+    )
+    // ...but the reference still carries only the file name, and so does the lookup.
+    const access = mkAccess()
+    const resolver = vi.fn(async (name: string) =>
+      attachments.some((a) => a.name === name)
+        ? { ok: true as const, base64: 'QUJD', ext: 'png' }
+        : { ok: false as const, error: `No image attachment named "${name}".` },
+    )
+    access.resolveAttachmentImage = resolver
+    const r = await createSlidesSkill(access).executeTool!(
+      call('replace_image', { url: 'attachment://logo.png' }),
+    )
+    expect(resolver).toHaveBeenCalledWith('logo.png')
+    expect(r.mutated).toBe(true)
+  })
+
+  it('the panel resolver matches attachments on the file name alone', () => {
+    const panel = readFileSync(resolve(__dirname, '../src/renderer/ai/AiPanel.tsx'), 'utf8')
+    const start = panel.indexOf('resolveAttachmentImage: async (name) => {')
+    expect(start).toBeGreaterThan(-1)
+    const body = panel.slice(start, panel.indexOf('readAttachmentImage', start))
+    expect(body).toContain('images.find((a) => a.name === name)')
+    expect(body).toContain('a.name.toLowerCase() === name.toLowerCase()')
+    expect(body).not.toContain('folder')
   })
 
   it('fails cleanly when no resolver is wired', async () => {

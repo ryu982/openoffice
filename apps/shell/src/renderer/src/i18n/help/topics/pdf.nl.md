@@ -47,7 +47,7 @@ Zes gereedschappen: **inkt, rechthoek, ellips, pijl, notitie**, plus de **zwartm
 ## Plaknotities en reactiedraden
 
 - Het **notitiegereedschap** zet een speld en opent een kaart in de marge voor de tekst (de auteursnaam is instelbaar); bevestigen slaat het op als een standaard pdf-tekstannotatie.
-- Klik op een speld om de draad te openen: **beantwoorden** (platte draden in WPS/Acrobat-stijl), je opmerking **bewerken**, één opmerking of een hele draad **verwijderen**.
+- Klik op een speld om de draad te openen: **beantwoorden** (antwoorden vormen één platte lijst, zonder nesting), je opmerking **bewerken**, één opmerking of een hele draad **verwijderen**.
 - Lopende bewerkingen blijven staan totdat het opslaan de nieuwe tekst in dezelfde annotatie in het bestand terugschrijft, waardoor reactieketens intact blijven.
 
 ## Pdf-inhoud bewerken (Bewerken)

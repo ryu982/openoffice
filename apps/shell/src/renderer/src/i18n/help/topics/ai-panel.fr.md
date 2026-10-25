@@ -26,6 +26,16 @@ Chaque éditeur peut appeler le panneau IA: sélectionnez quelque chose, donnez 
 - **Markdown / HTML**: réécriture, développement, traduction.
 - **Accueil ▸ Ask AI** répond à partir de vos fichiers étoilés et les cite — le panneau de base de connaissances a sa propre section au chapitre Accueil, et le panneau IA de Docs porte la même compétence.
 
+## Joindre des documents ouverts
+
+Dans le panneau IA des éditeurs Docs, Sheets, Slides, Hangul, HTML et carte mentale, vous pouvez joindre comme documentation d’autres documents ouverts dans GenOffice, ou ouverts récemment. Un document joint est traité exactement comme un fichier choisi sur votre PC.
+
+- **`@` dans la saisie** : tapez `@` au début de la saisie ou après une espace pour ouvrir une liste de documents. Si la fenêtre est partagée, le document de l’autre volet vient en premier, puis les autres documents ouverts et les documents récents ; le document dans lequel vous êtes n’y figure pas. Affinez avec quelques lettres du nom (les espaces sont acceptées) et choisissez avec Entrée ou un clic : `@nom du document` s’insère dans la saisie et le document est joint. **Chercher d’autres…**, tout en bas, ouvre la fenêtre de choix de documents décrite ci-dessous.
+- **Joindre depuis les documents GenOffice** : ce bouton, à côté du bouton de pièce jointe, ouvre la même liste dans une fenêtre où vous pouvez cocher plusieurs documents et les joindre en une fois.
+- Les documents qui ont des modifications non enregistrées et les nouveaux documents jamais enregistrés apparaissent grisés et ne peuvent pas être choisis. Enregistrez-les puis choisissez-les à nouveau : l’IA lit le fichier enregistré.
+- Quand deux documents portent le même nom dans des dossiers différents, le nom du dossier juste au-dessus est ajouté, comme dans `@plan.docx(2e trimestre)`, et ce nom de dossier est aussi transmis à l’IA.
+- Les éditeurs PDF et Markdown n’ont pas encore de pièces jointes : aucune des deux méthodes n’y est disponible.
+
 ## Retour arrière et sécurité
 
 - Le panneau de Docs conserve une **liste de versions**: un instantané par tour, revenez à n’importe lequel, et ce retour arrière est lui-même annulable par Ctrl+Z. Les instantanés survivent à la réouverture du document.

@@ -11,7 +11,7 @@ import {
   openXmind,
   type XmindOpenStatus,
 } from '@genoffice/xmind-engine'
-import type { MindmapSeed } from '../../shared/ipc'
+import type { MindmapCopySeed, MindmapOutlineSeed } from '../../shared/ipc'
 import { DocumentSession } from './session'
 
 export type OpenFailure = Exclude<XmindOpenStatus, 'ok'>
@@ -30,7 +30,7 @@ export type OpenedMap =
 export async function openMapBytes(bytes: Uint8Array): Promise<OpenedMap> {
   const opened = await openXmind(bytes)
   if (opened.status !== 'ok') return { status: opened.status }
-  const session = new DocumentSession(opened.document)
+  const session = new DocumentSession(opened.document, bytes)
   return {
     status: 'ok',
     session,
@@ -53,8 +53,33 @@ export async function newMap(titles: {
  * `untitled` names a sheet without a `# ` heading (and its central topic when
  * the text has no single outermost item), in the user's language.
  */
-export async function seededMap(seed: MindmapSeed, untitled: string): Promise<DocumentSession> {
+export async function seededMap(
+  seed: MindmapOutlineSeed,
+  untitled: string,
+): Promise<DocumentSession> {
   const document = await createXmindDocumentFromOutline(seed.outline, { untitled })
+  // the baseline, taken while the document is still unchanged (that save changes nothing)
+  const baseline = await document.save()
   document.markChanged()
-  return new DocumentSession(document)
+  return new DocumentSession(document, baseline)
+}
+
+/**
+ * A byte copy of a map file opened as a NEW, UNSAVED map (a skill's template,
+ * spec 5.7, or an untitled map's crash-recovery copy): read like any file,
+ * then marked changed, so it has no path and counts as unsaved until written;
+ * the first save asks where. A restored copy of a file opens the same way and
+ * keeps the file's path (`App.tsx`): its save rewrites `content.json` over the
+ * copy, whose other entries are the file's own bytes.
+ */
+export async function openCopiedMap(seed: MindmapCopySeed): Promise<OpenedMap> {
+  const opened = await openXmind(seed.bytes)
+  if (opened.status !== 'ok') return { status: opened.status }
+  opened.document.markChanged()
+  const session = new DocumentSession(opened.document, seed.bytes)
+  return {
+    status: 'ok',
+    session,
+    notices: { preserved: session.preservedTotal(), unknownTheme: session.hasUnknownTheme() },
+  }
 }

@@ -329,18 +329,27 @@ afterEach(() => {
 
 describe('opening ODT in the Word editor', () => {
   it('picks ODT by extension and keeps format, original bytes, bridge and report', async () => {
-    const ctx = makeCtx()
-    const odt = await blankOdt()
-    expect(await loadFile(ctx, openResult('/docs/form.odt', odt))).toBe('ok')
-    const doc = docOf(ctx)
-    expect(doc.format).toBe('odt')
-    expect(isOdtDoc(doc)).toBe(true)
-    expect(doc.odt?.original).toEqual(odt)
-    expect(doc.odt?.bridge.elements.length).toBeGreaterThan(0)
-    expect(Array.isArray(doc.odt?.report)).toBe(true)
-    // the editor shows the bridge docx (the same bytes every time for one ODT)
-    const bridge = await odtToDocx(odt)
-    expect(doc.parsed.internal.originalBytes).toEqual(bridge.docxBytes)
+    // the bridge docx stamps each zip entry with the current time (2 s
+    // resolution); two conversions that straddle a tick differ only there,
+    // which a busy machine makes likely. Hold the clock still for both.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-01-02T03:04:06Z'))
+    try {
+      const ctx = makeCtx()
+      const odt = await blankOdt()
+      expect(await loadFile(ctx, openResult('/docs/form.odt', odt))).toBe('ok')
+      const doc = docOf(ctx)
+      expect(doc.format).toBe('odt')
+      expect(isOdtDoc(doc)).toBe(true)
+      expect(doc.odt?.original).toEqual(odt)
+      expect(doc.odt?.bridge.elements.length).toBeGreaterThan(0)
+      expect(Array.isArray(doc.odt?.report)).toBe(true)
+      // the editor shows the bridge docx (the same bytes every time for one ODT)
+      const bridge = await odtToDocx(odt)
+      expect(doc.parsed.internal.originalBytes).toEqual(bridge.docxBytes)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('a .docx still opens as docx with no ODT baseline', async () => {

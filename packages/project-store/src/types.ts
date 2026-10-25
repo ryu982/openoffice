@@ -50,6 +50,16 @@ export interface ChatMessage {
   attachments?: ChatAttachment[]
   /** Document selection a user message targeted */
   scope?: ChatScope
+  /** Skill chips a user message carried (references only, never the skill text) */
+  skills?: ChatSkillChip[]
+}
+
+/** A skill the person put on a user message: its identifier, source and title as shown */
+export interface ChatSkillChip {
+  /** `source:name`, `plugin:<plugin>:<name>` */
+  id: string
+  source: string
+  title: string
 }
 
 /** What a user message was scoped to: a caption plus an excerpt of the selected content */

@@ -549,13 +549,17 @@ describe('what a force-killed app left behind', () => {
     const bystander = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
       stdio: 'ignore',
     })
+    // a pid no process holds, below macOS's ceiling of 99998: `ps -p` there
+    // prints nothing at all when one of the pids it is given is above it
+    let ownerPid = 99_998
+    while (alive(ownerPid)) ownerPid--
     try {
       const startedAt = Date.now()
       await writeFile(
-        join(dir, `${SUBSCRIPTION_LEFTOVER_FILE_PREFIX}900001.json`),
+        join(dir, `${SUBSCRIPTION_LEFTOVER_FILE_PREFIX}${ownerPid}.json`),
         JSON.stringify({
           version: 1,
-          owner: { pid: 900_001, startedAt: 1 },
+          owner: { pid: ownerPid, startedAt: 1 },
           children: [
             { pid: leftover.pid, provider: 'codex', command: process.execPath, startedAt },
             // same pid as a live process, but recorded as started long ago: a reused pid

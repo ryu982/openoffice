@@ -1,6 +1,6 @@
 # Slides: trình chiếu
 
-Slides là trình soạn thảo giống PowerPoint: đọc và ghi.pptx thật.
+Slides là trình soạn thảo trình chiếu: mở và lưu tập tin .pptx.
 
 ## Giao diện
 

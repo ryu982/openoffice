@@ -18,7 +18,7 @@ Jasny / Ciemny / Zgodnie z systemem. Opcja Zgodnie z systemem podąża za wyglą
 ## Ogólne
 
 - **Położenie panelu bocznego AI** (po lewej lub po prawej), **Rozmiar tekstu panelu AI** i **Sprawdzanie pisowni w czacie AI**.
-- **Otwieraj panel AI w nowych dokumentach** — wyłączone, nowy dokument zaczyna się ze zwiniętym panelem, jedno kliknięcie stąd.
+- **Panel AI** — Wyłączony, Zwinięty lub Ostatni stan.
 - **Automatycznie zapisuj wszystkie dokumenty** włącza AutoSave domyślnie w każdym edytorze; nadal można je wyłączyć dla jednego okna.
 - **Lokalizacja zapisu** z przyciskiem **Zmień** oraz **Domyślna aplikacja dla dokumentów Office**, aby przejąć .docx / .xlsx / .pptx dla GenOffice.
 
@@ -44,7 +44,7 @@ Ustawienia mogą zarejestrować GenOffice jako obsługę plików .docx / .xlsx /
 ## Informacje o oprogramowaniu innych firm i aktualizacje
 
 - Pomoc ▸ Informacje o oprogramowaniu innych firm: pełny wykaz licencji open source dołączony do aplikacji.
-- Pomoc ▸ Sprawdź aktualizacje…: uruchamia ręczne sprawdzenie; nowsza wersja wyświetla monit o instalacji.
+- Menu (☰) ▸ Sprawdź aktualizacje… (na komputerze Mac Pomoc ▸ Sprawdź aktualizacje…): uruchamia ręczne sprawdzenie; nowsza wersja wyświetla monit o instalacji.
 
 ## Integracja MCP (dla zaawansowanych użytkowników i klientów AI)
 

@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
 import { PdfLoadError } from '@genoffice/pdf2docx'
 import { flagBool, flagString, type ParsedArgs } from '../args'
@@ -43,6 +44,7 @@ const NODE_ROUTES: Record<string, readonly string[]> = {
  * editor's HTML export, html2docx). Mirrors HEADLESS_TARGETS in the shell.
  */
 const APP_ROUTES: Record<string, readonly AppExportTarget[]> = {
+  pdf: ['html'],
   csv: ['pdf'],
   xls: ['pdf'],
   md: ['pdf'],
@@ -92,7 +94,7 @@ export const convertCommand: CommandDef = {
   name: 'convert',
   summary: 'Convert a document to another format using the GenOffice engines.',
   usage:
-    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover]',
+    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks]',
   options: [
     { name: 'to', value: 'format', description: 'target format: ' + describeRoutes() },
     { name: 'out', value: 'path', description: 'output file (default: same name, new extension)' },
@@ -119,6 +121,10 @@ export const convertCommand: CommandDef = {
       description: 'pdf→epub: author (default: from the PDF)',
     },
     { name: 'no-cover', description: 'pdf→epub: no cover page' },
+    {
+      name: 'page-breaks',
+      description: 'pdf→epub: start each original page on a new screen',
+    },
   ],
   async run(args, ctx) {
     const input = resolveInput(args.positionals[0], ctx)
@@ -191,6 +197,9 @@ async function run(
 ): Promise<Produced> {
   if (from === 'odt' || to === 'odt') return runOdt(input, from, to, output, ctx)
   const password = flagString(args, 'password')
+  if (from === 'pdf' && to === 'html') {
+    return convertPdfViaDocx(input, to, output, password, ctx)
+  }
   const viaApp = appTarget(from, to)
   if (viaApp) {
     const r = await exportViaApp(input, viaApp, output, { env: ctx.env, log: ctx.log })
@@ -200,19 +209,8 @@ async function run(
     return pdfReflow(input, to, output, args, ctx)
   }
   if (from === 'pdf') {
-    try {
-      const r = await convertPdf(readInput(input), to as PdfTarget, {
-        password,
-        onProgress: (page, total) => ctx.log(`page ${page}/${total}`),
-      })
-      return { bytes: r.bytes, detail: { pages: r.pages, warnings: r.warnings } }
-    } catch (err) {
-      if (err instanceof PdfLoadError) {
-        const code = err.code === 'password-required' ? EXIT.file : EXIT.conversion
-        throw new CliError(code, err.message, { reason: err.code })
-      }
-      throw err
-    }
+    const r = await convertPdfOrThrow(input, to as PdfTarget, password, ctx)
+    return { bytes: r.bytes, detail: { pages: r.pages, warnings: r.warnings } }
   }
   if (from === 'md' || from === 'markdown') {
     const text = Buffer.from(readInput(input)).toString('utf-8')
@@ -267,6 +265,7 @@ const ROUTE_OPTIONS: [string, (from: string, to: string) => boolean, string][] =
   ['title', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['author', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['no-cover', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
+  ['page-breaks', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
 ]
 
 function assertRouteOptions(args: ParsedArgs, from: string, to: string): void {
@@ -388,12 +387,80 @@ async function pdfReflow(
   const title = flagString(args, 'title') || tree.info.title || basename(input, extname(input))
   const author = flagString(args, 'author') ?? tree.info.author
   const cover = !flagBool(args, 'no-cover')
-  await writeEpubFile(source, tree, output, { title, ...(author ? { author } : {}), cover })
-  return { detail: { ...common, title, ...(author ? { author } : {}), cover } }
+  const pageBreaks = flagBool(args, 'page-breaks')
+  await writeEpubFile(source, tree, output, {
+    title,
+    ...(author ? { author } : {}),
+    cover,
+    ...(pageBreaks ? { pageBreaks: true } : {}),
+  })
+  return {
+    detail: {
+      ...common,
+      title,
+      ...(author ? { author } : {}),
+      cover,
+      ...(pageBreaks ? { page_breaks: true } : {}),
+    },
+  }
 }
 
 function describeRoutes(): string {
   return Object.entries(ROUTES)
     .map(([from, tos]) => `${from}→${tos.join('/')}`)
     .join(', ')
+}
+
+/**
+ * PDF → Markdown / HTML goes through the Word reconstruction: pdf2docx
+ * rebuilds paragraphs, headings, lists and tables, then the docx routes
+ * serialize them. Markdown stays in-process; HTML needs the Word editor's
+ * exporter, so the intermediate .docx is handed to the app from a temp dir.
+ */
+async function convertPdfViaDocx(
+  input: string,
+  to: 'md' | 'html',
+  output: string,
+  password: string | undefined,
+  ctx: CommandContext,
+): Promise<Produced> {
+  const pdf = await convertPdfOrThrow(input, 'docx', password, ctx)
+  const via = { pages: pdf.pages, warnings: pdf.warnings, intermediate: 'docx' }
+  if (to === 'md') {
+    const md = await docxToMarkdown(pdf.bytes, ctx)
+    return { bytes: md.bytes, detail: { ...via, ...md.detail } }
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'genoffice-convert-'))
+  const docxPath = join(dir, `${basename(input, extname(input))}.docx`)
+  try {
+    writeFileSync(docxPath, pdf.bytes)
+    const r = await exportViaApp(docxPath, 'html', output, { env: ctx.env, log: ctx.log })
+    return { detail: { ...via, via: 'genoffice --headless-export', summary: r.summary } }
+  } finally {
+    try {
+      rmSync(dir, { recursive: true, force: true })
+    } catch (err) {
+      ctx.log(`could not remove temp dir ${dir}: ${String(err)}`)
+    }
+  }
+}
+
+async function convertPdfOrThrow(
+  input: string,
+  target: PdfTarget,
+  password: string | undefined,
+  ctx: CommandContext,
+) {
+  try {
+    return await convertPdf(readInput(input), target, {
+      password,
+      onProgress: (page, total) => ctx.log(`page ${page}/${total}`),
+    })
+  } catch (err) {
+    if (err instanceof PdfLoadError) {
+      const code = err.code === 'password-required' ? EXIT.file : EXIT.conversion
+      throw new CliError(code, err.message, { reason: err.code })
+    }
+    throw err
+  }
 }

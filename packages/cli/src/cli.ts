@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { setAiSecretCodec } from '@genoffice/ai-provider'
 import { PRODUCT_NAME } from '@genoffice/i18n'
 import { flagBool, parseArgs } from './args'
 import { appendAudit } from './audit'
+import { cliSecretCodecFor } from './secrets'
 import { capabilitiesCommand } from './commands/capabilities'
 import { convertCommand } from './commands/convert'
 import { docsCommand } from './commands/docs'
@@ -20,6 +22,7 @@ import { installCommand } from './commands/install'
 import { mcpCommand } from './commands/mcp'
 import { openCommand } from './commands/open'
 import { pdfCommand } from './commands/pdf'
+import { epubCommand } from './commands/epub'
 import { hwpCommand } from './commands/hwp'
 import { renderCommand } from './commands/render'
 import { sheetCommand } from './commands/sheet'
@@ -64,6 +67,7 @@ export function defaultRegistry(): CommandRegistry {
     .register(docsCommand)
     .register(mergeCommand)
     .register(pdfCommand)
+    .register(epubCommand)
     .register(hwpCommand)
     .register(renderCommand)
     .register(guideCommand)
@@ -169,6 +173,8 @@ export async function runCli(argv: readonly string[], opts: RunOptions = {}): Pr
     warn: (w) => warnings.push(w),
     ...(opts.background ? { background: true } : {}),
   }
+  // keys the app sealed open through it, for this command's settings file (decision 0063)
+  setAiSecretCodec(cliSecretCodecFor(ctx.env))
   const started = Date.now()
   const audit = (status: 'ok' | 'error', code: ExitCode, outputPath?: string) =>
     appendAudit(ctx.env, {

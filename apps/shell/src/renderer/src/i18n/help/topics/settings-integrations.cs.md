@@ -18,7 +18,7 @@ Světlý / Tmavý / Podle systému. Volba Podle systému sleduje vzhled operačn
 ## Obecné
 
 - **Pozice postranního panelu AI** (vlevo nebo vpravo), **Velikost textu panelu AI** a **Kontrola pravopisu v chatu AI**.
-- **Otevírat panel AI v nových dokumentech** — vypnuto, nový dokument začíná se složeným panelem, na jedno kliknutí.
+- **Panel AI** — Vypnuto, Sbaleno nebo Poslední stav.
 - **Automaticky ukládat všechny dokumenty** zapne ve výchozím stavu automatické ukládání v každém editoru; pro jedno okno ho můžete i nadále vypnout.
 - **Umístění pro ukládání** s tlačítkem **Změnit** a **Výchozí aplikace pro dokumenty Office**, aby GenOffice přebíral .docx / .xlsx / .pptx.
 
@@ -44,7 +44,7 @@ Nastavení může zaregistrovat GenOffice jako aplikaci pro soubory .docx / .xls
 ## Informace o softwaru třetích stran a aktualizace
 
 - Nápověda ▸ Informace o softwaru třetích stran: úplný přehled licencí open source dodávaných s aplikací.
-- Nápověda ▸ Zkontrolovat aktualizace…: spustí ruční kontrolu; novější verze vyzve k instalaci.
+- Nabídka (☰) ▸ Zkontrolovat aktualizace… (na počítači Mac Nápověda ▸ Zkontrolovat aktualizace…): spustí ruční kontrolu; novější verze vyzve k instalaci.
 
 ## Integrace MCP (pro pokročilé uživatele a klienty AI)
 

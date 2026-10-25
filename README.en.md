@@ -23,6 +23,7 @@ IeumOffice is a modified version of the open-source project
 
 ## Contents
 
+- [Why it was made](#why-it-was-made)
 - [What works today](#what-works-today)
 - [Connecting your subscription](#connecting-your-subscription)
 - [Using it for free, without a subscription](#using-it-for-free-without-a-subscription)
@@ -39,11 +40,32 @@ IeumOffice is a modified version of the open-source project
 - [Contributing and reporting problems](#contributing-and-reporting-problems)
 - [License and acknowledgement](#license-and-acknowledgement)
 
+## Why it was made
+
+IeumOffice began as a tool a Korean high-school teacher built for their own
+reading and writing. Sorting out ideas in a mind map, handing them to an AI,
+then moving what the AI produced into Hangul (HWP) or PowerPoint to fix it
+meant hopping between several programs. The starting point was to join those
+steps in one window and let people edit what the AI made with their own hands.
+
+- **It is not meant to replace Microsoft Office or Hancom Office.** The author
+  still uses both alongside IeumOffice, and owes a great deal of their work
+  over the years to them.
+- **It is shared for the public good.** It is free, open-source software that
+  anyone can use, and it is not sold.
+- **It was not built by reverse engineering commercial software.** It is based
+  on open-source projects such as GenOffice and rhwp, and on the HWP format
+  documentation Hancom has published (see
+  [License and acknowledgement](#license-and-acknowledgement)).
+
+The author's own account, in Korean, is at
+[이음오피스를 만든 이유](https://ieumoffice.com/story).
+
 ## What works today
 
 - **Editors in one tabbed window**: Word (`.docx`), Excel (`.xlsx`),
-  PowerPoint (`.pptx`), PDF, Markdown, HTML and mind maps. Files are opened
-  and saved in their real formats on your own PC; edits are written back as narrow changes
+  PowerPoint (`.pptx`), PDF, Hangul (`.hwp`, `.hwpx`), Markdown, HTML and mind
+  maps. Files are opened and saved in their real formats on your own PC; edits are written back as narrow changes
   to the original file, so the parts you did not touch are kept as they were.
 - **An AI panel in every editor.** You ask in plain words, and the AI changes
   the document through the app's own editing tools. You see what was changed
@@ -68,8 +90,8 @@ IeumOffice is a modified version of the open-source project
 - **21 interface languages.** Korean and English were written by hand; the
   other 19 are machine translations.
 
-Released for **Windows**, with separate **betas for Apple Silicon Macs (M1 and
-later) and 64-bit Linux (x64)**. The developer has not been able to check the
+Released for **Windows**, with separate **betas for Macs (Apple Silicon and
+Intel) and 64-bit Linux (x64)**. The developer has not been able to check the
 Mac or Linux builds on those machines; please report problems as
 [issues](https://github.com/pblsketch/openoffice/issues).
 
@@ -228,9 +250,13 @@ repository.
 
 ### Mac (beta)
 
-The same Releases page carries `IeumOffice-<version>-arm64.dmg`, for Apple
-Silicon Macs (M1 and later) on macOS 12 or newer; it does not run on Intel
-Macs.
+The same Releases page carries two disk images, both for macOS 12 or newer:
+
+- Apple Silicon Macs (M1 and later): `IeumOffice-<version>-arm64.dmg`
+- Intel Macs: `IeumOffice-<version>-x64.dmg`
+
+**About This Mac** in the Apple menu shows which one yours is: a "Chip" line
+(Apple M…) or a "Processor" line (Intel …).
 
 The Mac build has no Apple Developer signature, so macOS warns that it cannot
 verify the app the first time you open it. Allow it once:
@@ -286,7 +312,8 @@ The Windows app and the Linux `AppImage` look at this repository's GitHub
 Releases shortly after they start and every four hours after that, and offer
 the new version in an update window. If there is no release, no network or the
 check fails, nothing happens and the app keeps working. To check yourself, use
-**Help → Check for Updates…** in the app menu. Pre-release versions are offered
+**Menu (☰) → Check for Updates…** at the left of the tab bar
+(**Help → Check for Updates…** on a Mac). Pre-release versions are offered
 only when you choose the beta channel under **Settings → About**. The Mac build
 and the Linux `deb` and `rpm` installs only tell you about a new version.
 
@@ -327,9 +354,9 @@ project easy to take.
 
 ## Known limitations
 
-- **Windows, Apple Silicon Macs (beta) and 64-bit Linux (beta) only.** The
-  developer cannot check the Mac or Linux builds directly; they are checked
-  through user reports. Intel Macs are not built or released.
+- **Windows, Macs (beta, Apple Silicon and Intel) and 64-bit Linux (beta)
+  only.** The developer cannot check the Mac or Linux builds directly; they are
+  checked through user reports.
 - **Unsigned installers**, as described above. That is also why the Mac build
   cannot update itself.
 - **A subscription answers a little later than an API key.** Each request
@@ -400,6 +427,8 @@ anywhere. The full list is in [PRIVACY.md](PRIVACY.md).
   [SECURITY.md](SECURITY.md), not as a public issue.
 - Code: see [CONTRIBUTING.md](CONTRIBUTING.md) and the
   [Code of Conduct](CODE_OF_CONDUCT.md).
+- Trademark and copyright questions, infringement reports:
+  pblsketch@gmail.com.
 
 ## License and acknowledgement
 
@@ -430,11 +459,38 @@ software made with its published HWP format document, we state:
 > on the Hangul document file format (.hwp).)
 
 IeumOffice is an independent project. It is not affiliated with, sponsored by
-or endorsed by Genspark / Mainfunc, Inc., Anthropic, OpenAI, Microsoft, Hancom
-or XMind Ltd. "GenOffice" and "Genspark", and their logos, are trademarks of
+or endorsed by Genspark / Mainfunc, Inc., Anthropic, OpenAI, Microsoft, Hancom,
+Adobe, XMind Ltd. or Google. "GenOffice" and "Genspark", and their logos, are trademarks of
 their owners; so are "Claude", "Codex" and "ChatGPT". "Microsoft", "Windows",
 "Word", "Excel" and "PowerPoint" are trademarks of Microsoft Corporation;
 "한글" (Hangul), "한컴" (Hancom), "HWP" and "HWPX" are registered trademarks of
-Hancom Inc.; and "XMind" is a trademark of XMind Ltd. Other product names in
-this document belong to their owners. They are named here only to say what
-this software is based on, what it works with and which files it opens.
+Hancom Inc.; "XMind" is a trademark of XMind Ltd.; and "Google Drive" is a
+trademark of Google LLC. Other product names in this document belong to their
+owners. They are named here only to say what this software is based on, what
+it works with and which files it opens.
+
+### Official downloads and redistribution
+
+IeumOffice is free. Its only official downloads are the
+[GitHub releases](https://github.com/pblsketch/openoffice/releases) and
+[ieumoffice.com](https://ieumoffice.com); a copy sold for money is not an
+official release.
+
+The Apache License 2.0 lets anyone modify and redistribute the software. A
+redistribution must include [LICENSE](LICENSE) and [NOTICE](NOTICE) and state
+which files were changed. The license grants no trademark rights (sections 4
+and 6): the names and logos "IeumOffice", "이음오피스" and "GenOffice" may not
+be used as the name of another product. The projects IeumOffice builds on,
+GenOffice, rhwp and the others listed in [NOTICE](NOTICE) and in the installed
+`THIRD-PARTY-NOTICES.txt`, keep their own license terms.
+
+### No warranty
+
+IeumOffice is provided as is, without warranties of any kind, under sections 7
+and 8 of the Apache License 2.0. AI-generated content can be wrong: check it
+before you use it. Making sure you have the right to use it is up to you.
+
+### Trademark and copyright contact
+
+Send trademark or copyright infringement reports and licensing questions to
+pblsketch@gmail.com. The same address is in the app under Settings → About.

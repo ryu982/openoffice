@@ -83,6 +83,8 @@ export interface SaveOutcome {
   ok: boolean
   /** absolute path of the written file when ok */
   path?: string
+  /** mode 'template': the workbook's bytes as edited */
+  bytes?: Uint8Array
   /** the main-process refusal, verbatim, when the save request itself failed */
   error?: string
 }
@@ -98,7 +100,7 @@ export interface SaveOutcome {
  */
 export async function handleSave(
   ctx: SaveContext,
-  mode: 'save' | 'save-as' | 'recovery',
+  mode: 'save' | 'save-as' | 'recovery' | 'template',
   quiet = false,
   explicitTarget?: { path: string; overwrite: boolean },
 ): Promise<SaveOutcome> {
@@ -135,7 +137,7 @@ export async function handleSave(
     }
   })()
   if (!state) {
-    if (mode !== 'recovery') ctx.setMessage(t('appDemoNoSave'))
+    if (mode !== 'recovery' && mode !== 'template') ctx.setMessage(t('appDemoNoSave'))
     return { ok: false }
   }
   const edits = toSaveEdits(state.editJournal)
@@ -298,7 +300,13 @@ export async function handleSave(
   // An unsaved new workbook's Save is its first Save As, journal or not: a
   // quiet AutoSave may already have moved the work into the backing file.
   const firstSaveAs = mode === 'save' && state.file.unsavedNew === true && !quiet
-  if (total === 0 && mode !== 'save-as' && !restoreWriteBack && !firstSaveAs) {
+  if (
+    total === 0 &&
+    mode !== 'save-as' &&
+    mode !== 'template' &&
+    !restoreWriteBack &&
+    !firstSaveAs
+  ) {
     if (mode !== 'recovery') ctx.setMessage(t('appNoEditsToSave'))
     return { ok: false }
   }
@@ -362,7 +370,7 @@ export async function handleSave(
   try {
     staged = await stageEditsForSave(window.desktopApi, state.file.sessionId, edits)
   } catch (error: unknown) {
-    if (mode === 'recovery') return { ok: false }
+    if (mode === 'recovery' || mode === 'template') return { ok: false }
     const message = stripIpcErrorWrapper(error instanceof Error ? error.message : '')
     const failed = message || t('appSaveFailed')
     ctx.setMessage(failed)
@@ -371,7 +379,7 @@ export async function handleSave(
   }
   const payload = {
     sessionId: state.file.sessionId,
-    mode: mode === 'recovery' ? ('save' as const) : mode,
+    mode: mode === 'recovery' || mode === 'template' ? ('save' as const) : mode,
     // MCP explicit-path save: main skips the Save-As dialog and enforces the
     // overwrite policy from these two fields
     ...(explicitTarget
@@ -404,6 +412,23 @@ export async function handleSave(
     themeState,
     workbookProtectionState,
     protectedRangeStates,
+  }
+  if (mode === 'template') {
+    // A skill's template (spec 5.6): the same payload, written to a temp copy
+    // by the main process and handed back as bytes; nothing else changes.
+    const written = await (
+      window.desktopApi.workbookTemplateBytes?.(payload) ?? Promise.resolve({ ok: false })
+    ).catch(async () => {
+      await abortStagedEditsTransfer(
+        window.desktopApi,
+        state.file.sessionId,
+        staged.editsTransferId,
+      )
+      return { ok: false as const }
+    })
+    return written.ok && 'bytes' in written && written.bytes
+      ? { ok: true, bytes: written.bytes }
+      : { ok: false }
   }
   if (mode === 'recovery') {
     // Best-effort; a failure only means this tick's copy is skipped — but an

@@ -1,6 +1,6 @@
 # Agentmodus
 
-De agent neemt één map die je kiest als project en voert in die map Claude Code of Codex van deze pc uit. De AI leest zelf het materiaal in de map, maakt nieuwe bestanden, gebruikt skills en scripts en bewerkt de documenten die in GenOffice geopend zijn. Gebruik het voor werk waarvoor veel materiaal nodig is.
+De agent neemt één map die je kiest als project en voert in die map Claude Code of Codex van deze pc uit. De AI leest zelf het materiaal in de map, maakt nieuwe bestanden, gebruikt vaardigheden en scripts en bewerkt de documenten die in GenOffice geopend zijn. Gebruik het voor werk waarvoor veel materiaal nodig is.
 
 ## Voordat je begint
 
@@ -36,17 +36,35 @@ Wat je ook kiest, de agent doet het volgende niet:
 
 ## Claude Code en Codex
 
-- **Codex** voert opdrachten uit in zijn eigen afgeschermde ruimte, ook de opdrachten die je toestaat. Hij kan alleen in de projectmap schrijven, het internet is geblokkeerd en je persoonlijke bestanden buiten het project kan hij niet lezen. Als een sessie start, controleert GenOffice eerst of die afscherming op deze pc werkt, en start niet als dat niet zo is.
+- **Codex** voert opdrachten uit in zijn eigen afgeschermde ruimte, ook de opdrachten die je toestaat. Hij kan alleen in de projectmap schrijven, het internet is geblokkeerd tenzij je het aanzet, en je persoonlijke bestanden buiten het project kan hij niet lezen. Als een sessie start, controleert GenOffice eerst of die afscherming op deze pc werkt, en start niet als dat niet zo is.
 - **Claude Code** kan op Windows opdrachten niet afschermen. Een opdracht die je toestaat, kan bij je hele pc en het internet. Daarom controleert bij **Dit project vertrouwen** de eigen controleur van Claude Code elke actie in jouw plaats.
 
 Een document dat iemand je heeft gestuurd, kan verborgen instructies bevatten die de AI iets anders laten doen. Gebruik in een map met materiaal dat je niet kent een van de keuzes waarbij de agent vraagt.
 
-## Projectnotities en skills
+## Zoeken op het web en internet
+
+- **Claude Code** kan op het web zoeken en webpagina's lezen, maar vraagt dat eerst. Het vraagt de eerste keer dat het zoekt, en voor elke site waarvan het pagina's leest. In de vraag zorgt **Zoeken toestaan voor deze sessie** of **Deze site toestaan voor deze sessie** ervoor dat het de rest van de sessie niet meer vraagt. Bij **Dit project vertrouwen** beslist de eigen controleur van Claude Code.
+- Kies je **Codex**, dan toont het startscherm nog twee instellingen.
+
+| Instelling                          | Keuzes                             | In het begin          |
+| ----------------------------------- | ---------------------------------- | --------------------- |
+| **Zoeken op het web**               | Opgeslagen resultaten / Live / Uit | Opgeslagen resultaten |
+| **Internettoegang voor opdrachten** | Uit / Aan                          | Uit                   |
+
+- Opgeslagen resultaten komen uit webinhoud die vooraf is verzameld; Live zoekt op het web zoals het nu is.
+- Beide instellingen worden per projectmap onthouden. Een map die je voor het eerst gebruikt, begint met de waarden hierboven.
+- Staat internettoegang voor opdrachten aan, dan kunnen de opdrachten die Codex uitvoert het internet bereiken. Bij **Dit project vertrouwen** doen ze dat zonder te vragen, en verborgen instructies in een document dat je hebt ontvangen kunnen ze je gegevens naar buiten laten sturen. Deze waarschuwing verschijnt als je de instelling aanzet. Zet hem alleen aan als je hem nodig hebt. De ingebouwde vaardigheid "Vaardigheden zoeken" werkt alleen als deze instelling aanstaat.
+
+## Projectnotities en vaardigheden
 
 - Staat er in de map een `CLAUDE.md` of `AGENTS.md`, dan krijgt de agent de inhoud ervan als instructies. Schrijf daarin wat elke keer moet gelden: toon, termen, de vorm van de documenten die gemaakt moeten worden.
-- Claude Code krijgt een kopie van de skills op deze plekken: `.claude/skills` in de projectmap, `.ieumoffice/skills` en `.claude/skills` in je gebruikersmap, en de skills van geïnstalleerde Claude-plug-ins. Het aantal beschikbare skills staat onder de regel die meldt dat de sessie is gestart.
-- Codex leest zijn eigen skillsmap zelf.
-- Programma's die de scripts van een skill gebruiken (Python en dergelijke) moeten op deze pc geïnstalleerd zijn.
+- Het agentvenster gebruikt de vaardigheden die aanstaan in **Instellingen ▸ Vaardigheden**. Claude Code en Codex krijgen dezelfde lijst. Meer over vaardigheden staat in [Vaardigheden](help://skills).
+- Vaardigheden in `.claude/skills` en `.agents/skills` van de projectmap worden in die sessie gebruikt zonder dat je ze aanzet.
+- Kies een vaardigheid met `/` of `$` in het invoervak, en vóór je verzoek komt de instructie om die vaardigheid te lezen en te volgen.
+- De lijst met vaardigheden ligt vast zodra de sessie start. Zet je tijdens een sessie vaardigheden aan of uit, dan verschijnt "Gewijzigde vaardigheden gelden vanaf de volgende sessie".
+- Maakt de agent een vaardigheid, dan verschijnt er een vaardigheidskaart in het venster; vindt hij een vaardigheid die het installeren waard is, dan verschijnt een installatievoorbeeld. Er wordt niets opgeslagen of geïnstalleerd tot je op **Opslaan** of **Installeren** klikt, en een geïnstalleerde vaardigheid is beschikbaar vanaf de volgende sessie.
+- Programma's die de scripts van een vaardigheid gebruiken (Python en dergelijke) moeten op deze pc geïnstalleerd zijn.
+- Heb je de agent in een eerdere versie gebruikt, dan zegt een eenmalige melding de eerste keer dat je het agentvenster opent: "Vaardigheden zet je nu aan en uit in Instellingen → Vaardigheden. Vaardigheden in de vaardighedenmappen van Claude en Codex staan eerst uit." **Instellingen openen** brengt je er meteen heen.
 
 ## Nieuwe bestanden en open documenten
 
@@ -57,6 +75,7 @@ Een document dat iemand je heeft gestuurd, kan verborgen instructies bevatten di
 ## Privacy en verbruik
 
 - Wat je voor de AI hebt verborgen, blijft alleen verborgen als de app een document dat in GenOffice open staat voor de agent leest. Bestanden die de agent zelf uit de map leest, worden ongewijzigd verstuurd.
+- Zoektermen op het web en de adressen van gelezen pagina's gaan naar het bedrijf achter het programma en naar die sites. Staat de internettoegang voor opdrachten van Codex aan, dan kunnen gegevens gaan naar elke plek waarmee een opdracht verbinding maakt.
 - De agent werkt in veel stappen en gebruikt daardoor meer van de limiet van je abonnement dan het AI-paneel. Is de limiet op, dan mislukt het verzoek; de agent stapt nooit over op een andere AI of op een verbinding waarvoor je betaalt.
 
 ## Als er iets misgaat

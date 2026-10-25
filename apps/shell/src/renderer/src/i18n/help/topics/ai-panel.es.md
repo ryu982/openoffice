@@ -26,6 +26,16 @@ Todos los editores pueden invocar el panel de IA: seleccione algo, dé una instr
 - **Markdown / HTML**: reescribir, ampliar, traducir.
 - **Inicio ▸ Ask AI** responde desde tus archivos destacados y los cita — el panel de base de conocimiento tiene su propia sección en el capítulo Inicio, y el panel de IA de Docs lleva la misma capacidad.
 
+## Adjuntar documentos abiertos
+
+En el panel de IA de los editores Docs, Sheets, Slides, Hangul, HTML y mapas mentales puedes adjuntar como material otros documentos que tengas abiertos en GenOffice o que hayas abierto hace poco. Un documento adjunto se trata exactamente igual que un archivo elegido en tu PC.
+
+- **`@` en el campo de entrada**: escribe `@` al principio del campo o después de un espacio para abrir una lista de documentos. Si la ventana está dividida, primero aparece el documento del otro panel y luego los demás documentos abiertos y los recientes; el documento en el que estás no aparece. Fíltrala con unas letras del nombre (se admiten espacios) y elige con Enter o con un clic: `@nombre del documento` se escribe en el campo y el documento queda adjunto. **Buscar más…**, al final, abre la ventana de selección de documentos descrita abajo.
+- **Adjuntar desde documentos de GenOffice**: este botón, junto al botón de adjuntar, abre la misma lista en una ventana donde puedes marcar varios documentos y adjuntarlos de una vez.
+- Los documentos con cambios sin guardar y los documentos nuevos que nunca se guardaron aparecen atenuados y no se pueden elegir. Guárdalos y vuelve a elegirlos: la IA lee el archivo guardado.
+- Si dos documentos se llaman igual pero están en carpetas distintas, se añade el nombre de la carpeta inmediatamente superior, como en `@plan.docx(2.º trimestre)`, y ese nombre de carpeta también se le pasa a la IA.
+- Los editores de PDF y Markdown todavía no tienen adjuntos, así que ninguna de las dos formas está disponible allí.
+
 ## Retroceso y seguridad
 
 - El panel de Docs conserva una **lista de versiones**: una instantánea por vuelta, puede volver a cualquiera de ellas y ese propio retroceso se puede deshacer con Ctrl+Z. Las instantáneas sobreviven a reabrir el documento.

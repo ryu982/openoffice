@@ -2,11 +2,13 @@ import type { zh } from './zh'
 
 export const es = {
   docPickTitle: 'Adjuntar desde documentos de GenOffice',
+  docPickPane: 'Otro panel',
   docPickOpen: 'Documentos abiertos',
   docPickRecent: 'Documentos recientes',
   docPickEmpty: 'No hay documentos para adjuntar.',
   docPickMissing: 'No se encontró el archivo.',
   docPickUnsaved: 'Guárdalo primero.',
+  docPickModified: 'Guárdalo para adjuntarlo.',
   docPickUnavailable: 'No se pudo leer la lista de documentos.',
   docPickLimit: 'Solo puedes elegir hasta 20 documentos.',
   docPickSelected: '{n} seleccionados',

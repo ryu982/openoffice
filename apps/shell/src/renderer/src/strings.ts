@@ -18,6 +18,11 @@ export const strings = {
     askIntro: '基于你收藏的文件提问,回答会标注来源文件,点击即可打开。',
     askToolSearch: '搜索知识库',
     askToolRead: '读取文件',
+    askToolCreate: '生成文档',
+    askSaveMd: '保存为 Markdown',
+    askSaveDocx: '保存为 Word',
+    askSavedAs: '已保存:{name}',
+    askSaveFailed: '保存失败:{error}',
     askEmptyCorpus: '知识库还是空的:先收藏一些文件,再回来提问。',
     askPlaceholder: '问一个关于收藏文件的问题…',
     askHintIdle: 'Enter 发送',
@@ -78,6 +83,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '思维导图',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '按类型筛选',
     // List / bulk actions
     fileCount: '{n} 个文件',
@@ -174,7 +180,7 @@ export const strings = {
     saveLocation: '默认保存位置',
     setAutoSave: '所有文档自动保存',
     setAutoSaveDesc: '在每个编辑器中默认开启自动保存，仍可在单个窗口中关闭。',
-    setResultStore: '已保存的 PDF AI 结果',
+    setResultStore: '已保存的 AI 结果',
     setResultStoreDesc: 'AI 读取的页面和译文会保存在本机，直到你删除。已占用：{size}',
     setResultStoreDeleteAll: '全部删除',
     setResultStoreConfirm: '要删除所有已保存的 AI 读取结果和译文吗？重新生成需要再次使用 AI。',
@@ -182,6 +188,9 @@ export const strings = {
     setSearchRerank: 'Jev 搜索重排',
     setSearchRerankDesc:
       '把本机搜索的前 20 条命中片段发给 TypeSafe 的 Jev 模型，按相关性重新排序。默认关闭；开启后命中片段会离开本机。',
+    setAiInternetTools: '允许 AI 使用互联网工具',
+    setAiInternetToolsDesc:
+      '网页搜索、读取网页、按地址获取图片，以及生成和分析图片。关闭后，编辑器中的 AI 不再使用这些工具。开启时，对话中没出现过的地址会在获取前先询问你。AI 对话本身不受影响。',
     setSearchRerankEndpoint: 'Jev 端点',
     searchRerankedBy: '已由 Jev 按相关性重排',
     searchJevSettings: 'Jev 语义排序',
@@ -205,8 +214,14 @@ export const strings = {
     setDefaultAppOpenSettings: '打开系统设置',
     setDefaultAppFailed: '设置失败，请在系统设置中手动更改。',
     setAiSpellcheckDesc: '在 AI 对话输入框中输入时标出拼写错误的单词。',
-    setAiOpenInNewDocs: '新文档中打开 AI 面板',
-    setAiOpenInNewDocsDesc: '关闭后，新打开的文档默认收起 AI 面板；需要时点一下即可展开。',
+    setAiPanelStart: 'AI 面板',
+    setAiPanelStartDesc:
+      '选择启动应用或打开文档时 AI 面板如何开始。选择“关闭”会隐藏面板和侧边按钮；功能区或菜单中的 AI 操作仍可将其打开。',
+    aiPanelStartOff: '关闭',
+    aiPanelStartCollapsed: '收起',
+    aiPanelStartLast: '上次状态',
+    setAuthorName: '用户名',
+    setAuthorNameDesc: '作为批注和修订的作者显示在 Docs、Sheets、Slides 中。留空则使用电脑账户名。',
     settings: '设置',
     setSecAccount: '账户',
     setSecGeneral: '通用',
@@ -259,7 +274,7 @@ export const strings = {
       '使用该服务商的对话会用你自己填写的 key，并由该服务商向你收费。只有在“使用的 AI”中亲自选择它时才会使用。',
     setAiHeadless: '允许自动调用使用订阅',
     setAiHeadlessDesc:
-      '允许由终端命令或其他程序（MCP）发起的生图、图片解析、PDF 翻译和 AI 页面识读使用你的 Claude 或 Codex 订阅。关闭时，这类请求只使用 key 方式的服务商。',
+      '允许由终端命令或其他程序（MCP）发起的生图、图片解析、PDF 翻译、AI 页面识读和书籍（EPUB）翻译使用你的 Claude 或 Codex 订阅。关闭时，这类请求只使用 key 方式的服务商。',
     setAiHeadlessWarning:
       '没有每小时次数上限，程序可以发送任意多的请求，请求中可能包含整份文档的文字和页面图片。两家公司都不建议让程序自动使用订阅，你的账号可能会受到限制。',
     setAiHeadlessConfirm: '仍然开启',
@@ -403,6 +418,18 @@ export const strings = {
     setAiSharedKeyHint: '同一服务商的 key 与 Base URL 在各项能力间共用，只需填一次。',
     setGithub: '开源项目',
     setBasedOn: '基于开源项目 {{GenOffice}} 构建（Apache License 2.0）。',
+    setLicenses: '开源许可',
+    setLicensesDesc: '查看本应用附带的软件和字体的许可证与版权声明。',
+    setLicensesOpen: '查看',
+    setRightsContact: '商标与版权联系',
+    setRightsContactDesc: '侵权举报和许可相关问题请发送到此地址。',
+    setRightsContactSend: '写邮件',
+    setTrademarks:
+      'GenOffice 与 Microsoft、Hancom、Adobe、XMind、Google、Anthropic、OpenAI 均无关联，也未获得其赞助或认可。Word、Excel、PowerPoint 是 Microsoft 的商标；Hangul（한글）、HWP、HWPX 是 Hancom 的商标；XMind 是 XMind Ltd. 的商标；Google 云端硬盘是 Google 的商标；Claude 是 Anthropic 的商标；ChatGPT 和 Codex 是 OpenAI 的商标。这些名称仅用于说明本应用能打开哪些文件以及与哪些服务配合使用。',
+    setHwpNotice:
+      'HWP/HWPX 编辑器基于开源项目 rhwp（MIT 许可）。本产品参考 Hancom 公开的韩文文档文件格式（.hwp）文档开发。',
+    setDisclaimer:
+      'GenOffice 依据 Apache License 2.0 按“原样”提供，不作任何保证。AI 生成的内容可能有误，请核实后再使用。确认自己有权使用这些内容是使用者的责任。',
     viewOnGitHub: '在 GitHub 上查看',
     setFeedback: '发送反馈',
     setFeedbackDesc:
@@ -489,6 +516,11 @@ export const strings = {
     askIntro: 'Ask about your starred files. Answers cite their sources — click one to open it.',
     askToolSearch: 'Searching the knowledge base',
     askToolRead: 'Reading a file',
+    askToolCreate: 'Creating a document',
+    askSaveMd: 'Save as Markdown',
+    askSaveDocx: 'Save as Word',
+    askSavedAs: 'Saved: {name}',
+    askSaveFailed: 'Could not save: {error}',
     askEmptyCorpus: 'The knowledge base is empty: star some files first, then ask.',
     askPlaceholder: 'Ask about your starred files…',
     askHintIdle: 'Enter to send',
@@ -548,6 +580,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mind Map',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filter by type',
     fileCount: '{n} files',
     fileCountOne: '{n} file',
@@ -643,7 +676,7 @@ export const strings = {
     setAutoSave: 'Auto-save all documents',
     setAutoSaveDesc:
       'Turn on AutoSave by default in every editor. You can still switch it off for a single window.',
-    setResultStore: 'Saved PDF AI results',
+    setResultStore: 'Saved AI results',
     setResultStoreDesc:
       'Pages read by AI and translations stay on this PC until you delete them. In use: {size}',
     setResultStoreDeleteAll: 'Delete all',
@@ -653,6 +686,9 @@ export const strings = {
     setSearchRerank: 'Jev search reranking',
     setSearchRerankDesc:
       "Sends the top 20 local hits' excerpts to TypeSafe's Jev model and reorders them by relevance. Off by default; when on, excerpts leave this device.",
+    setAiInternetTools: 'Let AI use internet tools',
+    setAiInternetToolsDesc:
+      'Web search, reading web pages, fetching pictures by address, and making and analyzing images. Off: the editors’ AI works without them. On: an address that has not appeared in the conversation is asked about before it is fetched. The AI conversation itself is not affected.',
     setSearchRerankEndpoint: 'Jev endpoint',
     searchRerankedBy: 'Reordered by relevance with Jev',
     searchJevSettings: 'Jev semantic reranking',
@@ -676,9 +712,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Open system settings',
     setDefaultAppFailed: 'Could not change it. Please set it in the system settings.',
     setAiSpellcheckDesc: 'Underline misspelled words while typing in the AI chat input.',
-    setAiOpenInNewDocs: 'Open the AI panel in new documents',
-    setAiOpenInNewDocsDesc:
-      'When off, newly opened documents start with the AI panel collapsed; it is one click away when needed.',
+    setAiPanelStart: 'AI panel',
+    setAiPanelStartDesc:
+      'Choose how the AI panel starts when you open the app or a document. Off hides the panel and its side button; an AI action in the ribbon or a menu can still open it.',
+    aiPanelStartOff: 'Off',
+    aiPanelStartCollapsed: 'Collapsed',
+    aiPanelStartLast: 'Last state',
+    setAuthorName: 'User name',
+    setAuthorNameDesc:
+      'Shown as the author of comments and tracked changes in Docs, Sheets and Slides. Leave blank to use your computer account name.',
     settings: 'Settings',
     setSecAccount: 'Account',
     setSecGeneral: 'General',
@@ -734,7 +776,7 @@ export const strings = {
       'Chats on this provider use your own key, and that provider charges you for them. It is used only while you choose it yourself under "AI to use".',
     setAiHeadless: 'Let automatic requests use a subscription',
     setAiHeadlessDesc:
-      'Allows image generation, image analysis, PDF translation and AI page reading requested by a terminal command or another program (MCP) to run on your Claude or Codex subscription. When off, those requests use key providers only.',
+      'Allows image generation, image analysis, PDF translation, AI page reading and book (EPUB) translation requested by a terminal command or another program (MCP) to run on your Claude or Codex subscription. When off, those requests use key providers only.',
     setAiHeadlessWarning:
       'There is no hourly limit, so a program can send as many requests as it likes, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.',
     setAiHeadlessConfirm: 'Turn on anyway',
@@ -888,6 +930,19 @@ export const strings = {
       "A vendor's key and base URL are shared across capabilities; enter them once.",
     setGithub: 'Open Source',
     setBasedOn: 'Based on the open-source project {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Open-source licenses',
+    setLicensesDesc:
+      'License and copyright notices for the software and fonts that ship with this app.',
+    setLicensesOpen: 'View',
+    setRightsContact: 'Trademark and copyright contact',
+    setRightsContactDesc: 'Send infringement reports and licensing questions to this address.',
+    setRightsContactSend: 'Write an email',
+    setTrademarks:
+      'GenOffice is not affiliated with, sponsored by or endorsed by Microsoft, Hancom, Adobe, XMind, Google, Anthropic or OpenAI. Word, Excel and PowerPoint are trademarks of Microsoft; Hangul, HWP and HWPX of Hancom; XMind of XMind Ltd.; Google Drive of Google; Claude of Anthropic; ChatGPT and Codex of OpenAI. These names are used only to say which files the app opens and what it works with.',
+    setHwpNotice:
+      "The HWP/HWPX editor is built on the open-source project rhwp (MIT License). This product was developed with reference to Hancom's published document on the Hangul document file format (.hwp).",
+    setDisclaimer:
+      'GenOffice is provided as is, without warranties of any kind, under the Apache License 2.0. AI-generated content can be wrong: check it before you use it. Making sure you have the right to use it is up to you.',
     viewOnGitHub: 'View on GitHub',
     setFeedback: 'Send feedback',
     setFeedbackDesc:
@@ -978,6 +1033,11 @@ export const strings = {
     askIntro: 'Hỏi về các tệp bạn đã đánh dấu. Câu trả lời dẫn nguồn — nhấp để mở.',
     askToolSearch: 'Đang tìm cơ sở tri thức',
     askToolRead: 'Đang đọc tệp',
+    askToolCreate: 'Đang tạo tài liệu',
+    askSaveMd: 'Lưu dưới dạng Markdown',
+    askSaveDocx: 'Lưu dưới dạng Word',
+    askSavedAs: 'Đã lưu: {name}',
+    askSaveFailed: 'Không thể lưu: {error}',
     askEmptyCorpus: 'Cơ sở tri thức trống: hãy đánh dấu tệp trước rồi hỏi.',
     askPlaceholder: 'Hỏi về các tệp đã đánh dấu…',
     askHintIdle: 'Enter để gửi',
@@ -1037,6 +1097,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Sơ đồ tư duy',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Lọc theo loại',
     fileCount: '{n} tệp',
     fileCountOne: '{n} tệp',
@@ -1132,7 +1193,7 @@ export const strings = {
     setAutoSave: 'Tự động lưu tất cả tài liệu',
     setAutoSaveDesc:
       'Bật Tự động lưu theo mặc định trong mọi trình soạn thảo. Bạn vẫn có thể tắt tính năng này cho từng cửa sổ riêng lẻ.',
-    setResultStore: 'Kết quả AI của PDF đã lưu',
+    setResultStore: 'Kết quả AI đã lưu',
     setResultStoreDesc:
       'Các trang do AI đọc và bản dịch được lưu trên máy tính này cho đến khi bạn xóa. Đang dùng: {size}',
     setResultStoreDeleteAll: 'Xóa tất cả',
@@ -1142,6 +1203,9 @@ export const strings = {
     setSearchRerank: 'Sắp xếp lại kết quả tìm kiếm Jev',
     setSearchRerankDesc:
       'Gửi đoạn trích của 20 kết quả hàng đầu cục bộ tới mô hình Jev của TypeSafe và sắp xếp lại theo mức độ liên quan. Tắt theo mặc định; khi bật, các đoạn trích sẽ được gửi ra ngoài thiết bị này.',
+    setAiInternetTools: 'Cho phép AI dùng công cụ internet',
+    setAiInternetToolsDesc:
+      'Tìm kiếm web, đọc trang web, lấy hình theo địa chỉ, tạo và phân tích hình ảnh. Khi tắt, AI trong trình soạn thảo làm việc mà không có chúng. Khi bật, địa chỉ chưa xuất hiện trong cuộc trò chuyện sẽ được hỏi trước khi tải. Bản thân cuộc trò chuyện với AI không bị ảnh hưởng.',
     setSearchRerankEndpoint: 'Điểm cuối Jev',
     searchRerankedBy: 'Được sắp xếp lại theo mức độ liên quan với Jev',
     searchJevSettings: 'Sắp xếp lại ngữ nghĩa Jev',
@@ -1165,9 +1229,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Mở cài đặt hệ thống',
     setDefaultAppFailed: 'Không thể thay đổi. Vui lòng đặt trong cài đặt hệ thống.',
     setAiSpellcheckDesc: 'Gạch chân các từ sai chính tả khi nhập vào ô trò chuyện AI.',
-    setAiOpenInNewDocs: 'Mở bảng AI trong tài liệu mới',
-    setAiOpenInNewDocsDesc:
-      'Khi tắt, tài liệu mới mở sẽ thu gọn bảng AI; chỉ cần một lần bấm để mở lại khi cần.',
+    setAiPanelStart: 'Bảng AI',
+    setAiPanelStartDesc:
+      'Chọn cách bảng AI bắt đầu khi bạn mở ứng dụng hoặc tài liệu. "Tắt" sẽ ẩn bảng và nút bên cạnh; thao tác AI trên dải băng hoặc trình đơn vẫn có thể mở bảng.',
+    aiPanelStartOff: 'Tắt',
+    aiPanelStartCollapsed: 'Thu gọn',
+    aiPanelStartLast: 'Trạng thái gần nhất',
+    setAuthorName: 'Tên người dùng',
+    setAuthorNameDesc:
+      'Hiển thị là tác giả của nhận xét và thay đổi được theo dõi trong Docs, Sheets và Slides. Để trống để dùng tên tài khoản máy tính.',
     settings: 'Cài đặt',
     setSecAccount: 'Tài khoản',
     setSecGeneral: 'Chung',
@@ -1222,7 +1292,7 @@ export const strings = {
       'Các cuộc trò chuyện qua nhà cung cấp này dùng khóa của riêng bạn và nhà cung cấp đó sẽ tính phí. Nhà cung cấp này chỉ được dùng khi bạn tự chọn trong mục "AI sử dụng".',
     setAiHeadless: 'Cho phép yêu cầu tự động dùng gói đăng ký',
     setAiHeadlessDesc:
-      'Cho phép việc tạo hình ảnh, phân tích hình ảnh, dịch PDF và đọc trang bằng AI do lệnh terminal hoặc chương trình khác (MCP) yêu cầu chạy bằng gói đăng ký Claude hoặc Codex của bạn. Khi tắt, các yêu cầu đó chỉ dùng nhà cung cấp theo khóa.',
+      'Cho phép việc tạo hình ảnh, phân tích hình ảnh, dịch PDF, đọc trang bằng AI và dịch sách (EPUB) do lệnh terminal hoặc chương trình khác (MCP) yêu cầu chạy bằng gói đăng ký Claude hoặc Codex của bạn. Khi tắt, các yêu cầu đó chỉ dùng nhà cung cấp theo khóa.',
     setAiHeadlessWarning:
       'Không có giới hạn theo giờ, nên chương trình có thể gửi bao nhiêu yêu cầu tùy ý, và các yêu cầu đó có thể chứa toàn bộ văn bản của tài liệu cùng hình ảnh các trang. Cả hai công ty đều không khuyến nghị để chương trình tự động dùng gói đăng ký, và tài khoản của bạn có thể bị hạn chế.',
     setAiHeadlessConfirm: 'Vẫn bật',
@@ -1378,6 +1448,19 @@ export const strings = {
       'Khóa và URL cơ sở của nhà cung cấp được dùng chung cho các chức năng; chỉ cần nhập một lần.',
     setGithub: 'Mã nguồn mở',
     setBasedOn: 'Dựa trên dự án mã nguồn mở {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Giấy phép mã nguồn mở',
+    setLicensesDesc:
+      'Xem thông báo giấy phép và bản quyền của phần mềm và phông chữ đi kèm ứng dụng này.',
+    setLicensesOpen: 'Xem',
+    setRightsContact: 'Liên hệ về nhãn hiệu và bản quyền',
+    setRightsContactDesc: 'Gửi báo cáo vi phạm và câu hỏi về giấy phép đến địa chỉ này.',
+    setRightsContactSend: 'Viết email',
+    setTrademarks:
+      'GenOffice không liên kết với, không được tài trợ hay xác nhận bởi Microsoft, Hancom, Adobe, XMind, Google, Anthropic hoặc OpenAI. Word, Excel và PowerPoint là nhãn hiệu của Microsoft; Hangul, HWP và HWPX của Hancom; XMind của XMind Ltd.; Google Drive của Google; Claude của Anthropic; ChatGPT và Codex của OpenAI. Các tên này chỉ được dùng để cho biết ứng dụng mở được tệp nào và hoạt động cùng với gì.',
+    setHwpNotice:
+      'Trình chỉnh sửa HWP/HWPX được xây dựng trên dự án mã nguồn mở rhwp (Giấy phép MIT). Sản phẩm này được phát triển có tham khảo tài liệu công khai của Hancom về định dạng tệp tài liệu Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice được cung cấp theo nguyên trạng, không có bất kỳ bảo đảm nào, theo Apache License 2.0. Nội dung do AI tạo có thể sai, hãy kiểm tra trước khi dùng. Việc xác nhận bạn có quyền sử dụng nội dung đó là trách nhiệm của bạn.',
     viewOnGitHub: 'Xem trên GitHub',
     setFeedback: 'Gửi phản hồi',
     setFeedbackDesc:
@@ -1469,6 +1552,11 @@ export const strings = {
     askIntro: 'スター付きファイルについて質問できます。回答には出典が付き、クリックで開けます。',
     askToolSearch: 'ナレッジベースを検索中',
     askToolRead: 'ファイルを読み込み中',
+    askToolCreate: 'ドキュメントを作成中',
+    askSaveMd: 'Markdown として保存',
+    askSaveDocx: 'Word として保存',
+    askSavedAs: '保存済み: {name}',
+    askSaveFailed: '保存できませんでした: {error}',
     askEmptyCorpus: 'ナレッジベースは空です:先にファイルをスターしてから質問してください。',
     askPlaceholder: 'スター付きファイルについて質問…',
     askHintIdle: 'Enter で送信',
@@ -1531,6 +1619,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'マインドマップ',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '種類で絞り込み',
     // List / bulk actions
     fileCount: '{n} 個のファイル',
@@ -1630,7 +1719,7 @@ export const strings = {
     setAutoSave: 'すべてのドキュメントを自動保存',
     setAutoSaveDesc:
       'すべてのエディターで自動保存をデフォルトでオンにします。個々のウィンドウでオフにすることもできます。',
-    setResultStore: '保存済みの PDF AI 結果',
+    setResultStore: '保存済みの AI 結果',
     setResultStoreDesc:
       'AI で読み取ったページと翻訳は、削除するまでこの PC に保存されます。使用量：{size}',
     setResultStoreDeleteAll: 'すべて削除',
@@ -1640,6 +1729,9 @@ export const strings = {
     setSearchRerank: 'Jev 検索リランク',
     setSearchRerankDesc:
       'ローカル検索の上位 20 件の抜粋を TypeSafe の Jev モデルに送り、関連度で並べ替えます。既定ではオフ。オンにすると抜粋が端末外に送信されます。',
+    setAiInternetTools: 'AI にインターネットツールを使わせる',
+    setAiInternetToolsDesc:
+      'Web 検索、Web ページの読み取り、アドレスからの画像取得、画像の生成と分析です。オフにすると、エディターの AI はこれらを使いません。オンのときも、会話に出てこなかったアドレスは取得前に確認します。AI との会話そのものには影響しません。',
     setSearchRerankEndpoint: 'Jev エンドポイント',
     searchRerankedBy: 'Jev が関連度で並べ替えました',
     searchJevSettings: 'Jev セマンティック並べ替え',
@@ -1664,9 +1756,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'システム設定を開く',
     setDefaultAppFailed: '変更できませんでした。システム設定で設定してください。',
     setAiSpellcheckDesc: 'AI チャットの入力欄で入力中にスペルミスの単語に下線を表示します。',
-    setAiOpenInNewDocs: '新しいドキュメントで AI パネルを開く',
-    setAiOpenInNewDocsDesc:
-      'オフにすると、新しく開いたドキュメントは AI パネルを折りたたんだ状態で始まります。必要なときはワンクリックで開けます。',
+    setAiPanelStart: 'AI パネル',
+    setAiPanelStartDesc:
+      'アプリの起動時やドキュメントを開くときに、AI パネルをどの状態で始めるかを選びます。「オフ」はパネルとサイドボタンを隠しますが、リボンやメニューの AI 操作からは開けます。',
+    aiPanelStartOff: 'オフ',
+    aiPanelStartCollapsed: '折りたたみ',
+    aiPanelStartLast: '前回の状態',
+    setAuthorName: 'ユーザー名',
+    setAuthorNameDesc:
+      'Docs、Sheets、Slides でコメントと変更履歴の作成者として表示されます。空欄の場合はパソコンのアカウント名を使います。',
     settings: '設定',
     setSecAccount: 'アカウント',
     setSecGeneral: '一般',
@@ -1722,7 +1820,7 @@ export const strings = {
       'このプロバイダーでの会話には自分で入力したキーが使われ、料金はそのプロバイダーから請求されます。「使用する AI」で自分で選んでいる間だけ使われます。',
     setAiHeadless: '自動呼び出しでサブスクリプションを使う',
     setAiHeadlessDesc:
-      'ターミナルのコマンドや他のプログラム（MCP）から要求された画像生成、画像解析、PDF 翻訳、AI によるページ読み取りを、Claude または Codex のサブスクリプションで処理できるようにします。オフの場合、こうした要求にはキー方式のプロバイダーだけが使われます。',
+      'ターミナルのコマンドや他のプログラム（MCP）から要求された画像生成、画像解析、PDF 翻訳、AI によるページ読み取り、書籍（EPUB）の翻訳を、Claude または Codex のサブスクリプションで処理できるようにします。オフの場合、こうした要求にはキー方式のプロバイダーだけが使われます。',
     setAiHeadlessWarning:
       '1 時間あたりの上限はないため、プログラムはいくらでも要求を送ることができ、その要求には文書全体のテキストやページの画像が含まれることがあります。プログラムがサブスクリプションを自動的に使うことは両社とも推奨しておらず、アカウントが制限される可能性があります。',
     setAiHeadlessConfirm: 'それでもオンにする',
@@ -1878,6 +1976,20 @@ export const strings = {
     setGithub: 'オープンソース',
     setBasedOn:
       'オープンソースプロジェクト {{GenOffice}}（Apache License 2.0）をもとに開発されています。',
+    setLicenses: 'オープンソースライセンス',
+    setLicensesDesc:
+      'このアプリに同梱されているソフトウェアとフォントのライセンスおよび著作権表示を表示します。',
+    setLicensesOpen: '表示',
+    setRightsContact: '商標・著作権のお問い合わせ',
+    setRightsContactDesc:
+      '権利侵害の報告やライセンスに関するお問い合わせは、このアドレスへお送りください。',
+    setRightsContactSend: 'メールを書く',
+    setTrademarks:
+      'GenOffice は Microsoft、Hancom、Adobe、XMind、Google、Anthropic、OpenAI と提携しておらず、これらの企業による後援や保証も受けていません。Word、Excel、PowerPoint は Microsoft の商標、Hangul（한글）、HWP、HWPX は Hancom の商標、XMind は XMind Ltd. の商標、Google ドライブは Google の商標、Claude は Anthropic の商標、ChatGPT と Codex は OpenAI の商標です。これらの名称は、開けるファイルや連携するサービスを示すためにのみ使用しています。',
+    setHwpNotice:
+      'HWP/HWPX エディターはオープンソースプロジェクト rhwp（MIT ライセンス）を基にしています。本製品は、Hancom が公開しているハングル文書ファイル形式（.hwp）の資料を参考に開発しました。',
+    setDisclaimer:
+      'GenOffice は Apache License 2.0 に基づき「現状のまま」提供され、いかなる保証もありません。AI が作成した内容は誤っている場合があるため、確認してからご利用ください。その内容を使用する権利があるかどうかの確認は、利用者の責任です。',
     viewOnGitHub: 'GitHub で見る',
     setFeedback: 'フィードバックを送る',
     setFeedbackDesc:
@@ -1974,6 +2086,11 @@ export const strings = {
     askIntro: '즐겨찾기한 파일에 대해 질문하세요. 답변에는 출처가 표시되며 클릭하면 열립니다.',
     askToolSearch: '지식 베이스 검색 중',
     askToolRead: '파일 읽는 중',
+    askToolCreate: '문서 생성 중',
+    askSaveMd: 'Markdown으로 저장',
+    askSaveDocx: 'Word로 저장',
+    askSavedAs: '저장됨: {name}',
+    askSaveFailed: '저장하지 못했습니다: {error}',
     askEmptyCorpus: '지식 베이스가 비어 있습니다. 먼저 파일을 즐겨찾기한 후 질문해 주세요.',
     askPlaceholder: '즐겨찾기한 파일에 대해 질문…',
     askHintIdle: 'Enter로 보내기',
@@ -2036,6 +2153,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '마인드맵',
     filterHwp: '한글',
+    filterEpub: 'EPUB',
     filterAria: '유형별 필터',
     // List / bulk actions
     fileCount: '파일 {n}개',
@@ -2132,7 +2250,7 @@ export const strings = {
     saveLocation: '저장 위치',
     setAutoSave: '모든 문서 자동 저장',
     setAutoSaveDesc: '모든 편집기에서 자동 저장을 기본으로 켭니다. 개별 창에서는 끌 수 있습니다.',
-    setResultStore: 'PDF AI 결과 보관소',
+    setResultStore: 'AI 결과 보관소',
     setResultStoreDesc:
       'AI로 읽은 페이지와 번역본은 지울 때까지 이 PC에 보관됩니다. 사용 중: {size}',
     setResultStoreDeleteAll: '모두 지우기',
@@ -2142,6 +2260,9 @@ export const strings = {
     setSearchRerank: 'Jev 검색 재정렬',
     setSearchRerankDesc:
       '로컬 검색 상위 20개 결과의 발췌문을 TypeSafe의 Jev 모델로 보내 관련도 순으로 재정렬합니다. 기본은 꺼짐이며, 켜면 발췌문이 기기 밖으로 전송됩니다.',
+    setAiInternetTools: 'AI가 인터넷 도구 쓰기',
+    setAiInternetToolsDesc:
+      '웹 검색, 웹 페이지 읽기, 주소로 그림 가져오기, 이미지 만들기와 분석입니다. 끄면 편집기의 AI가 이 도구 없이 일합니다. 켜 두어도 대화에 없던 주소는 가져오기 전에 묻습니다. AI 대화 자체는 그대로입니다.',
     setSearchRerankEndpoint: 'Jev 엔드포인트',
     searchRerankedBy: 'Jev가 관련도 순으로 재정렬함',
     searchJevSettings: 'Jev 시맨틱 재정렬',
@@ -2165,9 +2286,15 @@ export const strings = {
     setDefaultAppOpenSettings: '시스템 설정 열기',
     setDefaultAppFailed: '변경할 수 없습니다. 시스템 설정에서 직접 설정해 주세요.',
     setAiSpellcheckDesc: 'AI 채팅 입력란에 입력할 때 잘못된 단어에 밑줄을 표시합니다.',
-    setAiOpenInNewDocs: '새 문서에서 AI 패널 열기',
-    setAiOpenInNewDocsDesc:
-      '끄면 새로 여는 문서는 AI 패널이 접힌 상태로 시작합니다. 필요할 때 한 번 클릭하면 열립니다.',
+    setAiPanelStart: 'AI 패널',
+    setAiPanelStartDesc:
+      '이음오피스를 켜거나 문서를 열 때 AI 패널을 어떻게 시작할지 정합니다. "사용 안 함"은 패널과 측면 단추를 숨기지만, 리본이나 메뉴의 AI 작업으로는 열 수 있습니다.',
+    aiPanelStartOff: '사용 안 함',
+    aiPanelStartCollapsed: '접힌 채로',
+    aiPanelStartLast: '마지막 상태',
+    setAuthorName: '사용자 이름',
+    setAuthorNameDesc:
+      'Docs, Sheets, Slides에서 메모와 변경 내용 추적의 작성자로 표시됩니다. 비워 두면 컴퓨터 계정 이름을 사용합니다.',
     settings: '설정',
     setSecAccount: '계정',
     setSecGeneral: '일반',
@@ -2222,7 +2349,7 @@ export const strings = {
       '이 제공업체로 하는 대화는 직접 넣은 키를 쓰고, 요금은 그 회사에서 청구됩니다. "사용할 AI"에서 직접 고른 동안에만 쓰입니다.',
     setAiHeadless: '자동 호출에 구독 사용',
     setAiHeadlessDesc:
-      '터미널 명령이나 다른 프로그램(MCP)이 요청한 이미지 생성·이미지 분석·PDF 번역·AI 페이지 읽기를 Claude 또는 Codex 구독으로 처리하도록 허용합니다. 꺼져 있으면 그런 요청은 키 방식 제공업체만 씁니다.',
+      '터미널 명령이나 다른 프로그램(MCP)이 요청한 이미지 생성·이미지 분석·PDF 번역·AI 페이지 읽기·책(EPUB) 번역을 Claude 또는 Codex 구독으로 처리하도록 허용합니다. 꺼져 있으면 그런 요청은 키 방식 제공업체만 씁니다.',
     setAiHeadlessWarning:
       '시간당 한도가 없어 프로그램이 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
     setAiHeadlessConfirm: '그래도 켜기',
@@ -2373,6 +2500,18 @@ export const strings = {
       '같은 제공자의 키와 Base URL은 모든 기능에서 공유되므로 한 번만 입력하면 됩니다.',
     setGithub: '오픈 소스',
     setBasedOn: '오픈 소스 프로젝트 {{GenOffice}}(Apache License 2.0)를 바탕으로 만들었습니다.',
+    setLicenses: '오픈소스 라이선스',
+    setLicensesDesc: '이 앱에 함께 들어 있는 프로그램과 글꼴의 라이선스, 저작권 고지를 봅니다.',
+    setLicensesOpen: '보기',
+    setRightsContact: '상표·저작권 문의',
+    setRightsContactDesc: '권리 침해 신고나 라이선스 문의는 이 주소로 보내 주세요.',
+    setRightsContactSend: '메일 쓰기',
+    setTrademarks:
+      'GenOffice는 Microsoft, 한글과컴퓨터, Adobe, XMind, Google, Anthropic, OpenAI와 제휴하지 않았고, 이들의 후원이나 보증을 받지 않습니다. Word·Excel·PowerPoint는 Microsoft의, 한글·HWP·HWPX는 한글과컴퓨터의, XMind는 XMind Ltd.의, Google 드라이브는 Google의, Claude는 Anthropic의, ChatGPT·Codex는 OpenAI의 상표입니다. 이 이름들은 어떤 파일을 열고 무엇과 함께 쓰는지 알리는 데만 씁니다.',
+    setHwpNotice:
+      '한글(HWP·HWPX) 편집기는 오픈소스 프로젝트 rhwp(MIT 라이선스)를 바탕으로 만들었습니다. 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.',
+    setDisclaimer:
+      'GenOffice는 Apache License 2.0에 따라 있는 그대로 제공되며, 어떤 보증도 하지 않습니다. AI가 만든 내용은 틀릴 수 있으니 확인한 뒤 쓰세요. 그 내용을 쓸 권리가 있는지 확인하는 일은 쓰는 사람의 몫입니다.',
     viewOnGitHub: 'GitHub에서 보기',
     setFeedback: '의견 보내기',
     setFeedbackDesc:
@@ -2466,6 +2605,11 @@ export const strings = {
       'Posez des questions sur vos fichiers favoris. Les réponses citent leurs sources — cliquez pour ouvrir.',
     askToolSearch: 'Recherche dans la base',
     askToolRead: 'Lecture d’un fichier',
+    askToolCreate: 'Création d’un document',
+    askSaveMd: 'Enregistrer en Markdown',
+    askSaveDocx: 'Enregistrer en Word',
+    askSavedAs: 'Enregistré : {name}',
+    askSaveFailed: 'Enregistrement impossible : {error}',
     askEmptyCorpus: 'La base de connaissances est vide : ajoutez d’abord des fichiers favoris.',
     askPlaceholder: 'Posez une question sur vos fichiers…',
     askHintIdle: 'Entrée pour envoyer',
@@ -2529,6 +2673,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Carte mentale',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrer par type',
     // List / bulk actions
     fileCount: '{n} fichiers',
@@ -2629,7 +2774,7 @@ export const strings = {
     setAutoSave: 'Enregistrer automatiquement tous les documents',
     setAutoSaveDesc:
       "Active l'enregistrement automatique par défaut dans chaque éditeur. Vous pouvez toujours le désactiver pour une fenêtre.",
-    setResultStore: 'Résultats IA des PDF enregistrés',
+    setResultStore: 'Résultats IA enregistrés',
     setResultStoreDesc:
       "Les pages lues par l'IA et les traductions restent sur ce PC jusqu'à ce que vous les supprimiez. Espace utilisé : {size}",
     setResultStoreDeleteAll: 'Tout supprimer',
@@ -2639,6 +2784,9 @@ export const strings = {
     setSearchRerank: 'Reclassement Jev',
     setSearchRerankDesc:
       'Envoie les extraits des 20 premiers résultats locaux au modèle Jev de TypeSafe et les réordonne par pertinence. Désactivé par défaut ; une fois activé, les extraits quittent cet appareil.',
+    setAiInternetTools: 'Autoriser l’IA à utiliser les outils internet',
+    setAiInternetToolsDesc:
+      'Recherche web, lecture de pages web, récupération d’images par adresse, création et analyse d’images. Désactivé : l’IA des éditeurs s’en passe. Activé : une adresse jamais apparue dans la conversation vous est soumise avant d’être récupérée. La conversation avec l’IA elle-même n’est pas concernée.',
     setSearchRerankEndpoint: 'Point de terminaison Jev',
     searchRerankedBy: 'Réordonné par pertinence avec Jev',
     searchJevSettings: 'Reclassement sémantique Jev',
@@ -2662,9 +2810,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Ouvrir les réglages système',
     setDefaultAppFailed: 'Modification impossible. Définissez-la dans les réglages système.',
     setAiSpellcheckDesc: 'Souligne les mots mal orthographiés pendant la saisie dans le chat IA.',
-    setAiOpenInNewDocs: 'Ouvrir le panneau IA dans les nouveaux documents',
-    setAiOpenInNewDocsDesc:
-      "Désactivé : les documents nouvellement ouverts démarrent avec le panneau IA replié ; un clic suffit pour l'afficher.",
+    setAiPanelStart: 'Panneau IA',
+    setAiPanelStartDesc:
+      "Choisit comment le panneau IA démarre à l'ouverture de l'application ou d'un document. « Désactivé » masque le panneau et son bouton latéral ; une action IA du ruban ou d'un menu peut toujours l'ouvrir.",
+    aiPanelStartOff: 'Désactivé',
+    aiPanelStartCollapsed: 'Replié',
+    aiPanelStartLast: 'Dernier état',
+    setAuthorName: 'Nom d’utilisateur',
+    setAuthorNameDesc:
+      'Affiché comme auteur des commentaires et des modifications suivies dans Docs, Sheets et Slides. Laissez vide pour utiliser le nom de votre compte.',
     settings: 'Paramètres',
     setSecAccount: 'Compte',
     setSecGeneral: 'Général',
@@ -2721,7 +2875,7 @@ export const strings = {
       'Les conversations avec ce fournisseur utilisent votre propre clé, et c’est lui qui vous les facture. Il n’est utilisé que si vous le choisissez vous-même sous « IA à utiliser ».',
     setAiHeadless: 'Autoriser les requêtes automatiques à utiliser un abonnement',
     setAiHeadlessDesc:
-      'Permet à la génération et à l’analyse d’images, à la traduction de PDF et à la lecture de pages par l’IA demandées par une commande du terminal ou par un autre programme (MCP) de passer par votre abonnement Claude ou Codex. Lorsque l’option est désactivée, ces requêtes n’utilisent que les fournisseurs à clé.',
+      'Permet à la génération et à l’analyse d’images, à la traduction de PDF, à la lecture de pages par l’IA et à la traduction de livres (EPUB) demandées par une commande du terminal ou par un autre programme (MCP) de passer par votre abonnement Claude ou Codex. Lorsque l’option est désactivée, ces requêtes n’utilisent que les fournisseurs à clé.',
     setAiHeadlessWarning:
       'Il n’y a pas de limite horaire : un programme peut envoyer autant de requêtes qu’il le souhaite, et elles peuvent contenir tout le texte d’un document et des images de ses pages. Aucune des deux entreprises ne recommande de laisser un programme utiliser automatiquement votre abonnement, et votre compte pourrait être restreint.',
     setAiHeadlessConfirm: 'Activer quand même',
@@ -2880,6 +3034,20 @@ export const strings = {
       "La clé et l'URL de base d'un fournisseur sont partagées entre les capacités ; saisissez-les une seule fois.",
     setGithub: 'Open source',
     setBasedOn: 'Basé sur le projet open source {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licences open source',
+    setLicensesDesc:
+      'Afficher les licences et mentions de droits d’auteur des logiciels et polices fournis avec cette application.',
+    setLicensesOpen: 'Afficher',
+    setRightsContact: 'Contact marques et droits d’auteur',
+    setRightsContactDesc:
+      'Envoyez à cette adresse les signalements d’atteinte aux droits et les questions de licence.',
+    setRightsContactSend: 'Écrire un e-mail',
+    setTrademarks:
+      'GenOffice n’est ni affilié à Microsoft, Hancom, Adobe, XMind, Google, Anthropic ou OpenAI, ni parrainé ou approuvé par eux. Word, Excel et PowerPoint sont des marques de Microsoft ; Hangul, HWP et HWPX de Hancom ; XMind de XMind Ltd. ; Google Drive de Google ; Claude d’Anthropic ; ChatGPT et Codex d’OpenAI. Ces noms servent uniquement à indiquer quels fichiers l’application ouvre et avec quoi elle fonctionne.',
+    setHwpNotice:
+      'L’éditeur HWP/HWPX repose sur le projet open source rhwp (licence MIT). Ce produit a été développé en s’appuyant sur la documentation publiée par Hancom sur le format de fichier de document Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice est fourni « en l’état », sans aucune garantie, selon l’Apache License 2.0. Le contenu généré par l’IA peut être erroné : vérifiez-le avant de l’utiliser. Il vous appartient de vous assurer que vous avez le droit de l’utiliser.',
     viewOnGitHub: 'Voir sur GitHub',
     setFeedback: 'Envoyer un commentaire',
     setFeedbackDesc:
@@ -2976,6 +3144,11 @@ export const strings = {
       'Fragen Sie zu Ihren Favoriten. Antworten nennen ihre Quellen — Klick öffnet die Datei.',
     askToolSearch: 'Wissensbasis durchsuchen',
     askToolRead: 'Datei wird gelesen',
+    askToolCreate: 'Dokument wird erstellt',
+    askSaveMd: 'Als Markdown speichern',
+    askSaveDocx: 'Als Word speichern',
+    askSavedAs: 'Gespeichert: {name}',
+    askSaveFailed: 'Speichern fehlgeschlagen: {error}',
     askEmptyCorpus: 'Die Wissensbasis ist leer: markieren Sie zuerst Dateien, dann fragen Sie.',
     askPlaceholder: 'Fragen Sie zu Ihren Favoriten…',
     askHintIdle: 'Enter zum Senden',
@@ -3039,6 +3212,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Nach Typ filtern',
     // List / bulk actions
     fileCount: '{n} Dateien',
@@ -3142,7 +3316,7 @@ export const strings = {
     setAutoSave: 'Alle Dokumente automatisch speichern',
     setAutoSaveDesc:
       'Aktiviert AutoSave standardmäßig in jedem Editor. Für ein einzelnes Fenster kann es weiterhin ausgeschaltet werden.',
-    setResultStore: 'Gespeicherte KI-Ergebnisse für PDFs',
+    setResultStore: 'Gespeicherte KI-Ergebnisse',
     setResultStoreDesc:
       'Von der KI gelesene Seiten und Übersetzungen bleiben auf diesem PC, bis Sie sie löschen. Belegt: {size}',
     setResultStoreDeleteAll: 'Alle löschen',
@@ -3152,6 +3326,9 @@ export const strings = {
     setSearchRerank: 'Jev-Neusortierung',
     setSearchRerankDesc:
       'Sendet die Auszüge der 20 besten lokalen Treffer an das Jev-Modell von TypeSafe und sortiert sie nach Relevanz. Standardmäßig aus; wenn aktiv, verlassen Auszüge dieses Gerät.',
+    setAiInternetTools: 'KI darf Internet-Tools nutzen',
+    setAiInternetToolsDesc:
+      'Websuche, Webseiten lesen, Bilder über eine Adresse abrufen sowie Bilder erstellen und analysieren. Aus: Die KI der Editoren arbeitet ohne sie. An: Eine Adresse, die im Gespräch noch nicht vorkam, wird vor dem Abrufen bei Ihnen erfragt. Das KI-Gespräch selbst ist nicht betroffen.',
     setSearchRerankEndpoint: 'Jev-Endpunkt',
     searchRerankedBy: 'Mit Jev nach Relevanz sortiert',
     searchJevSettings: 'Semantische Neuordnung mit Jev',
@@ -3176,9 +3353,15 @@ export const strings = {
     setDefaultAppFailed: 'Änderung nicht möglich. Bitte in den Systemeinstellungen festlegen.',
     setAiSpellcheckDesc:
       'Unterstreicht falsch geschriebene Wörter beim Tippen im KI-Chat-Eingabefeld.',
-    setAiOpenInNewDocs: 'KI-Panel in neuen Dokumenten öffnen',
-    setAiOpenInNewDocsDesc:
-      'Wenn aus, starten neu geöffnete Dokumente mit eingeklapptem KI-Panel; ein Klick genügt, um es zu öffnen.',
+    setAiPanelStart: 'KI-Panel',
+    setAiPanelStartDesc:
+      'Legt fest, wie das KI-Panel beim Start der App oder beim Öffnen eines Dokuments beginnt. „Aus“ blendet das Panel und seine Seitenschaltfläche aus; eine KI-Aktion im Menüband oder in einem Menü kann es weiterhin öffnen.',
+    aiPanelStartOff: 'Aus',
+    aiPanelStartCollapsed: 'Eingeklappt',
+    aiPanelStartLast: 'Letzter Zustand',
+    setAuthorName: 'Benutzername',
+    setAuthorNameDesc:
+      'Wird in Docs, Sheets und Slides als Autor von Kommentaren und nachverfolgten Änderungen angezeigt. Leer lassen, um den Kontonamen des Computers zu verwenden.',
     settings: 'Einstellungen',
     setSecAccount: 'Konto',
     setSecGeneral: 'Allgemein',
@@ -3235,7 +3418,7 @@ export const strings = {
       'Chats über diesen Anbieter verwenden Ihren eigenen Schlüssel und werden von diesem Anbieter berechnet. Er wird nur verwendet, solange Sie ihn unter „Verwendete KI“ selbst auswählen.',
     setAiHeadless: 'Automatische Anfragen dürfen ein Abonnement nutzen',
     setAiHeadlessDesc:
-      'Erlaubt, dass Bildgenerierung, Bildanalyse, PDF-Übersetzung und das Lesen von Seiten per KI, die ein Terminalbefehl oder ein anderes Programm (MCP) anfordert, über Ihr Claude- oder Codex-Abonnement laufen. Ist die Option aus, nutzen solche Anfragen nur Anbieter mit Schlüssel.',
+      'Erlaubt, dass Bildgenerierung, Bildanalyse, PDF-Übersetzung, das Lesen von Seiten per KI und die Übersetzung von Büchern (EPUB), die ein Terminalbefehl oder ein anderes Programm (MCP) anfordert, über Ihr Claude- oder Codex-Abonnement laufen. Ist die Option aus, nutzen solche Anfragen nur Anbieter mit Schlüssel.',
     setAiHeadlessWarning:
       'Es gibt kein stündliches Limit: Ein Programm kann beliebig viele Anfragen senden, und diese können den gesamten Text eines Dokuments und Bilder seiner Seiten enthalten. Keines der beiden Unternehmen empfiehlt, ein Programm das Abonnement automatisch nutzen zu lassen, und Ihr Konto kann eingeschränkt werden.',
     setAiHeadlessConfirm: 'Trotzdem einschalten',
@@ -3393,6 +3576,20 @@ export const strings = {
       'Schlüssel und Base URL eines Anbieters gelten für alle Fähigkeiten; einmal eintragen genügt.',
     setGithub: 'Open Source',
     setBasedOn: 'Basiert auf dem Open-Source-Projekt {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Open-Source-Lizenzen',
+    setLicensesDesc:
+      'Lizenz- und Urheberrechtshinweise der Software und Schriften anzeigen, die mit dieser App geliefert werden.',
+    setLicensesOpen: 'Anzeigen',
+    setRightsContact: 'Kontakt zu Marken und Urheberrecht',
+    setRightsContactDesc:
+      'Meldungen über Rechtsverletzungen und Fragen zur Lizenz bitte an diese Adresse senden.',
+    setRightsContactSend: 'E-Mail schreiben',
+    setTrademarks:
+      'GenOffice ist nicht mit Microsoft, Hancom, Adobe, XMind, Google, Anthropic oder OpenAI verbunden und wird von ihnen weder gesponsert noch unterstützt. Word, Excel und PowerPoint sind Marken von Microsoft; Hangul, HWP und HWPX von Hancom; XMind von XMind Ltd.; Google Drive von Google; Claude von Anthropic; ChatGPT und Codex von OpenAI. Diese Namen werden nur verwendet, um zu sagen, welche Dateien die App öffnet und womit sie zusammenarbeitet.',
+    setHwpNotice:
+      'Der HWP/HWPX-Editor basiert auf dem Open-Source-Projekt rhwp (MIT-Lizenz). Dieses Produkt wurde unter Bezugnahme auf die von Hancom veröffentlichte Dokumentation zum Hangul-Dokumentdateiformat (.hwp) entwickelt.',
+    setDisclaimer:
+      'GenOffice wird gemäß der Apache License 2.0 ohne Mängelgewähr und ohne jegliche Garantie bereitgestellt. Von KI erzeugte Inhalte können falsch sein: Prüfen Sie sie vor der Verwendung. Ob Sie die Rechte zur Nutzung besitzen, müssen Sie selbst klären.',
     viewOnGitHub: 'Auf GitHub ansehen',
     setFeedback: 'Feedback senden',
     setFeedbackDesc:
@@ -3493,6 +3690,11 @@ export const strings = {
       'Pregunta sobre tus archivos favoritos. Las respuestas citan la fuente; haz clic para abrirla.',
     askToolSearch: 'Buscando en la base',
     askToolRead: 'Leyendo un archivo',
+    askToolCreate: 'Creando un documento',
+    askSaveMd: 'Guardar como Markdown',
+    askSaveDocx: 'Guardar como Word',
+    askSavedAs: 'Guardado: {name}',
+    askSaveFailed: 'No se pudo guardar: {error}',
     askEmptyCorpus: 'La base de conocimientos está vacía: marca archivos primero y luego pregunta.',
     askPlaceholder: 'Pregunta sobre tus archivos favoritos…',
     askHintIdle: 'Enter para enviar',
@@ -3556,6 +3758,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrar por tipo',
     // List / bulk actions
     fileCount: '{n} archivos',
@@ -3657,7 +3860,7 @@ export const strings = {
     setAutoSave: 'Guardar automáticamente todos los documentos',
     setAutoSaveDesc:
       'Activa el autoguardado de forma predeterminada en todos los editores. Aún puedes desactivarlo en una ventana concreta.',
-    setResultStore: 'Resultados de IA de PDF guardados',
+    setResultStore: 'Resultados de IA guardados',
     setResultStoreDesc:
       'Las páginas leídas por la IA y las traducciones se guardan en este PC hasta que las elimines. En uso: {size}',
     setResultStoreDeleteAll: 'Eliminar todo',
@@ -3667,6 +3870,9 @@ export const strings = {
     setSearchRerank: 'Reordenación con Jev',
     setSearchRerankDesc:
       'Envía los extractos de los 20 mejores resultados locales al modelo Jev de TypeSafe y los reordena por relevancia. Desactivado por defecto; al activarlo, los extractos salen de este dispositivo.',
+    setAiInternetTools: 'Permitir que la IA use herramientas de internet',
+    setAiInternetToolsDesc:
+      'Búsqueda web, lectura de páginas web, obtención de imágenes por dirección, y creación y análisis de imágenes. Desactivado: la IA de los editores trabaja sin ellas. Activado: una dirección que no ha aparecido en la conversación se le consulta antes de obtenerla. La conversación con la IA en sí no se ve afectada.',
     setSearchRerankEndpoint: 'Punto de conexión de Jev',
     searchRerankedBy: 'Reordenado por relevancia con Jev',
     searchJevSettings: 'Reordenación semántica con Jev',
@@ -3691,9 +3897,15 @@ export const strings = {
     setDefaultAppFailed: 'No se pudo cambiar. Configúralo en los ajustes del sistema.',
     setAiSpellcheckDesc:
       'Subraya las palabras mal escritas al escribir en el cuadro del chat de IA.',
-    setAiOpenInNewDocs: 'Abrir el panel de IA en documentos nuevos',
-    setAiOpenInNewDocsDesc:
-      'Si está desactivado, los documentos recién abiertos empiezan con el panel de IA plegado; se abre con un clic cuando lo necesites.',
+    setAiPanelStart: 'Panel de IA',
+    setAiPanelStartDesc:
+      'Elige cómo empieza el panel de IA al abrir la aplicación o un documento. «Desactivado» oculta el panel y su botón lateral; una acción de IA en la cinta o en un menú aún puede abrirlo.',
+    aiPanelStartOff: 'Desactivado',
+    aiPanelStartCollapsed: 'Contraído',
+    aiPanelStartLast: 'Último estado',
+    setAuthorName: 'Nombre de usuario',
+    setAuthorNameDesc:
+      'Se muestra como autor de los comentarios y los cambios con seguimiento en Docs, Sheets y Slides. Déjalo vacío para usar el nombre de tu cuenta.',
     settings: 'Configuración',
     setSecAccount: 'Cuenta',
     setSecGeneral: 'General',
@@ -3750,7 +3962,7 @@ export const strings = {
       'Los chats con este proveedor usan tu propia clave y es ese proveedor quien te los cobra. Solo se usa mientras lo elijas tú mismo en «IA que se usa».',
     setAiHeadless: 'Permitir que las solicitudes automáticas usen una suscripción',
     setAiHeadlessDesc:
-      'Permite que la generación y el análisis de imágenes, la traducción de PDF y la lectura de páginas con IA que pide un comando del terminal u otro programa (MCP) se ejecuten con tu suscripción de Claude o Codex. Si está desactivado, esas solicitudes solo usan proveedores con clave.',
+      'Permite que la generación y el análisis de imágenes, la traducción de PDF, la lectura de páginas con IA y la traducción de libros (EPUB) que pide un comando del terminal u otro programa (MCP) se ejecuten con tu suscripción de Claude o Codex. Si está desactivado, esas solicitudes solo usan proveedores con clave.',
     setAiHeadlessWarning:
       'No hay límite por hora: un programa puede enviar tantas solicitudes como quiera, y estas pueden incluir todo el texto de un documento e imágenes de sus páginas. Ninguna de las dos empresas recomienda que un programa use tu suscripción automáticamente, y tu cuenta podría quedar restringida.',
     setAiHeadlessConfirm: 'Activar de todos modos',
@@ -3905,6 +4117,20 @@ export const strings = {
       'La clave y la URL base de un proveedor se comparten entre capacidades; introdúcelas una sola vez.',
     setGithub: 'Código abierto',
     setBasedOn: 'Basado en el proyecto de código abierto {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licencias de código abierto',
+    setLicensesDesc:
+      'Ver los avisos de licencia y derechos de autor del software y las fuentes que se incluyen con esta aplicación.',
+    setLicensesOpen: 'Ver',
+    setRightsContact: 'Contacto sobre marcas y derechos de autor',
+    setRightsContactDesc:
+      'Envía a esta dirección los avisos de infracción y las consultas sobre licencias.',
+    setRightsContactSend: 'Escribir un correo',
+    setTrademarks:
+      'GenOffice no está afiliado a Microsoft, Hancom, Adobe, XMind, Google, Anthropic ni OpenAI, ni cuenta con su patrocinio o respaldo. Word, Excel y PowerPoint son marcas de Microsoft; Hangul, HWP y HWPX, de Hancom; XMind, de XMind Ltd.; Google Drive, de Google; Claude, de Anthropic; ChatGPT y Codex, de OpenAI. Estos nombres se usan solo para indicar qué archivos abre la aplicación y con qué funciona.',
+    setHwpNotice:
+      'El editor HWP/HWPX se basa en el proyecto de código abierto rhwp (licencia MIT). Este producto se desarrolló tomando como referencia la documentación publicada por Hancom sobre el formato de archivo de documentos Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice se ofrece tal cual, sin garantías de ningún tipo, bajo la Apache License 2.0. El contenido generado por IA puede contener errores: revísalo antes de usarlo. Comprobar que tienes derecho a usarlo es responsabilidad tuya.',
     viewOnGitHub: 'Ver en GitHub',
     setFeedback: 'Enviar comentarios',
     setFeedbackDesc:
@@ -3999,6 +4225,11 @@ export const strings = {
     askIntro: 'ถามเกี่ยวกับไฟล์ที่ติดดาวของคุณ คำตอบจะอ้างอิงแหล่งที่มา — คลิกเพื่อเปิด',
     askToolSearch: 'กำลังค้นคลังความรู้',
     askToolRead: 'กำลังอ่านไฟล์',
+    askToolCreate: 'กำลังสร้างเอกสาร',
+    askSaveMd: 'บันทึกเป็น Markdown',
+    askSaveDocx: 'บันทึกเป็น Word',
+    askSavedAs: 'บันทึกแล้ว: {name}',
+    askSaveFailed: 'บันทึกไม่สำเร็จ: {error}',
     askEmptyCorpus: 'คลังความรู้ว่างเปล่า: ติดดาวไฟล์ก่อนแล้วค่อยถาม',
     askPlaceholder: 'ถามเกี่ยวกับไฟล์ที่ติดดาว…',
     askHintIdle: 'Enter เพื่อส่ง',
@@ -4061,6 +4292,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'แผนที่ความคิด',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'กรองตามชนิด',
     // List / bulk actions
     fileCount: '{n} ไฟล์',
@@ -4157,7 +4389,7 @@ export const strings = {
     saveLocation: 'ตำแหน่งบันทึก',
     setAutoSave: 'บันทึกอัตโนมัติทุกเอกสาร',
     setAutoSaveDesc: 'เปิดบันทึกอัตโนมัติเป็นค่าเริ่มต้นในทุกตัวแก้ไข คุณยังปิดได้ในแต่ละหน้าต่าง',
-    setResultStore: 'ผลลัพธ์ AI ของ PDF ที่บันทึกไว้',
+    setResultStore: 'ผลลัพธ์ AI ที่บันทึกไว้',
     setResultStoreDesc:
       'หน้าที่ AI อ่านและคำแปลจะเก็บไว้ในพีซีเครื่องนี้จนกว่าคุณจะลบ ใช้พื้นที่: {size}',
     setResultStoreDeleteAll: 'ลบทั้งหมด',
@@ -4167,6 +4399,9 @@ export const strings = {
     setSearchRerank: 'จัดอันดับใหม่ด้วย Jev',
     setSearchRerankDesc:
       'ส่งข้อความตัดตอนของผลลัพธ์ 20 อันดับแรกไปยังโมเดล Jev ของ TypeSafe เพื่อจัดอันดับใหม่ตามความเกี่ยวข้อง ปิดเป็นค่าเริ่มต้น เมื่อเปิด ข้อความตัดตอนจะถูกส่งออกจากอุปกรณ์นี้',
+    setAiInternetTools: 'ให้ AI ใช้เครื่องมืออินเทอร์เน็ต',
+    setAiInternetToolsDesc:
+      'การค้นหาเว็บ การอ่านหน้าเว็บ การดึงรูปภาพจากที่อยู่ รวมถึงการสร้างและวิเคราะห์ภาพ เมื่อปิด AI ในตัวแก้ไขจะทำงานโดยไม่ใช้เครื่องมือเหล่านี้ เมื่อเปิด ที่อยู่ที่ไม่เคยปรากฏในบทสนทนาจะถูกถามก่อนดึงข้อมูล บทสนทนากับ AI เองไม่ได้รับผลกระทบ',
     setSearchRerankEndpoint: 'ปลายทาง Jev',
     searchRerankedBy: 'จัดอันดับใหม่ตามความเกี่ยวข้องโดย Jev',
     searchJevSettings: 'จัดอันดับเชิงความหมายด้วย Jev',
@@ -4190,9 +4425,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'เปิดการตั้งค่าระบบ',
     setDefaultAppFailed: 'เปลี่ยนไม่สำเร็จ โปรดตั้งค่าในการตั้งค่าระบบ',
     setAiSpellcheckDesc: 'ขีดเส้นใต้คำที่สะกดผิดขณะพิมพ์ในช่องแชท AI',
-    setAiOpenInNewDocs: 'เปิดแผง AI ในเอกสารใหม่',
-    setAiOpenInNewDocsDesc:
-      'เมื่อปิด เอกสารที่เปิดใหม่จะเริ่มโดยพับแผง AI ไว้ คลิกครั้งเดียวเพื่อเปิดเมื่อต้องการ',
+    setAiPanelStart: 'แผง AI',
+    setAiPanelStartDesc:
+      'เลือกว่าแผง AI จะเริ่มอย่างไรเมื่อเปิดแอปหรือเอกสาร "ปิด" จะซ่อนแผงและปุ่มด้านข้าง แต่การทำงานของ AI บนริบบิ้นหรือเมนูยังเปิดแผงได้',
+    aiPanelStartOff: 'ปิด',
+    aiPanelStartCollapsed: 'ย่อ',
+    aiPanelStartLast: 'สถานะล่าสุด',
+    setAuthorName: 'ชื่อผู้ใช้',
+    setAuthorNameDesc:
+      'แสดงเป็นผู้เขียนความคิดเห็นและการติดตามการเปลี่ยนแปลงใน Docs, Sheets และ Slides เว้นว่างไว้เพื่อใช้ชื่อบัญชีคอมพิวเตอร์',
     settings: 'การตั้งค่า',
     setSecAccount: 'บัญชี',
     setSecGeneral: 'ทั่วไป',
@@ -4247,7 +4488,7 @@ export const strings = {
       'แชตที่ใช้ผู้ให้บริการรายนี้จะใช้คีย์ของคุณเอง และผู้ให้บริการรายนั้นจะเรียกเก็บค่าบริการจากคุณ โดยจะถูกใช้เฉพาะเมื่อคุณเลือกเองในหัวข้อ "AI ที่ใช้" เท่านั้น',
     setAiHeadless: 'อนุญาตให้คำขออัตโนมัติใช้การสมัครสมาชิก',
     setAiHeadlessDesc:
-      'อนุญาตให้การสร้างภาพ การวิเคราะห์ภาพ การแปล PDF และการอ่านหน้าด้วย AI ที่ร้องขอจากคำสั่งในเทอร์มินัลหรือโปรแกรมอื่น (MCP) ทำงานด้วยการสมัครสมาชิก Claude หรือ Codex ของคุณ เมื่อปิดอยู่ คำขอเหล่านั้นจะใช้เฉพาะผู้ให้บริการแบบใช้คีย์',
+      'อนุญาตให้การสร้างภาพ การวิเคราะห์ภาพ การแปล PDF การอ่านหน้าด้วย AI และการแปลหนังสือ (EPUB) ที่ร้องขอจากคำสั่งในเทอร์มินัลหรือโปรแกรมอื่น (MCP) ทำงานด้วยการสมัครสมาชิก Claude หรือ Codex ของคุณ เมื่อปิดอยู่ คำขอเหล่านั้นจะใช้เฉพาะผู้ให้บริการแบบใช้คีย์',
     setAiHeadlessWarning:
       'ไม่มีขีดจำกัดรายชั่วโมง โปรแกรมจึงส่งคำขอได้มากเท่าที่ต้องการ และคำขอเหล่านั้นอาจมีข้อความทั้งหมดของเอกสารและภาพของแต่ละหน้า ทั้งสองบริษัทไม่แนะนำให้โปรแกรมใช้การสมัครสมาชิกของคุณโดยอัตโนมัติ และบัญชีของคุณอาจถูกจำกัดการใช้งาน',
     setAiHeadlessConfirm: 'เปิดต่อไป',
@@ -4396,6 +4637,18 @@ export const strings = {
       'คีย์และ Base URL ของผู้ให้บริการเดียวกันใช้ร่วมกันทุกความสามารถ กรอกครั้งเดียวพอ',
     setGithub: 'โอเพนซอร์ส',
     setBasedOn: 'พัฒนาต่อยอดจากโครงการโอเพนซอร์ส {{GenOffice}} (Apache License 2.0)',
+    setLicenses: 'สัญญาอนุญาตโอเพนซอร์ส',
+    setLicensesDesc: 'ดูประกาศสัญญาอนุญาตและลิขสิทธิ์ของซอฟต์แวร์และฟอนต์ที่มาพร้อมกับแอปนี้',
+    setLicensesOpen: 'ดู',
+    setRightsContact: 'ติดต่อเรื่องเครื่องหมายการค้าและลิขสิทธิ์',
+    setRightsContactDesc: 'ส่งการแจ้งละเมิดสิทธิ์และคำถามเกี่ยวกับสัญญาอนุญาตมาที่อีเมลนี้',
+    setRightsContactSend: 'เขียนอีเมล',
+    setTrademarks:
+      'GenOffice ไม่มีความเกี่ยวข้องกับ Microsoft, Hancom, Adobe, XMind, Google, Anthropic หรือ OpenAI และไม่ได้รับการสนับสนุนหรือรับรองจากบริษัทเหล่านี้ Word, Excel และ PowerPoint เป็นเครื่องหมายการค้าของ Microsoft; Hangul, HWP และ HWPX ของ Hancom; XMind ของ XMind Ltd.; Google Drive ของ Google; Claude ของ Anthropic; ChatGPT และ Codex ของ OpenAI ชื่อเหล่านี้ใช้เพียงเพื่อบอกว่าแอปเปิดไฟล์ใดได้และทำงานร่วมกับอะไร',
+    setHwpNotice:
+      'ตัวแก้ไข HWP/HWPX สร้างขึ้นจากโครงการโอเพนซอร์ส rhwp (สัญญาอนุญาต MIT) ผลิตภัณฑ์นี้พัฒนาขึ้นโดยอ้างอิงเอกสารเผยแพร่ของ Hancom เกี่ยวกับรูปแบบไฟล์เอกสาร Hangul (.hwp)',
+    setDisclaimer:
+      'GenOffice ให้บริการตามสภาพที่เป็นอยู่ โดยไม่มีการรับประกันใด ๆ ภายใต้ Apache License 2.0 เนื้อหาที่ AI สร้างอาจผิดพลาดได้ โปรดตรวจสอบก่อนใช้ และการตรวจสอบว่าคุณมีสิทธิ์ใช้เนื้อหานั้นเป็นความรับผิดชอบของคุณ',
     viewOnGitHub: 'ดูบน GitHub',
     setFeedback: 'ส่งข้อเสนอแนะ',
     setFeedbackDesc:
@@ -4490,6 +4743,11 @@ export const strings = {
       'Bertanyalah tentang file berbintang anda. Jawaban menyebut sumbernya — klik untuk membuka.',
     askToolSearch: 'Mencari basis pengetahuan',
     askToolRead: 'Membaca file',
+    askToolCreate: 'Membuat dokumen',
+    askSaveMd: 'Simpan sebagai Markdown',
+    askSaveDocx: 'Simpan sebagai Word',
+    askSavedAs: 'Tersimpan: {name}',
+    askSaveFailed: 'Gagal menyimpan: {error}',
     askEmptyCorpus: 'Basis pengetahuan kosong: tandai beberapa file dahulu, lalu bertanya.',
     askPlaceholder: 'Tanya tentang file berbintang anda…',
     askHintIdle: 'Enter untuk mengirim',
@@ -4553,6 +4811,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Peta pikiran',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filter menurut jenis',
     // List / bulk actions
     fileCount: '{n} file',
@@ -4653,7 +4912,7 @@ export const strings = {
     setAutoSave: 'Simpan otomatis semua dokumen',
     setAutoSaveDesc:
       'Aktifkan Simpan Otomatis secara default di setiap editor. Anda masih dapat menonaktifkannya untuk satu jendela.',
-    setResultStore: 'Hasil AI PDF tersimpan',
+    setResultStore: 'Hasil AI tersimpan',
     setResultStoreDesc:
       'Halaman yang dibaca AI dan terjemahan disimpan di PC ini sampai Anda menghapusnya. Terpakai: {size}',
     setResultStoreDeleteAll: 'Hapus semua',
@@ -4663,6 +4922,9 @@ export const strings = {
     setSearchRerank: 'Peringkat ulang Jev',
     setSearchRerankDesc:
       'Mengirim kutipan 20 hasil lokal teratas ke model Jev dari TypeSafe dan mengurutkannya ulang berdasarkan relevansi. Nonaktif secara bawaan; saat aktif, kutipan keluar dari perangkat ini.',
+    setAiInternetTools: 'Izinkan AI memakai alat internet',
+    setAiInternetToolsDesc:
+      'Pencarian web, membaca halaman web, mengambil gambar dari alamat, serta membuat dan menganalisis gambar. Mati: AI di editor bekerja tanpanya. Hidup: alamat yang belum muncul dalam percakapan ditanyakan dulu sebelum diambil. Percakapan AI itu sendiri tidak terpengaruh.',
     setSearchRerankEndpoint: 'Endpoint Jev',
     searchRerankedBy: 'Diurutkan ulang berdasarkan relevansi oleh Jev',
     searchJevSettings: 'Pengurutan semantik Jev',
@@ -4686,9 +4948,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Buka pengaturan sistem',
     setDefaultAppFailed: 'Tidak dapat mengubahnya. Atur di pengaturan sistem.',
     setAiSpellcheckDesc: 'Garis bawahi kata yang salah eja saat mengetik di kotak obrolan AI.',
-    setAiOpenInNewDocs: 'Buka panel AI di dokumen baru',
-    setAiOpenInNewDocsDesc:
-      'Jika nonaktif, dokumen yang baru dibuka dimulai dengan panel AI terlipat; cukup satu klik saat dibutuhkan.',
+    setAiPanelStart: 'Panel AI',
+    setAiPanelStartDesc:
+      'Pilih cara panel AI dimulai saat Anda membuka aplikasi atau dokumen. "Nonaktif" menyembunyikan panel dan tombol sampingnya; tindakan AI di pita atau menu tetap dapat membukanya.',
+    aiPanelStartOff: 'Nonaktif',
+    aiPanelStartCollapsed: 'Diciutkan',
+    aiPanelStartLast: 'Status terakhir',
+    setAuthorName: 'Nama pengguna',
+    setAuthorNameDesc:
+      'Ditampilkan sebagai penulis komentar dan perubahan terlacak di Docs, Sheets, dan Slides. Kosongkan untuk memakai nama akun komputer.',
     settings: 'Pengaturan',
     setSecAccount: 'Akun',
     setSecGeneral: 'Umum',
@@ -4744,7 +5012,7 @@ export const strings = {
       'Percakapan lewat penyedia ini memakai kunci Anda sendiri, dan penyedia itulah yang menagih Anda. Penyedia ini hanya dipakai selama Anda sendiri memilihnya di "AI yang digunakan".',
     setAiHeadless: 'Izinkan permintaan otomatis memakai langganan',
     setAiHeadlessDesc:
-      'Mengizinkan pembuatan gambar, analisis gambar, terjemahan PDF, dan pembacaan halaman dengan AI yang diminta oleh perintah terminal atau program lain (MCP) berjalan dengan langganan Claude atau Codex Anda. Jika dimatikan, permintaan tersebut hanya memakai penyedia berbasis kunci.',
+      'Mengizinkan pembuatan gambar, analisis gambar, terjemahan PDF, pembacaan halaman dengan AI, dan terjemahan buku (EPUB) yang diminta oleh perintah terminal atau program lain (MCP) berjalan dengan langganan Claude atau Codex Anda. Jika dimatikan, permintaan tersebut hanya memakai penyedia berbasis kunci.',
     setAiHeadlessWarning:
       'Tidak ada batas per jam, jadi program dapat mengirim permintaan sebanyak yang diinginkan, dan permintaan itu dapat memuat seluruh teks dokumen serta gambar halamannya. Kedua perusahaan tidak menyarankan program memakai langganan Anda secara otomatis, dan akun Anda bisa dibatasi.',
     setAiHeadlessConfirm: 'Tetap aktifkan',
@@ -4898,6 +5166,19 @@ export const strings = {
       'Kunci dan Base URL satu penyedia dipakai bersama oleh semua kemampuan; cukup isi sekali.',
     setGithub: 'Sumber Terbuka',
     setBasedOn: 'Dibuat berdasarkan proyek sumber terbuka {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Lisensi sumber terbuka',
+    setLicensesDesc:
+      'Lihat pemberitahuan lisensi dan hak cipta untuk perangkat lunak dan font yang disertakan dengan aplikasi ini.',
+    setLicensesOpen: 'Lihat',
+    setRightsContact: 'Kontak merek dagang dan hak cipta',
+    setRightsContactDesc: 'Kirim laporan pelanggaran dan pertanyaan lisensi ke alamat ini.',
+    setRightsContactSend: 'Tulis email',
+    setTrademarks:
+      'GenOffice tidak berafiliasi dengan, disponsori, atau didukung oleh Microsoft, Hancom, Adobe, XMind, Google, Anthropic, atau OpenAI. Word, Excel, dan PowerPoint adalah merek dagang Microsoft; Hangul, HWP, dan HWPX milik Hancom; XMind milik XMind Ltd.; Google Drive milik Google; Claude milik Anthropic; ChatGPT dan Codex milik OpenAI. Nama-nama ini hanya digunakan untuk menyebutkan file apa yang dapat dibuka aplikasi dan dengan apa aplikasi bekerja.',
+    setHwpNotice:
+      'Editor HWP/HWPX dibuat berdasarkan proyek sumber terbuka rhwp (Lisensi MIT). Produk ini dikembangkan dengan mengacu pada dokumen terbitan Hancom tentang format file dokumen Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice disediakan apa adanya, tanpa jaminan apa pun, berdasarkan Apache License 2.0. Konten buatan AI bisa salah, jadi periksa sebelum digunakan. Memastikan Anda berhak menggunakannya adalah tanggung jawab Anda.',
     viewOnGitHub: 'Lihat di GitHub',
     setFeedback: 'Kirim masukan',
     setFeedbackDesc:
@@ -4994,6 +5275,11 @@ export const strings = {
       'Задавайте вопросы по избранным файлам. Ответы ссылаются на источники — нажмите, чтобы открыть.',
     askToolSearch: 'Поиск по базе',
     askToolRead: 'Чтение файла',
+    askToolCreate: 'Создание документа',
+    askSaveMd: 'Сохранить как Markdown',
+    askSaveDocx: 'Сохранить как Word',
+    askSavedAs: 'Сохранено: {name}',
+    askSaveFailed: 'Не удалось сохранить: {error}',
     askEmptyCorpus: 'База знаний пуста: сначала отметьте файлы, затем спрашивайте.',
     askPlaceholder: 'Спросите о своих файлах…',
     askHintIdle: 'Enter — отправить',
@@ -5056,6 +5342,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Интеллект-карта',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Фильтр по типу',
     // List / bulk actions
     fileCount: 'Файлов: {n}',
@@ -5155,7 +5442,7 @@ export const strings = {
     setAutoSave: 'Автосохранение всех документов',
     setAutoSaveDesc:
       'Включает автосохранение по умолчанию во всех редакторах. Его по-прежнему можно выключить для отдельного окна.',
-    setResultStore: 'Сохранённые результаты ИИ для PDF',
+    setResultStore: 'Сохранённые результаты ИИ',
     setResultStoreDesc:
       'Страницы, прочитанные ИИ, и переводы хранятся на этом компьютере, пока вы их не удалите. Занято: {size}',
     setResultStoreDeleteAll: 'Удалить всё',
@@ -5165,6 +5452,9 @@ export const strings = {
     setSearchRerank: 'Переранжирование Jev',
     setSearchRerankDesc:
       'Отправляет фрагменты 20 лучших локальных результатов модели Jev от TypeSafe и переупорядочивает их по релевантности. По умолчанию выключено; при включении фрагменты покидают это устройство.',
+    setAiInternetTools: 'Разрешить ИИ инструменты интернета',
+    setAiInternetToolsDesc:
+      'Веб-поиск, чтение веб-страниц, загрузка изображений по адресу, создание и анализ изображений. Выключено: ИИ в редакторах работает без них. Включено: о адресе, которого ещё не было в разговоре, вас спросят перед загрузкой. Сам разговор с ИИ это не затрагивает.',
     setSearchRerankEndpoint: 'Конечная точка Jev',
     searchRerankedBy: 'Переупорядочено по релевантности с помощью Jev',
     searchJevSettings: 'Семантическая сортировка Jev',
@@ -5188,9 +5478,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Открыть системные настройки',
     setDefaultAppFailed: 'Не удалось изменить. Задайте в системных настройках.',
     setAiSpellcheckDesc: 'Подчёркивать слова с ошибками при вводе в поле чата ИИ.',
-    setAiOpenInNewDocs: 'Открывать панель ИИ в новых документах',
-    setAiOpenInNewDocsDesc:
-      'Если выключено, новые документы открываются со свёрнутой панелью ИИ; она доступна в один клик.',
+    setAiPanelStart: 'Панель ИИ',
+    setAiPanelStartDesc:
+      'Выберите, как панель ИИ начинается при запуске приложения или открытии документа. «Выкл.» скрывает панель и боковую кнопку; действие ИИ на ленте или в меню всё равно может её открыть.',
+    aiPanelStartOff: 'Выкл.',
+    aiPanelStartCollapsed: 'Свёрнута',
+    aiPanelStartLast: 'Последнее состояние',
+    setAuthorName: 'Имя пользователя',
+    setAuthorNameDesc:
+      'Отображается как автор примечаний и исправлений в Docs, Sheets и Slides. Оставьте пустым, чтобы использовать имя учётной записи компьютера.',
     settings: 'Настройки',
     setSecAccount: 'Аккаунт',
     setSecGeneral: 'Общие',
@@ -5246,7 +5542,7 @@ export const strings = {
       'Чаты через этого провайдера используют ваш собственный ключ, и оплату взимает этот провайдер. Он используется, только пока вы сами выбираете его в пункте «Используемый ИИ».',
     setAiHeadless: 'Разрешить автоматическим запросам использовать подписку',
     setAiHeadlessDesc:
-      'Разрешает выполнять генерацию и анализ изображений, перевод PDF и чтение страниц с помощью ИИ, запрошенные командой терминала или другой программой (MCP), по вашей подписке Claude или Codex. Если параметр выключен, такие запросы используют только провайдеров с ключом.',
+      'Разрешает выполнять генерацию и анализ изображений, перевод PDF, чтение страниц с помощью ИИ и перевод книг (EPUB), запрошенные командой терминала или другой программой (MCP), по вашей подписке Claude или Codex. Если параметр выключен, такие запросы используют только провайдеров с ключом.',
     setAiHeadlessWarning:
       'Почасового лимита нет: программа может отправлять сколько угодно запросов, и в них может попасть весь текст документа и изображения его страниц. Ни одна из двух компаний не рекомендует позволять программе автоматически использовать подписку, и ваш аккаунт может быть ограничен.',
     setAiHeadlessConfirm: 'Всё равно включить',
@@ -5402,6 +5698,20 @@ export const strings = {
     setGithub: 'Открытый код',
     setBasedOn:
       'Создано на основе проекта с открытым исходным кодом {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Лицензии открытого ПО',
+    setLicensesDesc:
+      'Уведомления о лицензиях и авторских правах на программы и шрифты, входящие в приложение.',
+    setLicensesOpen: 'Открыть',
+    setRightsContact: 'Связь по вопросам товарных знаков и авторских прав',
+    setRightsContactDesc:
+      'Сообщения о нарушении прав и вопросы о лицензиях отправляйте на этот адрес.',
+    setRightsContactSend: 'Написать письмо',
+    setTrademarks:
+      'GenOffice не связан с Microsoft, Hancom, Adobe, XMind, Google, Anthropic или OpenAI и не спонсируется и не одобряется ими. Word, Excel и PowerPoint — товарные знаки Microsoft; Hangul, HWP и HWPX — Hancom; XMind — XMind Ltd.; Google Диск — Google; Claude — Anthropic; ChatGPT и Codex — OpenAI. Эти названия используются только для того, чтобы указать, какие файлы открывает приложение и с чем оно работает.',
+    setHwpNotice:
+      'Редактор HWP/HWPX основан на проекте с открытым исходным кодом rhwp (лицензия MIT). Этот продукт разработан с опорой на опубликованную Hancom документацию по формату файлов документов Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice предоставляется «как есть», без каких-либо гарантий, на условиях Apache License 2.0. Созданное ИИ содержимое может содержать ошибки — проверяйте его перед использованием. Убедиться, что у вас есть право его использовать, — ваша ответственность.',
     viewOnGitHub: 'Открыть на GitHub',
     setFeedback: 'Отправить отзыв',
     setFeedbackDesc:
@@ -5498,6 +5808,11 @@ export const strings = {
     askIntro: 'اسأل عن ملفاتك المفضلة. تذكر الإجابات مصادرها — انقر لفتحها.',
     askToolSearch: 'جارٍ البحث في القاعدة',
     askToolRead: 'جارٍ قراءة ملف',
+    askToolCreate: 'جارٍ إنشاء مستند',
+    askSaveMd: 'حفظ بصيغة Markdown',
+    askSaveDocx: 'حفظ بصيغة Word',
+    askSavedAs: 'تم الحفظ: {name}',
+    askSaveFailed: 'تعذر الحفظ: {error}',
     askEmptyCorpus: 'قاعدة المعارف فارغة: ضع نجمة على بعض الملفات أولاً ثم اسأل.',
     askPlaceholder: 'اسأل عن ملفاتك المفضلة…',
     askHintIdle: 'Enter للإرسال',
@@ -5560,6 +5875,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'خريطة ذهنية',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'تصفية حسب النوع',
     // List / bulk actions
     fileCount: '{n} ملفات',
@@ -5657,7 +5973,7 @@ export const strings = {
     setAutoSave: 'حفظ جميع المستندات تلقائيًا',
     setAutoSaveDesc:
       'تشغيل الحفظ التلقائي افتراضيًا في كل محرر. لا يزال بإمكانك إيقافه لنافذة واحدة.',
-    setResultStore: 'نتائج الذكاء الاصطناعي المحفوظة لملفات PDF',
+    setResultStore: 'نتائج الذكاء الاصطناعي المحفوظة',
     setResultStoreDesc:
       'تبقى الصفحات التي قرأها الذكاء الاصطناعي والترجمات على هذا الكمبيوتر حتى تحذفها. المساحة المستخدمة: {size}',
     setResultStoreDeleteAll: 'حذف الكل',
@@ -5667,6 +5983,9 @@ export const strings = {
     setSearchRerank: 'إعادة ترتيب Jev',
     setSearchRerankDesc:
       'يرسل مقتطفات أفضل 20 نتيجة محلية إلى نموذج Jev من TypeSafe ويعيد ترتيبها حسب الصلة. معطّل افتراضيًا؛ عند التفعيل تخرج المقتطفات من هذا الجهاز.',
+    setAiInternetTools: 'السماح للذكاء الاصطناعي باستخدام أدوات الإنترنت',
+    setAiInternetToolsDesc:
+      'البحث على الويب، وقراءة صفحات الويب، وجلب الصور من عنوان، وإنشاء الصور وتحليلها. عند الإيقاف يعمل الذكاء الاصطناعي في المحررات من دونها. عند التشغيل يُسأل عن أي عنوان لم يظهر في المحادثة قبل جلبه. لا تتأثر محادثة الذكاء الاصطناعي نفسها.',
     setSearchRerankEndpoint: 'نقطة نهاية Jev',
     searchRerankedBy: 'أُعيد ترتيبها حسب الصلة بواسطة Jev',
     searchJevSettings: 'إعادة الترتيب الدلالي بواسطة Jev',
@@ -5691,9 +6010,15 @@ export const strings = {
     setDefaultAppFailed: 'تعذّر التغيير. يرجى تعيينه من إعدادات النظام.',
     setAiSpellcheckDesc:
       'وضع خط تحت الكلمات الخاطئة إملائيًا أثناء الكتابة في حقل محادثة الذكاء الاصطناعي.',
-    setAiOpenInNewDocs: 'فتح لوحة الذكاء الاصطناعي في المستندات الجديدة',
-    setAiOpenInNewDocsDesc:
-      'عند الإيقاف، تبدأ المستندات المفتوحة حديثًا بلوحة الذكاء الاصطناعي مطوية؛ تكفي نقرة واحدة لفتحها عند الحاجة.',
+    setAiPanelStart: 'لوحة الذكاء الاصطناعي',
+    setAiPanelStartDesc:
+      'اختر كيف تبدأ لوحة الذكاء الاصطناعي عند فتح التطبيق أو مستند. "إيقاف" يخفي اللوحة وزرها الجانبي، لكن إجراءات الذكاء الاصطناعي في الشريط أو القائمة يمكنها فتحها.',
+    aiPanelStartOff: 'إيقاف',
+    aiPanelStartCollapsed: 'مطوية',
+    aiPanelStartLast: 'الحالة الأخيرة',
+    setAuthorName: 'اسم المستخدم',
+    setAuthorNameDesc:
+      'يظهر كمؤلف التعليقات والتغييرات المتعقبة في Docs وSheets وSlides. اتركه فارغًا لاستخدام اسم حساب الكمبيوتر.',
     settings: 'الإعدادات',
     setSecAccount: 'الحساب',
     setSecGeneral: 'عام',
@@ -5747,7 +6072,7 @@ export const strings = {
       'تستخدم المحادثات عبر هذا المزوّد مفتاحك الخاص، وهذا المزوّد هو من يحتسب رسومها عليك. ولا يُستخدم إلا عندما تختاره بنفسك ضمن «الذكاء الاصطناعي المستخدم».',
     setAiHeadless: 'السماح للطلبات التلقائية باستخدام الاشتراك',
     setAiHeadlessDesc:
-      'يسمح بتنفيذ توليد الصور وتحليلها وترجمة ملفات PDF وقراءة الصفحات بالذكاء الاصطناعي التي يطلبها أمر في الطرفية أو برنامج آخر (MCP) عبر اشتراكك في Claude أو Codex. عند إيقاف هذا الخيار تستخدم تلك الطلبات المزوّدين الذين يعملون بمفتاح فقط.',
+      'يسمح بتنفيذ توليد الصور وتحليلها وترجمة ملفات PDF وقراءة الصفحات بالذكاء الاصطناعي وترجمة الكتب (EPUB) التي يطلبها أمر في الطرفية أو برنامج آخر (MCP) عبر اشتراكك في Claude أو Codex. عند إيقاف هذا الخيار تستخدم تلك الطلبات المزوّدين الذين يعملون بمفتاح فقط.',
     setAiHeadlessWarning:
       'لا يوجد حد بالساعة، لذا يمكن لبرنامج أن يرسل ما يشاء من الطلبات، وقد تتضمن هذه الطلبات النص الكامل للمستند وصور صفحاته. لا توصي أيٌّ من الشركتين بأن يستخدم برنامجٌ اشتراكك تلقائيًا، وقد تُفرض قيود على حسابك.',
     setAiHeadlessConfirm: 'تشغيل على أي حال',
@@ -5896,6 +6221,18 @@ export const strings = {
       'مفتاح المزوّد وعنوان Base URL مشتركان بين جميع القدرات؛ أدخلهما مرة واحدة فقط.',
     setGithub: 'مفتوح المصدر',
     setBasedOn: 'مبني على المشروع مفتوح المصدر {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'تراخيص المصادر المفتوحة',
+    setLicensesDesc: 'عرض إشعارات الترخيص وحقوق النشر للبرامج والخطوط المضمّنة في هذا التطبيق.',
+    setLicensesOpen: 'عرض',
+    setRightsContact: 'التواصل بشأن العلامات التجارية وحقوق النشر',
+    setRightsContactDesc: 'أرسل بلاغات انتهاك الحقوق والأسئلة المتعلقة بالترخيص إلى هذا العنوان.',
+    setRightsContactSend: 'كتابة رسالة',
+    setTrademarks:
+      'GenOffice غير تابع لشركات Microsoft أو Hancom أو Adobe أو XMind أو Google أو Anthropic أو OpenAI، ولا يحظى برعايتها أو تأييدها. Word وExcel وPowerPoint علامات تجارية لشركة Microsoft؛ وHangul وHWP وHWPX لشركة Hancom؛ وXMind لشركة XMind Ltd.؛ وGoogle Drive لشركة Google؛ وClaude لشركة Anthropic؛ وChatGPT وCodex لشركة OpenAI. تُستخدم هذه الأسماء فقط لبيان الملفات التي يفتحها التطبيق وما يعمل معه.',
+    setHwpNotice:
+      'محرر HWP/HWPX مبني على المشروع مفتوح المصدر rhwp (ترخيص MIT). طُوِّر هذا المنتج بالرجوع إلى المستند الذي نشرته Hancom حول تنسيق ملفات مستندات Hangul (.hwp).',
+    setDisclaimer:
+      'يُقدَّم GenOffice كما هو، دون أي ضمانات، بموجب Apache License 2.0. قد يحتوي المحتوى الذي ينشئه الذكاء الاصطناعي على أخطاء، فتحقق منه قبل استخدامه. والتأكد من أن لديك حق استخدامه مسؤوليتك.',
     viewOnGitHub: 'عرض على GitHub',
     setFeedback: 'إرسال ملاحظات',
     setFeedbackDesc:
@@ -5989,6 +6326,11 @@ export const strings = {
       'Pergunte sobre seus arquivos favoritos. As respostas citam as fontes — clique para abrir.',
     askToolSearch: 'Pesquisando na base',
     askToolRead: 'Lendo um arquivo',
+    askToolCreate: 'Criando um documento',
+    askSaveMd: 'Salvar como Markdown',
+    askSaveDocx: 'Salvar como Word',
+    askSavedAs: 'Salvo: {name}',
+    askSaveFailed: 'Não foi possível salvar: {error}',
     askEmptyCorpus:
       'A base de conhecimento está vazia: marque arquivos primeiro e depois pergunte.',
     askPlaceholder: 'Pergunte sobre seus arquivos favoritos…',
@@ -6050,6 +6392,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrar por tipo',
     fileCount: '{n} arquivos',
     fileCountOne: '{n} arquivo',
@@ -6147,7 +6490,7 @@ export const strings = {
     setAutoSave: 'Salvar automaticamente todos os documentos',
     setAutoSaveDesc:
       'Ativa o salvamento automático por padrão em todos os editores. Você ainda pode desativá-lo em uma janela específica.',
-    setResultStore: 'Resultados de IA de PDF salvos',
+    setResultStore: 'Resultados de IA salvos',
     setResultStoreDesc:
       'Páginas lidas pela IA e traduções ficam neste PC até você excluí-las. Em uso: {size}',
     setResultStoreDeleteAll: 'Excluir tudo',
@@ -6157,6 +6500,9 @@ export const strings = {
     setSearchRerank: 'Reordenação com Jev',
     setSearchRerankDesc:
       'Envia os trechos dos 20 melhores resultados locais ao modelo Jev da TypeSafe e os reordena por relevância. Desativado por padrão; quando ativo, os trechos saem deste dispositivo.',
+    setAiInternetTools: 'Permitir que a IA use ferramentas da internet',
+    setAiInternetToolsDesc:
+      'Pesquisa na web, leitura de páginas, busca de imagens por endereço e criação e análise de imagens. Desligado: a IA dos editores trabalha sem elas. Ligado: um endereço que não apareceu na conversa é perguntado antes de ser buscado. A conversa com a IA em si não é afetada.',
     setSearchRerankEndpoint: 'Endpoint do Jev',
     searchRerankedBy: 'Reordenado por relevância com Jev',
     searchJevSettings: 'Reordenação semântica com Jev',
@@ -6181,9 +6527,15 @@ export const strings = {
     setDefaultAppFailed: 'Não foi possível alterar. Defina nas configurações do sistema.',
     setAiSpellcheckDesc:
       'Sublinha palavras com erros ortográficos ao digitar na caixa do chat de IA.',
-    setAiOpenInNewDocs: 'Abrir o painel de IA em novos documentos',
-    setAiOpenInNewDocsDesc:
-      'Quando desativado, os documentos recém-abertos começam com o painel de IA recolhido; basta um clique quando precisar.',
+    setAiPanelStart: 'Painel de IA',
+    setAiPanelStartDesc:
+      'Escolhe como o painel de IA começa ao abrir a aplicação ou um documento. «Desativado» oculta o painel e o botão lateral; uma ação de IA no friso ou num menu ainda o pode abrir.',
+    aiPanelStartOff: 'Desativado',
+    aiPanelStartCollapsed: 'Recolhido',
+    aiPanelStartLast: 'Último estado',
+    setAuthorName: 'Nome de usuário',
+    setAuthorNameDesc:
+      'Exibido como autor dos comentários e das alterações controladas no Docs, Sheets e Slides. Deixe em branco para usar o nome da conta do computador.',
     settings: 'Configurações',
     setSecAccount: 'Conta',
     setSecGeneral: 'Geral',
@@ -6240,7 +6592,7 @@ export const strings = {
       'As conversas com este provedor usam a sua própria chave, e é ele quem cobra por elas. Ele só é usado enquanto você mesmo o escolhe em "IA em uso".',
     setAiHeadless: 'Permitir que solicitações automáticas usem uma assinatura',
     setAiHeadlessDesc:
-      'Permite que a geração e a análise de imagens, a tradução de PDF e a leitura de páginas por IA pedidas por um comando do terminal ou por outro programa (MCP) sejam feitas com a sua assinatura do Claude ou do Codex. Quando desativado, essas solicitações usam apenas provedores com chave.',
+      'Permite que a geração e a análise de imagens, a tradução de PDF, a leitura de páginas por IA e a tradução de livros (EPUB) pedidas por um comando do terminal ou por outro programa (MCP) sejam feitas com a sua assinatura do Claude ou do Codex. Quando desativado, essas solicitações usam apenas provedores com chave.',
     setAiHeadlessWarning:
       'Não há limite por hora: um programa pode enviar quantas solicitações quiser, e elas podem conter todo o texto de um documento e imagens das suas páginas. Nenhuma das duas empresas recomenda deixar um programa usar a sua assinatura automaticamente, e a sua conta pode sofrer restrições.',
     setAiHeadlessConfirm: 'Ativar mesmo assim',
@@ -6396,6 +6748,20 @@ export const strings = {
       'A chave e a URL base de um provedor são compartilhadas entre as capacidades; insira-as uma só vez.',
     setGithub: 'Código aberto',
     setBasedOn: 'Baseado no projeto de código aberto {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licenças de código aberto',
+    setLicensesDesc:
+      'Ver os avisos de licença e direitos autorais do software e das fontes incluídos neste aplicativo.',
+    setLicensesOpen: 'Ver',
+    setRightsContact: 'Contato sobre marcas e direitos autorais',
+    setRightsContactDesc:
+      'Envie denúncias de violação e dúvidas sobre licenças para este endereço.',
+    setRightsContactSend: 'Escrever e-mail',
+    setTrademarks:
+      'GenOffice não é afiliado à Microsoft, Hancom, Adobe, XMind, Google, Anthropic ou OpenAI, nem patrocinado ou endossado por elas. Word, Excel e PowerPoint são marcas da Microsoft; Hangul, HWP e HWPX, da Hancom; XMind, da XMind Ltd.; Google Drive, do Google; Claude, da Anthropic; ChatGPT e Codex, da OpenAI. Esses nomes são usados apenas para indicar quais arquivos o aplicativo abre e com o que ele funciona.',
+    setHwpNotice:
+      'O editor HWP/HWPX é baseado no projeto de código aberto rhwp (Licença MIT). Este produto foi desenvolvido com base na documentação publicada pela Hancom sobre o formato de arquivo de documentos Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice é fornecido no estado em que se encontra, sem garantias de qualquer tipo, sob a Apache License 2.0. O conteúdo gerado por IA pode estar errado: confira antes de usar. Verificar se você tem o direito de usá-lo é responsabilidade sua.',
     viewOnGitHub: 'Ver no GitHub',
     setFeedback: 'Enviar comentários',
     setFeedbackDesc:
@@ -6489,6 +6855,11 @@ export const strings = {
       'Chiedi informazioni sui tuoi file preferiti. Le risposte citano la fonte — clicca per aprire.',
     askToolSearch: 'Ricerca nella base',
     askToolRead: 'Lettura di un file',
+    askToolCreate: 'Creazione di un documento',
+    askSaveMd: 'Salva come Markdown',
+    askSaveDocx: 'Salva come Word',
+    askSavedAs: 'Salvato: {name}',
+    askSaveFailed: 'Salvataggio non riuscito: {error}',
     askEmptyCorpus: 'La base di conoscenza è vuota: contrassegna prima alcuni file, poi chiedi.',
     askPlaceholder: 'Chiedi qualcosa sui tuoi file preferiti…',
     askHintIdle: 'Invio per inviare',
@@ -6549,6 +6920,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mappa mentale',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtra per tipo',
     fileCount: '{n} file',
     fileCountOne: '{n} file',
@@ -6646,7 +7018,7 @@ export const strings = {
     setAutoSave: 'Salva automaticamente tutti i documenti',
     setAutoSaveDesc:
       'Attiva il salvataggio automatico per impostazione predefinita in ogni editor. Puoi comunque disattivarlo per una singola finestra.',
-    setResultStore: 'Risultati IA dei PDF salvati',
+    setResultStore: 'Risultati IA salvati',
     setResultStoreDesc:
       "Le pagine lette dall'IA e le traduzioni restano su questo PC finché non le elimini. Spazio usato: {size}",
     setResultStoreDeleteAll: 'Elimina tutto',
@@ -6656,6 +7028,9 @@ export const strings = {
     setSearchRerank: 'Riordino con Jev',
     setSearchRerankDesc:
       'Invia gli estratti dei 20 migliori risultati locali al modello Jev di TypeSafe e li riordina per pertinenza. Disattivato per impostazione predefinita; se attivo, gli estratti lasciano questo dispositivo.',
+    setAiInternetTools: 'Consenti all’IA di usare gli strumenti internet',
+    setAiInternetToolsDesc:
+      'Ricerca web, lettura di pagine web, recupero di immagini da un indirizzo, creazione e analisi di immagini. Disattivato: l’IA degli editor lavora senza. Attivato: un indirizzo mai comparso nella conversazione ti viene chiesto prima di recuperarlo. La conversazione con l’IA in sé non cambia.',
     setSearchRerankEndpoint: 'Endpoint Jev',
     searchRerankedBy: 'Riordinato per pertinenza con Jev',
     searchJevSettings: 'Riordino semantico con Jev',
@@ -6679,9 +7054,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Apri impostazioni di sistema',
     setDefaultAppFailed: 'Impossibile modificare. Impostala nelle impostazioni di sistema.',
     setAiSpellcheckDesc: 'Sottolinea le parole errate durante la digitazione nella chat IA.',
-    setAiOpenInNewDocs: 'Apri il pannello IA nei nuovi documenti',
-    setAiOpenInNewDocsDesc:
-      'Se disattivato, i documenti appena aperti iniziano con il pannello IA ridotto; basta un clic quando serve.',
+    setAiPanelStart: 'Pannello IA',
+    setAiPanelStartDesc:
+      "Sceglie come si avvia il pannello IA all'apertura dell'app o di un documento. «Disattivato» nasconde il pannello e il pulsante laterale; un'azione IA nella barra multifunzione o in un menu può comunque aprirlo.",
+    aiPanelStartOff: 'Disattivato',
+    aiPanelStartCollapsed: 'Compresso',
+    aiPanelStartLast: 'Ultimo stato',
+    setAuthorName: 'Nome utente',
+    setAuthorNameDesc:
+      'Mostrato come autore di commenti e revisioni in Docs, Sheets e Slides. Lascia vuoto per usare il nome dell’account del computer.',
     settings: 'Impostazioni',
     setSecAccount: 'Account',
     setSecGeneral: 'Generale',
@@ -6738,7 +7119,7 @@ export const strings = {
       'Le chat con questo provider usano la tua chiave ed è il provider ad addebitartele. Viene usato solo finché lo scegli tu in "IA da usare".',
     setAiHeadless: 'Consenti alle richieste automatiche di usare un abbonamento',
     setAiHeadlessDesc:
-      'Consente alla generazione e all’analisi di immagini, alla traduzione di PDF e alla lettura delle pagine con l’IA richieste da un comando del terminale o da un altro programma (MCP) di usare il tuo abbonamento Claude o Codex. Se disattivata, queste richieste usano solo i provider con chiave.',
+      'Consente alla generazione e all’analisi di immagini, alla traduzione di PDF, alla lettura delle pagine con l’IA e alla traduzione di libri (EPUB) richieste da un comando del terminale o da un altro programma (MCP) di usare il tuo abbonamento Claude o Codex. Se disattivata, queste richieste usano solo i provider con chiave.',
     setAiHeadlessWarning:
       'Non c’è un limite orario: un programma può inviare tutte le richieste che vuole, e queste possono contenere l’intero testo di un documento e le immagini delle sue pagine. Nessuna delle due aziende consiglia di lasciare che un programma usi automaticamente il tuo abbonamento, e il tuo account potrebbe subire limitazioni.',
     setAiHeadlessConfirm: 'Attiva comunque',
@@ -6894,6 +7275,20 @@ export const strings = {
       "La chiave e l'URL base di un provider sono condivisi tra le capacità; inseriscili una volta sola.",
     setGithub: 'Open source',
     setBasedOn: 'Basato sul progetto open source {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licenze open source',
+    setLicensesDesc:
+      'Visualizza le note di licenza e copyright del software e dei font inclusi in questa app.',
+    setLicensesOpen: 'Visualizza',
+    setRightsContact: 'Contatti per marchi e copyright',
+    setRightsContactDesc:
+      'Invia a questo indirizzo segnalazioni di violazione e domande sulle licenze.',
+    setRightsContactSend: 'Scrivi un’email',
+    setTrademarks:
+      'GenOffice non è affiliato a Microsoft, Hancom, Adobe, XMind, Google, Anthropic od OpenAI, né sponsorizzato o approvato da loro. Word, Excel e PowerPoint sono marchi di Microsoft; Hangul, HWP e HWPX di Hancom; XMind di XMind Ltd.; Google Drive di Google; Claude di Anthropic; ChatGPT e Codex di OpenAI. Questi nomi sono usati solo per indicare quali file l’app apre e con cosa funziona.',
+    setHwpNotice:
+      'L’editor HWP/HWPX è basato sul progetto open source rhwp (licenza MIT). Questo prodotto è stato sviluppato facendo riferimento alla documentazione pubblicata da Hancom sul formato di file dei documenti Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice è fornito così com’è, senza garanzie di alcun tipo, ai sensi della Apache License 2.0. I contenuti generati dall’IA possono essere errati: verificali prima di usarli. Accertarti di avere il diritto di usarli spetta a te.',
     viewOnGitHub: 'Vedi su GitHub',
     setFeedback: 'Invia feedback',
     setFeedbackDesc:
@@ -6986,6 +7381,11 @@ export const strings = {
     askIntro: 'Zadawaj pytania o swoje pliki. Odpowiedzi podają źródła — kliknij, aby otworzyć.',
     askToolSearch: 'Wyszukiwanie w bazie',
     askToolRead: 'Czytanie pliku',
+    askToolCreate: 'Tworzenie dokumentu',
+    askSaveMd: 'Zapisz jako Markdown',
+    askSaveDocx: 'Zapisz jako Word',
+    askSavedAs: 'Zapisano: {name}',
+    askSaveFailed: 'Nie udało się zapisać: {error}',
     askEmptyCorpus: 'Baza wiedzy jest pusta: najpierw oznacz pliki, potem pytaj.',
     askPlaceholder: 'Zapytaj o swoje pliki…',
     askHintIdle: 'Enter wysyła',
@@ -7045,6 +7445,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mapa myśli',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtruj według typu',
     fileCount: 'Pliki: {n}',
     fileCountOne: '{n} plik',
@@ -7142,7 +7543,7 @@ export const strings = {
     setAutoSave: 'Automatycznie zapisuj wszystkie dokumenty',
     setAutoSaveDesc:
       'Włącza autozapis domyślnie w każdym edytorze. Nadal możesz go wyłączyć dla pojedynczego okna.',
-    setResultStore: 'Zapisane wyniki AI dla PDF',
+    setResultStore: 'Zapisane wyniki AI',
     setResultStoreDesc:
       'Strony odczytane przez AI i tłumaczenia pozostają na tym komputerze, dopóki ich nie usuniesz. Zajęte: {size}',
     setResultStoreDeleteAll: 'Usuń wszystko',
@@ -7152,6 +7553,9 @@ export const strings = {
     setSearchRerank: 'Ponowne sortowanie Jev',
     setSearchRerankDesc:
       'Wysyła fragmenty 20 najlepszych lokalnych wyników do modelu Jev firmy TypeSafe i sortuje je według trafności. Domyślnie wyłączone; po włączeniu fragmenty opuszczają to urządzenie.',
+    setAiInternetTools: 'Pozwól AI używać narzędzi internetowych',
+    setAiInternetToolsDesc:
+      'Wyszukiwanie w sieci, czytanie stron, pobieranie obrazów z adresu oraz tworzenie i analiza obrazów. Wyłączone: AI w edytorach działa bez nich. Włączone: o adres, który nie pojawił się w rozmowie, zostaniesz zapytany przed pobraniem. Sama rozmowa z AI się nie zmienia.',
     setSearchRerankEndpoint: 'Punkt końcowy Jev',
     searchRerankedBy: 'Posortowano według trafności przez Jev',
     searchJevSettings: 'Semantyczne sortowanie Jev',
@@ -7175,9 +7579,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Otwórz ustawienia systemu',
     setDefaultAppFailed: 'Nie udało się zmienić. Ustaw w ustawieniach systemu.',
     setAiSpellcheckDesc: 'Podkreśla błędnie napisane słowa podczas pisania w polu czatu AI.',
-    setAiOpenInNewDocs: 'Otwieraj panel AI w nowych dokumentach',
-    setAiOpenInNewDocsDesc:
-      'Gdy wyłączone, nowo otwarte dokumenty zaczynają ze zwiniętym panelem AI; wystarczy jedno kliknięcie, gdy jest potrzebny.',
+    setAiPanelStart: 'Panel AI',
+    setAiPanelStartDesc:
+      'Wybierz, jak panel AI ma się zaczynać po uruchomieniu aplikacji lub otwarciu dokumentu. „Wyłączony” ukrywa panel i jego boczny przycisk; działanie AI na wstążce lub w menu nadal może go otworzyć.',
+    aiPanelStartOff: 'Wyłączony',
+    aiPanelStartCollapsed: 'Zwinięty',
+    aiPanelStartLast: 'Ostatni stan',
+    setAuthorName: 'Nazwa użytkownika',
+    setAuthorNameDesc:
+      'Wyświetlana jako autor komentarzy i śledzonych zmian w Docs, Sheets i Slides. Pozostaw puste, aby użyć nazwy konta komputera.',
     settings: 'Ustawienia',
     setSecAccount: 'Konto',
     setSecGeneral: 'Ogólne',
@@ -7233,7 +7643,7 @@ export const strings = {
       'Rozmowy przez tego dostawcę korzystają z twojego własnego klucza i to on pobiera za nie opłaty. Jest używany tylko wtedy, gdy samodzielnie wybierzesz go w polu „Używane AI”.',
     setAiHeadless: 'Zezwól żądaniom automatycznym na korzystanie z subskrypcji',
     setAiHeadlessDesc:
-      'Pozwala, aby generowanie i analiza obrazów, tłumaczenie PDF oraz odczyt stron przez AI zlecane przez polecenie terminala lub inny program (MCP) korzystały z twojej subskrypcji Claude lub Codex. Gdy opcja jest wyłączona, takie żądania korzystają wyłącznie z dostawców z kluczem.',
+      'Pozwala, aby generowanie i analiza obrazów, tłumaczenie PDF, odczyt stron przez AI oraz tłumaczenie książek (EPUB) zlecane przez polecenie terminala lub inny program (MCP) korzystały z twojej subskrypcji Claude lub Codex. Gdy opcja jest wyłączona, takie żądania korzystają wyłącznie z dostawców z kluczem.',
     setAiHeadlessWarning:
       'Nie ma limitu godzinowego: program może wysłać dowolnie wiele żądań, a mogą one zawierać cały tekst dokumentu i obrazy jego stron. Żadna z tych dwóch firm nie zaleca, aby program automatycznie korzystał z subskrypcji, a twoje konto może zostać ograniczone.',
     setAiHeadlessConfirm: 'Włącz mimo to',
@@ -7388,6 +7798,19 @@ export const strings = {
       'Klucz i bazowy URL dostawcy są wspólne dla wszystkich funkcji; wpisz je raz.',
     setGithub: 'Open source',
     setBasedOn: 'Oparte na projekcie open source {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licencje open source',
+    setLicensesDesc:
+      'Wyświetl informacje o licencjach i prawach autorskich do oprogramowania i czcionek dołączonych do tej aplikacji.',
+    setLicensesOpen: 'Wyświetl',
+    setRightsContact: 'Kontakt w sprawie znaków towarowych i praw autorskich',
+    setRightsContactDesc: 'Zgłoszenia naruszeń i pytania o licencje wysyłaj na ten adres.',
+    setRightsContactSend: 'Napisz e-mail',
+    setTrademarks:
+      'GenOffice nie jest powiązany z firmami Microsoft, Hancom, Adobe, XMind, Google, Anthropic ani OpenAI, ani przez nie sponsorowany czy popierany. Word, Excel i PowerPoint są znakami towarowymi Microsoft; Hangul, HWP i HWPX — Hancom; XMind — XMind Ltd.; Dysk Google — Google; Claude — Anthropic; ChatGPT i Codex — OpenAI. Nazwy te służą wyłącznie do wskazania, jakie pliki otwiera aplikacja i z czym współpracuje.',
+    setHwpNotice:
+      'Edytor HWP/HWPX powstał na bazie projektu open source rhwp (licencja MIT). Ten produkt opracowano w oparciu o opublikowaną przez Hancom dokumentację formatu plików dokumentów Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice jest udostępniany w stanie „tak jak jest”, bez jakichkolwiek gwarancji, na licencji Apache License 2.0. Treści wygenerowane przez AI mogą zawierać błędy — sprawdź je przed użyciem. Upewnienie się, że masz prawo z nich korzystać, należy do Ciebie.',
     viewOnGitHub: 'Zobacz na GitHubie',
     setFeedback: 'Wyślij opinię',
     setFeedbackDesc:
@@ -7481,6 +7904,11 @@ export const strings = {
     askIntro: 'Ptejte se na své oblíbené soubory. Odpovědi uvádějí zdroje — kliknutím otevřete.',
     askToolSearch: 'Prohledávání databáze',
     askToolRead: 'Čtení souboru',
+    askToolCreate: 'Vytváření dokumentu',
+    askSaveMd: 'Uložit jako Markdown',
+    askSaveDocx: 'Uložit jako Word',
+    askSavedAs: 'Uloženo: {name}',
+    askSaveFailed: 'Uložení se nezdařilo: {error}',
     askEmptyCorpus: 'Znalostní databáze je prázdná: nejprve označte soubory a pak se ptejte.',
     askPlaceholder: 'Zeptejte se na své soubory…',
     askHintIdle: 'Enter odesílá',
@@ -7540,6 +7968,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Myšlenková mapa',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filtrovat podle typu',
     fileCount: '{n} souborů',
     fileCountOne: '{n} soubor',
@@ -7687,7 +8116,7 @@ export const strings = {
       'Konverzace přes tohoto poskytovatele používají váš vlastní klíč a účtuje je tento poskytovatel. Používá se jen tehdy, když ho sami vyberete v položce „Používaná AI“.',
     setAiHeadless: 'Povolit automatickým požadavkům používat předplatné',
     setAiHeadlessDesc:
-      'Umožní, aby generování a analýza obrázků, překlad PDF a čtení stránek pomocí AI vyžádané příkazem v terminálu nebo jiným programem (MCP) běžely na vašem předplatném Claude nebo Codex. Když je volba vypnutá, tyto požadavky používají jen poskytovatele s klíčem.',
+      'Umožní, aby generování a analýza obrázků, překlad PDF, čtení stránek pomocí AI a překlad knih (EPUB) vyžádané příkazem v terminálu nebo jiným programem (MCP) běžely na vašem předplatném Claude nebo Codex. Když je volba vypnutá, tyto požadavky používají jen poskytovatele s klíčem.',
     setAiHeadlessWarning:
       'Neexistuje žádný hodinový limit: program může poslat libovolně mnoho požadavků a ty mohou obsahovat celý text dokumentu i obrázky jeho stránek. Ani jedna z obou společností nedoporučuje, aby program používal předplatné automaticky, a váš účet může být omezen.',
     setAiHeadlessConfirm: 'Přesto zapnout',
@@ -7841,6 +8270,19 @@ export const strings = {
       'Klíč a základní URL jednoho poskytovatele se sdílejí mezi funkcemi; zadejte je jen jednou.',
     setGithub: 'Open source',
     setBasedOn: 'Založeno na open source projektu {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Licence open source',
+    setLicensesDesc:
+      'Zobrazit licenční a autorskoprávní upozornění k softwaru a písmům dodávaným s touto aplikací.',
+    setLicensesOpen: 'Zobrazit',
+    setRightsContact: 'Kontakt ve věci ochranných známek a autorských práv',
+    setRightsContactDesc: 'Oznámení o porušení práv a dotazy k licencím posílejte na tuto adresu.',
+    setRightsContactSend: 'Napsat e-mail',
+    setTrademarks:
+      'GenOffice není spojen se společnostmi Microsoft, Hancom, Adobe, XMind, Google, Anthropic ani OpenAI a není jimi sponzorován ani podporován. Word, Excel a PowerPoint jsou ochranné známky společnosti Microsoft; Hangul, HWP a HWPX společnosti Hancom; XMind společnosti XMind Ltd.; Disk Google společnosti Google; Claude společnosti Anthropic; ChatGPT a Codex společnosti OpenAI. Tyto názvy slouží jen k uvedení, které soubory aplikace otevírá a s čím spolupracuje.',
+    setHwpNotice:
+      'Editor HWP/HWPX vychází z open source projektu rhwp (licence MIT). Tento produkt byl vyvinut s využitím dokumentace, kterou společnost Hancom zveřejnila k formátu souborů dokumentů Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice se poskytuje tak, jak je, bez jakýchkoli záruk, podle licence Apache License 2.0. Obsah vytvořený AI může být chybný, proto jej před použitím zkontrolujte. Ověřit, že máte právo jej používat, je vaší odpovědností.',
     viewOnGitHub: 'Zobrazit na GitHubu',
     setFeedback: 'Odeslat zpětnou vazbu',
     setFeedbackDesc:
@@ -7909,7 +8351,7 @@ export const strings = {
     setAutoSave: 'Automaticky ukládat všechny dokumenty',
     setAutoSaveDesc:
       'Zapne automatické ukládání ve všech editorech jako výchozí. Pro jednotlivé okno ho lze stále vypnout.',
-    setResultStore: 'Uložené výsledky AI pro PDF',
+    setResultStore: 'Uložené výsledky AI',
     setResultStoreDesc:
       'Stránky přečtené AI a překlady zůstávají v tomto počítači, dokud je nesmažete. Využito: {size}',
     setResultStoreDeleteAll: 'Smazat vše',
@@ -7919,6 +8361,9 @@ export const strings = {
     setSearchRerank: 'Přeřazení Jev',
     setSearchRerankDesc:
       'Odešle výňatky 20 nejlepších místních výsledků modelu Jev od TypeSafe a seřadí je podle relevance. Ve výchozím stavu vypnuto; po zapnutí výňatky opouštějí toto zařízení.',
+    setAiInternetTools: 'Povolit AI internetové nástroje',
+    setAiInternetToolsDesc:
+      'Vyhledávání na webu, čtení webových stránek, načítání obrázků z adresy a tvorba a analýza obrázků. Vypnuto: AI v editorech pracuje bez nich. Zapnuto: na adresu, která se v rozhovoru dosud neobjevila, se vás zeptá před načtením. Samotného rozhovoru s AI se to netýká.',
     setSearchRerankEndpoint: 'Koncový bod Jev',
     searchRerankedBy: 'Seřazeno podle relevance pomocí Jev',
     searchJevSettings: 'Sémantické řazení Jev',
@@ -7942,9 +8387,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'Otevřít nastavení systému',
     setDefaultAppFailed: 'Změna se nezdařila. Nastavte ji v nastavení systému.',
     setAiSpellcheckDesc: 'Podtrhávat překlepy při psaní do vstupního pole chatu AI.',
-    setAiOpenInNewDocs: 'Otevírat panel AI v nových dokumentech',
-    setAiOpenInNewDocsDesc:
-      'Když je vypnuto, nově otevřené dokumenty začínají se sbaleným panelem AI; v případě potřeby stačí jedno kliknutí.',
+    setAiPanelStart: 'Panel AI',
+    setAiPanelStartDesc:
+      'Zvolte, jak se má panel AI spouštět při otevření aplikace nebo dokumentu. „Vypnuto“ skryje panel a jeho boční tlačítko; akce AI na pásu karet nebo v nabídce jej mohou stále otevřít.',
+    aiPanelStartOff: 'Vypnuto',
+    aiPanelStartCollapsed: 'Sbaleno',
+    aiPanelStartLast: 'Poslední stav',
+    setAuthorName: 'Uživatelské jméno',
+    setAuthorNameDesc:
+      'Zobrazuje se jako autor komentářů a sledovaných změn v Docs, Sheets a Slides. Ponechte prázdné pro použití názvu účtu počítače.',
     helpSearchPlaceholder: 'Hledat v příručce… (stiskněte /)',
     helpSearchLabel: 'Hledat v příručce',
     helpContentsLabel: 'Obsah příručky',
@@ -7971,6 +8422,11 @@ export const strings = {
     askIntro: 'Vraag naar je favoriete bestanden. Antwoorden noemen hun bron — klik om te openen.',
     askToolSearch: 'Kennisbank doorzoeken',
     askToolRead: 'Bestand lezen',
+    askToolCreate: 'Document wordt gemaakt',
+    askSaveMd: 'Opslaan als Markdown',
+    askSaveDocx: 'Opslaan als Word',
+    askSavedAs: 'Opgeslagen: {name}',
+    askSaveFailed: 'Opslaan mislukt: {error}',
     askEmptyCorpus: 'De kennisbank is leeg: markeer eerst bestanden en stel dan je vraag.',
     askPlaceholder: 'Vraag naar je favoriete bestanden…',
     askHintIdle: 'Enter om te verzenden',
@@ -8031,6 +8487,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Filteren op type',
     fileCount: '{n} bestanden',
     fileCountOne: '{n} bestand',
@@ -8127,7 +8584,7 @@ export const strings = {
     setAutoSave: 'Alle documenten automatisch opslaan',
     setAutoSaveDesc:
       'Zet automatisch opslaan standaard aan in elke editor. Je kunt het nog steeds uitschakelen voor één venster.',
-    setResultStore: "Opgeslagen AI-resultaten van pdf's",
+    setResultStore: 'Opgeslagen AI-resultaten',
     setResultStoreDesc:
       "Door AI gelezen pagina's en vertalingen blijven op deze pc staan tot je ze verwijdert. In gebruik: {size}",
     setResultStoreDeleteAll: 'Alles verwijderen',
@@ -8137,6 +8594,9 @@ export const strings = {
     setSearchRerank: 'Jev-herordening',
     setSearchRerankDesc:
       'Stuurt de fragmenten van de 20 beste lokale resultaten naar het Jev-model van TypeSafe en sorteert ze op relevantie. Standaard uit; indien aan verlaten fragmenten dit apparaat.',
+    setAiInternetTools: 'AI internettools laten gebruiken',
+    setAiInternetToolsDesc:
+      'Zoeken op het web, webpagina’s lezen, afbeeldingen ophalen via een adres en afbeeldingen maken en analyseren. Uit: de AI in de editors werkt zonder. Aan: een adres dat nog niet in het gesprek voorkwam, wordt eerst aan je voorgelegd. Het AI-gesprek zelf verandert niet.',
     setSearchRerankEndpoint: 'Jev-eindpunt',
     searchRerankedBy: 'Op relevantie geordend met Jev',
     searchJevSettings: 'Semantisch herordenen met Jev',
@@ -8161,9 +8621,15 @@ export const strings = {
     setDefaultAppFailed: 'Wijzigen is niet gelukt. Stel dit in via de systeeminstellingen.',
     setAiSpellcheckDesc:
       'Onderstreept verkeerd gespelde woorden tijdens het typen in het AI-chatveld.',
-    setAiOpenInNewDocs: 'AI-paneel openen in nieuwe documenten',
-    setAiOpenInNewDocsDesc:
-      'Indien uit, starten nieuw geopende documenten met een ingeklapt AI-paneel; één klik volstaat wanneer je het nodig hebt.',
+    setAiPanelStart: 'AI-paneel',
+    setAiPanelStartDesc:
+      'Kies hoe het AI-paneel begint wanneer je de app of een document opent. ‘Uit’ verbergt het paneel en de zijknop; een AI-actie in het lint of een menu kan het nog steeds openen.',
+    aiPanelStartOff: 'Uit',
+    aiPanelStartCollapsed: 'Ingeklapt',
+    aiPanelStartLast: 'Laatste status',
+    setAuthorName: 'Gebruikersnaam',
+    setAuthorNameDesc:
+      'Wordt weergegeven als auteur van opmerkingen en bijgehouden wijzigingen in Docs, Sheets en Slides. Laat leeg om de accountnaam van je computer te gebruiken.',
     settings: 'Instellingen',
     setSecAccount: 'Account',
     setSecGeneral: 'Algemeen',
@@ -8219,7 +8685,7 @@ export const strings = {
       'Chats via deze provider gebruiken je eigen sleutel en worden door die provider in rekening gebracht. De provider wordt alleen gebruikt zolang je hem zelf kiest bij "AI die wordt gebruikt".',
     setAiHeadless: 'Automatische verzoeken een abonnement laten gebruiken',
     setAiHeadlessDesc:
-      'Staat toe dat het genereren en analyseren van afbeeldingen, het vertalen van pdf’s en het lezen van pagina’s met AI, aangevraagd door een terminalopdracht of een ander programma (MCP), via je Claude- of Codex-abonnement verloopt. Als dit uit staat, gebruiken zulke verzoeken alleen providers met een sleutel.',
+      'Staat toe dat het genereren en analyseren van afbeeldingen, het vertalen van pdf’s, het lezen van pagina’s met AI en het vertalen van boeken (EPUB), aangevraagd door een terminalopdracht of een ander programma (MCP), via je Claude- of Codex-abonnement verloopt. Als dit uit staat, gebruiken zulke verzoeken alleen providers met een sleutel.',
     setAiHeadlessWarning:
       'Er is geen limiet per uur: een programma kan zoveel verzoeken sturen als het wil, en die kunnen de volledige tekst van een document en afbeeldingen van de pagina’s bevatten. Geen van beide bedrijven raadt aan een programma je abonnement automatisch te laten gebruiken, en je account kan worden beperkt.',
     setAiHeadlessConfirm: 'Toch inschakelen',
@@ -8374,6 +8840,19 @@ export const strings = {
       'De sleutel en basis-URL van een provider gelden voor alle functies; één keer invoeren volstaat.',
     setGithub: 'Open source',
     setBasedOn: 'Gebaseerd op het opensourceproject {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Opensourcelicenties',
+    setLicensesDesc:
+      'Bekijk de licentie- en auteursrechtvermeldingen van de software en lettertypen die bij deze app worden geleverd.',
+    setLicensesOpen: 'Bekijken',
+    setRightsContact: 'Contact over merken en auteursrecht',
+    setRightsContactDesc: 'Stuur meldingen van inbreuk en vragen over licenties naar dit adres.',
+    setRightsContactSend: 'E-mail schrijven',
+    setTrademarks:
+      'GenOffice is niet verbonden aan Microsoft, Hancom, Adobe, XMind, Google, Anthropic of OpenAI en wordt niet door hen gesponsord of onderschreven. Word, Excel en PowerPoint zijn handelsmerken van Microsoft; Hangul, HWP en HWPX van Hancom; XMind van XMind Ltd.; Google Drive van Google; Claude van Anthropic; ChatGPT en Codex van OpenAI. Deze namen worden alleen gebruikt om aan te geven welke bestanden de app opent en waarmee hij samenwerkt.',
+    setHwpNotice:
+      'De HWP/HWPX-editor is gebaseerd op het opensourceproject rhwp (MIT-licentie). Dit product is ontwikkeld met gebruik van de door Hancom gepubliceerde documentatie over het Hangul-documentbestandsformaat (.hwp).',
+    setDisclaimer:
+      'GenOffice wordt geleverd zoals het is, zonder enige garantie, onder de Apache License 2.0. Door AI gemaakte inhoud kan fouten bevatten: controleer die voordat u hem gebruikt. Nagaan of u het recht hebt om hem te gebruiken, is uw eigen verantwoordelijkheid.',
     viewOnGitHub: 'Bekijken op GitHub',
     setFeedback: 'Feedback sturen',
     setFeedbackDesc:
@@ -8467,6 +8946,11 @@ export const strings = {
     askIntro: 'Tanya tentang fail kegemaran anda. Jawapan memetik sumbernya — klik untuk membuka.',
     askToolSearch: 'Mencari pangkalan pengetahuan',
     askToolRead: 'Membaca fail',
+    askToolCreate: 'Mencipta dokumen',
+    askSaveMd: 'Simpan sebagai Markdown',
+    askSaveDocx: 'Simpan sebagai Word',
+    askSavedAs: 'Disimpan: {name}',
+    askSaveFailed: 'Gagal menyimpan: {error}',
     askEmptyCorpus: 'Pangkalan pengetahuan kosong: tanda beberapa fail dahulu, kemudian tanya.',
     askPlaceholder: 'Tanya tentang fail kegemaran anda…',
     askHintIdle: 'Enter untuk menghantar',
@@ -8527,6 +9011,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'Peta minda',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'Tapis mengikut jenis',
     fileCount: '{n} fail',
     fileCountOne: '{n} fail',
@@ -8623,7 +9108,7 @@ export const strings = {
     setAutoSave: 'Simpan automatik semua dokumen',
     setAutoSaveDesc:
       'Hidupkan Simpan Automatik secara lalai dalam setiap editor. Anda masih boleh mematikannya untuk satu tetingkap.',
-    setResultStore: 'Hasil AI PDF yang disimpan',
+    setResultStore: 'Hasil AI yang disimpan',
     setResultStoreDesc:
       'Halaman yang dibaca AI dan terjemahan disimpan dalam PC ini sehingga anda memadamkannya. Digunakan: {size}',
     setResultStoreDeleteAll: 'Padam semua',
@@ -8633,6 +9118,9 @@ export const strings = {
     setSearchRerank: 'Susunan semula Jev',
     setSearchRerankDesc:
       'Menghantar petikan 20 hasil tempatan teratas ke model Jev TypeSafe dan menyusunnya semula mengikut kaitan. Dimatikan secara lalai; apabila dihidupkan, petikan keluar dari peranti ini.',
+    setAiInternetTools: 'Benarkan AI menggunakan alat internet',
+    setAiInternetToolsDesc:
+      'Carian web, membaca halaman web, mengambil gambar melalui alamat, serta mencipta dan menganalisis imej. Mati: AI dalam editor bekerja tanpanya. Hidup: alamat yang belum muncul dalam perbualan akan ditanya dahulu sebelum diambil. Perbualan AI itu sendiri tidak terjejas.',
     setSearchRerankEndpoint: 'Titik akhir Jev',
     searchRerankedBy: 'Disusun semula mengikut kaitan oleh Jev',
     searchJevSettings: 'Susunan semantik Jev',
@@ -8657,9 +9145,15 @@ export const strings = {
     setDefaultAppFailed: 'Tidak dapat mengubahnya. Tetapkan dalam tetapan sistem.',
     setAiSpellcheckDesc:
       'Gariskan perkataan yang salah ejaan semasa menaip dalam kotak sembang AI.',
-    setAiOpenInNewDocs: 'Buka panel AI dalam dokumen baharu',
-    setAiOpenInNewDocsDesc:
-      'Jika dimatikan, dokumen yang baru dibuka bermula dengan panel AI dilipat; cukup satu klik apabila diperlukan.',
+    setAiPanelStart: 'Panel AI',
+    setAiPanelStartDesc:
+      'Pilih cara panel AI bermula apabila anda membuka aplikasi atau dokumen. "Mati" menyembunyikan panel dan butang sisinya; tindakan AI pada riben atau menu masih boleh membukanya.',
+    aiPanelStartOff: 'Mati',
+    aiPanelStartCollapsed: 'Dikuncupkan',
+    aiPanelStartLast: 'Keadaan terakhir',
+    setAuthorName: 'Nama pengguna',
+    setAuthorNameDesc:
+      'Dipaparkan sebagai pengarang komen dan perubahan dijejak dalam Docs, Sheets dan Slides. Biarkan kosong untuk menggunakan nama akaun komputer.',
     settings: 'Tetapan',
     setSecAccount: 'Akaun',
     setSecGeneral: 'Umum',
@@ -8715,7 +9209,7 @@ export const strings = {
       'Sembang melalui penyedia ini menggunakan kunci anda sendiri, dan penyedia itu yang mengenakan caj kepada anda. Penyedia ini hanya digunakan selagi anda sendiri memilihnya di bawah "AI yang digunakan".',
     setAiHeadless: 'Benarkan permintaan automatik menggunakan langganan',
     setAiHeadlessDesc:
-      'Membenarkan penjanaan imej, analisis imej, terjemahan PDF dan pembacaan halaman dengan AI yang diminta oleh arahan terminal atau program lain (MCP) dijalankan dengan langganan Claude atau Codex anda. Apabila dimatikan, permintaan tersebut hanya menggunakan penyedia berasaskan kunci.',
+      'Membenarkan penjanaan imej, analisis imej, terjemahan PDF, pembacaan halaman dengan AI dan terjemahan buku (EPUB) yang diminta oleh arahan terminal atau program lain (MCP) dijalankan dengan langganan Claude atau Codex anda. Apabila dimatikan, permintaan tersebut hanya menggunakan penyedia berasaskan kunci.',
     setAiHeadlessWarning:
       'Tiada had sejam, jadi program boleh menghantar seberapa banyak permintaan yang dikehendaki, dan permintaan itu mungkin mengandungi seluruh teks dokumen serta imej halamannya. Kedua-dua syarikat tidak mengesyorkan program menggunakan langganan anda secara automatik, dan akaun anda mungkin dihadkan.',
     setAiHeadlessConfirm: 'Hidupkan juga',
@@ -8873,6 +9367,19 @@ export const strings = {
       'Kunci dan Base URL pembekal dikongsi oleh semua keupayaan; isi sekali sahaja.',
     setGithub: 'Sumber Terbuka',
     setBasedOn: 'Berasaskan projek sumber terbuka {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'Lesen sumber terbuka',
+    setLicensesDesc:
+      'Lihat notis lesen dan hak cipta bagi perisian dan fon yang disertakan dengan aplikasi ini.',
+    setLicensesOpen: 'Lihat',
+    setRightsContact: 'Hubungan tanda dagangan dan hak cipta',
+    setRightsContactDesc: 'Hantar laporan pelanggaran hak dan soalan lesen ke alamat ini.',
+    setRightsContactSend: 'Tulis e-mel',
+    setTrademarks:
+      'GenOffice tidak bergabung dengan, ditaja atau disokong oleh Microsoft, Hancom, Adobe, XMind, Google, Anthropic atau OpenAI. Word, Excel dan PowerPoint ialah tanda dagangan Microsoft; Hangul, HWP dan HWPX milik Hancom; XMind milik XMind Ltd.; Google Drive milik Google; Claude milik Anthropic; ChatGPT dan Codex milik OpenAI. Nama-nama ini hanya digunakan untuk menyatakan fail yang dibuka oleh aplikasi dan perkara yang digunakan bersamanya.',
+    setHwpNotice:
+      'Penyunting HWP/HWPX dibina berasaskan projek sumber terbuka rhwp (Lesen MIT). Produk ini dibangunkan dengan merujuk dokumen terbitan Hancom tentang format fail dokumen Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice disediakan sebagaimana adanya, tanpa sebarang jaminan, di bawah Apache License 2.0. Kandungan yang dijana AI mungkin salah, jadi semaklah sebelum digunakan. Memastikan anda berhak menggunakannya ialah tanggungjawab anda.',
     viewOnGitHub: 'Lihat di GitHub',
     setFeedback: 'Hantar maklum balas',
     setFeedbackDesc:
@@ -8964,6 +9471,11 @@ export const strings = {
     askIntro: 'שאל על הקבצים המסומנים שלך. תשובות מציינות את המקור — לחיצה פותחת אותו.',
     askToolSearch: 'מחפש בבסיס הידע',
     askToolRead: 'קורא קובץ',
+    askToolCreate: 'יוצר מסמך',
+    askSaveMd: 'שמירה כ-Markdown',
+    askSaveDocx: 'שמירה כ-Word',
+    askSavedAs: 'נשמר: {name}',
+    askSaveFailed: 'השמירה נכשלה: {error}',
     askEmptyCorpus: 'בסיס הידע ריק: סמן קבצים תחילה ואז שאל.',
     askPlaceholder: 'שאל על הקבצים המסומנים שלך…',
     askHintIdle: 'Enter לשליחה',
@@ -9023,6 +9535,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'מפת חשיבה',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'סינון לפי סוג',
     fileCount: '{n} קבצים',
     fileCountOne: 'קובץ אחד',
@@ -9116,7 +9629,7 @@ export const strings = {
     saveLocation: 'מיקום שמירה',
     setAutoSave: 'שמירה אוטומטית של כל המסמכים',
     setAutoSaveDesc: 'מפעיל שמירה אוטומטית כברירת מחדל בכל עורך. עדיין אפשר לכבות אותה בחלון בודד.',
-    setResultStore: 'תוצאות AI שמורות של PDF',
+    setResultStore: 'תוצאות AI שמורות',
     setResultStoreDesc: 'דפים שה-AI קרא ותרגומים נשמרים במחשב הזה עד שתמחק אותם. בשימוש: {size}',
     setResultStoreDeleteAll: 'מחק הכול',
     setResultStoreConfirm:
@@ -9125,6 +9638,9 @@ export const strings = {
     setSearchRerank: 'סידור מחדש עם Jev',
     setSearchRerankDesc:
       'שולח את הקטעים של 20 התוצאות המקומיות המובילות למודל Jev של TypeSafe ומסדר אותן מחדש לפי רלוונטיות. כבוי כברירת מחדל; כשמופעל, הקטעים יוצאים מהמכשיר הזה.',
+    setAiInternetTools: 'לאפשר ל-AI להשתמש בכלי אינטרנט',
+    setAiInternetToolsDesc:
+      'חיפוש באינטרנט, קריאת דפי אינטרנט, הבאת תמונות לפי כתובת, ויצירה וניתוח של תמונות. כבוי: ה-AI בעורכים עובד בלעדיהם. מופעל: על כתובת שלא הופיעה בשיחה תישאלו לפני שהיא תובא. השיחה עם ה-AI עצמה לא מושפעת.',
     setSearchRerankEndpoint: 'נקודת קצה של Jev',
     searchRerankedBy: 'סודר מחדש לפי רלוונטיות על ידי Jev',
     searchJevSettings: 'סידור סמנטי עם Jev',
@@ -9148,9 +9664,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'פתיחת הגדרות המערכת',
     setDefaultAppFailed: 'לא ניתן לשנות. יש להגדיר בהגדרות המערכת.',
     setAiSpellcheckDesc: 'סימון מילים עם שגיאות כתיב בעת הקלדה בתיבת הצ׳אט של ה-AI.',
-    setAiOpenInNewDocs: 'פתיחת לוח ה-AI במסמכים חדשים',
-    setAiOpenInNewDocsDesc:
-      'כאשר כבוי, מסמכים שנפתחו זה עתה מתחילים עם לוח ה-AI מקופל; לחיצה אחת מספיקה כשצריך.',
+    setAiPanelStart: 'חלונית AI',
+    setAiPanelStartDesc:
+      'בחרו כיצד חלונית ה-AI תתחיל בעת הפעלת האפליקציה או פתיחת מסמך. "כבוי" מסתיר את החלונית ואת הכפתור הצדי; פעולת AI ברצועה או בתפריט עדיין יכולה לפתוח אותה.',
+    aiPanelStartOff: 'כבוי',
+    aiPanelStartCollapsed: 'מכווץ',
+    aiPanelStartLast: 'מצב אחרון',
+    setAuthorName: 'שם משתמש',
+    setAuthorNameDesc:
+      'מוצג כמחבר ההערות והשינויים במעקב ב‑Docs, Sheets ו‑Slides. השאירו ריק כדי להשתמש בשם חשבון המחשב.',
     settings: 'הגדרות',
     setSecAccount: 'חשבון',
     setSecGeneral: 'כללי',
@@ -9205,7 +9727,7 @@ export const strings = {
       'שיחות דרך הספק הזה משתמשות במפתח שלכם, והספק הוא שמחייב אתכם עליהן. הוא נמצא בשימוש רק כל עוד בחרתם בו בעצמכם תחת "ה-AI שבשימוש".',
     setAiHeadless: 'לאפשר לבקשות אוטומטיות להשתמש במינוי',
     setAiHeadlessDesc:
-      'מאפשר ליצירת תמונות, לניתוח תמונות, לתרגום PDF ולקריאת עמודים בעזרת AI שמבקשים פקודת מסוף או תוכנה אחרת (MCP) לפעול דרך מינוי Claude או Codex שלכם. כשהאפשרות כבויה, בקשות כאלה משתמשות רק בספקים עם מפתח.',
+      'מאפשר ליצירת תמונות, לניתוח תמונות, לתרגום PDF, לקריאת עמודים בעזרת AI ולתרגום ספרים (EPUB) שמבקשים פקודת מסוף או תוכנה אחרת (MCP) לפעול דרך מינוי Claude או Codex שלכם. כשהאפשרות כבויה, בקשות כאלה משתמשות רק בספקים עם מפתח.',
     setAiHeadlessWarning:
       'אין מגבלה שעתית, ולכן תוכנה יכולה לשלוח כמה בקשות שתרצה, והן עשויות לכלול את כל הטקסט של מסמך ותמונות של עמודיו. אף אחת משתי החברות אינה ממליצה לאפשר לתוכנה להשתמש במינוי באופן אוטומטי, והחשבון שלכם עלול להיות מוגבל.',
     setAiHeadlessConfirm: 'להפעיל בכל זאת',
@@ -9352,6 +9874,18 @@ export const strings = {
       'המפתח וכתובת ה-Base URL של ספק משותפים לכל היכולות; יש להזין אותם פעם אחת בלבד.',
     setGithub: 'קוד פתוח',
     setBasedOn: 'מבוסס על פרויקט הקוד הפתוח {{GenOffice}} (Apache License 2.0).',
+    setLicenses: 'רישיונות קוד פתוח',
+    setLicensesDesc: 'הצגת הודעות הרישיון וזכויות היוצרים של התוכנות והגופנים שמצורפים לאפליקציה.',
+    setLicensesOpen: 'הצגה',
+    setRightsContact: 'פנייה בנושא סימני מסחר וזכויות יוצרים',
+    setRightsContactDesc: 'דיווחים על הפרת זכויות ושאלות בנושא רישוי יש לשלוח לכתובת זו.',
+    setRightsContactSend: 'כתיבת דוא״ל',
+    setTrademarks:
+      'GenOffice אינו קשור ל-Microsoft, Hancom, Adobe, XMind, Google, Anthropic או OpenAI, ואינו בחסותן או באישורן. Word, Excel ו-PowerPoint הם סימני מסחר של Microsoft; Hangul, HWP ו-HWPX של Hancom; XMind של XMind Ltd.; Google Drive של Google; Claude של Anthropic; ChatGPT ו-Codex של OpenAI. השמות האלה משמשים רק כדי לציין אילו קבצים האפליקציה פותחת ועם מה היא עובדת.',
+    setHwpNotice:
+      'עורך HWP/HWPX מבוסס על פרויקט הקוד הפתוח rhwp (רישיון MIT). מוצר זה פותח בהסתמך על המסמך שפרסמה Hancom על פורמט קובצי המסמכים Hangul (.hwp).',
+    setDisclaimer:
+      'GenOffice מסופק כפי שהוא, ללא אחריות מכל סוג, לפי Apache License 2.0. תוכן שנוצר בבינה מלאכותית עלול להיות שגוי, לכן יש לבדוק אותו לפני השימוש. הבדיקה שיש לך זכות להשתמש בו היא באחריותך.',
     viewOnGitHub: 'הצגה ב-GitHub',
     setFeedback: 'שליחת משוב',
     setFeedbackDesc:
@@ -9438,6 +9972,11 @@ export const strings = {
       'अपनी स्टार की गई फ़ाइलों के बारे में पूछें। उत्तर स्रोत बताते हैं — खोलने के लिए क्लिक करें।',
     askToolSearch: 'नॉलेज बेस खोज रहा है',
     askToolRead: 'फ़ाइल पढ़ रहा है',
+    askToolCreate: 'दस्तावेज़ बनाया जा रहा है',
+    askSaveMd: 'Markdown के रूप में सहेजें',
+    askSaveDocx: 'Word के रूप में सहेजें',
+    askSavedAs: 'सहेजा गया: {name}',
+    askSaveFailed: 'सहेज नहीं सका: {error}',
     askEmptyCorpus: 'नॉलेज बेस खाली है: पहले फ़ाइलें स्टार करें, फिर पूछें।',
     askPlaceholder: 'अपनी फ़ाइलों के बारे में पूछें…',
     askHintIdle: 'भेजने के लिए Enter',
@@ -9497,6 +10036,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: 'माइंड मैप',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: 'प्रकार के अनुसार फ़िल्टर करें',
     fileCount: '{n} फ़ाइलें',
     fileCountOne: '{n} फ़ाइल',
@@ -9594,7 +10134,7 @@ export const strings = {
     setAutoSave: 'सभी दस्तावेज़ स्वतः सहेजें',
     setAutoSaveDesc:
       'हर संपादक में स्वतः सहेजना डिफ़ॉल्ट रूप से चालू करता है। आप इसे किसी एक विंडो के लिए अब भी बंद कर सकते हैं।',
-    setResultStore: 'सहेजे गए PDF AI परिणाम',
+    setResultStore: 'सहेजे गए AI परिणाम',
     setResultStoreDesc:
       'AI द्वारा पढ़े गए पेज और अनुवाद इस PC पर तब तक रहते हैं जब तक आप उन्हें हटा नहीं देते। उपयोग में: {size}',
     setResultStoreDeleteAll: 'सभी हटाएँ',
@@ -9604,6 +10144,9 @@ export const strings = {
     setSearchRerank: 'Jev खोज पुनर्क्रमण',
     setSearchRerankDesc:
       'स्थानीय खोज के शीर्ष 20 परिणामों के अंश TypeSafe के Jev मॉडल को भेजता है और उन्हें प्रासंगिकता के अनुसार पुनः क्रमित करता है। डिफ़ॉल्ट रूप से बंद; चालू होने पर अंश इस डिवाइस से बाहर जाते हैं।',
+    setAiInternetTools: 'AI को इंटरनेट टूल इस्तेमाल करने दें',
+    setAiInternetToolsDesc:
+      'वेब खोज, वेब पेज पढ़ना, पते से चित्र लाना, और चित्र बनाना व उनका विश्लेषण करना। बंद होने पर संपादकों का AI इनके बिना काम करता है। चालू होने पर, जो पता बातचीत में पहले नहीं आया, उसे लाने से पहले आपसे पूछा जाता है। AI बातचीत पर इसका असर नहीं पड़ता।',
     setSearchRerankEndpoint: 'Jev एंडपॉइंट',
     searchRerankedBy: 'Jev द्वारा प्रासंगिकता के अनुसार पुनः क्रमित',
     searchJevSettings: 'Jev सिमैंटिक पुनर्क्रमण',
@@ -9627,9 +10170,15 @@ export const strings = {
     setDefaultAppOpenSettings: 'सिस्टम सेटिंग खोलें',
     setDefaultAppFailed: 'बदला नहीं जा सका। कृपया सिस्टम सेटिंग में सेट करें।',
     setAiSpellcheckDesc: 'AI चैट इनपुट में टाइप करते समय गलत वर्तनी वाले शब्दों को रेखांकित करें।',
-    setAiOpenInNewDocs: 'नए दस्तावेज़ों में AI पैनल खोलें',
-    setAiOpenInNewDocsDesc:
-      'बंद होने पर, नए खोले गए दस्तावेज़ AI पैनल संक्षिप्त अवस्था में शुरू होते हैं; ज़रूरत पड़ने पर एक क्लिक में खुल जाता है।',
+    setAiPanelStart: 'AI पैनल',
+    setAiPanelStartDesc:
+      'चुनें कि ऐप खोलने या दस्तावेज़ खोलने पर AI पैनल कैसे शुरू हो। "बंद" पैनल और उसका साइड बटन छिपा देता है; रिबन या मेन्यू की AI क्रिया से इसे अभी भी खोला जा सकता है।',
+    aiPanelStartOff: 'बंद',
+    aiPanelStartCollapsed: 'संकुचित',
+    aiPanelStartLast: 'पिछली स्थिति',
+    setAuthorName: 'उपयोगकर्ता नाम',
+    setAuthorNameDesc:
+      'Docs, Sheets और Slides में टिप्पणियों और ट्रैक किए गए परिवर्तनों के लेखक के रूप में दिखाया जाता है। कंप्यूटर खाता नाम उपयोग करने के लिए खाली छोड़ें।',
     settings: 'सेटिंग्स',
     setSecAccount: 'खाता',
     setSecGeneral: 'सामान्य',
@@ -9685,7 +10234,7 @@ export const strings = {
       'इस प्रदाता के ज़रिए होने वाली चैट आपकी अपनी कुंजी का उपयोग करती हैं और उनका शुल्क वही प्रदाता लेता है। इसका उपयोग तभी होता है जब आप इसे "उपयोग किया जाने वाला AI" में स्वयं चुनते हैं।',
     setAiHeadless: 'स्वचालित अनुरोधों को सदस्यता का उपयोग करने दें',
     setAiHeadlessDesc:
-      'टर्मिनल कमांड या किसी अन्य प्रोग्राम (MCP) द्वारा माँगे गए इमेज जनरेशन, इमेज विश्लेषण, PDF अनुवाद और AI से पेज पढ़ने को आपकी Claude या Codex सदस्यता पर चलने देता है। बंद होने पर ऐसे अनुरोध केवल कुंजी वाले प्रदाताओं का उपयोग करते हैं।',
+      'टर्मिनल कमांड या किसी अन्य प्रोग्राम (MCP) द्वारा माँगे गए इमेज जनरेशन, इमेज विश्लेषण, PDF अनुवाद, AI से पेज पढ़ने और पुस्तक (EPUB) अनुवाद को आपकी Claude या Codex सदस्यता पर चलने देता है। बंद होने पर ऐसे अनुरोध केवल कुंजी वाले प्रदाताओं का उपयोग करते हैं।',
     setAiHeadlessWarning:
       'प्रति घंटे की कोई सीमा नहीं है, इसलिए कोई प्रोग्राम जितने चाहे उतने अनुरोध भेज सकता है, और उनमें दस्तावेज़ का पूरा टेक्स्ट और उसके पेजों की छवियाँ शामिल हो सकती हैं। दोनों में से कोई भी कंपनी यह सुझाव नहीं देती कि कोई प्रोग्राम आपकी सदस्यता का अपने-आप उपयोग करे, और आपके खाते पर प्रतिबंध लग सकता है।',
     setAiHeadlessConfirm: 'फिर भी चालू करें',
@@ -9838,6 +10387,19 @@ export const strings = {
       'एक प्रदाता की कुंजी और Base URL सभी क्षमताओं में साझा होते हैं; एक बार ही दर्ज करें।',
     setGithub: 'ओपन सोर्स',
     setBasedOn: 'ओपन सोर्स प्रोजेक्ट {{GenOffice}} (Apache License 2.0) पर आधारित।',
+    setLicenses: 'ओपन सोर्स लाइसेंस',
+    setLicensesDesc:
+      'इस ऐप के साथ आने वाले सॉफ़्टवेयर और फ़ॉन्ट के लाइसेंस और कॉपीराइट नोटिस देखें।',
+    setLicensesOpen: 'देखें',
+    setRightsContact: 'ट्रेडमार्क और कॉपीराइट संपर्क',
+    setRightsContactDesc: 'अधिकार उल्लंघन की शिकायतें और लाइसेंस से जुड़े प्रश्न इस पते पर भेजें।',
+    setRightsContactSend: 'ईमेल लिखें',
+    setTrademarks:
+      'GenOffice का Microsoft, Hancom, Adobe, XMind, Google, Anthropic या OpenAI से कोई संबंध नहीं है, और न ही यह उनके द्वारा प्रायोजित या समर्थित है। Word, Excel और PowerPoint, Microsoft के ट्रेडमार्क हैं; Hangul, HWP और HWPX, Hancom के; XMind, XMind Ltd. का; Google Drive, Google का; Claude, Anthropic का; और ChatGPT व Codex, OpenAI के ट्रेडमार्क हैं। ये नाम केवल यह बताने के लिए उपयोग किए जाते हैं कि ऐप कौन-सी फ़ाइलें खोलता है और किसके साथ काम करता है।',
+    setHwpNotice:
+      'HWP/HWPX एडिटर ओपन सोर्स प्रोजेक्ट rhwp (MIT लाइसेंस) पर आधारित है। यह उत्पाद Hancom द्वारा प्रकाशित Hangul दस्तावेज़ फ़ाइल फ़ॉर्मैट (.hwp) के दस्तावेज़ के संदर्भ से विकसित किया गया है।',
+    setDisclaimer:
+      'GenOffice को Apache License 2.0 के तहत "जैसा है" के आधार पर, बिना किसी वारंटी के प्रदान किया जाता है। AI द्वारा बनाई गई सामग्री गलत हो सकती है, इसलिए उपयोग से पहले जाँच लें। उसे उपयोग करने का अधिकार आपके पास है या नहीं, यह सुनिश्चित करना आपकी ज़िम्मेदारी है।',
     viewOnGitHub: 'GitHub पर देखें',
     setFeedback: 'फ़ीडबैक भेजें',
     setFeedbackDesc:
@@ -9926,6 +10488,11 @@ export const strings = {
     askIntro: '根據你收藏的檔案提問,回答會標註來源檔案,點擊即可開啟。',
     askToolSearch: '搜尋知識庫',
     askToolRead: '讀取檔案',
+    askToolCreate: '生成文件',
+    askSaveMd: '儲存為 Markdown',
+    askSaveDocx: '儲存為 Word',
+    askSavedAs: '已儲存:{name}',
+    askSaveFailed: '儲存失敗:{error}',
     askEmptyCorpus: '知識庫還是空的:先收藏一些檔案,再回來提問。',
     askPlaceholder: '問一個關於收藏檔案的問題…',
     askHintIdle: 'Enter 傳送',
@@ -9984,6 +10551,7 @@ export const strings = {
     filterHtml: 'HTML',
     filterMindmap: '心智圖',
     filterHwp: 'HWP',
+    filterEpub: 'EPUB',
     filterAria: '依類型篩選',
     fileCount: '{n} 個檔案',
     fileCountOne: '{n} 個檔案',
@@ -10077,7 +10645,7 @@ export const strings = {
     saveLocation: '預設儲存位置',
     setAutoSave: '所有文件自動儲存',
     setAutoSaveDesc: '在每個編輯器中預設開啟自動儲存，仍可在單一視窗中關閉。',
-    setResultStore: '已儲存的 PDF AI 結果',
+    setResultStore: '已儲存的 AI 結果',
     setResultStoreDesc: 'AI 讀取的頁面和譯文會保存在這台電腦上，直到你刪除。已使用：{size}',
     setResultStoreDeleteAll: '全部刪除',
     setResultStoreConfirm: '要刪除所有已儲存的 AI 讀取結果和譯文嗎？重新產生需要再次使用 AI。',
@@ -10085,6 +10653,9 @@ export const strings = {
     setSearchRerank: 'Jev 搜尋重排',
     setSearchRerankDesc:
       '將本機搜尋前 20 筆命中片段傳給 TypeSafe 的 Jev 模型，依相關性重新排序。預設關閉；開啟後命中片段會離開本機。',
+    setAiInternetTools: '允許 AI 使用網際網路工具',
+    setAiInternetToolsDesc:
+      '網頁搜尋、讀取網頁、依位址取得圖片，以及產生和分析圖片。關閉後，編輯器中的 AI 不再使用這些工具。開啟時，對話中沒出現過的位址會在取得前先詢問你。AI 對話本身不受影響。',
     setSearchRerankEndpoint: 'Jev 端點',
     searchRerankedBy: '已由 Jev 依相關性重排',
     searchJevSettings: 'Jev 語意排序',
@@ -10108,8 +10679,15 @@ export const strings = {
     setDefaultAppOpenSettings: '開啟系統設定',
     setDefaultAppFailed: '設定失敗，請在系統設定中手動更改。',
     setAiSpellcheckDesc: '在 AI 對話輸入框中輸入時標示拼錯的單字。',
-    setAiOpenInNewDocs: '在新文件中開啟 AI 面板',
-    setAiOpenInNewDocsDesc: '關閉後，新開啟的文件預設收合 AI 面板；需要時點一下即可展開。',
+    setAiPanelStart: 'AI 面板',
+    setAiPanelStartDesc:
+      '選擇啟動應用程式或開啟文件時 AI 面板如何開始。選擇「關閉」會隱藏面板和側邊按鈕；功能區或功能表中的 AI 操作仍可將其開啟。',
+    aiPanelStartOff: '關閉',
+    aiPanelStartCollapsed: '收合',
+    aiPanelStartLast: '上次狀態',
+    setAuthorName: '使用者名稱',
+    setAuthorNameDesc:
+      '作為註解和追蹤修訂的作者顯示在 Docs、Sheets、Slides 中。留空則使用電腦帳戶名稱。',
     settings: '設定',
     setSecAccount: '帳戶',
     setSecGeneral: '一般',
@@ -10161,7 +10739,7 @@ export const strings = {
       '使用該服務商的對話會用你自己填寫的 key，並由該服務商向你收費。只有在「使用的 AI」中親自選擇它時才會使用。',
     setAiHeadless: '允許自動呼叫使用訂閱',
     setAiHeadlessDesc:
-      '允許由終端機指令或其他程式（MCP）發起的生圖、圖片解析、PDF 翻譯和 AI 頁面讀取使用你的 Claude 或 Codex 訂閱。關閉時，這類請求只使用 key 方式的服務商。',
+      '允許由終端機指令或其他程式（MCP）發起的生圖、圖片解析、PDF 翻譯、AI 頁面讀取和書籍（EPUB）翻譯使用你的 Claude 或 Codex 訂閱。關閉時，這類請求只使用 key 方式的服務商。',
     setAiHeadlessWarning:
       '沒有每小時次數上限，程式可以傳送任意多的請求，請求中可能包含整份文件的文字和頁面圖片。兩家公司都不建議讓程式自動使用訂閱，你的帳號可能會受到限制。',
     setAiHeadlessConfirm: '仍要開啟',
@@ -10305,6 +10883,18 @@ export const strings = {
     setAiSharedKeyHint: '同一服務商的 key 與 Base URL 在各項能力間共用，只需填一次。',
     setGithub: '開源專案',
     setBasedOn: '以開源專案 {{GenOffice}} 為基礎打造（Apache License 2.0）。',
+    setLicenses: '開源授權',
+    setLicensesDesc: '檢視本應用程式隨附的軟體與字型之授權與著作權聲明。',
+    setLicensesOpen: '檢視',
+    setRightsContact: '商標與著作權聯絡',
+    setRightsContactDesc: '侵權檢舉與授權相關問題請寄到此地址。',
+    setRightsContactSend: '寫信',
+    setTrademarks:
+      'GenOffice 與 Microsoft、Hancom、Adobe、XMind、Google、Anthropic、OpenAI 皆無關聯，也未獲其贊助或認可。Word、Excel、PowerPoint 是 Microsoft 的商標；Hangul（한글）、HWP、HWPX 是 Hancom 的商標；XMind 是 XMind Ltd. 的商標；Google 雲端硬碟是 Google 的商標；Claude 是 Anthropic 的商標；ChatGPT 與 Codex 是 OpenAI 的商標。這些名稱僅用於說明本應用程式能開啟哪些檔案，以及能與哪些服務搭配使用。',
+    setHwpNotice:
+      'HWP/HWPX 編輯器以開源專案 rhwp（MIT 授權）為基礎。本產品參考 Hancom 公開的韓文文件檔案格式（.hwp）文件開發。',
+    setDisclaimer:
+      'GenOffice 依 Apache License 2.0 以「現狀」提供，不作任何保證。AI 產生的內容可能有誤，請確認後再使用。確認自己有權使用這些內容是使用者的責任。',
     viewOnGitHub: '在 GitHub 上查看',
     setFeedback: '傳送意見回饋',
     setFeedbackDesc:

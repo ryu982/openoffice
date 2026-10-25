@@ -3,7 +3,175 @@ export { DriveAttachButton, drivePickedOf } from './DriveAttachButton'
 export type { DriveAttachPicked } from './DriveAttachButton'
 export { DocAttachButton, docPickedOf } from './DocAttachButton'
 export type { DocAttachPicked } from './DocAttachButton'
+export type {
+  DocMentionGroup,
+  DocMentionItem,
+  DocMentionListResult,
+  DocMentionState,
+} from './doc-mention-types'
+export { attachmentFolderLabel } from './attachment-folder'
+export {
+  DOC_MENTION_QUERY_MAX,
+  docFileName,
+  docMentionFirstRow,
+  docMentionLabel,
+  docMentionListCall,
+  docMentionListOf,
+  docMentionStepRow,
+  docMentionTriggerAt,
+  filterDocMentions,
+  insertDocMentions,
+  isDocMentionPickable,
+  relocateDocMentions,
+  sameDocPath,
+  type DocMentionDoc,
+  type DocMentionSpan,
+  type DocMentionTrigger,
+  type DocMentionTriggerOptions,
+} from './doc-mention-model'
+export { DocMentionPicker, docMentionOptionId } from './DocMentionPicker'
+export {
+  useComposerPickers,
+  useDocMentionInput,
+  type AiComposerDocs,
+  type DocMentionAttachment,
+  type DocMentionInput,
+} from './use-doc-mention'
+export {
+  docMentionActions,
+  type DocMentionActionsOptions,
+  type DocMentionAddResult,
+} from './doc-mention-actions'
+export {
+  DOC_MENTION_STRINGS,
+  docMentionText,
+  type DocMentionStringKey,
+} from './strings-doc-mention'
 export { AiComposer } from './AiComposer'
+export {
+  SKILL_CHIPS_MAX,
+  aiSkillsBridge,
+  chipsAfterListChange,
+  filterPickerSkills,
+  pickerSkillsOf,
+  removeSkillTrigger,
+  skillChipOf,
+  skillChipRef,
+  skillChipRefsOf,
+  skillDisplayName,
+  skillPickerKeyAction,
+  skillSourceLabel,
+  skillTriggerAt,
+  withSkillChip,
+  type AiSkillsBridge,
+  type SkillChipRef,
+  type SkillChipView,
+  type SkillPickerItem,
+  type SkillPickerKeyAction,
+  type SkillPickerSurface,
+  type SkillTrigger,
+  type SkillTriggerChar,
+  type SkillTriggerOptions,
+} from './skill-picker-model'
+export {
+  SKILL_SEND_MAX_CHARS,
+  buildSkillRequest,
+  readSkillsForRequest,
+  skillForRequestOf,
+  skillRequestText,
+  type SkillForRequest,
+  type SkillRequestBuild,
+} from './skill-send'
+export { SentSkillChips, SkillChip, SkillChipRow, SkillPicker } from './SkillPicker'
+export {
+  NO_SKILL_USE,
+  useComposerSkills,
+  useSkillPickerInput,
+  type AiComposerSkills,
+  type ComposerSkills,
+  type ComposerSkillsOptions,
+  type OnTemplateSkill,
+  type SkillPickerInput,
+  type SkillUse,
+  type TemplateSkillRequest,
+} from './use-composer-skills'
+export {
+  SKILL_PICKER_STRINGS,
+  skillPickerText,
+  type SkillPickerStringKey,
+} from './strings-skill-picker'
+export {
+  initialSkillCardDraft,
+  isSkillCardSavedMessage,
+  readStoredSkillCards,
+  skillCardBridge,
+  skillCardMode,
+  skillCardNameVerdict,
+  skillCardSaveBlock,
+  skillCardSaveFailureKey,
+  skillCardSaveInput,
+  skillCardSaveResultOf,
+  skillCardSavedRecord,
+  skillNameCheckOf,
+  type SkillCardBridge,
+  type SkillCardDraft,
+  type SkillCardMode,
+  type SkillCardSaveInput,
+  type SkillCardStatus,
+  type SavedSkillCardRecord,
+  type SkillCardTemplate,
+  type SkillNameCheck,
+  type StoredChatLike,
+  type StoredSkillProposal,
+  type StoredToolRecord,
+} from './skill-card-model'
+export {
+  SkillCardLine,
+  SkillProposalCard,
+  SkillUsedNotes,
+  type SkillCardTemplateContext,
+  type SkillProposalCardProps,
+} from './SkillProposalCard'
+export {
+  panelUserSkills,
+  useSkillProposals,
+  type PanelUserSkillsOptions,
+  type SkillProposals,
+  type SkillProposalsOptions,
+} from './use-skill-proposals'
+export { SKILL_CARD_STRINGS, skillCardText, type SkillCardStringKey } from './strings-skill-card'
+export {
+  TEMPLATE_EDITORS,
+  chipRefForSkill,
+  handedRequestOf,
+  isTemplateMissing,
+  skillTemplateBridge,
+  templateChoice,
+  templateDocumentOf,
+  templateFileNameFor,
+  type HandedPreview,
+  type HandedRequest,
+  type SkillTemplateBridge,
+  type TemplateDocument,
+  type TemplateDocumentInput,
+  type TemplateEditor,
+} from './skill-template-model'
+export {
+  OriginalTemplateActions,
+  PreviewTemplateActions,
+  SkillCardPreviewLine,
+} from './SkillTemplateActions'
+export {
+  useSkillTemplates,
+  type SkillTemplateNote,
+  type SkillTemplates,
+  type SkillTemplatesOptions,
+} from './use-skill-templates'
+export {
+  SKILL_TEMPLATE_STRINGS,
+  skillTemplateText,
+  type SkillTemplateStringKey,
+} from './strings-skill-template'
 export { AiQueueStrip } from './AiQueueStrip'
 export { useChatRunQueue, type ChatRunQueue, type QueuedChatMessage } from './chat-run-queue'
 export { AI_QUEUE_LABELS, type AiQueueStripLabels } from './strings-ai-queue'
@@ -15,20 +183,25 @@ export {
   AI_CUSTOM_FONT_MIN_PX,
   AI_FONT_BASE_PX,
   AI_FONT_SIZES,
+  AI_PANEL_STARTS,
   DEFAULT_AI_PANEL_PREFS,
   aiPanelFontPx,
+  aiPanelStartOf,
+  aiPanelStartPatch,
   clampAiCustomFontSize,
   isAiFontSize,
   normalizeAiPanelPrefs,
   type AiFontSize,
   type AiPanelPrefs,
   type AiPanelSide,
+  type AiPanelStart,
 } from './ai-panel-prefs'
 export {
   applyAiPanelPrefs,
   aiPanelInitiallyOpen,
   rememberAiPanelOpen,
   useAiPanelPrefs,
+  useAiSidebarEnabled,
   aiPanelWidthAtPointer,
 } from './ai-panel-prefs-store'
 export {
@@ -131,6 +304,11 @@ export { CROP_EDGE_LABELS } from './strings-crop-edges'
 export { ImageViewer, type ImageViewerLabels } from './image-viewer'
 export { trapTab, useModalKeys } from './modal-keys'
 export {
+  presentationKeyOf,
+  type PresentationKey,
+  type PresentationKeyInput,
+} from './presentation-keys'
+export {
   removeBackground,
   sampleBackgroundColors,
   type CutoutResult,
@@ -154,7 +332,7 @@ export {
   notchStep,
   type ZoomWheelIntent,
 } from './wheel-zoom'
-export { AiModelPicker, type AiModelPickerBridge } from './AiModelPicker'
+export { AiModelPicker, aiModelPopoverStyle, type AiModelPickerBridge } from './AiModelPicker'
 export { withAiModelSelection, type AiModelPickerSelection } from './ai-model-picker-options'
 export {
   aiProviderPickerGroups,
@@ -213,6 +391,15 @@ export {
   aiSubscriptionText,
   type AiSubscriptionStringKey,
 } from './strings-ai-subscription'
+export {
+  BUILTIN_SKILL_NAMES,
+  BUILTIN_SKILL_STRINGS,
+  builtinSkillDesc,
+  builtinSkillText,
+  isBuiltinSkillName,
+  type BuiltinSkillName,
+  type BuiltinSkillStringKey,
+} from './strings-builtin-skills'
 export {
   AiConnectPrompt,
   AiSubscriptionCard,

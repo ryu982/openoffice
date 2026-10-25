@@ -7,6 +7,7 @@ import {
   agentPolicyVerdict,
   comparablePath,
   isInsidePath,
+  webHostOf,
   type AgentAction,
   type AgentPolicyContext,
 } from '../src/agent-session'
@@ -163,5 +164,73 @@ describe('other actions', () => {
         ctx({ mode: 'trust-project' }),
       ),
     ).toEqual({ decision: 'ask' })
+  })
+})
+
+describe('the web', () => {
+  const modes = ['ask-commands', 'ask-writes', 'trust-project'] as const
+  const search = action({ kind: 'web-search', tool: 'WebSearch', target: 'tides' })
+  const fetch = (url: string) =>
+    action({ kind: 'web-fetch', tool: 'WebFetch', target: url, host: webHostOf(url) })
+
+  it('asks the first time, in every mode', () => {
+    for (const mode of modes) {
+      expect(agentPolicyVerdict(search, ctx({ mode }))).toEqual({ decision: 'ask' })
+      expect(agentPolicyVerdict(fetch('https://example.com/a'), ctx({ mode }))).toEqual({
+        decision: 'ask',
+      })
+    }
+  })
+
+  it('lets every search through once searches are allowed for the session', () => {
+    const allowances = { webSearch: true, webHosts: new Set<string>() }
+    for (const mode of modes) {
+      expect(agentPolicyVerdict(search, ctx({ mode, allowances }))).toEqual({ decision: 'allow' })
+      // searches allowed do not open pages
+      expect(agentPolicyVerdict(fetch('https://example.com/'), ctx({ mode, allowances }))).toEqual({
+        decision: 'ask',
+      })
+    }
+  })
+
+  it('lets the pages of an allowed site through, and only that site', () => {
+    const allowances = { webSearch: false, webHosts: new Set(['example.com']) }
+    expect(agentPolicyVerdict(fetch('https://EXAMPLE.com/x'), ctx({ allowances }))).toEqual({
+      decision: 'allow',
+    })
+    expect(agentPolicyVerdict(fetch('http://example.com:8080/y'), ctx({ allowances }))).toEqual({
+      decision: 'allow',
+    })
+    expect(agentPolicyVerdict(fetch('https://docs.example.com/'), ctx({ allowances }))).toEqual({
+      decision: 'ask',
+    })
+    expect(agentPolicyVerdict(fetch('https://example.com.evil.net/'), ctx({ allowances }))).toEqual(
+      { decision: 'ask' },
+    )
+    expect(agentPolicyVerdict(search, ctx({ allowances }))).toEqual({ decision: 'ask' })
+    // an address with no site is asked every time
+    expect(
+      agentPolicyVerdict(
+        action({ kind: 'web-fetch', tool: 'WebFetch', target: 'not a url' }),
+        ctx({ allowances }),
+      ),
+    ).toEqual({ decision: 'ask' })
+  })
+
+  it('reads the site of http and https addresses only', () => {
+    expect(webHostOf('https://Example.COM/a')).toBe('example.com')
+    expect(webHostOf('file:///C:/secret.txt')).toBeUndefined()
+    expect(webHostOf('not a url')).toBeUndefined()
+    expect(webHostOf(undefined)).toBeUndefined()
+  })
+
+  it('leaves the protected folders refused, whatever was allowed', () => {
+    const allowances = { webSearch: true, webHosts: new Set(['example.com']) }
+    expect(
+      agentPolicyVerdict(
+        action({ kind: 'read', tool: 'Read', paths: [String.raw`C:\Users\me\.codex\auth.json`] }),
+        ctx({ mode: 'trust-project', allowances }),
+      ),
+    ).toEqual({ decision: 'deny', reason: 'protected-path' })
   })
 })

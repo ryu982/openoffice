@@ -1,6 +1,6 @@
 # Inicio rápido: la interfaz y lo esencial
 
-GenOffice es una suite ofimática que funciona por completo en su equipo: una ventana, una fila de pestañas, con seis editores: Docs (procesamiento de texto), Sheets (hojas de cálculo), Slides (presentaciones), PDF, Markdown y HTML. Los archivos son .docx / .xlsx / .pptx / .pdf reales, totalmente intercambiables con Word, Excel y PowerPoint. No necesita red.
+GenOffice es una suite ofimática que funciona en su equipo: una ventana, una fila de pestañas, con ocho editores: Docs (procesamiento de texto), Sheets (hojas de cálculo), Slides (presentaciones), PDF, Markdown y texto plano, HTML, HWP/HWPX (documentos de Hangul) y mapas mentales (.xmind). Cada editor abre y guarda archivos en su propio formato: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx y .xmind. Editar no requiere red; las funciones de IA sí.
 
 ## Descripción de la interfaz
 

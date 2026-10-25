@@ -1,6 +1,6 @@
 # Slides: 프레젠테이션
 
-Slides는 PowerPoint와 비슷한 편집기입니다. 진짜.pptx를 읽고 씁니다.
+Slides는 프레젠테이션 편집기입니다. .pptx 파일을 열고 저장합니다.
 
 ## 화면
 

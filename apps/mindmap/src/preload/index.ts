@@ -1,6 +1,9 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
+import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
 import { SPLIT_PANE_BRIDGE_KEY, splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
@@ -21,11 +24,13 @@ import type {
   MindmapMakeFromApi,
   MindmapMenuCommand,
   MindmapQueryApi,
+  MindmapRecoveryApi,
   MindmapSeedApi,
   SaveMode,
   UiTheme,
 } from '../shared/ipc'
 import {
+  SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
@@ -120,6 +125,9 @@ const subscription: MindmapSubscriptionApi = {
   openInstallHelp: async (provider) => {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
   },
+  openConnectHelp: async (path) => {
+    await ipcRenderer.invoke(SUBSCRIPTION_CONNECT_HELP_CHANNEL, path)
+  },
 }
 
 const ai: MindmapAiApi = {
@@ -179,6 +187,15 @@ const makeFrom: MindmapMakeFromApi = {
   makeFromDocument: () => ipcRenderer.send(MINDMAP_CHANNELS.makeFromDocument),
 }
 
+// ---- crash-recovery copies ----
+
+const recovery: MindmapRecoveryApi = {
+  writeRecoveryCopy: (request) => ipcRenderer.invoke(MINDMAP_CHANNELS.recoveryCopy, request),
+  onRecoveryCopyNow: (handler) => listen<[]>(MINDMAP_CHANNELS.recoveryCopyNow, handler),
+  sendRecoveryCopyNowDone: () => ipcRenderer.send(MINDMAP_CHANNELS.recoveryCopyNowDone),
+  onRecoveryReset: (handler) => listen<[]>(MINDMAP_CHANNELS.recoveryReset, handler),
+}
+
 const api: MindmapApi = {
   ...core,
   ...exporting,
@@ -187,6 +204,7 @@ const api: MindmapApi = {
   ...handoff,
   ...seed,
   ...makeFrom,
+  ...recovery,
 }
 
 /** Chat persistence: the shared project:* handlers are registered once by the shell (docs-main registerProjectIpc) */
@@ -200,6 +218,9 @@ const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | '
 contextBridge.exposeInMainWorld('mindmapApi', api)
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
+contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
 contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus

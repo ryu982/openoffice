@@ -47,7 +47,7 @@ Sáu công cụ: **Vẽ, Hình chữ nhật, Hình elip, Mũi tên, Ghi chú**, 
 ## Ghi chú dán và chuỗi bình luận
 
 - **Công cụ ghi chú** đặt một ghim và mở một thẻ ở lề để viết văn bản (tên tác giả có thể đặt); xác nhận thì lưu thành chú thích văn bản PDF tiêu chuẩn.
-- Nhấp vào một ghim để mở chuỗi: **Trả lời** (chuỗi phẳng kiểu WPS/Acrobat), sửa bình luận của bạn, **Xóa** một bình luận hoặc cả chuỗi.
+- Nhấp vào một ghim để mở chuỗi: **Trả lời** (các trả lời nằm trong một danh sách phẳng, không lồng nhau), sửa bình luận của bạn, **Xóa** một bình luận hoặc cả chuỗi.
 - Nội dung đang sửa vẫn còn cho tới khi lưu ghi lại văn bản mới vào chính chú thích đó trong tệp, nên chuỗi trả lời được giữ nguyên.
 
 ## Chỉnh sửa nội dung PDF (Chỉnh sửa)

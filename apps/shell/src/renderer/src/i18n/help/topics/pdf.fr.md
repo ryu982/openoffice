@@ -47,7 +47,7 @@ Six outils : **Dessin, Rectangle, Ellipse, Flèche, Note**, plus le **Caviarder 
 ## Pense-bêtes et fils de commentaires
 
 - L’**outil Note** pose une épingle et ouvre une carte en marge pour ce texte (nom d’auteur configurable) ; une fois validé, elle est enregistrée comme annotation de texte PDF standard.
-- Cliquez sur une épingle pour ouvrir le fil : **Répondre** (fils plats à la WPS/Acrobat), **Modifier** votre commentaire, **Supprimer** un commentaire ou un fil entier.
+- Cliquez sur une épingle pour ouvrir le fil : **Répondre** (les réponses forment une seule liste à plat, sans imbrication), **Modifier** votre commentaire, **Supprimer** un commentaire ou un fil entier.
 - Les modifications en cours survivent jusqu’à ce que l’enregistrement réécrive le nouveau texte dans la même annotation du fichier, ce qui préserve l’enchaînement des réponses.
 
 ## Modifier le contenu du PDF (Édition)

@@ -1,6 +1,6 @@
 # Slides: presentations
 
-Slides is the PowerPoint-like editor: reads and writes genuine.pptx.
+Slides is the presentation editor: it opens and saves .pptx files.
 
 ## The interface
 

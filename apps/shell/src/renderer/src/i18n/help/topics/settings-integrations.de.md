@@ -18,7 +18,7 @@ Hell / Dunkel / System folgen. „System folgen“ richtet sich nach dem Erschei
 ## Allgemein
 
 - **Position der KI-Seitenleiste** (links oder rechts), **Textgröße im KI-Bereich** und **Rechtschreibprüfung im KI-Chat**.
-- **KI-Panel in neuen Dokumenten öffnen** — aus, ein neues Dokument startet mit eingeklapptem Panel, einen Klick entfernt.
+- **KI-Panel** — Aus, Eingeklappt oder Letzter Zustand.
 - **Alle Dokumente automatisch speichern** schaltet AutoSave in jedem Editor standardmäßig ein; für ein einzelnes Fenster können Sie es weiterhin abschalten.
 - **Speicherort** mit der Schaltfläche **Ändern** und **Standard-App für Office-Dokumente**, um .docx / .xlsx / .pptx für GenOffice zu beanspruchen.
 
@@ -44,7 +44,7 @@ Die Einstellungen können GenOffice als Programm für .docx / .xlsx / .pptx / .p
 ## Hinweise zu Drittanbietersoftware und Updates
 
 - Hilfe ▸ Hinweise zu Drittanbietersoftware: das vollständige Verzeichnis der mitgelieferten Open-Source-Lizenzen.
-- Hilfe ▸ Nach Updates suchen: löst eine manuelle Prüfung aus; bei einer neueren Version werden Sie zur Installation aufgefordert.
+- Menü (☰) ▸ Nach Updates suchen (auf dem Mac Hilfe ▸ Nach Updates suchen): löst eine manuelle Prüfung aus; bei einer neueren Version werden Sie zur Installation aufgefordert.
 
 ## MCP-Integration (für erfahrene Anwender / KI-Clients)
 

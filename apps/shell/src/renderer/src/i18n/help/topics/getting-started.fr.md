@@ -1,6 +1,6 @@
 # Démarrage rapide : l’interface et les bases
 
-GenOffice est une suite bureautique qui fonctionne entièrement sur votre machine : une fenêtre, une rangée d’onglets, six éditeurs — Docs (traitement de texte), Sheets (tableurs), Slides (présentations), PDF, Markdown et HTML. Les fichiers sont de vrais .docx / .xlsx / .pptx / .pdf, totalement interchangeables avec Word, Excel et PowerPoint. Aucun réseau requis.
+GenOffice est une suite bureautique qui fonctionne sur votre machine : une fenêtre, une rangée d’onglets, huit éditeurs — Docs (traitement de texte), Sheets (tableurs), Slides (présentations), PDF, Markdown et texte brut, HTML, HWP/HWPX (documents Hangul) et cartes mentales (.xmind). Chaque éditeur ouvre et enregistre les fichiers dans son propre format : .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx et .xmind. La modification ne nécessite aucun réseau ; les fonctions d’IA, si.
 
 ## Aperçu de l’interface
 

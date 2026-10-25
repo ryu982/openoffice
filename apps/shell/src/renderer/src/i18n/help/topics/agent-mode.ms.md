@@ -36,17 +36,35 @@ Apa jua pilihan anda, ejen tidak akan:
 
 ## Claude Code dan Codex
 
-- **Codex** menjalankan arahan dalam ruang terasingnya sendiri, termasuk arahan yang anda benarkan. Ia hanya boleh menulis dalam folder projek, internet disekat, dan ia tidak boleh membaca fail peribadi anda di luar projek. Apabila sesi bermula, GenOffice terlebih dahulu menyemak sama ada pengasingan ini berfungsi pada PC ini, dan tidak memulakan sesi jika tidak.
+- **Codex** menjalankan arahan dalam ruang terasingnya sendiri, termasuk arahan yang anda benarkan. Ia hanya boleh menulis dalam folder projek, internet disekat melainkan anda menghidupkannya, dan ia tidak boleh membaca fail peribadi anda di luar projek. Apabila sesi bermula, GenOffice terlebih dahulu menyemak sama ada pengasingan ini berfungsi pada PC ini, dan tidak memulakan sesi jika tidak.
 - **Claude Code** tidak dapat mengasingkan arahan pada Windows. Arahan yang anda benarkan boleh mencapai seluruh PC dan internet. Sebab itulah, dalam **Percayai projek ini**, penyemak Claude Code sendiri yang memeriksa setiap tindakan bagi pihak anda.
 
 Dokumen yang dihantar oleh orang lain mungkin mengandungi arahan tersembunyi yang menyuruh AI melakukan perkara lain. Dalam folder yang berisi bahan yang anda tidak kenali, gunakan salah satu pilihan yang bertanya dahulu.
 
+## Carian web dan internet
+
+- **Claude Code** boleh mencari di web dan membaca halaman web, tetapi bertanya dahulu. Ia bertanya kali pertama ia mencari, dan bagi setiap laman yang halamannya hendak dibaca. Dalam soalan itu, **Benarkan carian sepanjang sesi ini** atau **Benarkan laman ini sepanjang sesi ini** menghentikannya daripada bertanya lagi sehingga sesi tamat. Dalam **Percayai projek ini**, penyemak Claude Code sendiri yang membuat keputusan.
+- Apabila anda memilih **Codex**, skrin mula memaparkan dua lagi tetapan.
+
+| Tetapan                         | Pilihan                           | Pada mulanya    |
+| ------------------------------- | --------------------------------- | --------------- |
+| **Carian web**                  | Hasil tersimpan / Langsung / Mati | Hasil tersimpan |
+| **Akses internet untuk arahan** | Mati / Hidup                      | Mati            |
+
+- Hasil tersimpan datang daripada kandungan web yang dikumpul lebih awal; Langsung mencari web seperti keadaannya sekarang.
+- Kedua-dua tetapan diingat bagi setiap folder projek. Folder yang digunakan buat kali pertama bermula dengan nilai di atas.
+- Apabila akses internet untuk arahan dihidupkan, arahan yang dijalankan oleh Codex boleh mencapai internet. Dalam **Percayai projek ini**, arahan mencapainya tanpa bertanya, dan arahan tersembunyi dalam dokumen yang anda terima boleh menyebabkan data anda dihantar keluar. Amaran ini dipaparkan apabila anda menghidupkannya. Hidupkan hanya apabila perlu. Kemahiran terbina dalam "Cari kemahiran" hanya berfungsi apabila tetapan ini hidup.
+
 ## Nota projek dan kemahiran
 
 - Jika folder itu mempunyai `CLAUDE.md` atau `AGENTS.md`, kandungannya diberikan kepada ejen sebagai arahan. Tuliskan perkara yang perlu dipatuhi setiap kali: nada, istilah, format dokumen yang hendak dihasilkan.
-- Claude Code mendapat salinan kemahiran dari tempat-tempat ini: `.claude/skills` dalam folder projek, `.ieumoffice/skills` dan `.claude/skills` dalam folder rumah anda, serta kemahiran daripada pemalam Claude yang dipasang. Bilangan kemahiran yang tersedia dipaparkan di bawah baris yang menyatakan sesi telah bermula.
-- Codex membaca folder kemahirannya sendiri.
+- Tetingkap ejen menggunakan kemahiran yang dihidupkan dalam **Tetapan ▸ Kemahiran**. Claude Code dan Codex mendapat senarai yang sama. Maklumat lanjut tentang kemahiran ada dalam [Kemahiran](help://skills).
+- Kemahiran dalam `.claude/skills` dan `.agents/skills` folder projek digunakan dalam sesi itu tanpa perlu dihidupkan.
+- Pilih kemahiran dengan `/` atau `$` dalam kotak input, dan arahan supaya membaca serta mengikut kemahiran itu diletakkan di hadapan permintaan anda.
+- Senarai kemahiran ditetapkan apabila sesi bermula. Jika anda menghidupkan atau mematikan kemahiran semasa sesi, "Kemahiran yang diubah berkuat kuasa mulai sesi seterusnya" dipaparkan.
+- Apabila ejen membuat kemahiran, kad kemahiran muncul dalam tetingkap; apabila ia menemui kemahiran yang wajar dipasang, pratonton pemasangan muncul. Tiada apa-apa disimpan atau dipasang sehingga anda mengklik **Simpan** atau **Pasang**, dan kemahiran yang dipasang tersedia mulai sesi seterusnya.
 - Program yang digunakan oleh skrip sesuatu kemahiran (Python dan sebagainya) mesti dipasang pada PC ini.
+- Jika anda pernah menggunakan ejen dalam versi terdahulu, kali pertama anda membuka tetingkap ejen, satu notis sekali sahaja memaparkan: "Kemahiran kini dihidupkan dan dimatikan dalam Tetapan → Kemahiran. Kemahiran dalam folder kemahiran Claude dan Codex bermula dalam keadaan mati." **Buka Tetapan** membawa anda terus ke sana.
 
 ## Fail baharu dan dokumen yang dibuka
 
@@ -57,6 +75,7 @@ Dokumen yang dihantar oleh orang lain mungkin mengandungi arahan tersembunyi yan
 ## Privasi dan penggunaan
 
 - Bahagian yang anda sembunyikan daripada AI hanya kekal tersembunyi apabila aplikasi membaca dokumen yang dibuka dalam GenOffice untuk ejen. Fail yang dibaca sendiri oleh ejen dari folder dihantar seadanya.
+- Istilah carian web dan alamat halaman yang dibaca dihantar kepada syarikat program itu dan kepada laman-laman tersebut. Apabila akses internet untuk arahan Codex dihidupkan, data boleh dihantar ke mana-mana sahaja arahan bersambung.
 - Ejen bekerja dalam banyak langkah, jadi ia menggunakan lebih banyak had langganan anda berbanding panel AI. Apabila had habis, permintaan itu gagal; ejen tidak pernah beralih kepada AI lain atau kepada sambungan yang dikenakan bayaran.
 
 ## Jika ada masalah

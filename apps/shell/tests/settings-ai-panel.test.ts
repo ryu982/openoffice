@@ -140,6 +140,70 @@ describe('Settings AI panel preferences', () => {
     expect(side?.textContent).toContain('Left')
   })
 
+  it('offers off, collapsed and last state, persisting the two stored switches', async () => {
+    let saved: AiPanelPrefs = {
+      fontSize: 'default',
+      customFontSize: 14,
+      spellcheck: true,
+      side: 'left',
+      openInNewDocs: true,
+      showAiSidebar: true,
+    }
+    const setAiPanelPrefs = vi.fn(async (patch: Partial<AiPanelPrefs>) => {
+      saved = { ...saved, ...patch }
+      return saved
+    })
+    window.aiOffice = {
+      getTheme: async () => 'system',
+      getDefaultSaveDir: async () => '',
+      getAiPanelPrefs: async () => saved,
+      setAiPanelPrefs,
+      getUpdateChannel: async () => 'stable',
+      getAppVersion: async () => '1.0.0',
+    } as unknown as HomeApi
+
+    await act(async () => {
+      root.render(
+        createElement(
+          LocaleProvider,
+          { initial: 'en' },
+          createElement(SettingsModal, {
+            onClose: vi.fn(),
+          }),
+        ),
+      )
+      await Promise.resolve()
+    })
+    const general = Array.from(host.querySelectorAll<HTMLButtonElement>('.set-nav-item')).find(
+      (button) => button.textContent?.includes('General'),
+    )
+    await click(general!)
+
+    const start = host.querySelector<HTMLButtonElement>('[aria-label="AI panel"]')
+    expect(start?.textContent).toContain('Last state')
+    await click(start!)
+    const collapsed = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('[role="option"]'),
+    ).find((option) => option.textContent === 'Collapsed')
+    await click(collapsed!)
+    expect(setAiPanelPrefs).toHaveBeenLastCalledWith({
+      showAiSidebar: true,
+      openInNewDocs: false,
+    })
+    expect(start?.textContent).toContain('Collapsed')
+
+    await click(start!)
+    const off = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find(
+      (option) => option.textContent === 'Off',
+    )
+    await click(off!)
+    expect(setAiPanelPrefs).toHaveBeenLastCalledWith({
+      showAiSidebar: false,
+      openInNewDocs: false,
+    })
+    expect(start?.textContent).toContain('Off')
+  })
+
   it('shows a px input for the custom size and persists in-range values as typed', async () => {
     let saved: AiPanelPrefs = {
       fontSize: 'custom',

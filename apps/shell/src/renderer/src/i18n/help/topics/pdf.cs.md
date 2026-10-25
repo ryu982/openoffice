@@ -47,7 +47,7 @@ Co očekávat:
 ## Připnuté poznámky a vlákna komentářů
 
 - **Nástroj poznámky** umístí špendlík a otevře kartu v okraji pro text (jméno autora lze nastavit); po potvrzení se uloží jako standardní textová anotace PDF.
-- Kliknutím na špendlík otevřete vlákno: **odpovědět** (plochá vlákna ve stylu WPS/Acrobatu), **upravit** vlastní komentář, **odstranit** jeden komentář nebo celé vlákno.
+- Kliknutím na špendlík otevřete vlákno: **odpovědět** (odpovědi tvoří jeden plochý seznam bez vnoření), **upravit** vlastní komentář, **odstranit** jeden komentář nebo celé vlákno.
 - Rozpracované úpravy přežijí, dokud uložení nezapíše nový text zpět do téže anotace v souboru, takže řetězce odpovědí zůstanou zachovány.
 
 ## Úprava obsahu PDF (Úpravy)

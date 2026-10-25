@@ -26,6 +26,16 @@ Ogni editor può richiamare il pannello IA: seleziona qualcosa, dai un'istruzion
 - **Markdown / HTML**: riscrivere, estendere, tradurre.
 - **Home ▸ Ask AI** risponde dai tuoi file preferiti e li cita — il pannello della base di conoscenza ha una sua sezione nel capitolo Home, e il pannello IA di Docs porta la stessa capacità.
 
+## Allegare documenti aperti
+
+Nel pannello IA degli editor Docs, Sheets, Slides, Hangul, HTML e mappe mentali puoi allegare come materiale altri documenti aperti in GenOffice o aperti di recente. Un documento allegato viene trattato esattamente come un file scelto dal tuo PC.
+
+- **`@` nel campo di input**: digita `@` all'inizio del campo o dopo uno spazio per aprire un elenco di documenti. Se la finestra è divisa, viene prima il documento dell'altro riquadro, poi gli altri documenti aperti e quelli recenti; il documento in cui ti trovi non compare. Restringi l'elenco con qualche lettera del nome (gli spazi vanno bene) e scegli con Invio o con un clic: nel campo compare `@nome documento` e il documento viene allegato. **Cerca altri…** in fondo apre la finestra di scelta dei documenti descritta sotto.
+- **Allega da documenti GenOffice**: questo pulsante accanto al pulsante di allegato apre lo stesso elenco in una finestra, dove puoi spuntare più documenti e allegarli in una volta.
+- I documenti con modifiche non salvate e i documenti nuovi mai salvati appaiono attenuati e non si possono scegliere. Salvali e sceglili di nuovo: l'IA legge il file salvato.
+- Se due documenti hanno lo stesso nome ma stanno in cartelle diverse, viene aggiunto il nome della cartella immediatamente superiore, come in `@piano.docx(2° quadrimestre)`, e anche l'IA riceve quel nome di cartella.
+- Gli editor PDF e Markdown non hanno ancora gli allegati, quindi nessuno dei due modi è disponibile lì.
+
 ## Ripristino e sicurezza
 
 - Il pannello di Docs mantiene un **elenco delle versioni**: uno snapshot per turno, puoi tornare a qualunque versione e il ripristino stesso è annullabile con Ctrl+Z. Gli snapshot sopravvivono alla riapertura del documento.

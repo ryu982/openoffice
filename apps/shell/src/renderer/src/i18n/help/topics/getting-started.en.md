@@ -1,6 +1,6 @@
 # Quick start: the interface and the basics
 
-GenOffice is an office suite that runs entirely on your machine: one window, one row of tabs, holding six editors — Docs (word processing), Sheets (spreadsheets), Slides (presentations), PDF, Markdown and HTML. Files are genuine .docx / .xlsx / .pptx / .pdf, fully interchangeable with Word, Excel and PowerPoint. No network required.
+GenOffice is an office suite that runs on your own computer: one window, one row of tabs, holding eight editors — Docs (word processing), Sheets (spreadsheets), Slides (presentations), PDF, Markdown and plain text, HTML, HWP/HWPX (Hangul documents) and Mind Map (.xmind). Each editor opens and saves files in its own format: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx and .xmind. Editing needs no network; the AI features do.
 
 ## Interface overview
 

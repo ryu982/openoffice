@@ -1,5 +1,5 @@
 import type { IFunctionInfo } from '@univerjs/engine-formula'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { platformShortcuts } from '@genoffice/i18n'
 import {
   AiMark,
@@ -14,8 +14,12 @@ import {
   fontFamilyLabel,
   matchesFontQuery,
   rememberAiPanelOpen,
+  useAiSidebarEnabled,
   type AiTokenUsageView,
   type DriveAttachPicked,
+  type OnTemplateSkill,
+  type SkillUse,
+  type AiComposerDocs,
 } from '@genoffice/ui'
 
 import {
@@ -235,6 +239,8 @@ function ToolSymbol({ symbol }: { readonly symbol: string }): React.JSX.Element 
 
 interface ExcelShellProps {
   readonly openingWorkbook: boolean
+  /** F5 presentation: the grid alone, custom chrome hidden */
+  readonly presenting: boolean
   readonly prompt: string
   readonly preview: ChangePlan | null
   readonly selectionFormat: SelectionFormat | null
@@ -250,6 +256,14 @@ interface ExcelShellProps {
   readonly aiSubscription: AiPanelSubscription
   readonly chat: readonly AiChatMessage[]
   readonly historicChat?: readonly AiChatMessage[]
+  /** the skill card for a key a chat message carries */
+  readonly renderSkillCard?: ((key: string) => ReactNode) | undefined
+  /** the template flow's lines and its preview card, after the chat's messages */
+  readonly skillNotes?: ReactNode
+  /** a chip whose skill has a template runs in a new tab (spec 5.7) */
+  readonly onTemplateSkill?: OnTemplateSkill | undefined
+  /** bumped when a request was handed over to this tab: the AI panel opens */
+  readonly openAiRequest?: number | undefined
   /// Chat attachments (chips + 📎 button + drag-and-drop), same structure as the
   /// docs/slides AI panels.
   readonly attachments: readonly AttachmentMeta[]
@@ -257,6 +271,8 @@ interface ExcelShellProps {
   readonly onPickAttachments: () => void
   /** Drive files ticked in the attach-from-Drive window */
   readonly onDrivePicked?: ((picked: DriveAttachPicked) => void | Promise<void>) | undefined
+  /** the `@` document list in the AI input; absent: no list */
+  readonly docMention?: AiComposerDocs | undefined
   readonly onAddAttachmentPaths: (paths: readonly string[]) => void
   readonly onAddPastedImage: (data: ArrayBuffer, ext: string) => void
   readonly onRemoveAttachment: (path: string) => void
@@ -268,6 +284,8 @@ interface ExcelShellProps {
     instruction?: string,
     attachments?: readonly AttachmentMeta[],
     retryIndex?: number,
+    skillUse?: SkillUse,
+    onAdmitted?: () => void,
   ) => void
   readonly onStop: () => void
   readonly onNewChat: () => void
@@ -295,6 +313,9 @@ interface ExcelShellProps {
   readonly emptyCsvNotice: boolean
   readonly onOpenWorkbook: () => void
   readonly onDismissEmptyCsvNotice: () => void
+  /// The open workbook keeps no recovery copy (password protected): shown once per tab.
+  readonly recoveryNotice?: string | null
+  readonly onDismissRecoveryNotice?: () => void
   /// Zoom of the active sheet in percent, echoed by the status-bar slider.
   readonly zoomPercent: number
   /// Aggregates ticked in the status bar's right-click menu (Excel parity).
@@ -426,6 +447,8 @@ export interface PageLayoutEcho {
   readonly printHeadings?: boolean | undefined
   readonly showGridlines: boolean
   readonly showHeadings: boolean
+  /// Mirrored grid (column A at the right edge) for the active sheet.
+  readonly rightToLeft: boolean
   readonly printArea?: string | null | undefined
   readonly printTitles?: string | null | undefined
   readonly header?: HeaderFooterParts | null | undefined
@@ -456,6 +479,7 @@ const PIVOT_MODEL_ERRORS: Record<PivotModelError, StringKey> = {
 
 export function ExcelShell({
   prompt,
+  presenting,
   preview,
   selectionFormat,
   formatPainterActive,
@@ -465,10 +489,15 @@ export function ExcelShell({
   aiSubscription,
   chat,
   historicChat,
+  renderSkillCard,
+  skillNotes,
+  onTemplateSkill,
+  openAiRequest,
   attachments,
   attachNotice,
   onPickAttachments,
   onDrivePicked,
+  docMention,
   onAddAttachmentPaths,
   onAddPastedImage,
   onRemoveAttachment,
@@ -527,6 +556,8 @@ export function ExcelShell({
   emptyCsvNotice,
   onOpenWorkbook,
   onDismissEmptyCsvNotice,
+  recoveryNotice,
+  onDismissRecoveryNotice,
   zoomPercent,
   statusBarFuncs,
   onToggleStatusBarFunc,
@@ -557,17 +588,28 @@ export function ExcelShell({
   const collapse = useRibbonCollapse('ai-sheets-ribbon-collapsed', {
     collapse: t('appRibbonCollapse'),
     expand: t('appRibbonExpand'),
+    // ⌥⌘K / Ctrl+Alt+K: the icon-only middle density (docs parity, see #362)
+    compact: t('appRibbonCompact'),
+    expandFull: t('appRibbonExpand'),
   })
   // Persisted so a closed AI panel stays closed on next launch (docs/slides parity)
   const [isCopilotOpen, setIsCopilotOpen] = useState(() =>
     aiPanelInitiallyOpen('ai-sheets-show-ai'),
   )
+  // the sidebar switch is a soft hide; it closes the panel when it turns off
+  const aiSidebarEnabled = useAiSidebarEnabled(setIsCopilotOpen)
   useEffect(() => {
     rememberAiPanelOpen('ai-sheets-show-ai', isCopilotOpen)
   }, [isCopilotOpen])
   // Split panes (decision 0036): as the secondary pane the dock is forced to
   // the rail, and the rail's click asks the shell to focus this pane first.
   const aiDock = useAiDock(isCopilotOpen, setIsCopilotOpen)
+  // the "show the AI sidebar" setting off hides the copilot rail (soft hide):
+  // an explicit AI action (ribbon run, toggle) still opens the panel, and
+  // closing it returns to hidden — no dead affordances, no invisible runs
+  useEffect(() => {
+    if (openAiRequest) setIsCopilotOpen(true)
+  }, [openAiRequest])
   const [showFormatCells, setShowFormatCells] = useState(false)
   const [axisSizeTarget, setAxisSizeTarget] = useState<'row' | 'col' | null>(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
@@ -837,7 +879,7 @@ export function ExcelShell({
 
   return (
     <main
-      className={`app-shell ${aiDock.open ? '' : 'copilot-collapsed'}`}
+      className={`app-shell ${aiDock.open ? '' : 'copilot-collapsed'}${presenting ? ' sheet-presenting' : ''}`}
       inert={openingWorkbook}
       aria-busy={openingWorkbook}
     >
@@ -957,16 +999,21 @@ export function ExcelShell({
       </header>
 
       {/* AI panel docks on the left, full height under the ribbon (unified with docs) */}
-      <div className="sheet-body">
+      <div className={`sheet-body${!aiSidebarEnabled && !aiDock.open ? ' ai-dock-off' : ''}`}>
         <AiChatPanel
           isOpen={aiDock.open}
+          hideRail={!aiSidebarEnabled}
           hasContent={sheetHasContent}
           chat={chat}
           {...(historicChat !== undefined ? { historicChat } : {})}
+          renderSkillCard={renderSkillCard}
+          skillNotes={skillNotes}
+          onTemplateSkill={onTemplateSkill}
           attachments={attachments}
           attachNotice={attachNotice}
           onPickAttachments={onPickAttachments}
           onDrivePicked={onDrivePicked}
+          docMention={docMention}
           onAddAttachmentPaths={onAddAttachmentPaths}
           onAddPastedImage={onAddPastedImage}
           onRemoveAttachment={onRemoveAttachment}
@@ -977,11 +1024,11 @@ export function ExcelShell({
           subscription={aiSubscription}
           onPromptChange={onPromptChange}
           onSend={onSend}
-          onSendQueued={(text, atts) => {
+          onSendQueued={(text, atts, skillUse) => {
             // the panel asks the send gate first: a message stays queued while it asks to
             // connect or shows the first-use notice
             if (aiBusy) return false
-            onSend(text, atts)
+            onSend(text, atts, undefined, skillUse)
             return true
           }}
           onStop={onStop}
@@ -1009,6 +1056,19 @@ export function ExcelShell({
                   className="csv-empty-notice-close"
                   aria-label={t('appClose')}
                   onClick={onDismissEmptyCsvNotice}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            {recoveryNotice && (
+              <div className="csv-empty-notice" role="status">
+                <span>{recoveryNotice}</span>
+                <button
+                  type="button"
+                  className="csv-empty-notice-close"
+                  aria-label={t('appClose')}
+                  onClick={onDismissRecoveryNotice}
                 >
                   ×
                 </button>
@@ -3175,6 +3235,14 @@ function Ribbon({
             >
               <i className="check-box">{pageLayout.showHeadings ? '✓' : ''}</i>
               {t('appHeadings')}
+            </button>
+            <button
+              className="check-item"
+              data-tip={t('appRightToLeft')}
+              onClick={() => onCommand('toggle-right-to-left')}
+            >
+              <i className="check-box">{pageLayout.rightToLeft ? '✓' : ''}</i>
+              {t('appRightToLeft')}
             </button>
             <button
               className="check-item"

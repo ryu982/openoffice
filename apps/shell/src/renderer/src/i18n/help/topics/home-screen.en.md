@@ -45,7 +45,7 @@ The new file lands in the folder currently selected in the sidebar; with no sele
 
 What each card does:
 
-- **AI Docs** (.docx): a blank text document in the Docs editor. The file is only written to disk on **first save**; new documents open with the AI panel expanded (turn that off under Settings → "Open the AI panel in new documents").
+- **AI Docs** (.docx): a blank text document in the Docs editor. The file is only written to disk on **first save**; new documents open with the AI panel expanded (choose Off or Collapsed under Settings → "AI panel" if you would rather not).
 - **AI Sheets** (.xlsx): a blank spreadsheet in the Sheets editor. Until you save, no file exists on disk — the name is reserved for the first save; after the first AI generation the file can also be renamed automatically from its content.
 - **AI Slides** (.pptx): a blank presentation in the Slides editor.
 - **AI Markdown** (.md): a blank Markdown document in the Markdown editor.

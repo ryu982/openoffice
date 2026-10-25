@@ -1,6 +1,6 @@
 /**
  * Agent mode on Claude Code (decision 0032): the CLI runs with its own file,
- * command and skill tools in the project folder, and asks the app before it
+ * command, skill and web tools in the project folder, and asks the app before it
  * acts. One process serves the whole conversation; each message the person
  * sends is one turn over stdin.
  *
@@ -30,13 +30,14 @@ import {
   type SubscriptionChildRegistry,
   type SubscriptionSpawn,
 } from '../subscription/process'
-import { agentPolicyVerdict } from './policy'
+import { agentPolicyVerdict, webHostOf } from './policy'
 import { DECLINED_BY_PERSON, denyMessage } from './messages'
 import type {
   AgentAction,
   AgentPermissionAnswer,
   AgentPermissionMode,
   AgentSession,
+  AgentSessionAllowances,
   AgentSessionEvent,
   AgentSessionOptions,
 } from './types'
@@ -53,10 +54,43 @@ export const CLAUDE_AGENT_TOOLS = [
   'Bash',
   'PowerShell',
   'Skill',
+  // the web, as in the program's own app: each asks the person first (see the policy)
+  'WebSearch',
+  'WebFetch',
 ] as const
 
 /** Name of the app's MCP server for open documents, as the programs see it */
 export const APP_MCP_SERVER_NAME = 'ieumoffice-editor'
+
+/**
+ * The tools of the app's MCP server an agent session gets (spec 6.6): the
+ * open-document tools, the two file readers and the two skill proposals. The
+ * start checks of both programs end a session that reports any other tool of
+ * that server.
+ */
+export const AGENT_APP_MCP_TOOLS = [
+  'open_documents',
+  'read_document',
+  'insert_content',
+  'replace_blocks',
+  'apply_ops',
+  'read_sheet',
+  'apply_sheet_ops',
+  'read_deck',
+  'apply_slide_ops',
+  'read_hwp',
+  'read_pdf',
+  'propose_skill',
+  'propose_skill_install',
+] as const
+
+const APP_MCP_TOOL_SET: ReadonlySet<string> = new Set(AGENT_APP_MCP_TOOLS)
+
+/** A tool name of the app's server, bare or as a program prefixes it, is one the session gets */
+export function isAgentAppMcpTool(name: string): boolean {
+  const prefix = `mcp__${APP_MCP_SERVER_NAME}__`
+  return APP_MCP_TOOL_SET.has(name.startsWith(prefix) ? name.slice(prefix.length) : name)
+}
 
 const SETTINGS_FILE = 'claude-settings.json'
 const MCP_CONFIG_FILE = 'claude-mcp.json'
@@ -227,6 +261,12 @@ export function claudeAgentAction(tool: string, input: unknown): AgentAction {
       }
     case 'Skill':
       return { kind: 'skill', tool, paths: [] }
+    case 'WebSearch':
+      return { kind: 'web-search', tool, target: stringField(input, 'query'), paths: [] }
+    case 'WebFetch': {
+      const url = stringField(input, 'url')
+      return { kind: 'web-fetch', tool, target: url, host: webHostOf(url), paths: [] }
+    }
     default:
       return { kind: 'other', tool, paths: [], reason }
   }
@@ -237,10 +277,12 @@ export function claudeAgentInitProblem(init: Record<string, unknown>): string | 
   const tools = init.tools
   if (!Array.isArray(tools)) return 'Claude Code did not report its tool list'
   const allowed = new Set<string>(CLAUDE_AGENT_TOOLS)
+  const appPrefix = `mcp__${APP_MCP_SERVER_NAME}__`
+  // the app's own tools by name: a tool of its server the session was not meant to get is extra
   const extra = tools.filter(
     (tool) =>
       typeof tool !== 'string' ||
-      (!allowed.has(tool) && !tool.startsWith(`mcp__${APP_MCP_SERVER_NAME}__`)),
+      (!allowed.has(tool) && !(tool.startsWith(appPrefix) && isAgentAppMcpTool(tool))),
   )
   if (extra.length > 0)
     return `Claude Code started with tools the app did not turn on: ${extra.length}`
@@ -315,7 +357,13 @@ export async function startClaudeAgentSession(
   let rateLimitInfo: Record<string, unknown> | undefined
   let idleTimer: ReturnType<typeof setTimeout> | undefined
   /** permission prompts waiting for the person, by request id */
-  const pending = new Map<string, { input: unknown; toolUseId: string | undefined }>()
+  const pending = new Map<
+    string,
+    { input: unknown; toolUseId: string | undefined; action: AgentAction }
+  >()
+  /** what the person allowed for the rest of this session; memory only, never written */
+  const webHosts = new Set<string>()
+  const allowances: AgentSessionAllowances = { webSearch: false, webHosts }
   /** tool uses by id, so their results can be shown against them */
   const toolUses = new Map<string, AgentAction>()
   const denied = new Set<string>()
@@ -398,6 +446,7 @@ export async function startClaudeAgentSession(
       openDocuments,
       protectedPaths: options.protectedPaths,
       skillBundleDir: options.skillBundleDir,
+      allowances,
       platform,
     })
     if (verdict.decision === 'allow') {
@@ -409,7 +458,7 @@ export async function startClaudeAgentSession(
       deny(requestId, denyMessage(verdict.reason))
       return
     }
-    pending.set(requestId, { input: request.input, toolUseId })
+    pending.set(requestId, { input: request.input, toolUseId, action })
     if (toolUseId) toolUses.set(toolUseId, action)
     emit({ type: 'permission', request: { ...action, id: requestId, provider: PROVIDER } })
   }
@@ -614,6 +663,12 @@ export async function startClaudeAgentSession(
       if (!request) return
       pending.delete(id)
       if (answer.allow) {
+        if (answer.scope === 'session') {
+          if (request.action.kind === 'web-search') allowances.webSearch = true
+          else if (request.action.kind === 'web-fetch' && request.action.host) {
+            webHosts.add(request.action.host)
+          }
+        }
         allow(id, request.input)
         return
       }

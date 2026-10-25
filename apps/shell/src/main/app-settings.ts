@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { isAbsolute, resolve } from 'node:path'
+import {
+  normalizeUserSkillSettings,
+  type UserSkillSettings,
+  type UserSkillStateSetting,
+} from '@genoffice/ai-provider'
+import { AGENT_CODEX_WEB_SEARCH, type AgentCodexWebSearch } from '../shared/agent-api'
 
 /**
  * Helpers for userData/app-settings.json — a flat JSON object holding
@@ -61,4 +68,156 @@ export function writeAppSettingThen<T>(
 ): void {
   writeAppSetting(path, key, value)
   apply(value)
+}
+
+// ---- the person's skills and the agent window (spec 10.1) ----
+
+/** `skills`: on/off states the person changed and the builtins they hid */
+export const SKILLS_SETTING_KEY = 'skills'
+/** set once the agent window's one-time skills notice was seen or not needed */
+export const AGENT_SKILL_NOTICE_KEY = 'agentSkillNoticeSeen'
+/** per project folder: the Codex web search and command network choices */
+export const AGENT_PROJECT_PREFS_KEY = 'agentProjectPrefs'
+/** where the agent window keeps its preferences, the warning acceptance among them */
+const AGENT_PREFS_KEY = 'agent'
+
+/** The `skills` value read back; unknown values fall back to the initial state */
+export function readSkillSettings(path: string): UserSkillSettings {
+  return normalizeUserSkillSettings(readAppSettings(path)[SKILLS_SETTING_KEY])
+}
+
+/** Write the `skills` value, keeping only states that hold something */
+export function writeSkillSettings(path: string, settings: UserSkillSettings): void {
+  const states: Record<string, UserSkillStateSetting> = {}
+  for (const [id, state] of Object.entries(settings.states)) {
+    const kept: UserSkillStateSetting = {}
+    if (typeof state.enabled === 'boolean') kept.enabled = state.enabled
+    if (state.invoke === 'auto' || state.invoke === 'manual') kept.invoke = state.invoke
+    if (kept.enabled !== undefined || kept.invoke !== undefined) states[id] = kept
+  }
+  const value: { states?: typeof states; hiddenBuiltins?: string[] } = {}
+  if (Object.keys(states).length > 0) value.states = states
+  const hidden = [...new Set(settings.hiddenBuiltins.filter((name) => !!name))]
+  if (hidden.length > 0) value.hiddenBuiltins = hidden
+  writeAppSetting(path, SKILLS_SETTING_KEY, value)
+}
+
+/** Read, change and write the `skills` value; returns what was written */
+export function updateSkillSettings(
+  path: string,
+  change: (settings: UserSkillSettings) => void,
+): UserSkillSettings {
+  const settings = readSkillSettings(path)
+  change(settings)
+  writeSkillSettings(path, settings)
+  return readSkillSettings(path)
+}
+
+function acceptedAgentWarning(agent: unknown): boolean {
+  const value = (agent && typeof agent === 'object' ? agent : {}) as { warningAccepted?: unknown }
+  return (
+    typeof value.warningAccepted === 'number' &&
+    Number.isInteger(value.warningAccepted) &&
+    value.warningAccepted >= 1
+  )
+}
+
+/**
+ * The agent window's one-time notice (spec 6.5) is due for someone who
+ * accepted the agent warning before this version and has not seen it.
+ */
+export function agentSkillNoticeDue(path: string): boolean {
+  const settings = readAppSettings(path)
+  return (
+    acceptedAgentWarning(settings[AGENT_PREFS_KEY]) && settings[AGENT_SKILL_NOTICE_KEY] !== true
+  )
+}
+
+export function markAgentSkillNoticeSeen(path: string): void {
+  writeAppSetting(path, AGENT_SKILL_NOTICE_KEY, true)
+}
+
+/**
+ * Store the agent window's preferences. Accepting the warning for the first
+ * time also records the skills notice as seen: a new user never gets it.
+ */
+export function writeAgentPrefs(path: string, prefs: { warningAccepted: number }): void {
+  const before = readAppSettings(path)
+  const updates: Record<string, unknown> = { [AGENT_PREFS_KEY]: prefs }
+  if (
+    !acceptedAgentWarning(before[AGENT_PREFS_KEY]) &&
+    acceptedAgentWarning(prefs) &&
+    before[AGENT_SKILL_NOTICE_KEY] === undefined
+  ) {
+    updates[AGENT_SKILL_NOTICE_KEY] = true
+  }
+  writeAppSettings(path, updates)
+}
+
+export interface AgentProjectPref {
+  codexWebSearch: AgentCodexWebSearch
+  codexNetwork: boolean
+}
+
+/** A folder used for the first time (spec 7.2) */
+export const DEFAULT_AGENT_PROJECT_PREF: AgentProjectPref = {
+  codexWebSearch: 'cached',
+  codexNetwork: false,
+}
+
+type StoredAgentProjectPref = Partial<AgentProjectPref>
+
+function codexWebSearchOf(value: unknown): AgentCodexWebSearch | undefined {
+  return AGENT_CODEX_WEB_SEARCH.find((choice) => choice === value)
+}
+
+/** The `agentProjectPrefs` value read back; unknown values are dropped */
+export function normalizeAgentProjectPrefs(raw: unknown): Record<string, StoredAgentProjectPref> {
+  const out: Record<string, StoredAgentProjectPref> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [folder, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!folder || !isAbsolute(folder) || !value || typeof value !== 'object') continue
+    const entry = value as Record<string, unknown>
+    const kept: StoredAgentProjectPref = {}
+    const webSearch = codexWebSearchOf(entry.codexWebSearch)
+    if (webSearch) kept.codexWebSearch = webSearch
+    if (typeof entry.codexNetwork === 'boolean') kept.codexNetwork = entry.codexNetwork
+    if (kept.codexWebSearch !== undefined || kept.codexNetwork !== undefined) out[folder] = kept
+  }
+  return out
+}
+
+function sameFolder(a: string, b: string): boolean {
+  const fold = (p: string) => (process.platform === 'win32' ? resolve(p).toLowerCase() : resolve(p))
+  return fold(a) === fold(b)
+}
+
+/** The stored key of a project folder, matching an earlier spelling of the same folder */
+function projectKey(prefs: Record<string, StoredAgentProjectPref>, folder: string): string {
+  return Object.keys(prefs).find((key) => sameFolder(key, folder)) ?? resolve(folder)
+}
+
+/** A project folder's Codex choices; a folder used for the first time gets the defaults */
+export function readAgentProjectPref(path: string, folder: string): AgentProjectPref {
+  const prefs = normalizeAgentProjectPrefs(readAppSettings(path)[AGENT_PROJECT_PREFS_KEY])
+  const stored = prefs[projectKey(prefs, folder)] ?? {}
+  return { ...DEFAULT_AGENT_PROJECT_PREF, ...stored }
+}
+
+/** Change a project folder's Codex choices; returns them as stored */
+export function writeAgentProjectPref(
+  path: string,
+  folder: string,
+  patch: Partial<AgentProjectPref>,
+): AgentProjectPref {
+  if (!isAbsolute(folder)) throw new Error('A project folder must be an absolute path')
+  const prefs = normalizeAgentProjectPrefs(readAppSettings(path)[AGENT_PROJECT_PREFS_KEY])
+  const key = projectKey(prefs, folder)
+  const next: StoredAgentProjectPref = { ...prefs[key] }
+  const webSearch = codexWebSearchOf(patch.codexWebSearch)
+  if (webSearch) next.codexWebSearch = webSearch
+  if (typeof patch.codexNetwork === 'boolean') next.codexNetwork = patch.codexNetwork
+  prefs[key] = next
+  writeAppSetting(path, AGENT_PROJECT_PREFS_KEY, prefs)
+  return { ...DEFAULT_AGENT_PROJECT_PREF, ...next }
 }

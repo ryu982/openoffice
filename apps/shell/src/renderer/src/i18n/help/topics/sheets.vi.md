@@ -1,6 +1,6 @@
 # Sheets: bảng tính
 
-Sheets là trình soạn thảo giống Excel; việc tính toán chạy trong một tiến trình công cụ Rust riêng (sự cố ở đó không bao giờ làm sập ứng dụng). Nó mở và lưu .xlsx thật; .csv và .tsv mở ra dưới dạng bảng.
+Sheets là trình soạn thảo bảng tính; việc tính toán chạy trong một tiến trình công cụ Rust riêng (sự cố ở đó không bao giờ làm sập ứng dụng). Nó mở và lưu tập tin .xlsx; .csv và .tsv mở ra dưới dạng bảng.
 
 ## Giao diện
 

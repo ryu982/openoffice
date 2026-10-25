@@ -47,7 +47,7 @@ Six tools: **ink, rectangle, ellipse, arrow, note**, plus the **redaction box** 
 ## Sticky notes and comment threads
 
 - The **note tool** drops a pin and opens a margin card for the text (author name configurable); confirming saves it as a standard PDF Text annotation.
-- Click a pin to open the thread: **reply** (flat WPS/Acrobat-style threads), **edit** your comment, **delete** one comment or a whole thread.
+- Click a pin to open the thread: **reply** (replies form one flat list, not nested), **edit** your comment, **delete** one comment or a whole thread.
 - Edits in flight survive until the save writes the new text back into the same annotation in the file, keeping reply chains intact.
 
 ## Editing PDF content (Edit)

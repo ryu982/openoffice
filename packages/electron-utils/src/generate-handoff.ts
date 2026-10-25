@@ -16,14 +16,52 @@
  *   sources" here (`recordGenerateConverted`, read with
  *   `generateConvertedEvents`), for the same reader.
  *
+ * - The skill hand-off (spec 5.6, 5.7) uses the same one-take slot rules for
+ *   any of the eight editors: a template copy opened in a new tab takes the
+ *   person's request with its skill chips (and, for the template preview, the
+ *   pending skill proposal) and runs it through that tab's own send gate. It
+ *   sits beside the generate hand-off: each kind is taken only by its own take.
+ *
  * No Electron import: the shell queues through it and the editor mains
  * (bundled into the shell) import it to register their own
  * `<editor>:handoff-take` channel; the tests run it as is. The store sits on a `Symbol.for` key so every bundled
  * copy of this module shares one (the same reason as unsaved-files.ts).
  */
 import { resolve } from 'node:path'
+import type { HandoffEditor } from './handoff-editors'
 
-/** the editors that can take a hand-off; each opens as a new untitled tab */
+export { HANDOFF_EDITORS, isHandoffEditor, type HandoffEditor } from './handoff-editors'
+
+/** the editor of each document extension a template may have (spec 5.7) */
+const EDITOR_BY_EXTENSION: Readonly<Record<string, HandoffEditor>> = {
+  docx: 'docs',
+  odt: 'docs',
+  xlsx: 'sheets',
+  xlsm: 'sheets',
+  xls: 'sheets',
+  csv: 'sheets',
+  tsv: 'sheets',
+  pptx: 'slides',
+  pdf: 'pdf',
+  md: 'markdown',
+  markdown: 'markdown',
+  txt: 'markdown',
+  html: 'html',
+  htm: 'html',
+  xmind: 'mindmap',
+  hwp: 'hwp',
+  hwpx: 'hwp',
+}
+
+/** the editor that opens a file of this name (a path is fine), or undefined */
+export function handoffEditorForFile(fileName: string): HandoffEditor | undefined {
+  const base = fileName.split(/[\\/]/).pop() ?? ''
+  const dot = base.lastIndexOf('.')
+  if (dot <= 0 || dot === base.length - 1) return undefined
+  return EDITOR_BY_EXTENSION[base.slice(dot + 1).toLowerCase()]
+}
+
+/** the editors the generate window's "make" opens */
 export type GenerateHandoffTarget = 'slides' | 'html' | 'mindmap'
 
 /**
@@ -92,8 +130,54 @@ export interface GenerateConverted {
   at: number
 }
 
+/** a skill chip as it travels with a hand-off */
+export interface HandoffSkillChip {
+  id: string
+  source: string
+  title: string
+}
+
+/**
+ * The template preview a hand-off opens (spec 5.6 "make a blank template"):
+ * the skill card that waits for the run to end, and what its buttons need.
+ */
+export interface SkillHandoffPreview {
+  /** names this preview between the two tabs and the shell */
+  previewId: string
+  /** the document's title as the original tab showed it */
+  title: string
+  /** the file name the template is saved under, with its extension */
+  fileName: string
+  /** the original document had redaction marks: its as-is save stays blocked */
+  originalRedacted: boolean
+  /** the pending skill proposal as the card had it (plain data; the panel checks it) */
+  proposal: unknown
+  /** the card's fields as the person left them (plain data; the panel checks it) */
+  draft?: unknown
+}
+
+/**
+ * What a new tab's AI panel takes, once (spec 5.6, 5.7): the request, the
+ * skill chips it runs with, and for a template preview the pending proposal.
+ * The panel reads the chips' skills and sends through its normal send gate.
+ */
+export interface SkillHandoff {
+  /** unique per hand-off */
+  id: string
+  mode: 'skill'
+  target: HandoffEditor
+  /** the person's words, or the app's request (the template preview's clearing request) */
+  text: string
+  chips: HandoffSkillChip[]
+  preview?: SkillHandoffPreview | undefined
+  /** ms since epoch */
+  createdAt: number
+}
+
 interface HandoffStore {
   queued: Map<number, GenerateHandoff>
+  /** skill hand-offs waiting to be taken (absent in a store an older copy made) */
+  skillQueued?: Map<number, SkillHandoff>
   /** taken but not yet reported as run: what a run-started report is checked against */
   taken: Map<number, GenerateHandoff>
   runs: GenerateRunStarted[]
@@ -164,6 +248,55 @@ export function dropGenerateHandoff(webContentsId: number): void {
   const s = store()
   s.queued.delete(webContentsId)
   s.taken.delete(webContentsId)
+  s.skillQueued?.delete(webContentsId)
+}
+
+function skillSlots(): Map<number, SkillHandoff> {
+  const s = store()
+  s.skillQueued ??= new Map()
+  return s.skillQueued
+}
+
+/** queue a skill hand-off for a webContents; replaces one still queued there */
+export function queueSkillHandoff(webContentsId: number, handoff: SkillHandoff): void {
+  skillSlots().set(webContentsId, handoff)
+}
+
+/** queue for a live webContents, and drop the request when it goes away first */
+export function queueSkillHandoffFor(contents: HandoffWebContents, handoff: SkillHandoff): void {
+  if (contents.isDestroyed()) return
+  const id = contents.id
+  queueSkillHandoff(id, handoff)
+  contents.once('destroyed', () => dropGenerateHandoff(id))
+}
+
+/**
+ * The receiving editor's one take of a skill hand-off: the request queued for
+ * this webContents when it was made for `target`, and the slot is emptied;
+ * null for anything else. A generate hand-off is never handed out here.
+ */
+export function takeSkillHandoff(
+  target: HandoffEditor,
+  webContentsId: number,
+): SkillHandoff | null {
+  const slots = skillSlots()
+  const handoff = slots.get(webContentsId)
+  if (!handoff || handoff.target !== target) return null
+  slots.delete(webContentsId)
+  return handoff
+}
+
+/** the skill hand-offs waiting to be taken, for diagnostics and tests; no request text */
+export function queuedSkillHandoffs(): Array<{
+  webContentsId: number
+  target: HandoffEditor
+  id: string
+}> {
+  return [...skillSlots()].map(([webContentsId, h]) => ({
+    webContentsId,
+    target: h.target,
+    id: h.id,
+  }))
 }
 
 /** what is waiting to be taken, for diagnostics and tests; no request text */
@@ -266,6 +399,7 @@ export function resetGenerateHandoffsForTest(): void {
   const s = store()
   s.queued.clear()
   s.taken.clear()
+  s.skillQueued?.clear()
   s.runs.length = 0
   s.converted = []
   s.tabIdOf = null

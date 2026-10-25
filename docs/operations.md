@@ -1,6 +1,6 @@
 # 운영
 
-배포하는 운영체제는 Windows이고, Apple Silicon Mac용은 Apple 개발자 서명 없는 베타로 낸다(결정 0031). Mac판은 GitHub Actions의 Mac 빌드 기계에서 만들고, Mac 사용자들의 보고로 확인한다. Intel Mac·Linux용 설정과 코드는 저장소에 남아 있지만 빌드하지도 확인하지도 않는다.
+배포하는 운영체제는 Windows이고, Mac용(Apple Silicon·Intel)은 Apple 개발자 서명 없는 베타로 낸다(결정 0031, 0065). Mac판은 GitHub Actions의 Mac 빌드 기계에서 두 가지를 함께 만들고, Mac 사용자들의 보고로 확인한다.
 
 ## 처음 한 번
 
@@ -52,6 +52,7 @@ cd apps/shell && npx vitest run tests/<파일>.test.ts   # 파일 하나만
 ```
 
 - 실패가 나오면 그 파일만 따로 다시 돌려 본다. 여러 작업을 동시에 돌릴 때만 시간 초과로 떨어지는 테스트가 있다.
+- `npm run test:parallel`(`tools/run-workspace-tests.mjs`)은 같은 작업 공간들을 2개씩 동시에 돌린다. 출력은 작업 공간별로 모아 보여 주고, 끝에 작업 공간마다 걸린 시간과 성공 여부 표가 나온다. 동시 실행 수는 `TEST_JOBS=<n>`, 작업 공간마다의 vitest 워커 수는 `VITEST_MAX_WORKERS`로 바꾼다. 빠르지만 다른 일이 도는 PC에서는 시간 초과가 날 수 있으므로, 합치기 전 검사는 `npm test`로 한다.
 - 원본 코드에서도 실패하던 테스트인지는 손대지 않은 원본 사본에서 같은 파일을 돌려 확인한다. 짐작으로 넘기지 않는다.
 
 ## 환경변수
@@ -131,7 +132,10 @@ npm run dist:win -- -- --publish never
 `npm run growth`를 실행하면 그날의 기록(릴리스 다운로드 수, 스타, 포크)을
 `docs/tracking/growth-history.json`에 더하고, 소개 문서의 배지가 읽는 요약을
 `docs/tracking/growth-latest.json`에 쓴다. GitHub Actions의 Growth 워크플로우가
-매일 00:17 UTC에 같은 일을 하고, 바뀐 것이 있으면 기록 커밋 하나를 `main`에 쌓는다.
+한 시간마다(매시 17분) 같은 일을 하고, 바뀐 것이 있으면 기록 커밋 하나를 `main`에
+쌓는다. `growth-history.json`은 하루에 한 줄을 유지한다. 같은 날 다시 기록하면 그날
+줄을 덮어쓰므로, 그날의 마지막 기록이 하루치로 남는다. 소개 문서의 배지를 실시간에
+가깝게 두려는 것이며, 소개 사이트는 같은 값을 GitHub API에서 직접 읽는다.
 
 ```bash
 npm run growth           # 그날 기록을 더한다(수동 실행)
@@ -154,11 +158,11 @@ npm run growth:report    # 전일 대비 증감과 7일 추이 보기
 저장소 주인에게 Mac이 없으므로 GitHub Actions에서 만든다.
 
 1. GitHub 저장소의 Actions 탭 → **macOS build** → **Run workflow**. 가지는 릴리스 태그가 가리킬 커밋이 있는 가지를 고른다.
-2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac-arm64`를 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
+2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac`을 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-x64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `IeumOffice-<버전>-mac.zip`(Intel), `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
 
-- 빌드는 ad hoc 서명이 되었는지, 엑셀 처리 프로그램과 글자 인식 도우미가 Apple Silicon용으로 들어갔는지 검사하고, 만든 앱을 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
+- 빌드는 `GENOFFICE_MAC_X64=1`로 두 앱을 묶는다. 두 앱이 한 자리를 나눠 쓰는 엑셀 처리 프로그램과 글자 인식 도우미는 두 CPU를 담은 파일(`native:build:universal`, lipo)이어야 한다. 빌드는 두 앱 모두 ad hoc 서명이 되었는지, 들어 있는 프로그램이 그 앱의 CPU를 담는지 검사하고, 두 앱을 창 없이 띄워(Intel판은 Rosetta로) Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 dmg, zip, `latest-mac.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Mac 설치 파일"이다.
-- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`. 루트의 `npm run dist:mac`은 Intel용까지 묶는 원본의 경로라 쓰지 않는다.
+- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`(Apple Silicon만). Intel용까지 묶으려면 그 전에 `npm run native:build:universal -w @genoffice/sheets`를 하고 `GENOFFICE_MAC_X64=1`을 켠다. 루트의 `npm run dist:mac`은 원본의 경로라 쓰지 않는다.
 
 ## Linux 설치 파일 만들기
 
@@ -200,6 +204,7 @@ npm run typecheck
 - 엔진 밖의 파일까지 고치는 커밋은 엔진 쪽 변경만 받는다. 화면 문구 파일, 껍데기 앱의 뒷단, AI 연결부에서 충돌이 나면 이 프로젝트의 것을 남긴다.
 - 원본이 화면 문구 키를 늘렸으면 21개 언어 모두에 들어왔는지 형 검사로 확인한다.
 - 옮긴 뒤 위의 검사 전체와, 건드린 엔진 패키지의 테스트를 돌린다.
+- `packages/pdf2docx`에는 원본과 다른 동작이 있다(결정 0058). 그 패키지의 `AGENTS.md` "원본과 다른 점"에 적힌 시험이 옮긴 뒤에도 통과하는지 본다. 충돌이 나면 그 목록의 동작을 남긴다.
 
 ## 한글 엔진(rhwp) 다시 빌드하기
 

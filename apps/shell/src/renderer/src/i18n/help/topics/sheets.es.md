@@ -1,6 +1,6 @@
 # Sheets: hojas de cálculo
 
-Sheets es el editor de hojas de cálculo similar a Excel; el cálculo se ejecuta en un proceso separado, un motor Rust (un fallo ahí nunca tumba la aplicación). Abre y guarda .xlsx reales; .csv y .tsv se abren como tablas.
+Sheets es el editor de hojas de cálculo; el cálculo se ejecuta en un proceso separado, un motor Rust (un fallo ahí nunca tumba la aplicación). Abre y guarda archivos .xlsx; .csv y .tsv se abren como tablas.
 
 ## La interfaz
 

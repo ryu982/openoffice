@@ -6,7 +6,7 @@
 
 - 모든 바깥 이름은 `ieumoffice`다. 명령어, MCP 등록 이름, 에이전트 스킬 이름과 폴더, 홈 폴더 아래 `.ieumoffice`.
 - 원본이 쓰는 이름(`genoffice` 명령어, `~/.genoffice`, `genoffice` 연동 항목과 스킬 폴더)은 읽지도 쓰지도 않는다. 두 프로그램은 한 PC에 함께 있을 수 있다.
-- 문서 명령은 PC 안에서 끝난다. 밖으로 무언가를 보내는 명령은 `search`, `image`, `media`, `read-url`, `pdf ai-read`, `pdf translate` 여섯뿐이다. 뒤의 둘은 `--yes`가 있을 때만 보낸다.
+- 문서 명령은 PC 안에서 끝난다. 밖으로 무언가를 보내는 명령은 `search`, `image`, `media`, `read-url`, `pdf ai-read`, `pdf translate`, `epub translate` 일곱뿐이다. 뒤의 셋은 `--yes`가 있을 때만 보낸다.
 
 ## 터미널 명령어 `ieumoffice`
 
@@ -39,15 +39,15 @@
 
 `pdf read`, `pdf images`, `pdf status`와 `convert`는 PC 안에서 끝난다. `pdf ai-read`와 `pdf translate`는 아래 "AI를 부르는 PDF 명령"의 규칙을 따른다.
 
-| 명령                                                                                                                                                                                        | 동작                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `convert <file.pdf> --to md\|epub [--pages <목록>] [--password <pw>] [--out <경로>] [--force]`                                                                                              | 다시 흐르는 글로 바꾼다. Markdown은 그림을 옆의 `assets/`에 쓴다. 이 프로그램이 쓰지 않은 같은 이름의 파일이 거기 있으면 종료 코드 2, `output_exists`                                            |
-| `convert … --to epub [--title <글>] [--author <글>] [--no-cover]`                                                                                                                           | 제목·저자는 PDF 정보에서, 없으면 파일 이름에서 가져온다. 표지는 첫 페이지이고 기본으로 켜져 있다. 이 옵션들을 다른 경로에 주면 종료 코드 1, `invalid_argument`                                   |
-| `pdf read … --structured`                                                                                                                                                                   | 페이지별 `text`가 문서 나무의 구조화 글(제목 `#`, 목록, 표, `[figure]` 캡션, 각주)이다. `detail.structured: true`. 범위는 `--page`/`--range`를 그대로 쓰고, 나머지 출력 모양도 `pdf read`와 같다 |
-| `pdf images <file.pdf> --out <폴더> [--pages <목록>] [--password <pw>]`                                                                                                                     | 페이지에 그려진 그림을 원래 해상도의 PNG로 `<이름>-p<페이지>-<n>.png`에 쓴다. 이미 있는 파일은 바꾸지 않고 이름 뒤에 ` (2)`를 붙인다                                                             |
-| `pdf ai-read <file.pdf> --pages <목록> [--yes] [--allow-paid] [--password <pw>]`                                                                                                            | 페이지 그림을 AI 제공자에게 한 페이지씩 보내 읽힌다. 이미 읽은 페이지는 보내지 않는다                                                                                                            |
-| `pdf translate <file.pdf> --to <언어 코드> [--pages <목록>] [--format pdf,md,epub] [--bilingual] [--out <경로>] [--partial] [--restart] [--yes] [--allow-paid] [--password <pw>] [--force]` | 고른 페이지의 글을 묶음으로 보내 번역하고 결과 파일을 쓴다. `--format`의 기본은 `pdf`다. `--bilingual`은 md·epub에만 쓰인다(대역 PDF는 만들지 않는다). 언어 코드는 화면 언어 21개다              |
-| `pdf status <file.pdf>`                                                                                                                                                                     | 보관소에 있는 그 문서의 AI 읽기와 번역별 진행. 아무것도 보내지 않는다                                                                                                                            |
+| 명령                                                                                                                                                                                        | 동작                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `convert <file.pdf> --to md\|epub [--pages <목록>] [--password <pw>] [--out <경로>] [--force]`                                                                                              | 다시 흐르는 글로 바꾼다. Markdown은 그림을 옆의 `assets/`에 쓴다. 이 프로그램이 쓰지 않은 같은 이름의 파일이 거기 있으면 종료 코드 2, `output_exists`                                                                                                          |
+| `convert … --to epub [--title <글>] [--author <글>] [--no-cover] [--page-breaks]`                                                                                                           | 제목·저자는 PDF 정보에서, 없으면 파일 이름에서 가져온다. 표지는 첫 페이지이고 기본으로 켜져 있다. `--page-breaks`는 원본 쪽마다 XHTML 파일을 하나씩 써서 리더가 쪽마다 새 화면에서 시작하게 한다. 이 옵션들을 다른 경로에 주면 종료 코드 1, `invalid_argument` |
+| `pdf read … --structured`                                                                                                                                                                   | 페이지별 `text`가 문서 나무의 구조화 글(제목 `#`, 목록, 표, `[figure]` 캡션, 각주)이다. `detail.structured: true`. 범위는 `--page`/`--range`를 그대로 쓰고, 나머지 출력 모양도 `pdf read`와 같다                                                               |
+| `pdf images <file.pdf> --out <폴더> [--pages <목록>] [--password <pw>]`                                                                                                                     | 페이지에 그려진 그림을 원래 해상도의 PNG로 `<이름>-p<페이지>-<n>.png`에 쓴다. 이미 있는 파일은 바꾸지 않고 이름 뒤에 ` (2)`를 붙인다                                                                                                                           |
+| `pdf ai-read <file.pdf> --pages <목록> [--yes] [--allow-paid] [--password <pw>]`                                                                                                            | 페이지 그림을 AI 제공자에게 한 페이지씩 보내 읽힌다. 이미 읽은 페이지는 보내지 않는다                                                                                                                                                                          |
+| `pdf translate <file.pdf> --to <언어 코드> [--pages <목록>] [--format pdf,md,epub] [--bilingual] [--out <경로>] [--partial] [--restart] [--yes] [--allow-paid] [--password <pw>] [--force]` | 고른 페이지의 글을 묶음으로 보내 번역하고 결과 파일을 쓴다. `--format`의 기본은 `pdf`다. `--bilingual`은 md·epub에서는 원문 문단 다음에 번역 문단을, pdf에서는 원문 쪽 옆에 번역한 쪽을 둔다(결정 0057). 언어 코드는 화면 언어 21개다                          |
+| `pdf status <file.pdf>`                                                                                                                                                                     | 보관소에 있는 그 문서의 AI 읽기와 번역별 진행. 아무것도 보내지 않는다                                                                                                                                                                                          |
 
 - `<목록>`은 `1-5,8,10-12` 꼴이고 1부터 센다. 문서 밖의 페이지는 종료 코드 1, `out_of_range`, `detail.valid_range`.
 - 동사마다 받는 옵션이 정해져 있다. 다른 동사의 옵션을 주면 종료 코드 1, `unknown_option`.
@@ -60,13 +60,14 @@
 | 명령            | 성공 `detail`                                                                                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `convert`(md)   | `{ pages, warnings, assets_written, assets_reused, ai_read_pages? }`                                                                                                          |
-| `convert`(epub) | `{ pages, title, author?, cover, ai_read_pages? }`                                                                                                                            |
+| `convert`(epub) | `{ pages, title, author?, cover, page_breaks?, ai_read_pages? }`                                                                                                              |
 | `pdf images`    | `{ images: { page, file, width, height }[] }`                                                                                                                                 |
 | `pdf ai-read`   | `{ pages_read: number[], pages_skipped: number[], pages_failed: { page, reason }[], provider, model }`                                                                        |
 | `pdf translate` | `{ lang, provider, model, translated_blocks, untranslated_blocks: { page, reason }[], overflowed_blocks: { page }[], original_pages: { page, reason }[], outputs: string[] }` |
 | `pdf status`    | `{ ai_read: { pages: number[], job }, translations: { lang, provider, model, done_blocks, total_blocks, complete, job }[] }`                                                  |
 
 - `model`이 빈 글이면 구독 프로그램의 기본 모델이다.
+- `pdf translate`의 `overflowed_blocks`는 번역 PDF에 자리가 모자라 원문 글자를 그대로 둔 블록이다(결정 0057). 번역 자체는 끝난 블록이라 `translated_blocks`에 세고, 그 번역문은 Markdown·EPUB에 들어간다.
 - `pdf status`의 `done_blocks`·`total_blocks`는 그 번역 작업이 마지막으로 기록한 진행이다(작업의 페이지 범위 기준). 작업 기록이 없으면 보관소에 있는 블록 수다. `complete`는 `job.state`가 `complete`일 때 참이다.
 - **`job` 모양**: `{ state, last_error?, resetsAt?, outputs, progress? }`.
   - `state`는 `idle | running | stopped | complete` 넷 중 하나다. `idle`은 기록이 없다는 뜻이다.
@@ -101,6 +102,43 @@
 - **PDF로 쓸 수 없는 경우**: 목표 언어가 `ar`, `he`, `hi`이거나 PDF가 암호화돼 있으면 `--format pdf`를 보내기 전에 거절한다. 종료 코드 1, `unsupported`, `detail.supported_formats: ["md", "epub"]`.
 - 번역할 글이 없는 범위(스캔 문서 등)는 종료 코드 1, `unsupported`이고 `pdf ai-read`를 먼저 권한다.
 - 결과 파일을 쓰지 못하면 작업 기록은 `stopped`, `last_error: "output-write-failed"`가 된다. 보관된 번역은 남는다.
+
+## EPUB 명령
+
+`epub translate`는 EPUB 책을 번역한다. 위 "AI를 부르는 PDF 명령"의 규칙(예상만 답하기, 요금 경로, 자동 호출 스위치, 한 문서에 작업 하나, 앞에서 돌기와 stderr 진행, Ctrl+C의 `interrupted`, `--partial`, 다시 실행하면 이어 가기, `--restart`, `output-write-failed`)을 그대로 따르고, 다른 점만 아래에 적는다. `epub status`는 PC 안에서 끝난다.
+
+| 명령                                                                                                                                                                    | 동작                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `epub translate <file.epub> --to <언어 코드> [--chapters <목록>] [--kind translated,bilingual] [--out <경로>] [--partial] [--restart] [--yes] [--allow-paid] [--force]` | 고른 장의 고칠 수 있는 블록과 책 제목·목차 항목 글을 묶음으로 보내 번역하고 번역본·대역본을 쓴다. 언어 코드는 화면 언어 21개다 |
+| `epub status <file.epub>`                                                                                                                                               | 보관소에 있는 그 책의 번역별 진행. 아무것도 보내지 않는다                                                                      |
+
+- 두 명령 모두 디스크에 저장된 책을 읽는다. 앱의 편집 잠금은 앱 안에서 시작한 번역에만 걸린다. 원본 파일은 바뀌지 않는다.
+- `<목록>`은 `1-5,8` 꼴이고 spine 순서로 1부터 센다. 기본은 모든 장이다. 책 밖의 장은 종료 코드 1, `out_of_range`, `detail.valid_range`.
+- `--kind`의 기본은 `translated`(번역본)다. `bilingual`(대역본)은 원문 블록마다 바로 뒤에 번역문을 둔다. 다른 값은 종료 코드 1, `invalid_argument`.
+- **결과 파일 위치**: `--out`이 없으면 원본 옆에 `〈원본 이름〉.〈언어 코드〉.epub`(번역본)과 `〈원본 이름〉.〈언어 코드〉.bilingual.epub`(대역본)로 쓴다. 종류가 하나면 `--out`이 그 파일이고, 둘이면 `--out`은 기준 경로라서 번역본은 `.epub`, 대역본은 `.bilingual.epub`가 붙는다(`--out`이 `.epub`로 끝나면 그것을 떼고 붙인다). 이미 있으면 `--force`가 필요하다. 원본과 같은 경로는 종료 코드 1, `invalid_argument`.
+- **예상만 답하기**: `detail.estimate`는 `{ calls, chapters, provider, route, metered }`이고 `chapters`는 고른 장의 수다. `detail.done_blocks`·`detail.total_blocks`, 필요하면 `detail.provider_change`가 PDF와 같이 오고, `detail.chapters: { index, title, read_only }[]`가 더해진다. 책의 모든 장이 spine 순서로 나오고, `index`는 `--chapters`에 쓰는 번호, `title`은 목차 제목(없으면 `null`), `read_only`는 깨졌거나 고정 배치라서 번역하지 않는 장이다.
+- **번역하지 않는 책**: 종료 코드 1, `unsupported`, `detail.reason`이 이유다.
+  - `drm`: DRM이 걸린 책
+  - `fixed-layout`: 고정 배치 책
+  - `not-epub`: EPUB이 아닌 파일(확장자가 `.epub`이 아닌 것 포함)
+  - `damaged`, `too-large`: 손상되었거나 압축을 풀면 너무 큰 파일(zip 관문)
+  - `no-text`: 고른 장에 번역할 글이 없음
+- `job.kind`는 `translate`다. 같은 책에 작업이 돌고 있으면 PDF와 같이 `document-job-running`으로 거절하고, `suggestion`은 `epub status`를 가리킨다.
+- 보관소는 PDF와 같은 `pdf-store`이고, 문서 열쇠는 책 파일 바이트의 SHA-256이다. 책을 다시 저장하면 다른 문서가 된다.
+
+**성공 `detail`**
+
+| 명령             | 성공 `detail`                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `epub translate` | `{ lang, provider, model, translated_blocks, untranslated_blocks: { chapter, reason }[], original_chapters: { chapter, reason }[], outputs: string[] }` |
+| `epub status`    | `{ translations: { lang, provider, model, done_blocks, total_blocks, complete, job }[] }`                                                               |
+
+- `chapter`는 `--chapters`와 같은 1부터의 장 번호다.
+- `translated_blocks`는 번역문이 들어간 장 블록의 수다. 책 제목과 목차 항목은 세지 않는다.
+- `untranslated_blocks`는 고른 장에서 원문으로 남은 블록이다. `reason`은 `not-translated`(멈춘 작업에서 아직 번역하지 않은 블록), `placeholder-mismatch`, `empty-translation` 또는 작업이 포기한 이유다.
+- `original_chapters`는 원문 그대로 결과 책에 들어간 장이다. `reason`은 `not-chosen`(고르지 않음), `broken`(깨짐), `fixed-layout`이다.
+- `--partial`로 멈춘 경우 `pdf translate`처럼 `status: "partial"`이고, `detail.stopped: { errorCode, resetsAt? }`와 `done_blocks`·`total_blocks`가 더해진다.
+- `epub status`의 `done_blocks`·`total_blocks`와 `job` 모양은 `pdf status`와 같다. 진행에는 책 제목과 목차 항목 단위도 든다.
 
 ## 웹 페이지 읽기 (`read-url`)
 
@@ -172,12 +210,12 @@
 
 - 표준 입출력으로 같은 명령들을 도구로 내놓는다. `--http <포트>`를 주면 Streamable HTTP로 내놓는다(`--host`, `--token`).
 - 등록 예: `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`. `ieumoffice mcp install <에이전트|all>`이 각 에이전트의 설정 파일에 `ieumoffice` 항목만 쓴다. 같은 이름의 항목이 다른 프로그램을 가리키면 `occupied`로 알리고 `--force` 없이는 건드리지 않는다.
-- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
-- `pdf_ai_read`·`pdf_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
+- 도구는 명령 동사마다 하나다(`docs_read`, `docs_apply`, `sheet_apply`, `slides_render`, `convert`, `read_url`, `pdf_read`, `pdf_images`, `pdf_ai_read`, `pdf_translate`, `pdf_status`, `epub_translate`, `epub_status` 등). 매개변수는 명령의 옵션 목록에서 그대로 나온다(`allow-paid`는 `allow_paid`, `no-cover`는 `no_cover`). 두 표면이 어긋나지 않는다.
+- `pdf_ai_read`·`pdf_translate`·`epub_translate`는 `yes`가 없으면 명령처럼 예상만 답한다. `yes`가 있으면 작업을 MCP 서버 프로세스 안에서 띄우고 바로 답한다(`detail.started: true`, `detail.estimate`). 진행, 멈춘 이유, `resetsAt`, 결과 파일 경로는 `pdf_status`(EPUB은 `epub_status`)의 `job`으로 본다. 이어하기는 같은 도구를 다시 부르면 된다.
 - 그 결과 파일은 작업이 끝날 때 쓴다. `partial: true`로 부른 작업은 멈출 때 끝난 부분만 반영해 쓴다. 위치 규칙은 명령어와 같고, 경로는 `job.outputs`로 알려 준다.
 - 서버가 끝나면 그 작업도 멈춘다(`last_error: "interrupted"`). 보관된 결과는 남는다.
 - 결과는 `--json`이 내는 것과 같은 객체다. 실패는 `isError`와 같은 `error` 이유로 온다.
-- 환경변수 `GENOFFICE_MCP_COMPACT_SCHEMAS`는 예전 철자를 유지한다. `--http`의 토큰은 `--token`, 없으면 `GENOFFICE_MCP_TOKEN`에서 읽고, 둘 다 없으면 인증 없이 받는다. 에이전트 설정 폴더를 찾을 때의 홈 폴더는 `GENOFFICE_HOME`으로 바꿀 수 있다.
+- 환경변수 `GENOFFICE_MCP_COMPACT_SCHEMAS`는 예전 철자를 유지한다. `--http`의 토큰은 `--token`, 없으면 `GENOFFICE_MCP_TOKEN`에서 읽고, 둘 다 없으면 인증 없이 받는다. 인증 없이 받는 것은 이 PC 주소(`127.0.0.1`, `localhost`, `::1`)에서 열 때뿐이다. 그 밖의 `--host`에 토큰이 없으면 서버를 열지 않고 종료 코드 1, `error: "invalid_argument"`로 끝난다. 에이전트 설정 폴더를 찾을 때의 홈 폴더는 `GENOFFICE_HOME`으로 바꿀 수 있다.
 - 안내 자료는 리소스로도 내놓는다(`ieumoffice://guide/docs`, `…/sheets`, `…/slides`, `…/slides/design`, `…/slides/spec`, `…/slides/templates`, 내장 템플릿마다 `…/slides/templates/<id>`).
 - 내장 디자인 템플릿은 `ieumoffice guide slides templates [<id>]`로 고른다. 목록의 `--json`은 `detail.templates`(`[{ id, name, scheme, description, fonts }]`, 정해진 순서), 템플릿 하나는 `detail`(`{ id, name, scheme, description, fonts, styleSheet }`)이다. 모르는 id는 종료 코드 1, `error: "invalid_argument"`, `detail.templates`에 쓸 수 있는 id 목록이다. MCP `guide` 도구는 세 번째 위치 인자 `name`으로 id를 받는다.
 - 앱의 설정 → 연동 화면이 지금 설치본에 맞는 등록 예시를 보여 준다.
@@ -190,15 +228,65 @@
 - 도구: `get_app_info`, `open_documents`, `open_in_genoffice`(이 이름은 예전 철자를 유지한다), `create_session`, `save_session`, `read_document`, `read_docx`, `read_sheet`, `read_deck`, `read_pdf`, `create_docx`, `create_xlsx`, `create_pptx`, `apply_ops`, `apply_sheet_ops`, `apply_slide_ops`, `insert_content`, `replace_blocks`.
 - 열린 ODT 탭은 워드 문서로 다룬다(`open_documents`의 `format`이 `odt`). `read_docx`는 `.odt` 파일도 읽는다. `save_session`은 탭의 형식으로만 저장한다. 다른 확장자의 경로를 주면 거절하고 `ieumoffice convert`를 쓰라고 안내한다. 대화 상자가 없는 경로에서 형식이 조용히 바뀌지 않게 하기 위해서다.
 - 에이전트 설정에 넣는 항목 이름은 `ieumoffice-editor`다. 명령어 쪽 서버의 `ieumoffice`와 겹치지 않는다.
-- 에이전트 모드(결정 0032)의 세션 MCP 서버는 이것과 별개다. 앱이 띄운 프로그램만 쓰고, 세션마다 운영체제가 고른 포트와 새 토큰(`Authorization: Bearer`)을 요구하며, 도구는 `open_documents`(`list`·`read`만), `read_document`, `insert_content`, `replace_blocks`, `apply_ops`, `read_sheet`, `apply_sheet_ops`, `read_deck`, `apply_slide_ops`, `read_hwp`, `read_pdf`다. 읽기는 가린 자리를 `{{이름}}`으로 내보내고, `read_hwp`·`read_pdf`는 프로젝트 폴더 안만 읽는다. 바깥 호출자에게 약속하는 출력이 아니다. 위 서버의 출력은 바뀌지 않는다.
+- 에이전트 모드(결정 0032)의 세션 MCP 서버는 이것과 별개다. 앱이 띄운 프로그램만 쓰고, 세션마다 운영체제가 고른 포트와 새 토큰(`Authorization: Bearer`)을 요구하며, 도구는 `open_documents`(`list`·`read`만), `read_document`, `insert_content`, `replace_blocks`, `apply_ops`, `read_sheet`, `apply_sheet_ops`, `read_deck`, `apply_slide_ops`, `read_hwp`, `read_pdf`다. 읽기는 가린 자리를 `{{이름}}`으로 내보내고, `read_hwp`·`read_pdf`는 프로젝트 폴더 안만 읽는다. 결정 0048·0049로 `propose_skill`(에이전트 창에 스킬 카드를 띄움)과 `propose_skill_install`(깃허브 설치 미리보기를 띄움)이 더해져 13개다. 둘 다 파일을 쓰지 않는다. 바깥 호출자에게 약속하는 출력이 아니다. 위 서버의 출력은 바뀌지 않는다.
 - `open_documents`의 목록에 마인드맵 탭이 `kind: "mindmap"`, `type: "mind map"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 지금 지도의 개요 글 문자열이고 저장하지 않은 편집이 들어 있다. 마크다운·HTML 탭의 읽기와 같은 모양이다. `close`의 저장은 편집기의 저장과 같은 길을 지나고, 한 번도 저장하지 않은 지도는 기본 저장 폴더에 겹치지 않는 이름의 `.xmind`로 저장된다. `ok`로 열리지 않은 지도는 어떤 경우에도 쓰지 않는다. 지도를 만들거나 고치는 도구는 없다.
+- **갑자기 꺼진 뒤 되살린 탭(결정 0061).** 처음 누를 때까지 편집기 화면이 없는 탭도 `open_documents`의 목록에 보통 탭과 같은 필드로 나온다(저장하지 않은 변경은 없음으로). 도구가 그 탭을 대상으로 하면(`read`, `save`, `close`의 저장, 내용 도구의 열린 문서 대상) 앱이 그 탭을 앞에 내지 않고 불러와 편집기 화면이 다 뜰 때까지 기다린 뒤 이어 간다. 기다리는 것은 화면이 뜨는 것까지이고, 문서 내용을 다 읽는 것까지는 아니다. 시작 목록에 아직 답하지 않았거나, 파일 탭의 문서에 풀리지 않은 복구 사본이 있어 문서별 물음을 거쳐야 하면, 탭을 불러오지 않고 바로 실패로 돌아온다. 사람이 탭을 눌러 화면이 아직 뜨는 중일 때도 같다. 실패 글에는 `the user must open this document in the app first`가 들어 있다(`"<제목>" has recovered changes to decide on: …`). 화면이 다 뜬 뒤에 편집기가 문서별 물음을 띄우면 그 물음에는 사람이 답하고, 그동안 도구는 아직 열리는 중인 다른 문서에서와 같이 움직인다. 저장 없이 닫기(`unsaved: "discard"`)는 불러오지 않은 탭을 불러오지 않고 닫으며, 그 탭의 복구 사본은 남는다. 출력의 구조와 이름은 바뀌지 않았다.
 - `get_app_info`의 `families`에 `{ family: "xmind", label: "mind map", editor: { open: ["xmind"], save: ["xmind"], export: ["png", "pdf", "md"] } }`가 있다. `mcp` 항목은 없다.
+- `open_documents`의 목록에 EPUB 탭이 `kind: "epub"`, `type: "e-book"`으로 나온다(떼어 낸 창도 같다). `read`의 `content`는 spine 순서로 이은 책 글이고(제목은 `#`), 저장하지 않은 편집이 들어 있다. `close`의 저장은 편집기의 저장과 같은 규칙을 지나고, 바꾼 것이 없으면 파일을 쓰지 않는다. 책을 만들거나 고치는 도구는 없다.
+- `get_app_info`의 `families`에 `{ family: "epub", label: "e-book", editor: { open: ["epub"], save: ["epub"], export: [] } }`가 있다.
 
 ## 에이전트 스킬
 
 - 이름과 폴더는 `ieumoffice`다. 저장소의 `skills/ieumoffice/SKILL.md`가 원본이고, 앱의 설정 → 연동에서 고른 에이전트에 설치한다. 터미널에서는 `npx skills add pblsketch/openoffice`.
 - 스킬 문서는 사용자의 에이전트 폴더로 복사되고, 문서의 `metadata.version`이 커졌을 때만 새것으로 바뀐다. 본문을 고치고 버전을 올리지 않으면 고친 내용이 아무에게도 닿지 않는다(검사 `npm run check:skill-version`).
 - 스킬과 도움말이 에이전트에게 알려 주는 명령은 모두 `ieumoffice`로 시작한다.
+- 이 스킬은 앱 안의 사용자 스킬 목록에는 나오지 않는다(이름 `ieumoffice`는 어느 출처에서든 읽지 않는다, 결정 0048).
+
+## 사용자 스킬 (결정 0048)
+
+앱 안에서 쓰는 스킬이다. 위 "에이전트 스킬"(바깥 에이전트에 설치하는 것)과 다르다. 터미널 명령어 `ieumoffice`와 그 MCP 서버는 사용자 스킬을 쓰지 않는다.
+
+**스킬 폴더 형식.** 공개 표준을 따른다. 폴더 하나에 `SKILL.md`가 있고, 앞머리에 `name`(1~64자)과 `description`이 있어야 한다. 이음오피스는 표준의 `metadata`에 두 값을 쓴다. 다른 프로그램은 이 값을 무시해도 스킬이 동작한다.
+
+```yaml
+---
+name: home-letter
+description: 가정통신문을 학교 말투로 쓴다.
+metadata:
+  ieum-title: 가정통신문
+  ieum-template: assets/양식.hwpx
+---
+```
+
+- `ieum-title`: 만들 때 적은 제목. 화면과 `/` 목록은 `name`을 보이고, 이름이 앱이 지어 준 무작위 이름(`skill-` 뒤 여섯 글자)일 때만 이 제목을 보인다(결정 0053). 새 스킬에는 쓰지 않고, 고친 스킬은 원래 값을 둔다.
+- `ieum-template`: 스킬 폴더 안 `assets/` 아래 양식 문서의 상대 경로.
+- 이음오피스가 새로 만드는 이름은 소문자·숫자·하이픈만 쓰고, 하이픈으로 시작하거나 끝나지 않으며 `--`가 없다.
+
+**깃허브 출처 기록(`〈스킬 폴더〉/.ieum-source.json`).** 깃허브에서 설치한 스킬에만 있다. 내보내기(zip)에는 들어가지 않는다.
+
+```json
+{
+  "kind": "github",
+  "repo": "owner/repo",
+  "ref": "main",
+  "path": "skills/meeting-minutes",
+  "commit": "68e58890cbc67c797d1356a6558adc5b12148fd4",
+  "installedAt": "2026-10-21T09:00:00Z",
+  "contentHash": "설치한 폴더(이 파일 제외)의 경로·크기·내용 sha256"
+}
+```
+
+**앱 설정(`app-settings.json`)의 값.** 데이터 폴더에 있다.
+
+| 값                      | 종류                                                                                           | 기본                   |
+| ----------------------- | ---------------------------------------------------------------------------------------------- | ---------------------- |
+| `skills.states`         | 식별자 → `{ enabled?, invoke?: 'auto' \| 'manual' }`. 사람이 바꾼 것만 적는다                  | 없음(출처별 처음 상태) |
+| `skills.hiddenBuiltins` | 숨긴 기본 스킬 이름 목록                                                                       | 없음                   |
+| `agentSkillNoticeSeen`  | 참/거짓. 에이전트 창의 스킬 안내를 봤는지                                                      | 없음                   |
+| `agentProjectPrefs`     | 프로젝트 폴더 절대 경로 → `{ codexWebSearch: 'cached' \| 'live' \| 'disabled', codexNetwork }` | 없음(`cached`, 거짓)   |
+
+- 식별자는 `〈출처〉:〈이름〉`, 플러그인은 `plugin:〈플러그인〉:〈이름〉`이다. 출처 값은 `builtin`(기본), `app`(`~/.ieumoffice/skills`, 깃허브 포함), `user`(`~/.claude/skills`), `plugin`(설치된 Claude 플러그인), `codex`(`~/.agents/skills`)다. 저장되는 값이라 바꾸지 않는다. 프로젝트 스킬(`project`)은 저장하지 않는다.
+- 알 수 없는 값은 무시하고 처음 상태로 읽는다. 처음 상태는 `builtin`·`app`이 켜짐·스스로 쓰기, `user`·`plugin`·`codex`가 꺼짐이다.
 
 ## 설정 파일 (`ai-settings.json`)
 
@@ -216,8 +304,10 @@
 | `maxOutputTokens`                    | 모델 한 차례의 출력 상한                         | 코드의 기본값                                              |
 | `media`, `search`                    | 이미지·분석·검색 제공자 선택과 그 키             | 이미지 분석은 `chat`, 영상 분석은 `none`, 검색은 무료 경로 |
 | `readUrl`                            | `{ githubToken }`                                | 없음                                                       |
+| `internetTools`                      | `false`면 편집기 AI 창의 인터넷 도구를 끈다      | 켬(값 없음)                                                |
 
-- `readUrl.githubToken`은 비공개 GitHub 파일을 읽는 읽기 토큰이다. 설정 파일에 평문으로 저장되고(AI 키와 같다), `api.github.com` 요청에만 실린다. 다른 사이트나 리다이렉트 홉에는 보내지 않는다.
+- 키와 토큰(`providers.*.apiKey`, `customEndpoints[].apiKey`, `media.providers.*.apiKey`, `search.providers.*.apiKey`, `readUrl.githubToken`)은 Windows와 Linux(GNOME 키링·KWallet이 있을 때)에서 앱이 저장할 때 `sealed:v1:<base64>`로 봉인된다(결정 0063). 사람이 평문으로 적어 넣어도 읽히고, 앱이 다음에 저장하거나 시작할 때 봉인된다. 명령어와 MCP는 봉인된 값을 앱에게 풀어 받아 쓰고(처음 한 번 1~2초), 풀지 못한 값은 빈 키로 읽는다. 명령어는 봉인하지 않는다. macOS는 봉인하지 않는다.
+- `readUrl.githubToken`은 비공개 GitHub 파일을 읽는 읽기 토큰이다. 키와 같은 방식으로 저장되고, `api.github.com` 요청에만 실린다. 다른 사이트나 리다이렉트 홉에는 보내지 않는다.
 - `headlessSubscriptionEnabled`가 참이어도 `headlessSubscriptionConsentVersion`이 지금 경고의 판(2)보다 작거나 없으면 꺼진 것으로 읽는다. 판 1은 시간당 한도가 있던 예전 경고이고, 그때는 판을 저장하지 않았다.
 - 이미지 생성 제공자의 저장값 기본은 `codex`다. Codex 구독 이미지 생성이 들어 있지 않은 지금은 `none`(선택 없음)과 똑같이 동작한다.
 - 구독 제공자의 식별자는 `claude-code`, `codex`다. 인증 방식은 `claude-subscription`, `codex-chatgpt`, `api-key` 셋이다.
@@ -301,7 +391,8 @@
 - 문서 곁에 저장되는 보조 파일의 이름(`.genoffice-assets.json` 등)도 원본과 같다.
 - `.odt`는 한컴 한글 2024가 읽은 결과를 기준으로 맞춘다. 받은 ODT를 고쳐 저장하면 고친 부분만 다시 쓰고, 나머지 zip 항목과 XML은 바이트 그대로다. 고친 것이 없으면 원본과 같은 파일이 나온다. 다시 묶을 때 `mimetype`을 맨 앞에 압축 없이 둔다(한컴은 이것을 받은 파일과 똑같이 읽는다). 한컴이 아닌 프로그램의 ODT도 같은 규칙으로 열지만, 합격 기준에는 넣지 않았다.
 - 문서 안에 적히는 작성자 이름(PDF 주석 작성자, 엑셀 메모 작성자, 명령어가 넣는 메모 작성자)은 지금 "GenOffice"다. PDF 편집기에서 사람이 새로 단 메모와 구절 카드를 "메모로 남기기"한 메모는 PC 계정 이름이다(모를 때만 "GenOffice").
-- PDF 편집기에서 받아들인 AI 핵심 표시는 표준 형광펜(`/Highlight`)이고, 분류 이름이 주석 제목(`/Subj`, 앞뒤 공백을 떼고 200자까지)에 들어간다. 이 값이 없는 주석의 저장 결과는 예전과 바이트 단위로 같다. 구절 카드에서 남긴 메모는 표준 `/Text` 메모이고, 내용 첫 줄이 화면 언어의 "AI 설명" 또는 "AI 번역(언어)"이다.
+- PDF 편집기에서 받아들인 AI 핵심 표시는 표준 형광펜(`/Highlight`)이고, 분류 이름이 주석 제목(`/Subj`, 앞뒤 공백을 떼고 200자까지)에 들어간다. 이 값이 없는 주석의 저장 결과는 예전과 바이트 단위로 같다. 구절 카드에서 남긴 메모는 표준 `/Text` 메모이고, 내용 첫 줄이 화면 언어의 "AI 설명" 또는 "AI 번역(언어)"이다. "모두 받아들이고 저장"은 받아들이기와 PDF 저장을 한 번에 하는 **명시적 저장 동작**이고, 저장이 성공하기 전에는 보관소에 `accepted`를 쓰지 않는다.
+- PDF 편집기의 "다른 이름으로 저장"은 **사본에만** 주석 처리를 고른다. 그대로 두기(기본, 다른 PDF 앱에서 고칠 수 있음), 페이지에 굽기(PDFium으로 주석·입력란을 페이지 내용으로 만들어 모든 뷰어에서 보이게 함, 되돌릴 수 없음), 주석 빼기(메모·형광펜·그리기·도장만 빼고 링크·입력란은 남김) 셋이다. 원본과 그 자리 저장은 바뀌지 않고, 편집이 없는 사본은 원본 바이트 그대로 복사한다. 인쇄는 주석을 기본으로 그리며, 인쇄 창에서 끌 수 있다.
 - 파워포인트 편집기에서 고른 디자인 템플릿은 문서 안이나 곁에 쓰지 않는다. 문서에 남는 것은 평범한 도형·글·글꼴 이름뿐이다.
 - 저장한 스타일 파일(`<데이터 폴더>/style-templates/<이름>.json`)에는 선택 항목 `basedOn`(기본 템플릿의 id)이 붙을 수 있다. 이 값을 모르는 예전 버전은 무시하고 그대로 읽는다.
 - 한글 문서(`.hwp`·`.hwpx`)는 연 형식 그대로 저장한다. 한 탭이 파일을 처음 덮어쓰기 전에 원본을 같은 폴더에 `<파일 이름>.bak`으로 남긴다. 암호가 걸린 문서는 저장하지 않는다. AI는 한글 문서에서 글자를 바꾸고, 문단을 넣고 지우고, 본문에 표를 넣고, 있는 표의 빈 칸을 채우고(글자가 있는 칸은 사용자가 바꾸라고 했을 때만 덮어쓰고, 그림이 든 칸은 쓰지 않는다), 본문의 표에 행과 열을 넣고 빼고, 첨부한 파일(한글·워드·엑셀·파워포인트·PDF·글자 파일·그림)을 참고 자료로 읽고, 사용자가 편집기에서 선택한 부분만 고치고, 글자 모양 일부(굵게·기울임·밑줄·취소선·크기·색·형광펜)와 문단의 정렬·줄 간격을 바꾸고, 누름틀을 채운다. 표·그림·누름틀이 놓인 문단은 지우지 않는다.
@@ -311,6 +402,7 @@
 
 - 설치 파일 이름은 `IeumOffice-Setup-<버전>.exe`, 설치 식별자는 `io.github.pblsketch.ieumoffice`, 실행 파일은 `IeumOffice.exe`다.
 - 파일 연결의 등록 이름은 `IeumOffice.<종류>` 꼴이다(`IeumOffice.WordDocument` 등).
+- 이음오피스는 Windows 기본 앱 목록에 `RegisteredApplications`의 `IeumOffice`와 `Software\IeumOffice\Capabilities\FileAssociations`로 오른다. 이 등록은 기본 프로그램을 바꾸지 않고, 사용자가 기본 앱에서 이음오피스를 고를 때 앱 실행 파일이 아니라 확장자별 ProgId(문서 아이콘)가 기록되게 한다. `.hwp`·`.hwpx`·`.xmind`·`.odt`는 여기서도 "연결 프로그램" 후보일 뿐이다.
 - `.odt`는 "연결 프로그램" 후보로만 등록한다(`IeumOffice.OpenDocumentText`와 `.odt\OpenWithProgids`의 값 하나, `apps/shell/build/installer.nsh`). 기본 프로그램은 바꾸지 않는다. 지울 때는 그 값과 등록 이름만 지운다.
 - Windows 설치본은 `.txt`·`.json`·`.xmind`를 이 앱에 연결해 등록하지 않는다. 설치해도 그 파일들의 기본 프로그램이 바뀌지 않는다. 앱 안에서는 열기 창, 끌어다 놓기, 최근 파일, 폴더 나무로 열고, 실행 인자로 경로를 받으면 연다.
 - 자동 업데이트는 `pblsketch/openoffice`의 GitHub 릴리스에서 `latest.yml`과 설치 파일을 읽는다. 릴리스는 `v<버전>` 태그여야 한다.

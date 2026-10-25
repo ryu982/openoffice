@@ -6,8 +6,10 @@ This product includes software developed at Mainfunc, Inc.
 Bundled third-party components are listed in THIRD-PARTY-NOTICES.txt, which
 tools/gen-third-party-notices.mjs generates at packaging time. It is not
 checked into this repository; in a release build it ships inside the
-application bundle (Contents/Resources on macOS, resources/ on Windows).
-Run `node tools/gen-third-party-notices.mjs` to produce it from a source
+application bundle (Contents/Resources on macOS, resources/ on Windows),
+starting with the full text of this file, next to LICENSE.txt (the Apache
+License 2.0), NOTICE.txt (this file) and LICENSE-UNICODE.txt. Run
+`node tools/gen-third-party-notices.mjs` to produce it from a source
 checkout.
 
 Bundled fonts and their licenses are documented in
@@ -119,6 +121,38 @@ exact source of every file. All files were downloaded on 2026-10-14.
 - Archivo Black 1.006, SIL OFL 1.1,
   https://github.com/google/fonts/tree/main/ofl/archivoblack
 
+Built-in skills
+
+apps/shell/resources/builtin-skills holds the five skills shipped with the
+app. It ships in the installer as resources/builtin-skills. Each folder is the
+upstream skill as read at the commit below, with its license file beside it;
+builtin-skills.json in the same folder records the same source, path, commit
+and license. Only the files listed for each skill were taken.
+
+- meeting-minutes: https://github.com/github/awesome-copilot, path
+  skills/meeting-minutes (SKILL.md), read at commit
+  613efc8c21d9b3ce642dff361d17006cd9967e28. MIT License, Copyright GitHub,
+  Inc.; the repository's LICENSE is copied as meeting-minutes/LICENSE.
+  Unmodified.
+- internal-comms: https://github.com/anthropics/skills, path
+  skills/internal-comms (SKILL.md, LICENSE.txt, examples/), read at commit
+  dbd4588f9e1033efb41dad4bef2f7947c8993d44. Apache License, Version 2.0,
+  Copyright 2026 Anthropic, PBC; the full text is internal-comms/LICENSE.txt.
+  Unmodified.
+- humanizer: https://github.com/blader/humanizer, repository root (SKILL.md,
+  LICENSE), read at commit 8c307f367c91bd974002f10f2be2965d642c13df. MIT
+  License, Copyright (c) 2025 Siqi Chen. Unmodified.
+- copy-editing: https://github.com/coreyhaines31/marketingskills, path
+  skills/copy-editing (SKILL.md, references/), read at commit
+  e85f3cbc2e4a79bf33b2a12e9bdd9087d414735b. MIT License, Copyright (c) 2025
+  Corey Haines; the repository's LICENSE is copied as copy-editing/LICENSE.
+  Unmodified.
+- find-skills: https://github.com/vercel-labs/skills, path skills/find-skills
+  (SKILL.md), read at commit a80e4c9d12d607631249d4d7d059f835d4b2f13a. MIT
+  License, Copyright (c) 2026 Vercel, Inc.; the repository's LICENSE is copied
+  as find-skills/LICENSE. Modified: appended a section for IeumOffice
+  ("In IeumOffice") at the end of SKILL.md.
+
 IeumOffice modifications
 
 IeumOffice (https://github.com/pblsketch/openoffice) is a modified version of
@@ -147,10 +181,19 @@ the Hangul document file format (.hwp).)
 Trademarks
 
 IeumOffice is not affiliated with, sponsored by or endorsed by Microsoft
-Corporation, Hancom Inc., XMind Ltd., Anthropic or OpenAI. "Microsoft",
-"Windows", "Word", "Excel" and "PowerPoint" are trademarks of Microsoft
-Corporation. "한글" (Hangul), "한컴" (Hancom), "HWP" and "HWPX" are registered
-trademarks of Hancom Inc. "XMind" is a trademark of XMind Ltd. "Claude" is a
+Corporation, Hancom Inc., Adobe Inc., XMind Ltd., Google LLC, Anthropic or
+OpenAI. "Microsoft", "Windows", "Word", "Excel" and "PowerPoint" are
+trademarks of Microsoft Corporation. "한글" (Hangul), "한컴" (Hancom), "HWP"
+and "HWPX" are registered trademarks of Hancom Inc. "XMind" is a trademark of
+XMind Ltd. "Google Drive" is a trademark of Google LLC. "Claude" is a
 trademark of Anthropic; "Codex" and "ChatGPT" are trademarks of OpenAI. These
 and other product names are used only to say which files IeumOffice opens and
-what it works with.
+what it works with. The file-type icons and the AI provider marks in the app
+are original drawings, not those companies' logos.
+
+The Apache License 2.0 grants no rights to the names or logos "IeumOffice",
+"이음오피스" or "GenOffice" (section 6).
+
+Contact
+
+Trademark and copyright reports and licensing questions: pblsketch@gmail.com

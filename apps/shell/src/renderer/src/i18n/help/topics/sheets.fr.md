@@ -1,6 +1,6 @@
 # Sheets : tableurs
 
-Sheets est l’éditeur de tableurs analogue à Excel ; le calcul s’exécute dans un processus séparé, un moteur Rust (une panne à cet endroit n’entraîne jamais l’arrêt de l’application). Il ouvre et enregistre de vrais .xlsx ; .csv et .tsv s’ouvrent comme des tables.
+Sheets est l’éditeur de tableurs ; le calcul s’exécute dans un processus séparé, un moteur Rust (une panne à cet endroit n’entraîne jamais l’arrêt de l’application). Il ouvre et enregistre des fichiers .xlsx ; .csv et .tsv s’ouvrent comme des tables.
 
 ## L’interface
 

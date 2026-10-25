@@ -3,12 +3,11 @@ import { join, resolve } from 'node:path'
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
 import { xlsxSidecarPath } from '../src/resources'
-import { run, tempDir, writeMinimalPdf } from './helpers'
+import { compatibilityXlsx, run, tempDir, writeMinimalPdf } from './helpers'
 
 const REPO = resolve(__dirname, '../../..')
 const DOCX = join(REPO, 'apps/docs/tests/pagination-corpus/docx/01-simple-english.docx')
 const PPTX = join(REPO, 'packages/pptx-engine/tests/fixtures/01_standard_business.pptx')
-const XLSX = join(REPO, 'apps/sheets/fixtures/generated/compatibility-basic.xlsx')
 
 describe('genoffice cli', () => {
   it('prints help and usage errors with the documented exit codes', async () => {
@@ -107,7 +106,7 @@ describe('genoffice cli', () => {
   })
 
   it.skipIf(!xlsxSidecarPath())('info reads workbook sheets through the xlsx sidecar', async () => {
-    const r = await run(['info', XLSX, '--json'])
+    const r = await run(['info', await compatibilityXlsx(), '--json'])
     expect(r.code).toBe(0)
     expect(r.json().detail.sheets.length).toBeGreaterThan(0)
     expect(r.json().detail.sheets[0]).toMatchObject({ name: expect.any(String) })

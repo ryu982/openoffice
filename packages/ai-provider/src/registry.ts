@@ -319,6 +319,11 @@ export const AI_PROVIDER_ADAPTERS: Record<AiProviderId, ProviderAdapter> = {
     capabilities: { auth: 'api-key', vision: false },
     resolveEndpoint: fixedEndpoint('openai-compatible', 'https://api.mistral.ai/v1'),
   },
+  upstage: {
+    meta: metaOf('upstage'),
+    capabilities: { auth: 'api-key', vision: false },
+    resolveEndpoint: fixedEndpoint('openai-compatible', 'https://api.upstage.ai/v1'),
+  },
   openrouter: {
     meta: metaOf('openrouter'),
     capabilities: { auth: 'api-key', vision: true },

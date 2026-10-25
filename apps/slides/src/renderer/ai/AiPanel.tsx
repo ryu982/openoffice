@@ -15,6 +15,20 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  NO_SKILL_USE,
+  SentSkillChips,
+  skillChipRefsOf,
+  useComposerSkills,
+  useComposerPickers,
+  docMentionActions,
+  type AiComposerDocs,
+  panelUserSkills,
+  SkillUsedNotes,
+  useSkillProposals,
+  useSkillTemplates,
+  type TemplateDocument,
+  type SkillChipRef,
+  type SkillUse,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -276,6 +290,10 @@ interface ChatEntry {
   attachments?: AttachmentMeta[]
   /** the selection this user message targeted, frozen at send */
   scope?: AiScopeQuoteData
+  /** skill chips this user message carried */
+  skills?: SkillChipRef[]
+  /** skill cards the model proposed in this turn (keys of useSkillProposals) */
+  skillProposals?: string[]
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   usage?: AiTokenUsageView
 }
@@ -287,6 +305,8 @@ const starterPrompts = (t: TFunc, deckEmpty: boolean): string[] =>
     : [t('aiStarterPolishTitle'), t('aiStarterTighten'), t('aiStarterProofread')]
 
 interface AiPanelProps {
+  /** the deck while it can go along as a skill's template (spec 5.7) */
+  templateDocument?: TemplateDocument | null
   slides: RenderSlide[]
   current: number
   selectedIds: string[]
@@ -432,6 +452,7 @@ export function AiPanel({
   onQueueClear,
   onQueueFocus,
   onQueueConsume,
+  templateDocument,
 }: AiPanelProps) {
   const { t, lang } = useI18n()
   // Panel chrome follows the UI language; message text follows its own content (dir=auto below)
@@ -445,6 +466,7 @@ export function AiPanel({
   const msgQueue = useChatRunQueue<{
     attachments: AttachmentMeta[]
     scope: AiScopeQuoteData | undefined
+    skillUse: SkillUse
   }>({
     busy,
     submit: (text, meta) => {
@@ -455,10 +477,47 @@ export function AiPanel({
       // nothing can run right now: the message stays queued, and in front of "not connected"
       // the queue is paused so it does not start by itself after a sign-in
       if (!sendGate.admitQueued(() => msgQueue.setPaused(true))) return false
-      runWith(text, text, { attachments: meta.attachments, scope: meta.scope })
+      runWith(text, text, { attachments: meta.attachments, scope: meta.scope }, meta.skillUse)
       return true
     },
   })
+  /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
+  const skills = useComposerSkills({
+    lang,
+    // a chip whose skill has a template runs in a new tab (spec 5.7)
+    onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
+  })
+  const skillsRef = useRef(skills)
+  skillsRef.current = skills
+  const langRef = useRef(lang)
+  langRef.current = lang
+  /** the skill cards `propose_skill` shows; nothing is written before their Save */
+  const skillCards = useSkillProposals({
+    lang,
+    // the document goes along as a template while it can be one (spec 5.7)
+    templateDocument: templateDocument ?? null,
+    persistSaved: (record) => persistMessage('assistant', '', [record]),
+  })
+  const skillCardsRef = useRef(skillCards)
+  skillCardsRef.current = skillCards
+  /**
+   * The template flow (spec 5.6, 5.7): a chip whose skill has a template runs
+   * in a new tab, a template the model used offers its new document, and the
+   * request a new tab was opened for runs here once through the send gate.
+   */
+  const skillTemplates = useSkillTemplates({
+    lang,
+    editor: 'slides',
+    cards: skillCards,
+    busy,
+    send: (text, use) => runWith(text, undefined, undefined, use),
+    onTaken: () => {
+      if (!open) onExpand?.()
+    },
+    setComposer: setInput,
+  })
+  const skillTemplatesRef = useRef(skillTemplates)
+  skillTemplatesRef.current = skillTemplates
   const [chat, setChat] = useState<ChatEntry[]>([])
   /** Past conversation restored from JSONL (read-only transcript, not fed to the model) */
   const [historicChat, setHistoricChat] = useState<ChatEntry[]>([])
@@ -553,6 +612,27 @@ export function AiPanel({
   >([])
   const logRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  /**
+   * The `@` document list in the input attaches through the same route as the
+   * buttons (merge is read when a pick lands, after it is declared below)
+   */
+  const docMention: AiComposerDocs = {
+    lang,
+    ...docMentionActions({
+      lang,
+      add: (paths) => window.desktop.addAttachmentPaths(paths),
+      merge: (result) => mergeAttachments(result),
+    }),
+    attachments,
+  }
+  /** the `/`·`$` and `@` lists and the chips row on this panel's own input */
+  const picker = useComposerPickers({
+    skills: skills.composer,
+    docs: docMention,
+    value: input,
+    onChange: setInput,
+    textareaRef: inputRef,
+  })
   /** Stop following once the user scrolls up; re-attach when near the bottom */
   const stickToBottomRef = useRef(true)
   /** Current chat's projectId/chatId, set after resolve succeeds */
@@ -597,11 +677,12 @@ export function AiPanel({
       scope?: AiScopeQuoteData
       retry?: boolean
     }
+    skillUse: SkillUse
   }>({
     settings,
     statuses: connection.statuses,
     store: MODEL_BRIDGE,
-    start: (held) => runWith(held.instruction, held.displayText, held.opts),
+    start: (held) => runWith(held.instruction, held.displayText, held.opts, held.skillUse),
     onNotConnected: connection.refresh,
     onSettingsSaved: (next) => {
       // a run started right after ("continue with …") must already see the change
@@ -656,6 +737,8 @@ export function AiPanel({
   const lastAttachmentsRef = useRef<AttachmentMeta[]>([])
   /** the scope quote of the last send, so a retry reuses it instead of re-reading the live selection */
   const lastScopeRef = useRef<AiScopeQuoteData | undefined>(undefined)
+  /** the skills of the last send: a retry sends the same skill text */
+  const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
   /** composer attachments plus everything already sent this session (deduped by path) */
   const availableAttachments = (): AttachmentMeta[] => {
     const seen = new Set<string>()
@@ -697,8 +780,10 @@ export function AiPanel({
         chatRefIds.current = ids
         return api.loadChat({ projectId: ids.projectId, chatId: ids.chatId, limit: 200 })
       })
-      .then((msgs) => {
-        if (msgs.length === 0) return
+      .then((stored) => {
+        if (stored.length === 0) return
+        // skill cards come back closed; a saved card's record is not part of the conversation
+        const msgs = skillCardsRef.current.restore(stored)
         setHistoricChat(
           msgs.map((m) => ({
             role: m.role,
@@ -719,7 +804,15 @@ export function AiPanel({
                 sizeBytes: a.sizeBytes ?? 0,
               })),
             ...(m.scope ? { scope: m.scope } : {}),
+            ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
+              ? { skills: skillChipRefsOf(m.skills) }
+              : {}),
+            ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
           })),
+        )
+        // the next request re-reads the current text of the skills this conversation used
+        skillsRef.current.restoreHistory(
+          msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
         )
         // Restore model context: follow-ups after reopening a file continue the earlier conversation (only when the loop is idle with no history)
         loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
@@ -768,6 +861,7 @@ export function AiPanel({
     }>,
     attachments?: AttachmentMeta[],
     scope?: AiScopeQuoteData,
+    skillChips?: SkillChipRef[],
   ) => {
     const ids = chatRefIds.current
     const api = (window as Window & { projectApi?: typeof window.projectApi }).projectApi
@@ -790,6 +884,7 @@ export function AiPanel({
             }
           : {}),
         ...(scope ? { scope } : {}),
+        ...(skillChips && skillChips.length > 0 ? { skills: skillChips } : {}),
       })
       .catch(() => {
         /* Silent */
@@ -1446,6 +1541,19 @@ export function AiPanel({
       skill: composeWithDrive('slides+files', '', () => loopRef.current?.messages ?? [], [
         createSlidesSkill(access),
         createFilesSkill(availableAttachments, (path) => readAttachmentPathsRef.current.add(path)),
+        // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
+        ...panelUserSkills({
+          lang: () => langRef.current,
+          messages: () => loopRef.current?.messages ?? [],
+          // a template skill the model used offers its new document (spec 5.7)
+          onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          onProposal: (proposal) => {
+            skillCardsRef.current.add(proposal)
+            patchLastAssistant((last) => ({
+              skillProposals: [...(last.skillProposals ?? []), proposal.key],
+            }))
+          },
+        }),
       ]),
       events: {
         onText: (text) => {
@@ -1661,12 +1769,20 @@ export function AiPanel({
     // `open` dep: re-measure after expand restores a draft
   }, [input, open])
 
-  const run = () => runWith(input.trim())
+  const run = () => {
+    const text = input.trim()
+    if (!text) return
+    skills.withSkills(text, (skillUse) => runWith(text, undefined, undefined, skillUse))
+  }
 
   /** Enter while a reply runs: the draft joins the queue above the composer */
   const enqueueDraft = () => {
     const text = input.trim()
     if (!text) return
+    skills.withSkills(text, (skillUse) => enqueueWith(text, skillUse))
+  }
+  const enqueueWith = (text: string, skillUse: SkillUse) => {
+    skillsRef.current.consume(skillUse)
     // snapshot + consume the composer attachments exactly like a send does
     const attachments = attachmentsRef.current
     if (attachments.length > 0) {
@@ -1684,7 +1800,7 @@ export function AiPanel({
             label: `${t('aiScopeSlide', { n: current + 1 })} · ${t('aiScopeSelection', { count: selectedRef.current.length })}`,
           }
         : undefined
-    msgQueue.enqueue(text, { attachments, scope })
+    msgQueue.enqueue(text, { attachments, scope, skillUse })
     setInput('')
   }
 
@@ -1748,6 +1864,8 @@ export function AiPanel({
       /** resend of the last message: quote what it quoted */
       retry?: boolean
     },
+    /** the chosen skills: their text goes to the model, their chips onto the bubble */
+    skillUse: SkillUse = NO_SKILL_USE,
   ) => {
     const loop = loopRef.current
     // runStartingRef: loop.run is called only after attachments are read asynchronously, during which loop.busy is still false,
@@ -1764,6 +1882,7 @@ export function AiPanel({
         instruction,
         ...(displayText !== undefined ? { displayText } : {}),
         ...(opts ? { opts } : {}),
+        skillUse,
       })
     ) {
       return
@@ -1772,6 +1891,9 @@ export function AiPanel({
     setInputTruncated(false)
     runStartingRef.current = true
     setInput('')
+    skillsRef.current.consume(skillUse)
+    lastSkillUseRef.current = skillUse
+    skillTemplatesRef.current.noteRequest(displayText ?? instruction)
     // The message consumes the composer attachments: they ride along (echoed on the
     // bubble, images multimodal, files via the files skill) and the composer clears.
     const sentAtts = opts?.attachments ?? attachmentsRef.current
@@ -1815,18 +1937,20 @@ export function AiPanel({
         text: shown,
         ...(sentAtts.length > 0 ? { attachments: sentAtts } : {}),
         ...(scope ? { scope } : {}),
+        ...(skillUse.chips.length > 0 ? { skills: skillUse.chips } : {}),
       },
       { role: 'assistant', text: '', streaming: true },
     ])
     runStartedAtRef.current = Date.now()
     setBusy(true)
     // Persist the user message (store display text + attachment metadata; loop.restore rebuilds model context on file reopen)
-    persistMessage('user', shown, undefined, sentAtts, scope)
+    persistMessage('user', shown, undefined, sentAtts, scope, skillUse.chips)
     void collectImageAttachments(sentAtts)
       .then(async (images) => {
         // AI Beautify sends the current slide's rendering along, so the model sees what it edits;
         // the note rides on the model instruction only — the chat bubble stays the localized preset text
-        let modelInstruction = instruction
+        // the skill text rides with this request only; the bubble and the record keep the chips
+        let modelInstruction = instruction + skillUse.text
         if (opts?.slideShot && settingsSupportVision(settingsRef.current, statusesRef.current)) {
           const shot = await captureSlideShot(currentRef.current)
           if (shot) {
@@ -1863,6 +1987,7 @@ export function AiPanel({
       instructionRef.current = instruction
       lastInstructionRef.current = instruction
       lastDisplayTextRef.current = undefined
+      lastSkillUseRef.current = NO_SKILL_USE
       lastTurnToolsRef.current = []
       runToolsRef.current = []
       streamedTextRef.current = ''
@@ -2089,10 +2214,15 @@ export function AiPanel({
   useEffect(() => () => qcAbortRef.current?.abort(), [])
 
   const retry = () =>
-    runWith(lastInstructionRef.current, lastDisplayTextRef.current, {
-      attachments: lastAttachmentsRef.current,
-      retry: true,
-    })
+    runWith(
+      lastInstructionRef.current,
+      lastDisplayTextRef.current,
+      {
+        attachments: lastAttachmentsRef.current,
+        retry: true,
+      },
+      lastSkillUseRef.current,
+    )
 
   /** "Continue with …" on a blocked run: that provider becomes the stored selection (the model
       picker shows it) and the last request runs again on it */
@@ -2110,6 +2240,9 @@ export function AiPanel({
     // Same as docs (#195): the restored transcript is painted above the live
     // turn, so it must clear too — otherwise the old conversation survives.
     setHistoricChat([])
+    skills.resetConversation()
+    skillCards.reset()
+    skillTemplates.reset()
     // Answered clarifications are transcript too: they render under their
     // original message index, so stale entries would re-attach to unrelated
     // new messages after an index collision.
@@ -2298,10 +2431,19 @@ export function AiPanel({
             {historicChat.map((entry, i) => (
               <div key={`h${i}`} className={`ai-msg ai-msg-${entry.role} ai-msg-historic`}>
                 {entry.role === 'user' && entry.scope && <AiScopeQuote scope={entry.scope} />}
+                {entry.role === 'user' && (
+                  <SentSkillChips
+                    lang={lang}
+                    chips={entry.skills}
+                    isAvailable={skills.isAvailable}
+                  />
+                )}
                 {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                   <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
                 )}
                 {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
+                <SkillUsedNotes tools={entry.tools} />
+                {entry.skillProposals?.map((key) => skillCards.render(key))}
                 {entry.text && (
                   <div dir="auto">
                     <Markdown text={entry.text} />
@@ -2366,6 +2508,9 @@ export function AiPanel({
               className={`ai-msg ai-msg-${entry.role}${entry.role === 'assistant' && entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
               {entry.role === 'user' && entry.scope && <AiScopeQuote scope={entry.scope} />}
+              {entry.role === 'user' && (
+                <SentSkillChips lang={lang} chips={entry.skills} isAvailable={skills.isAvailable} />
+              )}
               {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                 <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
               )}
@@ -2383,6 +2528,8 @@ export function AiPanel({
                 <span dir="auto">{entry.text}</span>
               )}
               {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
+              <SkillUsedNotes tools={entry.tools} />
+              {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.role === 'assistant' && entry.usage && (
                 <div className="ai-message-usage">
                   <AiUsageChip usage={entry.usage} lang={lang} />
@@ -2491,6 +2638,7 @@ export function AiPanel({
             </div>
           )
         })}
+        {skillTemplates.notes}
         {activeClarify && (
           <div className="ai-clarify-chip" role="status">
             <span className="ai-clarify-chip-eyebrow">{t('aiClarifyTitle')}</span>
@@ -2542,6 +2690,7 @@ export function AiPanel({
               disabled={connection.busy}
               attention={sendGate.connectAttention}
               onOpenSettings={() => void window.slidesApi.openAiModelSettings().catch(() => {})}
+              onOpenConnectHelp={connection.openConnectHelp}
               {...connection.actions}
             />
           )}
@@ -2630,11 +2779,14 @@ export function AiPanel({
                 )}
               </div>
             )}
+            {picker.chipRow}
+            {picker.popup}
             <textarea
               ref={inputRef}
               value={input}
               dir="auto"
               spellCheck={spellcheck}
+              {...picker.inputProps}
               data-slides-ai-input="true"
               data-deck-undo-ready={!busy && !inputEditedSinceRunRef.current ? 'true' : 'false'}
               placeholder={
@@ -2645,8 +2797,14 @@ export function AiPanel({
               onChange={(e) => {
                 inputEditedSinceRunRef.current = true
                 setInput(e.target.value)
+                picker.track(e.target)
               }}
+              onSelect={(e) => picker.track(e.currentTarget)}
+              onCompositionStart={picker.onCompositionStart}
+              onCompositionEnd={picker.onCompositionEnd}
+              onBlur={picker.onBlur}
               onKeyDown={(e) => {
+                if (picker.onKeyDown(e)) return
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault()
                   if (busy) enqueueDraft()
@@ -2669,6 +2827,7 @@ export function AiPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={connection.statuses}
+                onRefreshSubscriptions={connection.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <button

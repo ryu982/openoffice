@@ -18,7 +18,7 @@ Sáng / Tối / Theo hệ thống. Khi chọn Theo hệ thống, giao diện bá
 ## Chung
 
 - **Vị trí thanh bên AI** (trái hoặc phải), **Cỡ chữ bảng điều khiển AI** và **Kiểm tra chính tả trong trò chuyện AI**.
-- **Mở bảng AI trong tài liệu mới** — tắt, tài liệu mới sẽ bắt đầu với bảng AI đã thu gọn, chỉ một cú nhấp là mở ra.
+- **Bảng AI** — Tắt, Thu gọn hoặc Trạng thái gần nhất.
 - **Tự động lưu tất cả tài liệu** bật AutoSave theo mặc định trong mọi trình soạn thảo; bạn vẫn có thể tắt nó cho một cửa sổ.
 - **Vị trí lưu** kèm nút **Thay đổi**, và **Ứng dụng mặc định cho tài liệu Office** để nhận .docx / .xlsx / .pptx về cho GenOffice.
 
@@ -44,7 +44,7 @@ Cài đặt có thể đăng ký GenOffice làm ứng dụng xử lý .docx / .x
 ## Thông báo bên thứ ba và cập nhật
 
 - Trợ giúp ▸ Thông báo của bên thứ ba: danh mục giấy phép nguồn mở đầy đủ đi kèm ứng dụng.
-- Trợ giúp ▸ Kiểm tra bản cập nhật: kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt.
+- Menu (☰) ▸ Kiểm tra bản cập nhật (trên Mac là Trợ giúp ▸ Kiểm tra bản cập nhật): kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt.
 
 ## Tích hợp MCP (dành cho người dùng nâng cao / ứng dụng AI)
 

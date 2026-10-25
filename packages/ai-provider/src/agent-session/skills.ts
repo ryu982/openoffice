@@ -1,35 +1,73 @@
 /**
- * The skills an agent session gives Claude Code (decision 0032). The CLI runs
- * with `--restricted`, which keeps every user setting out, skills included;
- * reading the user's settings instead would also run their hooks. So the app
- * copies the skill folders themselves into one plugin folder of its own and
- * passes that with `--plugin-dir`. Hooks, MCP definitions, agents and commands
- * of installed plugins are not copied.
+ * The skills an agent session gets (decision 0032, spec 6.1): a copy of every
+ * enabled skill in one plugin folder of the app's own. Claude Code runs with
+ * `--restricted`, which keeps every user setting out, skills included; reading
+ * the user's settings instead would also run their hooks. So the app copies
+ * the skill folders themselves and passes the copy with `--plugin-dir`. Codex
+ * gets the same copy as a folder it may read, and the list of skills in its
+ * instructions. Hooks, MCP definitions, agents and commands of installed
+ * plugins are not copied.
+ *
+ * Which skills go in is decided by the caller (the person's on/off states, and
+ * the project's skills, which are always on). This module only copies them:
+ * - one name per skill in the copy: on a shared name the winner by priority
+ *   keeps it, the others go in as `<name>--<source>` (plugins
+ *   `<name>--plugin-<plugin>`), so the person can still call them;
+ * - a skill used "only when called" gets `disable-model-invocation: true` in
+ *   the copy's front matter, and one set to "AI decides" whose own file says
+ *   true gets `false`; the source folder is never changed.
  *
  * The copy is kept between sessions and only changed skills are copied again:
- * a person's skills can run to hundreds of megabytes. It is also handed to the
- * CLI as a working folder (`--add-dir`) so that a skill's scripts may run;
+ * a person's skills can run to hundreds of megabytes. It is also handed to
+ * Claude as a working folder (`--add-dir`) so that a skill's scripts may run;
  * writing there changes the copy only, and the next session restores it.
  */
 import { createHash } from 'node:crypto'
-import type { Dirent } from 'node:fs'
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
+import {
+  IEUM_TEMPLATE_KEY,
+  IEUM_TITLE_KEY,
+  MAX_USER_SKILL_BYTES,
+  MAX_USER_SKILL_FILES,
+  USER_SKILL_NAME,
+  USER_SKILL_PRIORITY,
+  isReservedUserSkillName,
+  listSkillFolderFiles,
+  parseSkillMd,
+  renderSkillMd,
+  type SkillFolderFile,
+  type UserSkillInvoke,
+  type UserSkillSource,
+} from '../user-skills'
 
-export type AgentSkillSourceKind = 'project' | 'app' | 'user' | 'plugin'
-
-/** A folder whose child folders are skills (each with a `SKILL.md`) */
-export interface AgentSkillSource {
-  kind: AgentSkillSourceKind
-  dir: string
-  /** the plugin a plugin source came from */
+/** An enabled skill to put in the copy (the shell's `enabledForAgent` gives these) */
+export interface AgentSkillInput {
+  /** the skill identifier (`source:name`, `plugin:<plugin>:<name>`, `project:<name>`) */
+  id: string
+  source: UserSkillSource
   plugin?: string | undefined
+  /** the skill's own name */
+  name: string
+  title: string
+  description: string
+  /** the skill folder */
+  dir: string
+  invoke: UserSkillInvoke
 }
 
+/** A skill as it is in the copy */
 export interface AgentSkillEntry {
+  id: string
+  /** the name in the copy: the skill's own, or `<name>--<source>` when another one won the name */
   name: string
-  source: AgentSkillSourceKind
-  plugin?: string | undefined
+  source: UserSkillSource
+  plugin: string | undefined
+  title: string
+  description: string
+  invoke: UserSkillInvoke
+  /** the copy's SKILL.md, absolute when the bundle folder is */
+  skillMd: string
 }
 
 export type AgentSkillSkipReason =
@@ -39,109 +77,165 @@ export interface AgentSkillBundle {
   /** the plugin folder for `--plugin-dir` */
   dir: string
   skills: AgentSkillEntry[]
-  skipped: Array<AgentSkillEntry & { reason: AgentSkillSkipReason }>
+  skipped: Array<{
+    id: string
+    name: string
+    source: UserSkillSource
+    plugin: string | undefined
+    reason: AgentSkillSkipReason
+  }>
 }
 
 export const AGENT_SKILL_PLUGIN_NAME = 'ieum-skills'
 const MANIFEST_FILE = '.ieum-skills.json'
-const SKILL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-export const MAX_AGENT_SKILL_BYTES = 64 * 1024 * 1024
-const MAX_AGENT_SKILL_FILES = 5_000
-/** project skills win over the app's, the app's over the person's, theirs over plugins' */
-const PRIORITY: readonly AgentSkillSourceKind[] = ['project', 'app', 'user', 'plugin']
+export const MAX_AGENT_SKILL_BYTES = MAX_USER_SKILL_BYTES
+/** The longest name in the copy */
+export const MAX_AGENT_SKILL_NAME = 64
+const SHORT_HASH = 6
 
-export interface AgentSkillSourceOptions {
-  homeDir: string
-  projectRoot: string
-  /** the app's own skills folder (`~/.ieumoffice/skills`) */
-  appSkillsDir: string
+function shortHash(id: string): string {
+  return createHash('sha256').update(id).digest('hex').slice(0, SHORT_HASH)
+}
+
+/** `base` cut so that `-<short hash of id>` fits within the name limit */
+function withHash(base: string, id: string): string {
+  const head = base.slice(0, MAX_AGENT_SKILL_NAME - SHORT_HASH - 1).replace(/[-.]+$/, '')
+  return `${head}-${shortHash(id)}`
 }
 
 /**
- * Where skills are, in priority order. Installed plugins are read from Claude
- * Code's list of installed plugins, which names each plugin's folder; only the
- * `skills` folder under it is used.
+ * The name a skill gets in the copy when another enabled skill won its name:
+ * `<name>--<source>`, plugins `<name>--plugin-<plugin>`. Longer than 64
+ * characters, it is cut and ends with a short hash of the identifier.
  */
-export async function agentSkillSources(
-  options: AgentSkillSourceOptions,
-): Promise<AgentSkillSource[]> {
-  const sources: AgentSkillSource[] = [
-    { kind: 'project', dir: join(options.projectRoot, '.claude', 'skills') },
-    { kind: 'app', dir: options.appSkillsDir },
-    { kind: 'user', dir: join(options.homeDir, '.claude', 'skills') },
-  ]
-  try {
-    const installed = JSON.parse(
-      await readFile(join(options.homeDir, '.claude', 'plugins', 'installed_plugins.json'), 'utf8'),
-    ) as { plugins?: Record<string, Array<{ installPath?: unknown }>> }
-    for (const [plugin, installs] of Object.entries(installed.plugins ?? {})) {
-      const path = Array.isArray(installs) ? installs.at(-1)?.installPath : undefined
-      if (typeof path === 'string' && path) {
-        sources.push({ kind: 'plugin', dir: join(path, 'skills'), plugin: plugin.split('@')[0] })
-      }
-    }
-  } catch {
-    // no plugins installed, or a list this version cannot read: plugin skills are left out
-  }
-  return sources
+export function agentSkillAltName(
+  skill: Pick<AgentSkillInput, 'id' | 'source' | 'plugin' | 'name'>,
+): string {
+  const suffix = skill.source === 'plugin' ? `plugin-${skill.plugin ?? ''}` : skill.source
+  const full = `${skill.name}--${suffix}`.replace(/[^A-Za-z0-9._-]/g, '-')
+  return full.length <= MAX_AGENT_SKILL_NAME ? full : withHash(full, skill.id)
 }
 
-interface FileFacts {
-  files: number
-  bytes: number
+function rank(skill: AgentSkillInput): number {
+  const at = USER_SKILL_PRIORITY.indexOf(skill.source)
+  return at === -1 ? USER_SKILL_PRIORITY.length : at
+}
+
+/** Priority order (spec 4.4): project, app, builtin, Claude, Codex, then plugins by plugin name */
+function byPriority(skills: readonly AgentSkillInput[]): AgentSkillInput[] {
+  return skills
+    .map((skill, index) => ({ skill, index }))
+    .sort((a, b) => {
+      const byRank = rank(a.skill) - rank(b.skill)
+      if (byRank !== 0) return byRank
+      if (a.skill.source === 'plugin') {
+        const pa = (a.skill.plugin ?? '').toLowerCase()
+        const pb = (b.skill.plugin ?? '').toLowerCase()
+        if (pa !== pb) return pa < pb ? -1 : 1
+      }
+      return a.index - b.index
+    })
+    .map(({ skill }) => skill)
+}
+
+interface FolderFacts {
+  files: SkillFolderFile[]
   signature: string
+  tooLarge: boolean
 }
 
-/** Size, file count and a signature of every file's path, size and time, without reading contents */
-async function folderFacts(dir: string): Promise<FileFacts | undefined> {
+/**
+ * The files of a skill folder and a signature of their paths, sizes and times,
+ * without reading contents. Links leading out of the folder are left out, as
+ * in the skill list, so nothing is read through them.
+ */
+async function folderFacts(dir: string): Promise<FolderFacts | undefined> {
+  const listed = await listSkillFolderFiles(dir, {
+    files: MAX_USER_SKILL_FILES,
+    bytes: MAX_USER_SKILL_BYTES,
+  })
+  if (!listed) return undefined
   const hash = createHash('sha256')
-  let files = 0
-  let bytes = 0
-  const walk = async (current: string, rel: string): Promise<boolean> => {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(current, { withFileTypes: true })
-    } catch {
-      return false
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name))
-    for (const entry of entries) {
-      const path = join(current, entry.name)
-      const relPath = `${rel}/${entry.name}`
-      if (entry.isDirectory()) {
-        if (!(await walk(path, relPath))) return false
-        continue
-      }
-      const info = await stat(path).catch(() => undefined)
-      if (!info?.isFile()) continue
-      files++
-      bytes += info.size
-      if (files > MAX_AGENT_SKILL_FILES || bytes > MAX_AGENT_SKILL_BYTES) return true
-      hash.update(`${relPath}\0${info.size}\0${Math.round(info.mtimeMs)}\n`)
-    }
-    return true
+  for (const file of listed.files) {
+    const info = await stat(file.path).catch(() => undefined)
+    hash.update(`${file.rel}\0${file.size}\0${Math.round(info?.mtimeMs ?? 0)}\n`)
   }
-  if (!(await walk(dir, ''))) return undefined
-  return { files, bytes, signature: hash.digest('hex') }
+  return { files: listed.files, signature: hash.digest('hex'), tooLarge: listed.tooLarge }
 }
 
-async function hasFrontmatter(skillDir: string): Promise<boolean> {
-  try {
-    const text = await readFile(join(skillDir, 'SKILL.md'), 'utf8')
-    return /^\uFEFF?---\r?\n/.test(text)
-  } catch {
-    return false
+async function copyFiles(files: readonly SkillFolderFile[], to: string): Promise<void> {
+  for (const file of files) {
+    const target = join(to, ...file.rel.split('/'))
+    await mkdir(dirname(target), { recursive: true })
+    await copyFile(file.path, target)
   }
+}
+
+/**
+ * Make the copy's SKILL.md say what the copy is: its name in the copy, and
+ * `disable-model-invocation: true` for a skill used only when called (`false`
+ * for one set to "AI decides" whose file says true). Other keys stay as written.
+ */
+async function adjustSkillMd(to: string, name: string, invoke: UserSkillInvoke): Promise<boolean> {
+  const path = join(to, 'SKILL.md')
+  const text = await readFile(path, 'utf8')
+  const parsed = parseSkillMd(text)
+  if (!parsed) return false
+  // a skill turned to "AI decides" says so even when its own file says only when called, so
+  // Claude (which reads this key) and Codex (which is told every skill) agree
+  const saysManual = /^(?:true|yes|on)$/i.test(parsed.fields['disable-model-invocation'] ?? '')
+  const fields =
+    invoke === 'manual'
+      ? { 'disable-model-invocation': true }
+      : saysManual
+        ? { 'disable-model-invocation': false }
+        : undefined
+  if (parsed.name === name && !fields) return true
+  await writeFile(
+    path,
+    renderSkillMd(
+      {
+        name,
+        description: parsed.description ?? '',
+        title: parsed.metadata[IEUM_TITLE_KEY],
+        template: parsed.metadata[IEUM_TEMPLATE_KEY],
+        body: parsed.body,
+        fields,
+      },
+      text,
+    ),
+  )
+  return true
 }
 
 type Manifest = Record<string, { signature: string; copied: string }>
 
+/** One build at a time per bundle folder: two sessions starting together must not mix copies */
+const building = new Map<string, Promise<unknown>>()
+
 /**
- * Bring the plugin folder in line with the sources: copy new and changed
- * skills, restore a copy that was changed in place, drop skills that are gone.
+ * Bring the plugin folder in line with the enabled skills: copy new and
+ * changed skills, restore a copy that was changed in place, drop skills that
+ * are gone or no longer enabled.
  */
-export async function buildAgentSkillBundle(
-  sources: AgentSkillSource[],
+export function buildAgentSkillBundle(
+  skills: readonly AgentSkillInput[],
+  bundleDir: string,
+): Promise<AgentSkillBundle> {
+  const key = resolve(bundleDir).toLowerCase()
+  const previous = building.get(key) ?? Promise.resolve()
+  const run = previous.catch(() => undefined).then(() => buildNow(skills, bundleDir))
+  building.set(key, run)
+  void run
+    .finally(() => {
+      if (building.get(key) === run) building.delete(key)
+    })
+    .catch(() => undefined)
+  return run
+}
+
+async function buildNow(
+  input: readonly AgentSkillInput[],
   bundleDir: string,
 ): Promise<AgentSkillBundle> {
   const skillsDir = join(bundleDir, 'skills')
@@ -158,72 +252,92 @@ export async function buildAgentSkillBundle(
     manifest = {}
   }
 
-  const ordered = [...sources].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind))
-  const skills: AgentSkillEntry[] = []
+  const entries: AgentSkillEntry[] = []
   const skipped: AgentSkillBundle['skipped'] = []
+  /** names given in the copy, without case */
   const taken = new Set<string>()
+  /** skill names a skill has already won, without case */
+  const won = new Set<string>()
   const next: Manifest = {}
 
-  for (const source of ordered) {
-    let entries: Dirent[]
-    try {
-      entries = await readdir(source.dir, { withFileTypes: true })
-    } catch {
+  for (const skill of byPriority(input)) {
+    const info = { id: skill.id, name: skill.name, source: skill.source, plugin: skill.plugin }
+    // never put in, from any source: not even reported
+    if (isReservedUserSkillName(skill.name) || isReservedUserSkillName(basename(skill.dir))) {
       continue
     }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const entryInfo: AgentSkillEntry = {
-        name: entry.name,
-        source: source.kind,
-        plugin: source.plugin,
-      }
-      const from = join(source.dir, entry.name)
-      if (!SKILL_NAME.test(entry.name)) {
-        skipped.push({ ...entryInfo, reason: 'bad-name' })
-        continue
-      }
-      if (taken.has(entry.name.toLowerCase())) {
-        skipped.push({ ...entryInfo, reason: 'duplicate' })
-        continue
-      }
-      if (!(await hasFrontmatter(from))) {
-        skipped.push({ ...entryInfo, reason: 'no-frontmatter' })
-        continue
-      }
-      const facts = await folderFacts(from)
-      if (!facts) {
-        skipped.push({ ...entryInfo, reason: 'unreadable' })
-        continue
-      }
-      if (facts.files > MAX_AGENT_SKILL_FILES || facts.bytes > MAX_AGENT_SKILL_BYTES) {
-        skipped.push({ ...entryInfo, reason: 'too-large' })
-        continue
-      }
-      taken.add(entry.name.toLowerCase())
-      const to = join(skillsDir, entry.name)
-      const previous = manifest[entry.name]
-      const copy = previous?.signature === facts.signature ? await folderFacts(to) : undefined
-      if (!copy || copy.signature !== previous?.copied) {
-        await rm(to, { recursive: true, force: true })
-        try {
-          await cp(from, to, { recursive: true, dereference: true, errorOnExist: false })
-        } catch {
+    if (!USER_SKILL_NAME.test(skill.name)) {
+      skipped.push({ ...info, reason: 'bad-name' })
+      continue
+    }
+    let name = won.has(skill.name.toLowerCase()) ? agentSkillAltName(skill) : skill.name
+    if (taken.has(name.toLowerCase())) name = withHash(name, skill.id)
+    if (taken.has(name.toLowerCase())) {
+      skipped.push({ ...info, reason: 'duplicate' })
+      continue
+    }
+    let text: string
+    try {
+      text = await readFile(join(skill.dir, 'SKILL.md'), 'utf8')
+    } catch {
+      skipped.push({ ...info, reason: 'unreadable' })
+      continue
+    }
+    if (!parseSkillMd(text)) {
+      skipped.push({ ...info, reason: 'no-frontmatter' })
+      continue
+    }
+    const facts = await folderFacts(skill.dir)
+    if (!facts) {
+      skipped.push({ ...info, reason: 'unreadable' })
+      continue
+    }
+    if (facts.tooLarge) {
+      skipped.push({ ...info, reason: 'too-large' })
+      continue
+    }
+    // what the copy depends on besides the files: a new name or a changed "only when called"
+    // makes a new copy even when the files are the same
+    const signature = createHash('sha256')
+      .update(`${skill.id}\0${name}\0${skill.invoke}\0${facts.signature}`)
+      .digest('hex')
+    const to = join(skillsDir, name)
+    const before = manifest[name]
+    const copy = before?.signature === signature ? await folderFacts(to) : undefined
+    if (!copy || copy.signature !== before?.copied) {
+      await rm(to, { recursive: true, force: true })
+      try {
+        await copyFiles(facts.files, to)
+        if (!(await adjustSkillMd(to, name, skill.invoke))) {
           await rm(to, { recursive: true, force: true })
-          taken.delete(entry.name.toLowerCase())
-          skipped.push({ ...entryInfo, reason: 'unreadable' })
+          skipped.push({ ...info, reason: 'no-frontmatter' })
           continue
         }
+      } catch {
+        await rm(to, { recursive: true, force: true })
+        skipped.push({ ...info, reason: 'unreadable' })
+        continue
       }
-      const copied = await folderFacts(to)
-      next[entry.name] = { signature: facts.signature, copied: copied?.signature ?? '' }
-      skills.push(entryInfo)
     }
+    const copied = await folderFacts(to)
+    next[name] = { signature, copied: copied?.signature ?? '' }
+    taken.add(name.toLowerCase())
+    won.add(skill.name.toLowerCase())
+    entries.push({
+      id: skill.id,
+      name,
+      source: skill.source,
+      plugin: skill.plugin,
+      title: skill.title,
+      description: skill.description,
+      invoke: skill.invoke,
+      skillMd: join(to, 'SKILL.md'),
+    })
   }
 
   for (const name of await readdir(skillsDir).catch(() => [] as string[])) {
     if (!next[name]) await rm(join(skillsDir, name), { recursive: true, force: true })
   }
   await writeFile(join(bundleDir, MANIFEST_FILE), JSON.stringify(next))
-  return { dir: bundleDir, skills, skipped }
+  return { dir: bundleDir, skills: entries, skipped }
 }

@@ -1,14 +1,22 @@
 /**
- * The list behind the "Attach a document" window: the documents the shell
- * already knows about — currently open tabs, then recently opened files — in
- * the order the shell gives them. Only files an editor may attach are kept
- * (a known extension, under the size cap) and one item is kept per path, the
- * open one winning over the recent one. A path decides "saved"; the dirty flag
- * does not. No file contents are read — only the path, its size and the name
- * the shell already has.
+ * The document list the shell hands out, built for the editor that asked: the
+ * document in the other split pane, then the other open tabs and detached
+ * windows, then recently opened files. The asking tab and every copy of its
+ * file are left out. Only files an editor may attach are kept (a known
+ * extension, under the size cap) and one row is kept per path, the earlier
+ * group winning; paths are compared the way the shell compares open paths
+ * (resolved, case-insensitive). A document never saved is `unsaved`; a saved
+ * one that has unsaved changes in any open copy is `modified`; neither can be
+ * picked. No file contents are read — only the path, its size and the name the
+ * shell already has.
+ *
+ * The same list feeds the "Attach a document" window (missing files stay,
+ * greyed) and the AI panel's `@` list (`toMentionItems`, missing files hidden).
  */
-import { dirname, extname } from 'node:path'
+import { basename, dirname, extname, resolve } from 'node:path'
+import type { DocMentionItem } from '@genoffice/electron-utils/doc-attach-bridge'
 import type { DocListItem, DocListResult } from '../../shared/doc-picker-api'
+import type { DocAsker } from './doc-asker'
 
 export interface OpenDocumentEntry {
   id: string
@@ -38,7 +46,10 @@ export interface DocListDeps {
   attachable: AttachableFormats
 }
 
-export function createDocList(deps: DocListDeps): () => Promise<DocListResult> {
+/** how the shell compares open paths (see `isOpen` in index.ts) */
+const pathKey = (path: string): string => resolve(path).toLowerCase()
+
+export function createDocList(deps: DocListDeps): (asker?: DocAsker) => Promise<DocListResult> {
   const extOf = (path: string): string => extname(path).replace(/^\./, '').toLowerCase()
 
   const capFor = (ext: string): number =>
@@ -46,9 +57,15 @@ export function createDocList(deps: DocListDeps): () => Promise<DocListResult> {
       ? deps.attachable.ATTACHABLE_IMAGE_MAX_BYTES
       : deps.attachable.ATTACHABLE_MAX_BYTES
 
-  return async () => {
+  return async (asker: DocAsker = {}) => {
     const items: DocListItem[] = []
     const seen = new Set<string>()
+    const askerKey = asker.path ? pathKey(asker.path) : null
+
+    const open = await deps.openDocuments()
+    // a path with unsaved changes in any open copy is not the saved file
+    const dirtyKeys = new Set<string>()
+    for (const doc of open) if (doc.path && doc.dirty) dirtyKeys.add(pathKey(doc.path))
 
     const include = async (
       path: string,
@@ -56,35 +73,41 @@ export function createDocList(deps: DocListDeps): () => Promise<DocListResult> {
       group: DocListItem['group'],
       knownMissing: boolean,
     ): Promise<void> => {
-      if (seen.has(path)) return
+      const key = pathKey(path)
+      if (key === askerKey || seen.has(key)) return
       const ext = extOf(path)
       if (!deps.attachable.ATTACHABLE_EXTS.has(ext)) return
       const info = knownMissing ? null : await deps.stat(path)
       if (info && info.sizeBytes > capFor(ext)) return
-      seen.add(path)
+      seen.add(key)
       const dir = dirname(path)
       items.push({
         id: path,
         title,
         dir: dir === '.' ? '' : dir,
-        state: info ? 'ok' : 'missing',
+        state: !info ? 'missing' : dirtyKeys.has(key) ? 'modified' : 'ok',
         group,
       })
     }
 
-    for (const doc of await deps.openDocuments()) {
+    const includeOpen = async (doc: OpenDocumentEntry, group: DocListItem['group']) => {
       if (!doc.path) {
         items.push({
           id: `unsaved:${doc.id}`,
           title: doc.title,
           dir: '',
           state: 'unsaved',
-          group: 'open',
+          group,
         })
-        continue
+        return
       }
-      await include(doc.path, doc.title, 'open', false)
+      await include(doc.path, doc.title, group, false)
     }
+
+    const others = open.filter((doc) => doc.id !== asker.tabId)
+    const pane = asker.paneTabId ? others.find((doc) => doc.id === asker.paneTabId) : undefined
+    if (pane) await includeOpen(pane, 'pane')
+    for (const doc of others) if (doc !== pane) await includeOpen(doc, 'open')
 
     for (const doc of await deps.recent()) {
       await include(doc.path, doc.title, 'recent', doc.missing)
@@ -92,4 +115,27 @@ export function createDocList(deps: DocListDeps): () => Promise<DocListResult> {
 
     return { ok: true, items }
   }
+}
+
+/**
+ * The `@` list rows: a saved document is named by its file name, a never-saved
+ * one by its tab title (no path). Missing files are left out of this list.
+ */
+export function toMentionItems(items: readonly DocListItem[]): DocMentionItem[] {
+  const out: DocMentionItem[] = []
+  for (const item of items) {
+    if (item.state === 'missing') continue
+    out.push(
+      item.state === 'unsaved'
+        ? { path: null, name: item.title, dir: item.dir, group: item.group, state: 'unsaved' }
+        : {
+            path: item.id,
+            name: basename(item.id),
+            dir: item.dir,
+            group: item.group,
+            state: item.state,
+          },
+    )
+  }
+  return out
 }

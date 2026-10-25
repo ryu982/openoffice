@@ -1,4 +1,5 @@
 import type { AgentSkill } from '@genoffice/agent-core'
+import { attachmentFolderLabel } from '@genoffice/ui'
 import type { AttachmentMeta } from '../../shared/ipc'
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import { t } from '../i18n/locale'
@@ -23,6 +24,27 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
+
+/**
+ * One line per attachment for the model's attachment list. When two or more
+ * attachments share a file name (case-insensitive), each of those lines names
+ * the folder directly containing the file, with the same label the composer
+ * inserts, so the model can tell them apart. Only that one folder name is
+ * added, never the rest of the path; every other line is unchanged.
+ */
+function attachmentListLines(list: readonly AttachmentMeta[]): string[] {
+  const nameCounts = new Map<string, number>()
+  for (const a of list) {
+    const key = a.name.normalize('NFC').toLocaleLowerCase()
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1)
+  }
+  return list.map((a, i) => {
+    const shared = (nameCounts.get(a.name.normalize('NFC').toLocaleLowerCase()) ?? 0) > 1
+    const folder = shared ? attachmentFolderLabel(a.path) : ''
+    const name = folder ? `${a.name} (folder: ${folder})` : a.name
+    return `${i} | ${name} | .${a.ext} | ${formatSize(a.sizeBytes)}`
+  })
 }
 
 export function createFilesSkill(
@@ -54,7 +76,7 @@ export function createFilesSkill(
     buildContext: () => {
       const list = getAttachments()
       if (list.length === 0) return ''
-      const lines = list.map((a, i) => `${i} | ${a.name} | .${a.ext} | ${formatSize(a.sizeBytes)}`)
+      const lines = attachmentListLines(list)
       return `Attachment list (index | file name | type | size):\n${lines.join('\n')}`
     },
     executeTool: async (call) => {

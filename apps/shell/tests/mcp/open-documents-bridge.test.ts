@@ -144,6 +144,102 @@ describe('open_documents close: discard cleanup', () => {
   })
 })
 
+describe('open_documents: restored tabs and recovery copies', () => {
+  it.each(['docs', 'mindmap', 'hwp'] as const)(
+    'drops a %s document’s recovery copy on discard, before the tab goes',
+    async (kind) => {
+      const order: string[] = []
+      const doc = tab({ id: 't6', kind, title: `doc ${kind}` })
+      const { call } = await controlWith([doc], {
+        recoveryDiscard: (discarded) => void order.push(`discard:${discarded.kind}`),
+        closeTab: () => {
+          order.push('close')
+          return true
+        },
+      })
+      await call({ action: 'close', target: 't6', unsaved: 'discard' })
+      expect(order).toEqual([`discard:${kind}`, 'close'])
+    },
+  )
+
+  it('an untitled markdown discard still drops its copy (the editor hook runs without a path)', async () => {
+    const discard = vi.fn(async () => undefined)
+    const doc = tab({ id: 't7', kind: 'markdown', title: 'Untitled' })
+    const { call } = await controlWith([doc], {
+      markdown: { read: async () => '', save: async () => undefined, discard },
+    })
+    await call({ action: 'close', target: 't7', unsaved: 'discard' })
+    expect(discard).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes a restored tab that never loaded without loading it or touching its copy', async () => {
+    const webContentsFor = vi.fn(() => contentsFor())
+    const recoveryDiscard = vi.fn()
+    const closeTab = vi.fn(() => true)
+    const doc = tab({
+      id: 't8',
+      kind: 'docs',
+      title: 'a.docx',
+      filePath: 'C:/a.docx',
+      dirty: false,
+    })
+    const { call } = await controlWith([doc], {
+      webContentsFor,
+      recoveryDiscard,
+      closeTab,
+      isUnloaded: (id) => id === 't8',
+    })
+    await call({ action: 'close', target: 't8', unsaved: 'discard' })
+    expect(closeTab).toHaveBeenCalledWith('t8')
+    expect(webContentsFor).not.toHaveBeenCalled()
+    expect(recoveryDiscard).not.toHaveBeenCalled()
+  })
+
+  it('reads a restored tab through an asynchronous (loading) lookup', async () => {
+    const read = vi.fn(async () => 'text')
+    const doc = tab({ id: 't9', kind: 'markdown', title: 'notes.md', filePath: 'C:/notes.md' })
+    const control = createOpenDocumentsControl({
+      list: async () => [doc],
+      webContentsFor: async () => contentsFor(),
+      closeTab: () => true,
+      defaultSaveDir: () => 'C:/',
+      markdown: { read, save: async () => undefined, discard: async () => undefined },
+    })
+    expect(await control.read(doc)).toBe('text')
+  })
+
+  it('passes the "open it in the app first" failure through for a document waiting on the user', async () => {
+    const doc = tab({ id: 't10', kind: 'markdown', title: 'notes.md', filePath: 'C:/notes.md' })
+    const failure = new Error(
+      '"notes.md" has recovered changes to decide on: the user must open this document in the app first',
+    )
+    const control = createOpenDocumentsControl({
+      list: async () => [doc],
+      webContentsFor: async () => {
+        throw failure
+      },
+      closeTab: () => true,
+      defaultSaveDir: () => 'C:/',
+      markdown: {
+        read: async () => 'x',
+        save: async () => undefined,
+        discard: async () => undefined,
+      },
+    })
+    await expect(control.read(doc)).rejects.toThrow(
+      'the user must open this document in the app first',
+    )
+    const word = tab({ id: 't11', kind: 'docs', title: 'a.docx', filePath: 'C:/a.docx' })
+    const resolve = createOpenTargetResolver({
+      list: async () => [word],
+      webContentsFor: async () => {
+        throw failure
+      },
+    })
+    await expect(resolve('t11', 'docx')).rejects.toThrow(failure.message)
+  })
+})
+
 describe('open_documents on a mind map tab', () => {
   const mapDoc = (dirty: boolean): OpenDocumentTab =>
     tab({ id: 't8', kind: 'mindmap', title: 'plan.xmind', filePath: 'C:/maps/plan.xmind', dirty })
@@ -189,11 +285,73 @@ describe('open_documents on a mind map tab', () => {
   })
 })
 
+describe('open_documents on a book tab', () => {
+  const bookDoc = (dirty: boolean): OpenDocumentTab =>
+    tab({ id: 't9', kind: 'epub', title: 'novel.epub', filePath: 'C:/books/novel.epub', dirty })
+
+  it('reads the book text and saves through the editor save', async () => {
+    const read = vi.fn(async () => '# Chapter 1\n\nIt was a dark night.\n')
+    const save = vi.fn(async () => undefined)
+    const { call } = await controlWith([bookDoc(true)], { epub: { read, save } })
+
+    expect((await call({ action: 'read', target: 't9' })).content).toBe(
+      '# Chapter 1\n\nIt was a dark night.\n',
+    )
+    const closed = await call({ action: 'close', target: 't9' })
+    expect(closed.savedTo).toBe('C:/books/novel.epub')
+    expect(save).toHaveBeenCalledWith(expect.anything(), 'C:/books/novel.epub')
+  })
+
+  it('a clean book closes without a save, and a discard never saves', async () => {
+    const save = vi.fn(async () => undefined)
+    const clean = await controlWith([bookDoc(false)], { epub: { read: async () => '', save } })
+    expect(await clean.call({ action: 'close', target: 't9' })).not.toHaveProperty('savedTo')
+    const dirty = await controlWith([bookDoc(true)], { epub: { read: async () => '', save } })
+    await dirty.call({ action: 'close', target: 't9', unsaved: 'discard' })
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('names the missing editor instead of failing silently', async () => {
+    const { call } = await controlWith([bookDoc(true)])
+    await expect(call({ action: 'read', target: 't9' })).rejects.toThrow(/e-book editor/)
+  })
+})
+
 describe('open_documents close: PDF guard', () => {
   it('refuses to close a PDF tab, naming the reason', async () => {
     const doc = tab({ id: 't6', kind: 'pdf', title: 'six.pdf', filePath: 'C:/docs/six.pdf' })
     const { call } = await controlWith([doc])
     await expect(call({ action: 'close', target: 't6' })).rejects.toThrow(/viewer/)
+  })
+})
+
+describe('open_documents save: writes without closing', () => {
+  it('writes a document back to its own file and leaves the tab open', async () => {
+    const saved: string[] = []
+    const doc = tab({ id: 't1', kind: 'slides', title: 'deck.pptx', filePath: 'C:/docs/deck.pptx' })
+    const { call } = await controlWith([doc], {
+      slides: {
+        openBlankTab: async () => 1,
+        runTxn: async () => ({}),
+        readDeck: async () => ({}),
+        saveDeck: async (_wcId, path) => {
+          saved.push(path)
+          return { path }
+        },
+      },
+    })
+
+    const result = await call({ action: 'save', target: 't1' })
+    expect(result.saved).toBe(true)
+    expect(result.savedTo).toBe('C:/docs/deck.pptx')
+    expect(result.closed).toBeUndefined()
+    expect(saved).toEqual(['C:/docs/deck.pptx'])
+  })
+
+  it('refuses to save a PDF, naming the reason', async () => {
+    const doc = tab({ id: 't6', kind: 'pdf', title: 'six.pdf', filePath: 'C:/docs/six.pdf' })
+    const { call } = await controlWith([doc])
+    await expect(call({ action: 'save', target: 't6' })).rejects.toThrow(/viewer/)
   })
 })
 

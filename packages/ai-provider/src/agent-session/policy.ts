@@ -8,7 +8,12 @@
  * app is judged here again.
  */
 import { posix, win32 } from 'node:path'
-import type { AgentAction, AgentPermissionMode, AgentPolicyVerdict } from './types'
+import type {
+  AgentAction,
+  AgentPermissionMode,
+  AgentPolicyVerdict,
+  AgentSessionAllowances,
+} from './types'
 
 export interface AgentPolicyContext {
   mode: AgentPermissionMode
@@ -17,6 +22,8 @@ export interface AgentPolicyContext {
   protectedPaths: readonly string[]
   /** the session's copy of the skills; its scripts may be read and run */
   skillBundleDir?: string | undefined
+  /** what the person allowed for the rest of this session (web actions) */
+  allowances?: AgentSessionAllowances | undefined
   platform?: NodeJS.Platform | undefined
 }
 
@@ -57,6 +64,18 @@ function commandNamesPath(command: string, path: string, platform: NodeJS.Platfo
   const text = separators(platform === 'win32' ? command.toLowerCase() : command)
   const form = separators(path)
   return form.length > 3 && text.includes(form)
+}
+
+/** The site of a web address: its lower-case host name, for http and https only */
+export function webHostOf(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return undefined
+    return parsed.hostname.toLowerCase() || undefined
+  } catch {
+    return undefined
+  }
 }
 
 export function agentPolicyVerdict(
@@ -104,6 +123,15 @@ export function agentPolicyVerdict(
     }
     case 'command':
       return ctx.mode === 'trust-project' ? { decision: 'allow' } : { decision: 'ask' }
+    // The web asks the first time, as the program's own app does; the person may allow every
+    // search, or one site's pages, for the rest of the session. Trusting the project leaves the
+    // decision to the program's own mode, so a request that still reaches the app asks.
+    case 'web-search':
+      return ctx.allowances?.webSearch ? { decision: 'allow' } : { decision: 'ask' }
+    case 'web-fetch':
+      return action.host && ctx.allowances?.webHosts.has(action.host.toLowerCase())
+        ? { decision: 'allow' }
+        : { decision: 'ask' }
     case 'other':
       return { decision: 'ask' }
   }

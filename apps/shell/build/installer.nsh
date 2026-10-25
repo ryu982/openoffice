@@ -48,19 +48,21 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODT_PROGID}"
 !macroend
 
-; .hwp, .hwpx and .xmind are offered in Explorer's "Open with" and never made
-; the default, for the same reason as .odt above: a win.fileAssociations entry
-; would also write the extension's default value and take it over (from Hancom
-; Office for the Hangul formats, from whatever opens the mind map today). Each
-; gets a product-own ProgId whose DefaultIcon is the per-type document icon
-; (resources\hwp.ico / resources\mindmap.ico, placed by the win.extraResources
-; entries in electron-builder.cjs), so choosing this app in "Open with" shows
-; the Hangul or mind-map icon instead of the bare app icon. The ProgIds match
+; .hwp, .hwpx, .xmind and .epub are offered in Explorer's "Open with" and never
+; made the default, for the same reason as .odt above: a win.fileAssociations
+; entry would also write the extension's default value and take it over (from
+; Hancom Office for the Hangul formats, from whatever opens the mind map or
+; reads the book today). Each gets a product-own ProgId whose DefaultIcon is the
+; per-type document icon (resources\hwp.ico / resources\mindmap.ico /
+; resources\epub.ico, placed by the win.extraResources entries in
+; electron-builder.cjs), so choosing this app in "Open with" shows the Hangul,
+; mind-map or book icon instead of the bare app icon. The ProgIds match
 ; the name-to-ProgId rule electron-builder.cjs uses for its Windows list
 ; (see tests/product-identity.test.ts).
 !define GENOFFICE_HWP_PROGID "IeumOffice.HWPDocument"
 !define GENOFFICE_HWPX_PROGID "IeumOffice.HWPXDocument"
 !define GENOFFICE_MINDMAP_PROGID "IeumOffice.MindMap"
+!define GENOFFICE_EPUB_PROGID "IeumOffice.EPUBBook"
 
 !macro GenOfficeRegisterOpenWithHwp
   WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_HWP_PROGID}" "" "HWP Document"
@@ -98,6 +100,61 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_MINDMAP_PROGID}"
 !macroend
 
+!macro GenOfficeRegisterOpenWithEpub
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EPUB_PROGID}" "" "EPUB Book"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EPUB_PROGID}\DefaultIcon" "" "$INSTDIR\resources\epub.ico"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EPUB_PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegNone SHELL_CONTEXT "Software\Classes\.epub\OpenWithProgids" "${GENOFFICE_EPUB_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterOpenWithEpub
+  DeleteRegValue SHELL_CONTEXT "Software\Classes\.epub\OpenWithProgids" "${GENOFFICE_EPUB_PROGID}"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_EPUB_PROGID}"
+!macroend
+
+; Windows' "Default apps" page picks an app by its registered capabilities and
+; records the ProgId the app declared for the type. Without this entry Windows
+; only knows the bare IeumOffice.exe application and records
+; Applications\IeumOffice.exe, whose icon is the app logo: a .hwp chosen that way
+; shows the logo instead of hwp.ico, while a .hwpx chosen from our Open-With
+; ProgId shows the document icon. Registering capabilities does not change any
+; default by itself; it makes the user's choice land on the per-type ProgId
+; (whose DefaultIcon is the document icon). The .hwp/.hwpx/.xmind/.epub/.odt ProgIds
+; are the product-own Open-With ones defined above; the rest are the ProgIds
+; electron-builder writes for the Windows file associations.
+!define GENOFFICE_CAPABILITIES_KEY "Software\IeumOffice\Capabilities"
+
+!macro GenOfficeRegisterApplicationCapabilities
+  WriteRegStr SHELL_CONTEXT "Software\RegisteredApplications" "${PRODUCT_NAME}" "${GENOFFICE_CAPABILITIES_KEY}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}" "ApplicationName" "${PRODUCT_NAME}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}" "ApplicationIcon" "$appExe,0"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".docx" "IeumOffice.WordDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xlsx" "IeumOffice.ExcelWorkbook"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xlsm" "IeumOffice.ExcelMacroEnabledWorkbook"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xls" "IeumOffice.Excel972003Workbook"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".pptx" "IeumOffice.PowerPointPresentation"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".csv" "IeumOffice.CSVDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".tsv" "IeumOffice.TSVDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".pdf" "IeumOffice.PDFDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".md" "IeumOffice.MarkdownDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".markdown" "IeumOffice.MarkdownDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".html" "IeumOffice.HTMLDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".htm" "IeumOffice.HTMLDocument"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".hwp" "${GENOFFICE_HWP_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".hwpx" "${GENOFFICE_HWPX_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xmind" "${GENOFFICE_MINDMAP_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".epub" "${GENOFFICE_EPUB_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".odt" "${GENOFFICE_ODT_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterApplicationCapabilities
+  ; only our registration and our key; a future sibling under Software\IeumOffice
+  ; keeps that parent alive
+  DeleteRegValue SHELL_CONTEXT "Software\RegisteredApplications" "${PRODUCT_NAME}"
+  DeleteRegKey SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}"
+  DeleteRegKey /ifempty SHELL_CONTEXT "Software\IeumOffice"
+!macroend
+
 !macro customInstall
   Push "$INSTDIR\resources\cli"
   Call GenOfficeAddToUserPath
@@ -108,6 +165,8 @@
   !insertmacro GenOfficeRegisterOpenWithHwp
   !insertmacro GenOfficeRegisterOpenWithHwpx
   !insertmacro GenOfficeRegisterOpenWithMindmap
+  !insertmacro GenOfficeRegisterOpenWithEpub
+  !insertmacro GenOfficeRegisterApplicationCapabilities
   !insertmacro UPDATEFILEASSOC
 !macroend
 
@@ -122,6 +181,8 @@
   !insertmacro GenOfficeUnregisterOpenWithHwp
   !insertmacro GenOfficeUnregisterOpenWithHwpx
   !insertmacro GenOfficeUnregisterOpenWithMindmap
+  !insertmacro GenOfficeUnregisterOpenWithEpub
+  !insertmacro GenOfficeUnregisterApplicationCapabilities
   Pop $0
   !insertmacro UPDATEFILEASSOC
 !macroend

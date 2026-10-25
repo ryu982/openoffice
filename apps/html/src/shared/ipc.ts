@@ -6,11 +6,19 @@ import type { HtmlSubscriptionApi } from './subscription-api'
 
 export const HTML_CHANNELS = {
   consumePending: 'html:consume-pending',
+  /** invoke → `string | null`: the text a new untitled tab starts with, once */
+  seedTake: 'html:seed-take',
   previewUpdate: 'html:preview-update',
   previewInfo: 'html:preview-info',
   presentFullScreen: 'html:present-fullscreen',
   presentNewTab: 'html:present-new-tab',
   readFile: 'html:read-file',
+  /** invoke → the recovery copy's text to open instead of the file (or as the untitled document), else null */
+  recoveryOpen: 'html:recovery-open',
+  /** invoke(text | null) → keep the text as this document's recovery copy */
+  recoveryWrite: 'html:recovery-write',
+  /** main → renderer: send the recovery copy now (the OS is ending the session) */
+  recoveryFlushRequest: 'html:recovery-flush-request',
   save: 'html:save',
   saveRequest: 'html:save-request',
   saveRequestAck: 'html:save-request-ack',
@@ -236,6 +244,8 @@ export interface ImageData {
 export interface HtmlApi {
   /** Take the md path pending for this view (queued at tab creation); null = new untitled document */
   consumePending(): Promise<string | null>
+  /** The text a new untitled tab starts with (a skill template's copy), once; null for none */
+  takeSeed?(): Promise<string | null>
   /** open any shell-routed document path (an AI answer's filenav citation) */
   openSourcePath(path: string): Promise<void>
   /** Headless export mode: the path and format this hidden renderer must export, null in normal use */
@@ -244,6 +254,23 @@ export interface HtmlApi {
   headlessExportDone(result: { ok: boolean; error?: string }): void
   /** Read the file as UTF-8 text. Only paths granted to this view are allowed */
   readFile(path: string): Promise<string>
+  /**
+   * Asked once the pending path is known, before any content is loaded: the
+   * crash-recovery copy to open instead (the per-file prompt runs first), with
+   * the original path kept as the save target, or the copy an untitled tab was
+   * opened from. Null: open the file (or the empty document) as usual.
+   * `originalPath`: the file an untitled restored copy was of (its original is
+   * missing); it gives the document's format, never its save target.
+   */
+  recoveryOpen?(): Promise<{ text: string; originalPath?: string } | null>
+  /**
+   * Keep `text` (exactly what a save would write now) as this document's
+   * crash-recovery copy; null only answers a flush request. Rejects on a disk
+   * error (the caller backs off).
+   */
+  writeRecoveryCopy?(text: string | null): Promise<string>
+  /** The main process wants the recovery copy now; answer with writeRecoveryCopy */
+  onRecoveryFlushRequest?(handler: () => void): () => void
   /** Push the current buffer so html-preview:// serves it to the preview iframe */
   updatePreview(text: string): void
   /** The html-preview:// URL bound to this view (a present tab gets its owner's URL) */

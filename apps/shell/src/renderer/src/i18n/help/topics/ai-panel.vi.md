@@ -26,6 +26,16 @@ Mọi trình soạn thảo đều có thể gọi bảng AI: chọn một nội 
 - **Markdown / HTML**: viết lại, mở rộng, dịch.
 - **Trang chủ ▸ Ask AI** trả lời từ các tệp bạn đánh sao và trích dẫn chúng — bảng cơ sở tri thức có mục riêng trong chương Trang chủ, và bảng AI của Docs cũng mang kỹ năng ấy.
 
+## Đính kèm tài liệu đang mở
+
+Trong bảng AI của trình soạn thảo Docs, Sheets, Slides, Hangul, HTML và sơ đồ tư duy, bạn có thể đính kèm các tài liệu khác đang mở trong GenOffice, hoặc mới mở gần đây, làm tư liệu. Tài liệu đính kèm được xử lý giống hệt một tệp chọn từ máy tính của bạn.
+
+- **`@` trong ô nhập**: gõ `@` ở đầu ô nhập hoặc sau một dấu cách để mở danh sách tài liệu. Nếu cửa sổ đang chia đôi, tài liệu ở ngăn bên cạnh đứng đầu, tiếp theo là các tài liệu đang mở khác và tài liệu gần đây; tài liệu bạn đang làm việc không có trong danh sách. Thu hẹp bằng vài chữ trong tên (có thể có dấu cách) rồi chọn bằng Enter hoặc một cú nhấp: `@tên tài liệu` được chèn vào ô nhập và tài liệu đó được đính kèm. **Tìm thêm…** ở cuối danh sách mở cửa sổ chọn tài liệu được mô tả bên dưới.
+- **Đính kèm từ tài liệu GenOffice**: nút này, nằm cạnh nút đính kèm, mở cùng danh sách đó trong một cửa sổ, nơi bạn có thể đánh dấu nhiều tài liệu và đính kèm một lượt.
+- Tài liệu có thay đổi chưa lưu và tài liệu mới chưa từng được lưu sẽ hiện mờ và không chọn được. Hãy lưu rồi chọn lại — AI đọc tệp đã lưu.
+- Khi hai tài liệu trùng tên nhưng nằm ở các thư mục khác nhau, tên thư mục ngay phía trên sẽ được thêm vào, như `@kế hoạch.docx(Học kỳ 2)`, và tên thư mục đó cũng được gửi cho AI.
+- Trình soạn thảo PDF và Markdown chưa có tính năng đính kèm, nên cả hai cách đều không dùng được ở đó.
+
 ## Quay lui và an toàn
 
 - Bảng của Docs giữ một **danh sách phiên bản**: mỗi lượt một ảnh chụp, quay lui về bất kỳ ảnh nào, và bản thân thao tác quay lui cũng quay lui được bằng Ctrl+Z. Ảnh chụp vẫn còn sau khi mở lại tài liệu.

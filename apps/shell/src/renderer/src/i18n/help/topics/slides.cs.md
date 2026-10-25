@@ -1,6 +1,6 @@
 # Slides: prezentace
 
-Slides je editor podobný PowerPointu: čte a zapisuje skutečné soubory.pptx.
+Slides je editor prezentací: otevírá a ukládá soubory .pptx.
 
 ## Rozhraní
 

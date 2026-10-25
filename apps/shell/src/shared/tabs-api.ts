@@ -1,7 +1,17 @@
 import type { SplitHint, SplitViewState } from './split-view-api'
 
 export type TabKind =
-  'home' | 'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'help'
+  | 'home'
+  | 'docs'
+  | 'sheets'
+  | 'slides'
+  | 'pdf'
+  | 'markdown'
+  | 'html'
+  | 'mindmap'
+  | 'hwp'
+  | 'epub'
+  | 'help'
 
 /** a tab that holds a document — every kind except the Home screen and the in-app manual */
 export type DocumentTabKind = Exclude<TabKind, 'home' | 'help'>
@@ -108,6 +118,8 @@ export interface TabsApi {
    * triggers; the shell's own popovers subscribe so a title-bar drag — which
    * produces no DOM event — still dismisses them */
   onChromePressed(handler: () => void): () => void
+  /** subscribe to main process requesting inline rename of a tab */
+  onStartRename?(handler: (id: string) => void): () => void
 }
 
 export const TABS_CHANNELS = {
@@ -128,4 +140,5 @@ export const TABS_CHANNELS = {
   reorder: 'tabs:reorder',
   changed: 'tabs:changed',
   chromePressed: 'tabs:chrome-pressed',
+  startRename: 'tabs:start-rename',
 } as const

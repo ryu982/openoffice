@@ -26,6 +26,16 @@ Todos os editores podem chamar o painel de IA: selecione algo, dê uma instruç�
 - **Markdown / HTML**: reescrever, desenvolver, traduzir.
 - **Início ▸ Ask AI** responde a partir dos seus arquivos favoritados e os cita — o painel de base de conhecimento tem a própria seção no capítulo Início, e o painel de IA do Docs carrega a mesma capacidade.
 
+## Anexar documentos abertos
+
+No painel de IA dos editores Docs, Sheets, Slides, Hangul, HTML e mapa mental, você pode anexar como material outros documentos abertos no GenOffice ou abertos recentemente. Um documento anexado é tratado exatamente como um arquivo escolhido no seu PC.
+
+- **`@` no campo de entrada**: digite `@` no início do campo ou depois de um espaço para abrir uma lista de documentos. Se a janela estiver dividida, o documento do outro painel vem primeiro, depois os outros documentos abertos e os recentes; o documento em que você está fica de fora. Filtre com algumas letras do nome (espaços são aceitos) e escolha com Enter ou um clique: `@nome do documento` entra no campo e o documento é anexado. **Procurar mais…**, no fim da lista, abre a janela de escolha de documentos descrita abaixo.
+- **Anexar de documentos do GenOffice**: este botão, ao lado do botão de anexo, abre a mesma lista em uma janela, onde você pode marcar vários documentos e anexá-los de uma vez.
+- Documentos com alterações não salvas e documentos novos que nunca foram salvos aparecem esmaecidos e não podem ser escolhidos. Salve-os e escolha de novo: a IA lê o arquivo salvo.
+- Quando dois documentos têm o mesmo nome, mas estão em pastas diferentes, o nome da pasta logo acima é acrescentado, como em `@plano.docx(2º semestre)`, e esse nome de pasta também é passado à IA.
+- Os editores de PDF e Markdown ainda não têm anexos, então nenhuma das duas formas está disponível neles.
+
 ## Reversão e segurança
 
 - O painel do Docs mantém uma **lista de versões**: um instantâneo por volta, pode voltar a qualquer um deles, e a própria reversão pode ser anulada com Ctrl+Z. Os instantâneos sobrevivem a fechar e reabrir o documento.

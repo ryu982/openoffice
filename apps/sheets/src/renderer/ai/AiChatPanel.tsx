@@ -6,6 +6,12 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  SentSkillChips,
+  SkillUsedNotes,
+  useComposerSkills,
+  type OnTemplateSkill,
+  type SkillChipRef,
+  type SkillUse,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState } from 'react'
 import {
@@ -27,6 +33,7 @@ import {
   type ChatRunQueue,
   aiSubscriptionText,
   useChatRunQueue,
+  type AiComposerDocs,
 } from '@genoffice/ui'
 import type {
   AiProviderChoice,
@@ -34,6 +41,7 @@ import type {
   AiSubscriptionProviderId,
   AiSubscriptionStatuses,
   AiSubscriptionUsage,
+  SubscriptionConnectHelpPath,
 } from '@genoffice/ai-provider/browser'
 import type { AiBlockedRun } from './subscription-state'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
@@ -223,6 +231,12 @@ export interface AiToolChip {
   readonly output?: string
 }
 
+/** what a queued message carries until it runs */
+interface QueuedMeta {
+  readonly atts: readonly AttachmentMeta[]
+  readonly skillUse: SkillUse
+}
+
 export interface AiChatMessage {
   readonly role: 'user' | 'assistant'
   readonly text: string
@@ -241,6 +255,10 @@ export interface AiChatMessage {
   readonly attachments?: readonly AttachmentMeta[] | undefined
   /** the range this user message targeted, frozen at send */
   readonly scope?: AiScopeQuoteData | undefined
+  /** skill chips this user message carried */
+  readonly skills?: readonly SkillChipRef[] | undefined
+  /** skill cards the model proposed in this turn (keys the app's useSkillProposals renders) */
+  readonly skillProposals?: readonly string[] | undefined
   /** tokens the provider billed for this reply, summed across its turns (absent when unreported) */
   readonly usage?: AiTokenUsageView | undefined
 }
@@ -269,6 +287,10 @@ export interface AiPanelSubscription {
   readonly busy: boolean
   /** the connect cards' buttons */
   readonly actions: AiSubscriptionCardActions
+  /** open the website's step-by-step connect help at the guide's path */
+  readonly openConnectHelp?: ((path: SubscriptionConnectHelpPath | null) => void) | undefined
+  /** look again without a card asking for it (both providers when none is named) */
+  readonly refresh: (providers?: AiSubscriptionProviderId[]) => void
   /** rate-limit windows the subscription provider reported on its latest turn */
   readonly usage: readonly AiSubscriptionUsage[]
   /** the input of the current run was cut to fit a limit */
@@ -287,13 +309,18 @@ const NO_STATUSES: AiSubscriptionStatuses = {}
 
 export function AiChatPanel({
   isOpen,
+  hideRail = false,
   hasContent,
   chat,
   historicChat = [],
+  renderSkillCard,
+  skillNotes,
+  onTemplateSkill,
   attachments,
   attachNotice,
   onPickAttachments,
   onDrivePicked,
+  docMention,
   onAddAttachmentPaths,
   onAddPastedImage,
   onRemoveAttachment,
@@ -317,10 +344,18 @@ export function AiChatPanel({
   onCollapse,
 }: {
   readonly isOpen: boolean
+  /** true suppresses even the collapsed rail (the "show the AI sidebar" setting is off) */
+  readonly hideRail?: boolean
   /** the workbook has cells with content — empty workbooks get "build me a sheet" copy instead */
   readonly hasContent: boolean
   readonly chat: readonly AiChatMessage[]
   readonly historicChat?: readonly AiChatMessage[]
+  /** the skill card for a key a chat message carries */
+  readonly renderSkillCard?: ((key: string) => React.ReactNode) | undefined
+  /** the template flow's lines and its preview card, after the chat's messages */
+  readonly skillNotes?: React.ReactNode
+  /** a chip whose skill has a template runs in a new tab (spec 5.7) */
+  readonly onTemplateSkill?: OnTemplateSkill | undefined
   /// Chat attachments (chips + 📎 button + drag onto the panel), same structure
   /// as the docs/slides AI panels.
   readonly attachments: readonly AttachmentMeta[]
@@ -328,6 +363,8 @@ export function AiChatPanel({
   readonly onPickAttachments: () => void
   /** Drive files the person ticked in the attach-from-Drive window; absent: no Drive button */
   readonly onDrivePicked?: ((picked: DriveAttachPicked) => void | Promise<void>) | undefined
+  /** the `@` document list in the input; absent: no list */
+  readonly docMention?: AiComposerDocs | undefined
   readonly onAddAttachmentPaths: (paths: readonly string[]) => void
   /// Clipboard-pasted bitmaps (screenshots etc. without a local path): bytes +
   /// extension
@@ -347,9 +384,16 @@ export function AiChatPanel({
     instruction?: string,
     attachments?: readonly AttachmentMeta[],
     retryIndex?: number,
+    /** the skills chosen in the composer, and a call once the request is admitted */
+    skillUse?: SkillUse,
+    onAdmitted?: () => void,
   ) => void
   /** a queued message is ready to run: return false to keep it queued (panel busy some other way) */
-  readonly onSendQueued?: (instruction: string, attachments: readonly AttachmentMeta[]) => boolean
+  readonly onSendQueued?: (
+    instruction: string,
+    attachments: readonly AttachmentMeta[],
+    skillUse: SkillUse,
+  ) => boolean
   readonly onStop: () => void
   readonly onNewChat: () => void
   readonly onUndo: (steps: number) => void
@@ -373,7 +417,7 @@ export function AiChatPanel({
   // A reply that stopped because its connection cannot go on: the queue is paused, so the next
   // message does not run into the same wall. Declared ahead of the queue so that it runs before
   // the queue's own settle pump when both land in one commit.
-  const msgQueueRef = useRef<ChatRunQueue<readonly AttachmentMeta[]> | null>(null)
+  const msgQueueRef = useRef<ChatRunQueue<QueuedMeta> | null>(null)
   const lastEntry = chat.at(-1)
   const lastReplyBlocked = lastEntry?.role === 'assistant' && lastEntry.blocked !== undefined
   useEffect(() => {
@@ -382,18 +426,28 @@ export function AiChatPanel({
   const subscriptionRef = useRef(subscription)
   subscriptionRef.current = subscription
   /** messages queued while a reply runs; the pump re-sends them through onSend on settle */
-  const msgQueue = useChatRunQueue<readonly AttachmentMeta[]>({
+  const msgQueue = useChatRunQueue<QueuedMeta>({
     busy: aiBusy,
-    submit: (text, atts) => {
+    submit: (text, { atts, skillUse }) => {
       // nothing can run right now: the message stays queued, and in front of "not connected"
       // the queue is paused so it does not start by itself after a sign-in
       const admitted = subscriptionRef.current.admitQueued(() =>
         msgQueueRef.current?.setPaused(true),
       )
-      return admitted ? (onSendQueued?.(text, atts) ?? false) : false
+      return admitted ? (onSendQueued?.(text, atts, skillUse) ?? false) : false
     },
   })
   msgQueueRef.current = msgQueue
+  /** the skills called with `/` or `$` (sheets: `$` only at the start, so $A$1 stays typing) */
+  const skills = useComposerSkills({ lang, dollarAtStartOnly: true, onTemplateSkill })
+  const skillsRef = useRef(skills)
+  skillsRef.current = skills
+  // the next request re-reads the current text of the skills the reopened conversation used
+  useEffect(() => {
+    skillsRef.current.restoreHistory(
+      historicChat.map((m) => (m.role === 'user' ? m.skills : undefined)),
+    )
+  }, [historicChat])
   // Panel chrome follows the UI language; message text follows its own content (dir=auto below)
   const isRtl = lang === 'ar' || lang === 'he'
   const chatRef = useRef<HTMLDivElement | null>(null)
@@ -548,6 +602,8 @@ export function AiChatPanel({
   }
 
   if (!isOpen) {
+    // the sidebar setting is off: nothing to show until an explicit AI action opens the panel
+    if (hideRail) return <></>
     return (
       <aside className="copilot collapsed">
         <button
@@ -576,17 +632,23 @@ export function AiChatPanel({
     stickToBottomRef.current = true
     // while nothing can run the send is answered by the connect prompt or the first-use
     // notice instead (see the send gate in App.tsx); the draft stays in the composer
-    onSend()
+    skills.withSkills(prompt.trim(), (skillUse) =>
+      onSend(undefined, undefined, undefined, skillUse, () => skillsRef.current.consume(skillUse)),
+    )
   }
 
   /** Enter while a reply runs: the draft joins the queue above the composer */
   const enqueueDraft = (): void => {
     const text = prompt.trim()
     if (!text) return
+    skills.withSkills(text, (skillUse) => enqueueWith(text, skillUse))
+  }
+  const enqueueWith = (text: string, skillUse: SkillUse): void => {
+    skillsRef.current.consume(skillUse)
     // the queued message owns the composer attachments; the pump hands them to onSend
     const atts = attachments
     for (const a of atts) onRemoveAttachment(a.path)
-    msgQueue.enqueue(text, atts)
+    msgQueue.enqueue(text, { atts, skillUse })
     onPromptChange('')
   }
 
@@ -655,6 +717,7 @@ export function AiChatPanel({
               className="ai-header-btn"
               onClick={() => {
                 msgQueue.clear()
+                skills.resetConversation()
                 onNewChat()
               }}
               data-tip={t('aiNewChat')}
@@ -681,10 +744,19 @@ export function AiChatPanel({
             {historicChat.map((entry, i) => (
               <div key={`h${i}`} className={`ai-msg ai-msg-${entry.role} ai-msg-historic`}>
                 {entry.role === 'user' && entry.scope && <AiScopeQuote scope={entry.scope} />}
+                {entry.role === 'user' && (
+                  <SentSkillChips
+                    lang={lang}
+                    chips={entry.skills}
+                    isAvailable={skills.isAvailable}
+                  />
+                )}
                 {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                   <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
                 )}
                 {entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
+                <SkillUsedNotes tools={entry.tools} />
+                {entry.skillProposals?.map((key) => renderSkillCard?.(key))}
                 {entry.text && (
                   <div dir="auto">
                     <Markdown text={entry.text} navs={[citationNav, fileNav]} />
@@ -713,6 +785,7 @@ export function AiChatPanel({
             {entry.role === 'user' ? (
               <>
                 {entry.scope && <AiScopeQuote scope={entry.scope} />}
+                <SentSkillChips lang={lang} chips={entry.skills} isAvailable={skills.isAvailable} />
                 {entry.attachments && entry.attachments.length > 0 && (
                   <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
                 )}
@@ -734,6 +807,8 @@ export function AiChatPanel({
             ) : (
               <>
                 {entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
+                <SkillUsedNotes tools={entry.tools} />
+                {entry.skillProposals?.map((key) => renderSkillCard?.(key))}
                 {entry.usage && (
                   <div className="ai-message-usage">
                     <AiUsageChip usage={entry.usage} lang={lang} />
@@ -789,6 +864,7 @@ export function AiChatPanel({
             )}
           </div>
         ))}
+        {skillNotes}
 
         {preview && (
           <section className="preview ai-preview-card" aria-label={t('aiPreviewAria')}>
@@ -847,6 +923,7 @@ export function AiChatPanel({
             disabled={subscription.busy}
             attention={subscription.connectAttention}
             onOpenSettings={() => void window.desktopApi.openAiModelSettings().catch(() => {})}
+            onOpenConnectHelp={subscription.openConnectHelp}
             {...subscription.actions}
           />
         )}
@@ -1001,6 +1078,7 @@ export function AiChatPanel({
                 bridge={MODEL_BRIDGE}
                 lang={lang}
                 subscriptionStatuses={subscription.statuses}
+                onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <AiSubscriptionUsageLine usage={subscription.usage} lang={lang} />
@@ -1019,6 +1097,8 @@ export function AiChatPanel({
           textareaRef={inputRef}
           onChange={onPromptChange}
           onSend={send}
+          skills={skills.composer}
+          docs={docMention}
           onStop={() => {
             msgQueue.hold()
             onStop()

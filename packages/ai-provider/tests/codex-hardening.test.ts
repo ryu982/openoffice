@@ -269,6 +269,8 @@ describe('Codex app-server launch', () => {
         'notify=[]',
         'history.persistence="none"',
         'skills.include_instructions=false',
+        // Codex's own web search: off in the app's chat, like every tool it can turn off
+        'web_search="disabled"',
       ]),
     )
     // the official route: the user's own provider or API address (a proxy, say) must not apply

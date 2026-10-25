@@ -36,17 +36,35 @@ Unabhängig von Ihrer Auswahl tut der Agent Folgendes nie:
 
 ## Claude Code und Codex
 
-- **Codex** führt Befehle in seinem eigenen abgeschotteten Bereich aus, auch die, die Sie erlauben. Es kann nur in den Projektordner schreiben, das Internet ist gesperrt, und Ihre persönlichen Dateien außerhalb des Projekts kann es nicht lesen. Beim Start einer Sitzung prüft GenOffice zuerst, ob diese Abschottung auf diesem PC funktioniert, und startet nicht, wenn das nicht der Fall ist.
+- **Codex** führt Befehle in seinem eigenen abgeschotteten Bereich aus, auch die, die Sie erlauben. Es kann nur in den Projektordner schreiben, das Internet ist gesperrt, solange Sie es nicht einschalten, und Ihre persönlichen Dateien außerhalb des Projekts kann es nicht lesen. Beim Start einer Sitzung prüft GenOffice zuerst, ob diese Abschottung auf diesem PC funktioniert, und startet nicht, wenn das nicht der Fall ist.
 - **Claude Code** kann Befehle unter Windows nicht abschotten. Ein Befehl, den Sie erlauben, kann den ganzen PC und das Internet erreichen. Deshalb prüft bei **Diesem Projekt vertrauen** der eigene Prüfer von Claude Code jede Aktion an Ihrer Stelle.
 
 Ein Dokument, das Ihnen jemand geschickt hat, kann versteckte Anweisungen enthalten, die die KI zu etwas anderem verleiten. Wählen Sie in einem Ordner mit Unterlagen, die Sie nicht kennen, eine der Optionen, die nachfragen.
 
+## Websuche und Internet
+
+- **Claude Code** kann im Web suchen und Webseiten lesen, fragt aber vorher. Es fragt beim ersten Suchen und bei jeder Website, deren Seiten es liest. In der Rückfrage sorgt **Suchen für diese Sitzung erlauben** oder **Diese Website für diese Sitzung erlauben** dafür, dass es für den Rest der Sitzung nicht mehr fragt. Bei **Diesem Projekt vertrauen** entscheidet der eigene Prüfer von Claude Code.
+- Wenn Sie **Codex** wählen, zeigt der Startbildschirm zwei weitere Einstellungen.
+
+| Einstellung                    | Auswahl                              | Anfangs                 |
+| ------------------------------ | ------------------------------------ | ----------------------- |
+| **Websuche**                   | Gespeicherte Ergebnisse / Live / Aus | Gespeicherte Ergebnisse |
+| **Internetzugang für Befehle** | Aus / Ein                            | Aus                     |
+
+- Gespeicherte Ergebnisse stammen aus vorab gesammelten Webinhalten; Live durchsucht das Web, wie es jetzt ist.
+- Beide Einstellungen werden für jeden Projektordner gespeichert. Ein Ordner, der zum ersten Mal verwendet wird, beginnt mit den Werten oben.
+- Ist der Internetzugang für Befehle eingeschaltet, können die Befehle, die Codex ausführt, das Internet erreichen. Bei **Diesem Projekt vertrauen** geschieht das ohne Rückfrage, und versteckte Anweisungen in einem erhaltenen Dokument könnten sie dazu bringen, Ihre Daten nach außen zu senden. Diese Warnung erscheint beim Einschalten. Schalten Sie den Zugang nur ein, wenn Sie ihn brauchen. Der integrierte Skill „Skills finden“ funktioniert nur, wenn diese Einstellung eingeschaltet ist.
+
 ## Projekthinweise und Skills
 
 - Enthält der Ordner eine `CLAUDE.md` oder `AGENTS.md`, erhält der Agent deren Inhalt als Anweisung. Halten Sie dort fest, was jedes Mal gelten soll: Tonfall, Begriffe, das Format der zu erstellenden Dokumente.
-- Claude Code erhält eine Kopie der Skills an diesen Orten: `.claude/skills` im Projektordner, `.ieumoffice/skills` und `.claude/skills` in Ihrem Benutzerordner sowie die Skills installierter Claude-Plugins. Die Zahl der verfügbaren Skills erscheint unter der Zeile, die den Start der Sitzung meldet.
-- Codex liest seinen eigenen Skills-Ordner selbst.
+- Das Agentenfenster verwendet die Skills, die unter **Einstellungen ▸ Skills** eingeschaltet sind. Claude Code und Codex erhalten dieselbe Liste. Mehr über Skills steht unter [Skills](help://skills).
+- Skills in `.claude/skills` und `.agents/skills` des Projektordners werden in dieser Sitzung verwendet, ohne dass sie eingeschaltet sein müssen.
+- Wählen Sie im Eingabefeld mit `/` oder `$` einen Skill, wird Ihrer Anfrage die Anweisung vorangestellt, diesen Skill zu lesen und zu befolgen.
+- Die Skill-Liste wird beim Start der Sitzung festgelegt. Schalten Sie während einer Sitzung Skills ein oder aus, erscheint „Geänderte Skills gelten ab der nächsten Sitzung“.
+- Erstellt der Agent einen Skill, erscheint eine Skill-Karte im Fenster; findet er einen Skill, der sich zu installieren lohnt, erscheint eine Installationsvorschau. Nichts wird gespeichert oder installiert, bevor Sie auf **Speichern** oder **Installieren** klicken, und ein installierter Skill ist ab der nächsten Sitzung verfügbar.
 - Programme, die die Skripte eines Skills verwenden (Python usw.), müssen auf diesem PC installiert sein.
+- Haben Sie den Agenten in einer früheren Version genutzt, erscheint beim ersten Öffnen des Agentenfensters einmalig der Hinweis: „Skills werden jetzt unter Einstellungen → Skills ein- und ausgeschaltet. Skills aus den Claude- und Codex-Skill-Ordnern sind anfangs ausgeschaltet.“ **Einstellungen öffnen** führt Sie direkt dorthin.
 
 ## Neue Dateien und geöffnete Dokumente
 
@@ -57,6 +75,7 @@ Ein Dokument, das Ihnen jemand geschickt hat, kann versteckte Anweisungen enthal
 ## Datenschutz und Verbrauch
 
 - Was Sie vor der KI verborgen haben, bleibt nur dann verborgen, wenn die App ein in GenOffice geöffnetes Dokument für den Agenten liest. Dateien, die der Agent selbst aus dem Ordner liest, werden unverändert gesendet.
+- Suchbegriffe der Websuche und die Adressen gelesener Seiten gehen an das Unternehmen hinter dem Programm und an diese Websites. Ist bei Codex der Internetzugang für Befehle eingeschaltet, können Daten überallhin gelangen, wohin sich ein Befehl verbindet.
 - Der Agent arbeitet in vielen Schritten und verbraucht daher mehr von Ihrem Abo-Limit als der KI-Bereich. Ist das Limit aufgebraucht, schlägt die Anfrage fehl; der Agent wechselt nie zu einer anderen KI oder zu einer kostenpflichtigen Verbindung.
 
 ## Wenn etwas schiefgeht

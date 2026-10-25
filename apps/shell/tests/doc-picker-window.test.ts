@@ -8,6 +8,9 @@ import {
   type DocListResult,
 } from '../src/shared/doc-picker-api'
 import { docPickerText } from '../src/renderer/src/i18n/strings-doc-picker'
+import type { DocPickerDeps } from '../src/main/doc-picker/doc-picker-window'
+import { resolveDocAsker, type DocAsker } from '../src/main/doc-picker/doc-asker'
+import { createDocList, type OpenDocumentEntry } from '../src/main/doc-picker/doc-list'
 
 /**
  * The shell end of the "Attach documents" window (src/main/doc-picker/):
@@ -99,17 +102,28 @@ const ITEMS: DocListItem[] = [
   { id: 'C:/docs/b.pdf', title: 'b.pdf', dir: 'C:/docs', state: 'ok', group: 'recent' },
   { id: 'unsaved:tab-1', title: '제목 없는 문서', dir: '', state: 'unsaved', group: 'open' },
   { id: 'C:/docs/gone.pdf', title: 'gone.pdf', dir: 'C:/docs', state: 'missing', group: 'recent' },
+  {
+    id: 'C:/docs/editing.docx',
+    title: 'editing.docx',
+    dir: 'C:/docs',
+    state: 'modified',
+    group: 'pane',
+  },
 ]
 
-function makeDeps() {
+/** each webContents id names its own asker, so the test can see which one was used */
+const askerOf = (webContentsId: number): DocAsker => ({ tabId: `tab-of-${webContentsId}` })
+
+function makeDeps(): DocPickerDeps & { list: ReturnType<typeof vi.fn> } {
   return {
-    list: vi.fn(async (): Promise<DocListResult> => ({ ok: true, items: ITEMS })),
+    list: vi.fn(async (_asker: DocAsker): Promise<DocListResult> => ({ ok: true, items: ITEMS })),
+    askerFor: askerOf,
     lang: () => 'ko' as const,
     theme: () => 'light' as const,
   }
 }
 
-async function load(deps = makeDeps()) {
+async function load(deps: DocPickerDeps = makeDeps()) {
   const mod = await import('../src/main/doc-picker/doc-picker-window')
   return { picker: mod.createDocPicker(deps), deps }
 }
@@ -133,7 +147,9 @@ function invoke(channel: string, event?: unknown, ...args: unknown[]): unknown {
 /** open through the real entry point and return the pending pick + the window */
 async function openPicker() {
   const parent = fakeParent()
-  const pending = invoke(DOC_ATTACH_CHANNELS.pick, { sender: parent.webContents }) as Promise<DocAttachResult>
+  const pending = invoke(DOC_ATTACH_CHANNELS.pick, {
+    sender: parent.webContents,
+  }) as Promise<DocAttachResult>
   const win = windows.at(-1)!
   return { parent, pending, win }
 }
@@ -152,8 +168,10 @@ beforeEach(() => {
 describe('createDocPicker window', () => {
   it('registers its own channels and the editor attach channels', async () => {
     await load()
-    for (const channel of Object.values(DOC_PICKER_CHANNELS)) expect(handlers.has(channel)).toBe(true)
-    for (const channel of Object.values(DOC_ATTACH_CHANNELS)) expect(handlers.has(channel)).toBe(true)
+    for (const channel of Object.values(DOC_PICKER_CHANNELS))
+      expect(handlers.has(channel)).toBe(true)
+    for (const channel of Object.values(DOC_ATTACH_CHANNELS))
+      expect(handlers.has(channel)).toBe(true)
   })
 
   it('answers the editor that the shell is available', async () => {
@@ -231,7 +249,10 @@ describe('createDocPicker window', () => {
     await load()
     const { pending } = await openPicker()
     await invoke(DOC_PICKER_CHANNELS.list, atPicker())
-    const chosen = invoke(DOC_PICKER_CHANNELS.choose, atPicker(), ['unsaved:tab-1', 'C:/docs/gone.pdf'])
+    const chosen = invoke(DOC_PICKER_CHANNELS.choose, atPicker(), [
+      'unsaved:tab-1',
+      'C:/docs/gone.pdf',
+    ])
     expect(chosen).toEqual({ ok: true })
     await expect(pending).resolves.toEqual({ ok: false, reason: 'cancelled' })
   })
@@ -283,5 +304,182 @@ describe('createDocPicker window', () => {
       ok: false,
       kind: 'unavailable',
     })
+  })
+
+  it('never accepts a document with unsaved changes', async () => {
+    await load()
+    const { pending } = await openPicker()
+    await invoke(DOC_PICKER_CHANNELS.list, atPicker())
+    invoke(DOC_PICKER_CHANNELS.choose, atPicker(), ['C:/docs/editing.docx', 'C:/docs/b.pdf'])
+    await expect(pending).resolves.toEqual({ ok: true, paths: ['C:/docs/b.pdf'] })
+  })
+
+  it('cancels when the only pick is a document with unsaved changes', async () => {
+    await load()
+    const { pending } = await openPicker()
+    await invoke(DOC_PICKER_CHANNELS.list, atPicker())
+    invoke(DOC_PICKER_CHANNELS.choose, atPicker(), ['C:/docs/editing.docx'])
+    await expect(pending).resolves.toEqual({ ok: false, reason: 'cancelled' })
+  })
+
+  it('builds the window list for the editor that opened the picker', async () => {
+    const { deps } = await load()
+    const { parent } = await openPicker()
+    await invoke(DOC_PICKER_CHANNELS.list, atPicker())
+    expect(deps.list).toHaveBeenLastCalledWith(askerOf(parent.webContents.id))
+  })
+
+  it('keeps the first asker while the picker is open, and takes the next one after it closes', async () => {
+    const { deps } = await load()
+    const first = await openPicker()
+    const other = fakeParent()
+    await invoke(DOC_ATTACH_CHANNELS.pick, { sender: other.webContents })
+    await invoke(DOC_PICKER_CHANNELS.list, atPicker())
+    expect(deps.list).toHaveBeenLastCalledWith(askerOf(first.parent.webContents.id))
+
+    invoke(DOC_PICKER_CHANNELS.cancel, atPicker())
+    await first.pending
+    const second = await openPicker()
+    await invoke(DOC_PICKER_CHANNELS.list, atPicker())
+    expect(deps.list).toHaveBeenLastCalledWith(askerOf(second.parent.webContents.id))
+  })
+})
+
+describe('doc:attach-list', () => {
+  /**
+   * The real list and asker rule over a fake shell: tab-1 (wc 1) and tab-2
+   * (wc 2) are the two split panes, tab-2 shows the same file as tab-1, tab-3
+   * is another tab with unsaved changes, tab-4 was never saved, and wc 9 is a
+   * detached window.
+   */
+  const OPEN: OpenDocumentEntry[] = [
+    { id: 'tab-1', path: 'C:/docs/plan.docx', title: 'plan.docx', dirty: false },
+    { id: 'tab-2', path: 'C:/Docs/Plan.docx', title: 'Plan.docx', dirty: false },
+    { id: 'tab-3', path: 'C:/docs/notes.docx', title: 'notes.docx', dirty: true },
+    { id: 'tab-4', title: '제목 없는 문서', dirty: false },
+    { id: 'tab-5', path: 'C:/docs/sheet.xlsx', title: 'sheet.xlsx', dirty: false },
+    { id: 'detached:9', path: 'C:/docs/away.pdf', title: 'away.pdf', dirty: false },
+  ]
+  const TABS: Record<number, { id: string; filePath?: string }> = {
+    1: { id: 'tab-1', filePath: 'C:/docs/plan.docx' },
+    2: { id: 'tab-2', filePath: 'C:/Docs/Plan.docx' },
+    5: { id: 'tab-5', filePath: 'C:/docs/sheet.xlsx' },
+  }
+
+  function realDeps(over: Partial<DocPickerDeps> = {}): DocPickerDeps {
+    return {
+      list: createDocList({
+        openDocuments: async () => OPEN,
+        recent: async () => [
+          { path: 'C:/docs/plan.docx', title: 'plan.docx', missing: false },
+          { path: 'C:/docs/lost.txt', title: 'lost.txt', missing: true },
+          { path: 'C:/docs/old.txt', title: 'old.txt', missing: false },
+        ],
+        stat: async () => ({ sizeBytes: 1 }),
+        attachable: {
+          ATTACHABLE_EXTS: new Set(['docx', 'pdf', 'txt', 'xlsx']),
+          ATTACHABLE_IMAGE_EXTS: new Set<string>(),
+          ATTACHABLE_MAX_BYTES: 100,
+          ATTACHABLE_IMAGE_MAX_BYTES: 10,
+        },
+      }),
+      askerFor: (wcId) =>
+        resolveDocAsker(wcId, {
+          tabFor: (id) => TABS[id],
+          split: () => ({ aTabId: 'tab-1', bTabId: 'tab-5' }),
+          detachedFor: (id) =>
+            id === 9 ? { id: 'detached:9', filePath: 'C:/docs/away.pdf' } : undefined,
+        }),
+      lang: () => 'ko',
+      theme: () => 'light',
+      ...over,
+    }
+  }
+
+  const askFrom = (wcId: number) =>
+    invoke(DOC_ATTACH_CHANNELS.list, { sender: { id: wcId } }) as Promise<unknown>
+
+  it('answers a split-pane tab with its other pane first and its own file left out', async () => {
+    await load(realDeps())
+    await expect(askFrom(1)).resolves.toEqual({
+      ok: true,
+      items: [
+        {
+          path: 'C:/docs/sheet.xlsx',
+          name: 'sheet.xlsx',
+          dir: 'C:/docs',
+          group: 'pane',
+          state: 'ok',
+        },
+        {
+          path: 'C:/docs/notes.docx',
+          name: 'notes.docx',
+          dir: 'C:/docs',
+          group: 'open',
+          state: 'modified',
+        },
+        { path: null, name: '제목 없는 문서', dir: '', group: 'open', state: 'unsaved' },
+        { path: 'C:/docs/away.pdf', name: 'away.pdf', dir: 'C:/docs', group: 'open', state: 'ok' },
+        { path: 'C:/docs/old.txt', name: 'old.txt', dir: 'C:/docs', group: 'recent', state: 'ok' },
+      ],
+    })
+  })
+
+  it('answers a detached window with no pane group and its own file left out', async () => {
+    await load(realDeps())
+    const result = (await askFrom(9)) as {
+      ok: true
+      items: Array<{ path: string | null; group: string }>
+    }
+    expect(result.ok).toBe(true)
+    expect(result.items.some((i) => i.group === 'pane')).toBe(false)
+    expect(result.items.map((i) => i.path)).not.toContain('C:/docs/away.pdf')
+    expect(result.items.map((i) => i.path)).toContain('C:/docs/plan.docx')
+  })
+
+  it('answers an unknown sender with every document and no pane group', async () => {
+    await load(realDeps())
+    const result = (await askFrom(77)) as {
+      ok: true
+      items: Array<{ path: string | null; group: string }>
+    }
+    expect(result.items.map((i) => [i.group, i.path])).toEqual([
+      ['open', 'C:/docs/plan.docx'],
+      ['open', 'C:/docs/notes.docx'],
+      ['open', null],
+      ['open', 'C:/docs/sheet.xlsx'],
+      ['open', 'C:/docs/away.pdf'],
+      ['recent', 'C:/docs/old.txt'],
+    ])
+  })
+
+  it('hides missing files from the @ list', async () => {
+    await load(realDeps())
+    const result = (await askFrom(77)) as { ok: true; items: Array<{ name: string }> }
+    expect(result.items.map((i) => i.name)).not.toContain('lost.txt')
+  })
+
+  it('answers unavailable when the list cannot be built', async () => {
+    await load(
+      realDeps({
+        list: async () => {
+          throw new Error('boom')
+        },
+      }),
+    )
+    await expect(askFrom(1)).resolves.toEqual({ ok: false, reason: 'unavailable' })
+  })
+
+  it('answers unavailable when the list says so', async () => {
+    await load(realDeps({ list: async () => ({ ok: false, kind: 'unavailable' }) }))
+    await expect(askFrom(1)).resolves.toEqual({ ok: false, reason: 'unavailable' })
+  })
+
+  it('shows the picker window the missing file greyed, unlike the @ list', async () => {
+    await load(realDeps())
+    const parent = fakeParent()
+    void invoke(DOC_ATTACH_CHANNELS.pick, { sender: parent.webContents })
+    const listed = (await invoke(DOC_PICKER_CHANNELS.list, atPicker())) as DocListResult
+    expect(listed.ok && listed.items.find((i) => i.title === 'lost.txt')?.state).toBe('missing')
   })
 })

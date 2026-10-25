@@ -8,12 +8,20 @@ import {
   DEFAULT_AI_PANEL_PREFS,
   Dropdown,
   aiPanelFontPx,
+  aiPanelStartOf,
+  aiPanelStartPatch,
   clampAiCustomFontSize,
 } from '@genoffice/ui'
-import type { AiFontSize, AiPanelPrefs, AiPanelSide } from '@genoffice/ui'
-import { PRODUCT_REPO_SLUG } from '@genoffice/i18n'
+import type { AiFontSize, AiPanelPrefs, AiPanelSide, AiPanelStart } from '@genoffice/ui'
+import { PRODUCT_CONTACT_EMAIL, PRODUCT_REPO_SLUG } from '@genoffice/i18n'
 import type { Lang } from '@genoffice/i18n'
-import type { DecisionEndpoint, DefaultAppStatus, FileSearchSettings } from '../../shared/home-api'
+import type {
+  AuthorNameSetting,
+  DecisionEndpoint,
+  DefaultAppStatus,
+  FileSearchSettings,
+} from '../../shared/home-api'
+import { AUTHOR_NAME_MAX } from '../../shared/home-api'
 import type { UpdateUiState } from '../../shared/update-api'
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
@@ -46,6 +54,8 @@ import { AiSection, SubscriptionSummary } from './SettingsAiSection'
 import { QuickLookField } from './SettingsQuickLook'
 import { ResultStoreField } from './SettingsResultStore'
 import { useSubscriptionConnection } from './subscription-client'
+import { SkillsPane } from './skills/SkillsPane'
+import { skillsText } from './i18n/strings-skills'
 import {
   advancedProviderIds,
   initialAdvancedProvider,
@@ -111,6 +121,14 @@ const AI_FONT_SIZE_OPTIONS = [
   { value: 'custom', labelKey: 'aiFontSizeCustom' },
 ] as const satisfies readonly { value: AiFontSize; labelKey: StringKey }[]
 
+// One choice for the three states the two stored switches can express
+// (off, always collapsed, remember the last state).
+const AI_PANEL_START_OPTIONS = [
+  { value: 'off', labelKey: 'aiPanelStartOff' },
+  { value: 'collapsed', labelKey: 'aiPanelStartCollapsed' },
+  { value: 'last', labelKey: 'aiPanelStartLast' },
+] as const satisfies readonly { value: AiPanelStart; labelKey: StringKey }[]
+
 const CHANNEL_OPTIONS = [
   { value: 'stable', labelKey: 'channelStable' },
   { value: 'beta', labelKey: 'channelBeta' },
@@ -168,12 +186,19 @@ function CustomFontSizeInput({
   )
 }
 
-export type SectionId = 'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'about'
+export type SectionId =
+  'account' | 'aiModel' | 'aiMedia' | 'skills' | 'general' | 'integrations' | 'about'
 
-const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
+/** a section labelled from the home dictionary, or by a feature's own dictionary */
+type SectionEntry = { id: SectionId } & (
+  { labelKey: StringKey } | { label: (lang: Lang) => string }
+)
+
+const SECTIONS: readonly SectionEntry[] = [
   { id: 'account', labelKey: 'setSecAccount' },
   // one AI entry: 'aiMedia' stays a valid target and opens it on the Advanced media area
   { id: 'aiModel', labelKey: 'setSecAi' },
+  { id: 'skills', label: (lang) => skillsText(lang, 'navLabel') },
   { id: 'general', labelKey: 'setSecGeneral' },
   { id: 'integrations', labelKey: 'setSecIntegrations' },
   { id: 'about', labelKey: 'setSecAbout' },
@@ -210,6 +235,25 @@ function SectionIcon({ id }: { id: SectionId }) {
           strokeLinejoin="round"
         />
         <circle cx="10.5" cy="6" r="1.1" fill="currentColor" />
+      </svg>
+    )
+  }
+  if (id === 'skills') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M3.5 2.5h6l3 3v8h-9v-11Z"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.5 2.5v3h3M5.8 8.5h4.4M5.8 11h2.9"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     )
   }
@@ -869,6 +913,8 @@ function AiMediaPane({
   if (!settings?.media || !settings.search) return null
   const media: AiMediaSettings = settings.media
   const search: AiSearchSettings = settings.search
+  /** decision 0062: only an explicit false turns the editors' outbound tools off */
+  const internetToolsOn = settings.internetTools !== false
 
   const touch = () => {
     setDirty(true)
@@ -1267,6 +1313,26 @@ function AiMediaPane({
       </div>
       <div className="set-field-desc set-ai-note">{t('setAiSharedKeyHint')}</div>
       <section>
+        <div className="set-field">
+          <div className="set-field-text">
+            <div className="set-field-stack">
+              <div className="set-field-label">{t('setAiInternetTools')}</div>
+              <div className="set-field-desc">{t('setAiInternetToolsDesc')}</div>
+            </div>
+          </div>
+          <button
+            className="set-switch"
+            role="switch"
+            aria-checked={internetToolsOn}
+            aria-label={t('setAiInternetTools')}
+            onClick={() => {
+              setSettings({ ...settings, internetTools: !internetToolsOn })
+              touch()
+            }}
+          />
+        </div>
+      </section>
+      <section>
         {subhead('search', t('setAiCapSearch'))}
         {providerRow(t('setAiCapSearch'), search.provider, searchCatalog, (v) =>
           setSearch({ ...search, provider: v as AiSearchSettings['provider'] }),
@@ -1460,6 +1526,7 @@ export function SettingsModal({
   const [defaultAppBusy, setDefaultAppBusy] = useState(false)
   const [defaultAppFailed, setDefaultAppFailed] = useState(false)
   const [aiPrefs, setAiPrefs] = useState<AiPanelPrefs>(DEFAULT_AI_PANEL_PREFS)
+  const [authorName, setAuthorName] = useState<AuthorNameSetting>({ value: '', fallback: '' })
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
   const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
@@ -1485,6 +1552,9 @@ export function SettingsModal({
     })
     void window.aiOffice.getAiPanelPrefs?.().then((prefs) => {
       if (alive) setAiPrefs(prefs)
+    })
+    void window.aiOffice.getAuthorName?.().then((v) => {
+      if (alive) setAuthorName(v)
     })
     void window.aiOffice.getUpdateChannel?.().then((ch) => {
       if (alive) setChannel(ch)
@@ -1535,6 +1605,10 @@ export function SettingsModal({
   const updateAiPrefs = (patch: Partial<AiPanelPrefs>) => {
     setAiPrefs((prev) => ({ ...prev, ...patch }))
     void window.aiOffice.setAiPanelPrefs(patch).then(setAiPrefs)
+  }
+
+  const commitAuthorName = () => {
+    void window.aiOffice.setAuthorName?.(authorName.value).then(setAuthorName)
   }
 
   const changeSaveDir = () => {
@@ -1609,7 +1683,7 @@ export function SettingsModal({
                 onClick={() => setSection(s.id)}
               >
                 <SectionIcon id={s.id} />
-                {t(s.labelKey)}
+                {'label' in s ? s.label(lang) : t(s.labelKey)}
                 {s.id === 'integrations' && updateDue && (
                   <span className="set-nav-dot" role="img" aria-label={t('intgUpdateDue')} />
                 )}
@@ -1754,16 +1828,44 @@ export function SettingsModal({
                 <div className="set-field">
                   <div className="set-field-text">
                     <div className="set-field-stack">
-                      <div className="set-field-label">{t('setAiOpenInNewDocs')}</div>
-                      <div className="set-field-desc">{t('setAiOpenInNewDocsDesc')}</div>
+                      <div className="set-field-label">{t('setAiPanelStart')}</div>
+                      <div className="set-field-desc">{t('setAiPanelStartDesc')}</div>
                     </div>
                   </div>
-                  <button
-                    className="set-switch"
-                    role="switch"
-                    aria-checked={aiPrefs.openInNewDocs}
-                    aria-label={t('setAiOpenInNewDocs')}
-                    onClick={() => updateAiPrefs({ openInNewDocs: !aiPrefs.openInNewDocs })}
+                  <Dropdown
+                    className="set-dd"
+                    value={aiPanelStartOf(aiPrefs)}
+                    ariaLabel={t('setAiPanelStart')}
+                    options={AI_PANEL_START_OPTIONS.map((opt) => ({
+                      value: opt.value,
+                      label: t(opt.labelKey),
+                    }))}
+                    onPick={(start) => updateAiPrefs(aiPanelStartPatch(start))}
+                  />
+                </div>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <div className="set-field-stack">
+                      <label className="set-field-label" htmlFor="set-author-name">
+                        {t('setAuthorName')}
+                      </label>
+                      <div className="set-field-desc">{t('setAuthorNameDesc')}</div>
+                    </div>
+                  </div>
+                  <input
+                    id="set-author-name"
+                    className="set-input"
+                    type="text"
+                    value={authorName.value}
+                    placeholder={authorName.fallback}
+                    maxLength={AUTHOR_NAME_MAX}
+                    spellCheck={false}
+                    autoComplete="off"
+                    onChange={(e) => setAuthorName((prev) => ({ ...prev, value: e.target.value }))}
+                    onBlur={commitAuthorName}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur()
+                    }}
                   />
                 </div>
                 {defaultApp && defaultApp.state !== 'unsupported' && (
@@ -1818,6 +1920,7 @@ export function SettingsModal({
                 <ResultStoreField />
               </>
             )}
+            {section === 'skills' && <SkillsPane />}
             {section === 'integrations' && (
               <IntegrationsPane t={t} onStatus={(st) => onSkillUpdateDue?.(skillUpdateDue(st))} />
             )}
@@ -1900,7 +2003,35 @@ export function SettingsModal({
                 </div>
                 <div className="set-field">
                   <div className="set-field-text">
+                    <label className="set-field-label">{t('setLicenses')}</label>
+                    <div className="set-field-desc">{t('setLicensesDesc')}</div>
+                  </div>
+                  <button
+                    className="set-btn"
+                    onClick={() => void window.aiOffice.openLicenseNotices?.()}
+                  >
+                    {t('setLicensesOpen')}
+                  </button>
+                </div>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <label className="set-field-label">{t('setRightsContact')}</label>
+                    <div className="set-field-desc">{t('setRightsContactDesc')}</div>
+                    <div className="set-field-value">{PRODUCT_CONTACT_EMAIL}</div>
+                  </div>
+                  <button
+                    className="set-btn"
+                    onClick={() => void window.aiOffice.openRightsContact?.()}
+                  >
+                    {t('setRightsContactSend')}
+                  </button>
+                </div>
+                <div className="set-field">
+                  <div className="set-field-text">
                     <div className="set-field-desc">{t('setBasedOn')}</div>
+                    <div className="set-field-desc">{t('setHwpNotice')}</div>
+                    <div className="set-field-desc">{t('setTrademarks')}</div>
+                    <div className="set-field-desc">{t('setDisclaimer')}</div>
                   </div>
                 </div>
               </>

@@ -1,6 +1,6 @@
 # Slides: presentasi
 
-Slides adalah editor mirip PowerPoint: membaca dan menulis.pptx asli.
+Slides adalah editor presentasi: membuka dan menyimpan file .pptx.
 
 ## Antarmuka
 

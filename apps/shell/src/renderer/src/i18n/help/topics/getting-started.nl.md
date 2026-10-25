@@ -1,6 +1,6 @@
 # Snel starten: de interface en de basis
 
-GenOffice is een kantoorsuite die volledig op je eigen computer draait: één venster, één rij tabbladen, met zes editors — Docs (tekstverwerking), Sheets (spreadsheets), Slides (presentaties), PDF, Markdown en HTML. De bestanden zijn echte .docx / .xlsx / .pptx / .pdf-bestanden, volledig uitwisselbaar met Word, Excel en PowerPoint. Er is geen netwerk nodig.
+GenOffice is een kantoorsuite die op je eigen computer draait: één venster, één rij tabbladen, met acht editors — Docs (tekstverwerking), Sheets (spreadsheets), Slides (presentaties), PDF, Markdown en platte tekst, HTML, HWP/HWPX (Hangul-documenten) en mindmaps (.xmind). Elke editor opent en bewaart bestanden in zijn eigen formaat: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx en .xmind. Voor bewerken is geen netwerk nodig; voor de AI-functies wel.
 
 ## Overzicht van de interface
 

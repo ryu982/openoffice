@@ -36,17 +36,35 @@ Whatever you choose, the agent does not:
 
 ## Claude Code and Codex
 
-- **Codex** runs commands in its own isolated space, including the ones you allow. It can write only in the project folder, the internet is blocked, and it cannot read your personal files outside the project. When a session starts, GenOffice first checks that this isolation works on this PC, and does not start if it does not.
+- **Codex** runs commands in its own isolated space, including the ones you allow. It can write only in the project folder, the internet is blocked unless you turn it on, and it cannot read your personal files outside the project. When a session starts, GenOffice first checks that this isolation works on this PC, and does not start if it does not.
 - **Claude Code** cannot isolate commands on Windows. A command you allow can reach the whole PC and the internet. That is why, under **Trust this project**, Claude Code's own reviewer checks each action instead of you.
 
 A document someone sent you can carry hidden instructions that tell the AI to do something else. In a folder of material you do not know, use one of the choices that ask.
 
+## Web search and the internet
+
+- **Claude Code** can search the web and read web pages, and asks first. It asks the first time it searches, and for each site whose pages it reads. In the question, **Allow searches for this session** or **Allow this site for this session** stops it asking again for the rest of the session. Under **Trust this project**, Claude Code's own reviewer decides.
+- When you choose **Codex**, the start screen shows two more settings.
+
+| Setting                          | Choices                    | At first      |
+| -------------------------------- | -------------------------- | ------------- |
+| **Web search**                   | Saved results / Live / Off | Saved results |
+| **Internet access for commands** | Off / On                   | Off           |
+
+- Saved results come from web content collected in advance; Live searches the web as it is now.
+- Both settings are remembered for each project folder. A folder used for the first time starts with the values above.
+- With internet access for commands on, the commands Codex runs can reach the internet. Under **Trust this project** they reach it without asking, and hidden instructions in a document you received could make them send your data out. This warning appears when you turn it on. Turn it on only when you need it. The built-in skill "Find skills" works only with this setting on.
+
 ## Project notes and skills
 
 - If the folder has a `CLAUDE.md` or `AGENTS.md`, its contents are given to the agent as instructions. Write down what should hold every time: tone, terms, the format of the documents to make.
-- Claude Code gets a copy of the skills in these places: `.claude/skills` in the project folder, `.ieumoffice/skills` and `.claude/skills` in your home folder, and the skills of installed Claude plugins. The number of skills available appears under the line that says the session started.
-- Codex reads its own skills folder by itself.
+- The agent window uses the skills turned on in **Settings ▸ Skills**. Claude Code and Codex get the same list. More about skills is in [Skills](help://skills).
+- Skills in the project folder's `.claude/skills` and `.agents/skills` are used in that session without being turned on.
+- Pick a skill with `/` or `$` in the input box, and an instruction to read and follow that skill is put in front of your request.
+- The skill list is fixed when the session starts. If you turn skills on or off during a session, "Changed skills apply from the next session" appears.
+- When the agent makes a skill, a skill card appears in the window; when it finds a skill worth installing, an install preview appears. Nothing is saved or installed until you click **Save** or **Install**, and an installed skill is available from the next session.
 - Programs a skill's scripts use (Python and so on) must be installed on this PC.
+- If you used the agent in an earlier version, the first time you open the agent window a one-time notice says: "Skills are now turned on and off in Settings → Skills. Skills in the Claude and Codex skill folders start turned off." **Open Settings** takes you straight there.
 
 ## New files and open documents
 
@@ -57,6 +75,7 @@ A document someone sent you can carry hidden instructions that tell the AI to do
 ## Privacy and usage
 
 - What you hid from the AI stays hidden only when the app reads a document open in GenOffice for the agent. Files the agent reads from the folder itself are sent as they are.
+- Web search terms and the addresses of pages read go to the program's company and to those sites. With Codex's internet access for commands on, data can go wherever a command connects.
 - The agent works in many steps, so it uses more of your subscription limit than the AI panel. When the limit runs out, the request fails; the agent never moves to another AI or to a connection that is billed.
 
 ## If something goes wrong

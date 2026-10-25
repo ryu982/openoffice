@@ -26,6 +26,16 @@ Elke editor kan het AI-paneel oproepen: selecteer iets, geef een instructie en z
 - **Markdown / HTML**: herschrijven, uitbreiden, vertalen.
 - **Start ▸ Ask AI** antwoordt uit uw bestanden met ster en citeert ze — het kennisbank-paneel heeft een eigen sectie in het hoofdstuk Start, en het AI-paneel van Docs heeft dezelfde vaardigheid.
 
+## Geopende documenten bijvoegen
+
+In het AI-paneel van de editors Docs, Sheets, Slides, Hangul, HTML en mindmaps kunt u andere documenten die u in GenOffice open hebt, of onlangs hebt geopend, als materiaal bijvoegen. Een bijgevoegd document wordt precies zo behandeld als een bestand dat u op uw pc kiest.
+
+- **`@` in het invoerveld**: typ `@` aan het begin van het invoerveld of na een spatie om een lijst met documenten te openen. Is het venster gesplitst, dan staat het document in het andere deelvenster bovenaan, daarna de overige geopende en de recente documenten; het document waarin u werkt staat er niet bij. Verfijn met een paar letters van de naam (spaties mogen) en kies met Enter of een klik: `@documentnaam` komt in het invoerveld en het document wordt bijgevoegd. **Meer zoeken…** onderaan opent de documentkiezer die hieronder staat beschreven.
+- **Bijvoegen uit GenOffice-documenten**: deze knop naast de bijlageknop opent dezelfde lijst in een venster, waar u meerdere documenten kunt aanvinken en in één keer kunt bijvoegen.
+- Documenten met niet-opgeslagen wijzigingen en nieuwe documenten die nooit zijn opgeslagen, worden gedimd weergegeven en zijn niet te kiezen. Sla ze op en kies opnieuw: de AI leest het opgeslagen bestand.
+- Hebben twee documenten dezelfde naam maar staan ze in verschillende mappen, dan wordt de naam van de map direct erboven toegevoegd, zoals in `@plan.docx(2e semester)`, en ook de AI krijgt die mapnaam door.
+- De editors voor PDF en Markdown hebben nog geen bijlagen, dus daar is geen van beide manieren beschikbaar.
+
 ## Terugdraaien en veiligheid
 
 - Het paneel in Docs houdt een **versielijst** bij: één momentopname per beurt, je kunt naar elke terug en die terugstap is zelf met Ctrl+Z ongedaan te maken. Momentopnamen blijven bestaan als je het document opnieuw opent.

@@ -1,6 +1,6 @@
 # Slides：簡報
 
-Slides 是類 PowerPoint 的簡報編輯器：讀寫真正的.pptx。
+Slides 是簡報編輯器：開啟並儲存 .pptx 檔案。
 
 ## 介面
 

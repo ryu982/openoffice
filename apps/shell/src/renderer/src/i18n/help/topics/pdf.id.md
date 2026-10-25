@@ -47,7 +47,7 @@ Enam alat: **Gambar, Persegi, Elips, Panah, Catatan**, ditambah **Redaksi area**
 ## Catatan tempel dan utas komentar
 
 - **Alat Catatan** menjatuhkan pin dan membuka kartu di margin untuk teks (nama penulis dapat diatur); setelah dikonfirmasi tersimpan sebagai anotasi Teks PDF standar.
-- Klik sebuah pin untuk membuka utasnya: **Balas** (utas datar gaya WPS/Acrobat), **Edit** komentar Anda, **Hapus** satu komentar atau seluruh utas.
+- Klik sebuah pin untuk membuka utasnya: **Balas** (balasan tersusun dalam satu daftar datar, tidak bersarang), **Edit** komentar Anda, **Hapus** satu komentar atau seluruh utas.
 - Edit yang sedang berjalan bertahan sampai penyimpanan menuliskan teks baru ke anotasi yang sama di dalam file, sehingga rantai balasan tetap utuh.
 
 ## Mengedit konten PDF (Edit)

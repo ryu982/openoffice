@@ -4,7 +4,7 @@
 
 AI는 쓰는 사람이 이미 내고 있는 **Claude 또는 Codex 구독**으로 돌아간다. 앱은 PC에 설치된 그 회사의 프로그램을 실행해 답 한 차례를 받아 오고, 문서를 고치는 일은 앱이 한다. 요금이 나가는 쪽으로는 사용자가 직접 고르지 않는 한 가지 않는다.
 
-한 사람이 자기 PC에서 쓰는 로컬 프로그램이다. 서버, 회원 계정, 사용 통계가 없다. 오픈소스 GenOffice(Apache-2.0)의 포크이고, 원본의 문서 엔진 개선을 계속 골라 받아온다. 그래서 코드 내부 이름은 원본 그대로이고, 고치는 범위는 필요한 만큼으로 좁게 잡는다. 배포하는 운영체제는 Windows이고, Apple Silicon Mac용과 Linux(x64)용은 베타로 낸다(결정 0031). Mac과 Linux는 저장소 주인이 직접 확인하지 못하고 사용자들의 보고로 확인한다. 화면 언어는 21개다.
+한 사람이 자기 PC에서 쓰는 로컬 프로그램이다. 서버, 회원 계정, 사용 통계가 없다. 오픈소스 GenOffice(Apache-2.0)의 포크이고, 원본의 문서 엔진 개선을 계속 골라 받아온다. 그래서 코드 내부 이름은 원본 그대로이고, 고치는 범위는 필요한 만큼으로 좁게 잡는다. 배포하는 운영체제는 Windows이고, Mac용(Apple Silicon·Intel)과 Linux(x64)용은 베타로 낸다(결정 0031, 0065). Mac과 Linux는 저장소 주인이 직접 확인하지 못하고 사용자들의 보고로 확인한다. 화면 언어는 21개다.
 
 ## 프로젝트 구조
 
@@ -29,6 +29,7 @@ openoffice/
 │   ├── plans/
 │   │   ├── ai-web-reading.md      ← AI 웹 읽기 계획(초안)
 │   │   ├── connect-guide.md       ← AI 연결 도우미 계획(진행 중)
+│   │   ├── epub-editor.md         ← EPUB 편집기 계획(구현됨, 사람 확인 남음)
 │   │   ├── pdf-reading-assist.md  ← PDF 읽기 도우미 계획
 │   │   ├── pdf-tools.md           ← PDF 도구 모음 계획(초안)
 │   │   └── update-details.md      ← 업데이트 상세 내역 표시 계획(확정)
@@ -48,7 +49,8 @@ openoffice/
 │   ├── markdown/AGENTS.md         ← 마크다운·텍스트 편집기
 │   ├── html/AGENTS.md             ← HTML 편집기
 │   ├── mindmap/AGENTS.md          ← 마인드맵 편집기(`.xmind`)
-│   └── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   ├── hwp/AGENTS.md              ← 한글(HWP·HWPX) 편집기, 편집 화면은 rhwp
+│   └── epub/AGENTS.md             ← 전자책(EPUB) 편집기: 읽기, 책 화면에서 고치기, 책 번역
 ├── packages/
 │   ├── ai-provider/AGENTS.md      ← 제공자 목록·선택 규칙, 구독 프로그램 실행부
 │   ├── ai-search/AGENTS.md        ← 검색·이미지 생성·미디어 분석 도구, 자동 호출 제한
@@ -67,6 +69,7 @@ openoffice/
 │   ├── pdf-structure/AGENTS.md    ← PDF 문서 나무, Markdown·EPUB 변환, AI 페이지 읽기·번역, 결과 보관소
 │   ├── html2docx/AGENTS.md        ← HTML → 워드 변환
 │   ├── xmind-engine/AGENTS.md     ← 마인드맵 파일 엔진(열기, 원본 보존, 맞추기, 개요 글, 테마 표)
+│   ├── epub-engine/AGENTS.md      ← EPUB 엔진(열기, 블록 지도, 범위 바꾸기 저장, 책 번역과 결과 책)
 │   ├── file-parse/AGENTS.md       ← 첨부·검색용 파일 읽기, 다른 파일로 읽을 때의 가리기
 │   ├── zip-gate/AGENTS.md         ← 압축 파일 안전 검사
 │   ├── google-drive/AGENTS.md     ← Google 드라이브 로그인과 파일 주고받기
@@ -101,6 +104,7 @@ openoffice/
 | 편집기 뒷단(`apps/*/src/main`)이나 preload를 고친다    | `docs/engineering-notes.md`의 "빌드와 실행". 껍데기 앱을 다시 빌드해야 반영된다                          |
 | 화면 문구나 도움말을 더하거나 고친다                   | `docs/standards.md`의 "글과 언어", "제품 이름". 21개 언어 모두 채운다                                    |
 | 화면 스타일을 고친다                                   | `docs/standards.md`의 "화면 색"                                                                          |
+| 아이콘·그림을 더하거나 다른 회사 이름을 화면에 적는다  | `docs/standards.md`의 "상표와 아이콘"(결정 0052)                                                         |
 | 터미널 명령어·MCP·스킬을 고친다                        | `docs/contracts.md`. 출력 구조와 이름은 밖에서 기대고 있다                                               |
 | 가리기나 다른 파일로 읽기를 고친다                     | `docs/security.md`의 "문서 내용", `packages/file-parse/AGENTS.md`                                        |
 | 마인드맵 파일의 열기·저장을 고친다                     | `packages/xmind-engine/AGENTS.md`. 바뀐 것이 없는 저장은 원본 바이트 그대로다                            |
@@ -112,7 +116,7 @@ openoffice/
 | 새 버전을 낸다                                         | `docs/releasing.ko.md`. 첫 항목은 저장소 주인의 약관 동의다                                              |
 
 - **릴리스 본문은 사용자가 앱 안에서 그대로 읽는다.** 첫 문단 요약 → 새로 들어간 것 → 고친 것 → 설치 안내(맨 아래) 순서와 humanize-korean 윤문은 `docs/releasing.ko.md` 6번이 정한다. 에이전트는 `.claude/skills/release-ieumoffice/SKILL.md`도 함께 읽는다.
-- **새 버전을 공개하면 소개 사이트에 업데이트 소식을 올린다.** https://ieumoffice.vercel.app 의 내려받기 버튼은 저절로 바뀌지만, 업데이트 페이지(`/updates`)의 새 항목과 메인의 한 줄 안내는 손으로 더한다. 절차는 `docs/releasing.ko.md` 13번과 사이트 저장소(`E:\github\ieumoffice-site`) `README.md`의 "새 버전을 낸 뒤"에 있다.
+- **새 버전을 공개하면 소개 사이트에 업데이트 소식을 올린다.** https://ieumoffice.com 의 내려받기 버튼은 저절로 바뀌지만, 업데이트 페이지(`/updates`)의 새 항목과 메인의 한 줄 안내는 손으로 더한다. 사이트의 질문 도우미는 최신 릴리스 태그의 한국어 도움말·README·PRIVACY.md로 답하고, 그 지식베이스는 사이트 저장소의 Actions가 다시 만드니 실행이 초록인지 본다. 절차는 `docs/releasing.ko.md` 13번과 사이트 저장소(`E:\github\ieumoffice-site`) `README.md`의 "새 버전을 낸 뒤"에 있다.
 
 ## 문제가 생기면
 

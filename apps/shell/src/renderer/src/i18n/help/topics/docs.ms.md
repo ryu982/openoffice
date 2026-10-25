@@ -1,6 +1,6 @@
 # Docs: penyuntingan teks
 
-Docs ialah pemproses teks yang menyerupai Word. Ia membaca dan menulis fail .docx yang sebenar dengan pemenggalan halaman yang tepat seperti yang dipaparkan.
+Docs ialah pemproses teks. Ia membuka dan menyimpan fail .docx dengan pemenggalan halaman yang tepat seperti yang dipaparkan.
 
 ## Reben
 

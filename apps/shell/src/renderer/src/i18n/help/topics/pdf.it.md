@@ -47,7 +47,7 @@ Sei strumenti: **inchiostro, rettangolo, ellisse, freccia, nota**, più il **riq
 ## Post-it e fili di commenti
 
 - Lo **strumento nota** posiziona un puntino e apre una scheda a margine per il testo (il nome dell'autore è configurabile); confermando, viene salvata come annotazione di testo PDF standard.
-- Fai clic su un puntino per aprire il filo: **rispondi** (fili piatti in stile WPS/Acrobat), **modifica** il tuo commento, **elimina** un commento o l'intero filo.
+- Fai clic su un puntino per aprire il filo: **rispondi** (le risposte formano un unico elenco piatto, senza annidamento), **modifica** il tuo commento, **elimina** un commento o l'intero filo.
 - Le modifiche in corso restano valide finché il salvataggio non riscrive il nuovo testo nella stessa annotazione nel file, mantenendo intatte le catene di risposte.
 
 ## Modifica del contenuto PDF (Modifica)

@@ -3,6 +3,7 @@ import { extname } from 'node:path'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
 import { docToText } from './doc'
 import { docxToText } from './docx'
+import { epubToText } from './epub'
 import { hwpToText } from './hwp'
 import { odtToText } from './odt'
 import { pdfToText } from './pdf'
@@ -144,8 +145,17 @@ async function parseOdt(bytes: Buffer): Promise<ParsedFile> {
   }
 }
 
+/** Character budget for extractors that can stop early (xlsx today). */
+export interface ParseFileOptions {
+  /// Character budget for extractors that can stop early (xlsx and docx today).
+  maxChars?: number
+}
+
 /** parse an attachment into plain text (or flag it as image / unsupported) */
-export async function parseFileToText(filePath: string): Promise<ParsedFile> {
+export async function parseFileToText(
+  filePath: string,
+  opts: ParseFileOptions = {},
+): Promise<ParsedFile> {
   const ext = extname(filePath).slice(1).toLowerCase()
   const imageMime = IMAGE_MIMES[ext]
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
@@ -192,11 +202,11 @@ export async function parseFileToText(filePath: string): Promise<ParsedFile> {
         error: `Content mismatch: .${ext} file has ${sniffed} magic bytes`,
       }
     }
-    if (ext === 'xmind' && sniffed !== 'zip') {
+    if ((ext === 'xmind' || ext === 'epub') && sniffed !== 'zip') {
       return {
         ok: false,
         kind: 'text',
-        error: `Content mismatch: .xmind file has ${sniffed} magic bytes`,
+        error: `Content mismatch: .${ext} file has ${sniffed} magic bytes`,
       }
     }
     // a DOCX saved under a .doc name is common enough that it parses as OOXML
@@ -230,10 +240,10 @@ export async function parseFileToText(filePath: string): Promise<ParsedFile> {
         return {
           ok: true,
           kind: 'text',
-          text: sniffed === 'zip' ? await docxToText(bytes) : await docToText(bytes),
+          text: sniffed === 'zip' ? await docxToText(bytes, opts) : await docToText(bytes),
         }
       case 'docx':
-        return { ok: true, kind: 'text', text: await docxToText(bytes) }
+        return { ok: true, kind: 'text', text: await docxToText(bytes, opts) }
       case 'odt':
         return await parseOdt(bytes)
       case 'ppt':
@@ -242,11 +252,13 @@ export async function parseFileToText(filePath: string): Promise<ParsedFile> {
         return { ok: true, kind: 'text', text: await pptxToText(bytes) }
       case 'xlsx':
       case 'xlsm':
-        return { ok: true, kind: 'text', text: await xlsxToText(bytes) }
+        return { ok: true, kind: 'text', text: await xlsxToText(bytes, opts) }
       case 'pdf':
         return { ok: true, kind: 'text', text: await pdfToText(bytes) }
       case 'xmind':
         return { ok: true, kind: 'text', text: await xmindToText(bytes) }
+      case 'epub':
+        return { ok: true, kind: 'text', text: await epubToText(bytes) }
     }
   } catch (e) {
     return { ok: false, kind: 'text', error: e instanceof Error ? e.message : String(e) }

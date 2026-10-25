@@ -75,7 +75,11 @@ vi.mock('electron', () => ({
     webContents = {
       id: 900001,
       setWindowOpenHandler: () => ({ action: 'deny' as const }),
-      loadURL: () => Promise.resolve(),
+      // every URL the manual's view loads, for the help-topic tests
+      loadURL: (url: string) => {
+        ;(globalThis as { __helpLoads?: string[] }).__helpLoads?.push(url)
+        return Promise.resolve()
+      },
       focus: () => {},
       on: () => {},
       once: () => {},
@@ -194,7 +198,17 @@ vi.mock('../../hwp/src/main/hwp-main', () => ({
   requestHwpClose: (...args: unknown[]) => requestHwpClose(...(args as [])),
 }))
 
-import { TabManager } from '../src/main/tab-manager'
+const createEpubView = vi.fn(() => makeFakeView())
+const epubIsDirty = vi.fn(() => false)
+const requestEpubClose = vi.fn(() => Promise.resolve(true))
+
+vi.mock('../../epub/src/main/epub-main', () => ({
+  createEpubView: (...args: unknown[]) => createEpubView(...(args as [])),
+  epubIsDirty: (...args: unknown[]) => epubIsDirty(...(args as [])),
+  requestEpubClose: (...args: unknown[]) => requestEpubClose(...(args as [])),
+}))
+
+import { helpTopicParam, helpViewUrl, TabManager } from '../src/main/tab-manager'
 import type { TabKind } from '../src/shared/tabs-api'
 
 const TAB_STRIP_HEIGHT = 40
@@ -243,6 +257,8 @@ beforeEach(() => {
   slidesIsDirty.mockImplementation(() => false)
   mindmapIsDirty.mockImplementation(() => false)
   requestMindmapClose.mockImplementation(() => Promise.resolve(true))
+  epubIsDirty.mockImplementation(() => false)
+  requestEpubClose.mockImplementation(() => Promise.resolve(true))
   shellWindow = makeShellWindow()
   onChanged = vi.fn()
   applyMenuFor = vi.fn()
@@ -282,6 +298,34 @@ describe('opening tabs', () => {
     manager.openHelpTab()
     expect(manager.list().find((t) => t.id === helpId)?.active).toBe(true)
     expect(manager.list().find((t) => t.id === docsId)?.active).toBe(false)
+  })
+
+  it('opens the manual at a topic, and moves an open manual to it', () => {
+    const loads: string[] = []
+    ;(globalThis as { __helpLoads?: string[] }).__helpLoads = loads
+    try {
+      const first = manager.openHelpTab('skills')
+      expect(new URL(loads[0]!).searchParams.get('topic')).toBe('skills')
+      expect(new URL(loads[0]!).searchParams.get('mode')).toBe('help')
+      // F1 on the open manual leaves it where the reader is
+      manager.openHelpTab()
+      expect(loads).toHaveLength(1)
+      // a link to another topic reloads the same tab there, not a second tab
+      expect(manager.openHelpTab('agent-mode')).toBe(first)
+      expect(new URL(loads[1]!).searchParams.get('topic')).toBe('agent-mode')
+      expect(manager.list().filter((t) => t.kind === 'help')).toHaveLength(1)
+    } finally {
+      delete (globalThis as { __helpLoads?: string[] }).__helpLoads
+    }
+  })
+
+  it('keeps only an id-shaped help topic in the manual URL', () => {
+    expect(helpTopicParam('skills')).toBe('skills')
+    expect(helpTopicParam('../x')).toBeUndefined()
+    expect(helpTopicParam('Skills')).toBeUndefined()
+    expect(helpTopicParam(42)).toBeUndefined()
+    expect(new URL(helpViewUrl('a&b=c')).searchParams.has('topic')).toBe(false)
+    expect(new URL(helpViewUrl()).searchParams.get('mode')).toBe('help')
   })
 
   it('opens a fresh help tab once the previous one was closed', () => {
@@ -345,6 +389,22 @@ describe('opening tabs', () => {
     const untitled = manager.list().find((t) => t.id === untitledId)
     expect(untitled).toMatchObject({ kind: 'mindmap', title: 'Mind Map' })
     expect(untitled?.filePath).toBeUndefined()
+  })
+
+  it('opens a book tab for its file, titled by the file name', () => {
+    const id = manager.openEpubTab('/tmp/novel.epub')
+    expect(createEpubView).toHaveBeenLastCalledWith('/tmp/novel.epub')
+    expect(manager.list().find((t) => t.id === id)).toMatchObject({
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: '/tmp/novel.epub',
+      active: true,
+    })
+    expect(applyMenuFor).toHaveBeenLastCalledWith('epub')
+    expect(manager.findEpubTabByPath('/tmp/novel.epub')).toBe(id)
+    expect(manager.activeEpubTab()).toMatchObject({ id, filePath: '/tmp/novel.epub' })
+    manager.openSlidesTab()
+    expect(manager.activeEpubTab()).toBeUndefined()
   })
 
   it('titles an untitled mind map with the name the shell supplies for that kind', () => {
@@ -490,6 +550,32 @@ describe('spare sheets view', () => {
       vi.useRealTimers()
       vi.unstubAllEnvs()
     }
+  })
+})
+
+describe('cycling tabs with the keyboard', () => {
+  it('steps forward and back through the strip and wraps at both ends', () => {
+    const docsId = manager.openDocsTab()
+    const sheetsId = manager.openSheetsTab()
+    const activeId = (): string | undefined => manager.list().find((t) => t.active)?.id
+
+    expect(activeId()).toBe(sheetsId)
+    manager.cycleTab(1)
+    expect(activeId()).toBe('home')
+    manager.cycleTab(1)
+    expect(activeId()).toBe(docsId)
+    manager.cycleTab(-1)
+    expect(activeId()).toBe('home')
+    manager.cycleTab(-1)
+    expect(activeId()).toBe(sheetsId)
+  })
+
+  it('does nothing when Home is the only tab', () => {
+    onChanged.mockClear()
+    manager.cycleTab(1)
+    manager.cycleTab(-1)
+    expect(onChanged).not.toHaveBeenCalled()
+    expect(manager.list()).toHaveLength(1)
   })
 })
 
@@ -882,6 +968,15 @@ describe('file path bookkeeping', () => {
         return lastCreatedView(createHwpView)
       },
     },
+    {
+      kind: 'epub',
+      file: '/tmp/one.epub',
+      renamed: '/tmp/two.epub',
+      open: () => {
+        manager.openEpubTab('/tmp/one.epub')
+        return lastCreatedView(createEpubView)
+      },
+    },
   ]
 
   it.each(RENAMABLE)('a rename reports the $kind view', (c) => {
@@ -1061,6 +1156,32 @@ describe('dirty-tab queries (shell close guard)', () => {
     ])
   })
 
+  it('lists dirty book tabs and reports them to MCP agents as kind epub', async () => {
+    manager.openEpubTab('/tmp/clean.epub')
+    const dirtyId = manager.openEpubTab('/tmp/dirty.epub')
+    const dirtyView = lastCreatedView(createEpubView)
+    expect(manager.dirtyEpubTabs()).toEqual([])
+    epubIsDirty.mockImplementation(
+      ((id: number) => id === dirtyView.webContents.id) as () => boolean,
+    )
+    expect(manager.dirtyEpubTabs()).toEqual([{ id: dirtyId, webContents: dirtyView.webContents }])
+    const documents = await manager.openDocuments()
+    expect(documents.map((d) => [d.kind, d.filePath, d.dirty])).toEqual([
+      ['epub', '/tmp/clean.epub', false],
+      ['epub', '/tmp/dirty.epub', true],
+    ])
+  })
+
+  it('asks before closing a dirty book tab', async () => {
+    const id = manager.openEpubTab('/tmp/novel.epub')
+    const view = lastCreatedView(createEpubView)
+    epubIsDirty.mockImplementation(() => true)
+    requestEpubClose.mockImplementation(() => Promise.resolve(false))
+    await manager.closeTab(id)
+    expect(requestEpubClose).toHaveBeenCalledWith(view.webContents, expect.anything())
+    expect(manager.list().some((t) => t.id === id)).toBe(true)
+  })
+
   it('lists every live docs tab for the async dirtiness sweep', () => {
     manager.openDocsTab()
     manager.openSheetsTab()
@@ -1091,8 +1212,9 @@ describe('detach / attach (Open in New Window, tear-off, dock)', () => {
     const markdown = manager.openMarkdownTab()
     const html = manager.openHtmlTab()
     const mindmap = manager.openMindmapTab()
+    const epub = manager.openEpubTab('/tmp/novel.epub')
     const present = manager.openHtmlPresentTab({ id: 999 } as never, 'Preview')
-    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap])
+    for (const id of [docs, sheets, slides, pdf, markdown, html, mindmap, epub])
       expect(manager.canDetachTab(id)).toBe(true)
     expect(manager.canDetachTab('home')).toBe(false)
     expect(manager.canDetachTab(present)).toBe(false)

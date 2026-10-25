@@ -323,16 +323,18 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     return v as unknown as TranslationInput
   }
 
-  /** a translated-PDF payload names the target language; nothing else is passed on */
-  function writeBackPayloadOf(v: unknown): { lang: string } | null {
+  /** a translated-PDF payload names the target language and whether it is bilingual; nothing else is passed on */
+  function writeBackPayloadOf(v: unknown): { lang: string; bilingual?: true } | null {
     if (!isRecord(v) || typeof v.lang !== 'string' || !LANGUAGE_TAG.test(v.lang)) return null
-    return { lang: v.lang }
+    if (v.bilingual !== undefined && typeof v.bilingual !== 'boolean') return null
+    return { lang: v.lang, ...(v.bilingual === true ? { bilingual: true as const } : {}) }
   }
 
   function epubOptionsOf(v: unknown): PdfStructureEpubOptions | null {
     if (!isRecord(v) || typeof v.title !== 'string' || v.title.length > MAX_TEXT) return null
     if (!optText(v.author) || !optText(v.pageImageAlt, 200)) return null
     if (v.cover !== undefined && typeof v.cover !== 'boolean') return null
+    if (v.pageBreaks !== undefined && typeof v.pageBreaks !== 'boolean') return null
     for (const tag of [v.language, v.uiLanguage]) {
       if (tag !== undefined && (typeof tag !== 'string' || !LANGUAGE_TAG.test(tag))) return null
     }
@@ -342,6 +344,7 @@ export function createPdfStructureHandlers(deps: StructureHandlerDeps) {
     if (v.language !== undefined) out.language = v.language as string
     if (v.uiLanguage !== undefined) out.uiLanguage = v.uiLanguage as string
     if (v.pageImageAlt !== undefined) out.pageImageAlt = v.pageImageAlt
+    if (v.pageBreaks !== undefined) out.pageBreaks = v.pageBreaks
     return out
   }
 

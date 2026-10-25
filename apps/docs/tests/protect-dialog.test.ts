@@ -1,11 +1,24 @@
 // Protect Document dialog (Review > Protect): the dialog turns form state into
 // a diff (ProtectDialogResult) — untouched sections must stay undefined, and
 // removing a password-protected restriction must verify the password first.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { hashProtectionPassword, verifyProtectionPassword } from '@genoffice/docx-engine'
 import { ProtectDialog, type ProtectDialogResult } from '../src/renderer/components/ProtectDialog'
+
+// The dialog hashes with Word's default 100000 SHA-512 rounds, which can take
+// seconds of CPU per submit when other suites run at the same time. The
+// dialog's wiring is what is tested here (docx-engine tests the hash), so the
+// real hash runs with fewer rounds.
+vi.mock('@genoffice/docx-engine', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@genoffice/docx-engine')>()
+  return {
+    ...real,
+    hashProtectionPassword: (password: string, spinCount?: number) =>
+      real.hashProtectionPassword(password, Math.min(spinCount ?? 1000, 1000)),
+  }
+})
 
 type Props = Parameters<typeof ProtectDialog>[0]
 
@@ -45,8 +58,11 @@ async function mount(partial: Partial<Props>) {
   // flushing until the expected outcome shows up instead of guessing a delay
   const submit = async (done: () => boolean) => {
     await click(host.querySelector('.btn-primary')!)
-    const start = Date.now()
-    while (!done() && Date.now() - start < 10_000) {
+    let finished = false
+    onTestFinished(() => {
+      finished = true
+    })
+    while (!done() && !finished) {
       await act(async () => {
         await new Promise((r) => setTimeout(r, 10))
       })

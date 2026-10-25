@@ -220,6 +220,27 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
     keywords: ['网页', 'html', '预览', 'preview', '检查器', 'inspector'],
   },
   {
+    id: 'epub',
+    group: 'apps',
+    order: 7,
+    keywords: [
+      'epub',
+      '电子书',
+      'e-book',
+      'ebook',
+      '전자책',
+      '翻译',
+      'translate',
+      '번역',
+      '双语',
+      'bilingual',
+      '대역',
+      '目录',
+      'contents',
+      'drm',
+    ],
+  },
+  {
     id: 'ai-panel',
     group: 'ai',
     order: 1,
@@ -253,6 +274,26 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
       '额度',
       'usage',
       'limit',
+    ],
+  },
+  {
+    id: 'skills',
+    group: 'ai',
+    order: 2.5,
+    keywords: [
+      '스킬',
+      'skill',
+      'skills',
+      '技能',
+      'スキル',
+      '/',
+      '$',
+      '양식',
+      'template',
+      '模板',
+      'github',
+      '깃허브',
+      'SKILL.md',
     ],
   },
   {
@@ -375,6 +416,15 @@ export const HELP_TOPICS: HelpTopicMeta[] = [
     ],
   },
 ]
+
+/**
+ * The topic the manual opens at: the `topic` of its URL when that names a
+ * registered topic (a help link next to a setting), otherwise the first one.
+ */
+export function initialHelpTopic(search: string): string {
+  const wanted = new URLSearchParams(search).get('topic')
+  return HELP_TOPICS.find((t) => t.id === wanted)?.id ?? HELP_TOPICS[0]!.id
+}
 
 /**
  * Topic bodies per language, keyed `<id>.<lang>`; missing pairs fall back to en.

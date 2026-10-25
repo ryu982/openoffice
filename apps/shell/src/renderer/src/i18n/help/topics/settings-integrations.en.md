@@ -18,7 +18,7 @@ Light / Dark / System. System follows the OS appearance, and the editors re-skin
 ## General
 
 - **AI sidebar position** (left or right), **AI panel text size**, and **Spell check in AI chat**.
-- **Open the AI panel in new documents** — off, a new document starts with the panel collapsed and one click away.
+- **AI panel** — Off, Collapsed, or Last state.
 - **Auto-save all documents** turns AutoSave on by default in every editor; you can still switch it off for one window.
 - **Save Location** with a **Change** button, and **Default app for Office documents** to claim .docx / .xlsx / .pptx for GenOffice.
 
@@ -44,7 +44,7 @@ Settings can register GenOffice as the handler for .docx / .xlsx / .pptx / .pdf 
 ## Third-party notices and updates
 
 - Help ▸ Third-party notices: the full OSS license inventory shipped with the app.
-- Help ▸ Check for updates: triggers a manual check; a newer version prompts to install.
+- Menu (☰) ▸ Check for updates (Help ▸ Check for updates on a Mac): triggers a manual check; a newer version prompts to install.
 
 ## MCP integration (for advanced users / AI clients)
 

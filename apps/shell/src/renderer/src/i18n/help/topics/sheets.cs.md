@@ -1,6 +1,6 @@
 # Sheets: tabulky
 
-Sheets je editor podobný Excelu; výpočty zajišťuje samostatný proces s enginem napsaným v Rustu (jeho pád nikdy neukončí aplikaci). Otevírá a ukládá skutečné soubory .xlsx; soubory .csv a .tsv se otevírají jako tabulky.
+Sheets je tabulkový editor; výpočty zajišťuje samostatný proces s enginem napsaným v Rustu (jeho pád nikdy neukončí aplikaci). Otevírá a ukládá soubory .xlsx; soubory .csv a .tsv se otevírají jako tabulky.
 
 ## Rozhraní
 

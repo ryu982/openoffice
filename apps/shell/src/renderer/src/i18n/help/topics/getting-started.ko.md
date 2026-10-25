@@ -1,6 +1,6 @@
 # 빠른 시작: 인터페이스와 기본 조작
 
-GenOffice는 전적으로 내 컴퓨터에서 동작하는 오피스 스위트입니다. 창 하나, 탭 한 줄에 6개의 편집기가 들어 있습니다. 문서(Docs), 스프레드시트(Sheets), 프레젠테이션(Slides), PDF, Markdown, HTML입니다. 다루는 파일은 진짜 .docx / .xlsx / .pptx / .pdf이며 Word, Excel, PowerPoint와 완전히 호환됩니다. 네트워크는 필요 없습니다.
+GenOffice는 내 컴퓨터에서 돌아가는 오피스 프로그램입니다. 창 하나, 탭 한 줄에 편집기 8개가 들어 있습니다. 문서(Docs), 스프레드시트(Sheets), 프레젠테이션(Slides), PDF, Markdown·텍스트, HTML, 한글(HWP/HWPX), 마인드맵(.xmind)입니다. 편집기마다 자기 형식의 파일을 열고 저장합니다. .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx, .xmind입니다. 문서를 고칠 때는 네트워크가 필요 없고, AI 기능을 쓸 때만 필요합니다.
 
 ## 화면 개요
 

@@ -1,6 +1,6 @@
 # Slides: persembahan
 
-Slides ialah editor yang menyerupai PowerPoint. Ia membaca dan menulis fail.pptx yang sebenar.
+Slides ialah editor persembahan. Ia membuka dan menyimpan fail .pptx.
 
 ## Antara muka
 

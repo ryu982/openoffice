@@ -1,6 +1,6 @@
 # Bắt đầu nhanh: giao diện và những điều cơ bản
 
-GenOffice là bộ ứng dụng văn phòng chạy hoàn toàn trên máy của bạn: một cửa sổ, một hàng thẻ, chứa sáu trình soạn thảo — Docs (xử lý văn bản), Sheets (bảng tính), Slides (trình chiếu), PDF, Markdown và HTML. Tập tin đều là .docx / .xlsx / .pptx / .pdf thật, hoàn toàn tương thích với Word, Excel và PowerPoint. Không cần mạng.
+GenOffice là bộ ứng dụng văn phòng chạy trên máy của bạn: một cửa sổ, một hàng thẻ, chứa tám trình soạn thảo — Docs (xử lý văn bản), Sheets (bảng tính), Slides (trình chiếu), PDF, Markdown và văn bản thuần, HTML, HWP/HWPX (tài liệu Hangul) và sơ đồ tư duy (.xmind). Mỗi trình soạn thảo mở và lưu tập tin theo định dạng riêng của nó: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx và .xmind. Chỉnh sửa không cần mạng; các tính năng AI thì cần.
 
 ## Tổng quan giao diện
 

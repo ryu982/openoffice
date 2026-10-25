@@ -242,6 +242,10 @@ export const CODEX_CONFIG_OVERRIDES: readonly string[] = [
   'openai_base_url=""',
   // the list of the user's skills is not added to the prompt
   'skills.include_instructions=false',
+  // Codex's own web search: a way out the app neither sees nor guards (the
+  // app's own search tool keeps redaction and the Drive rule); off, like every
+  // tool the app can turn off
+  'web_search="disabled"',
 ]
 
 export function codexAppServerLaunchArgs(): string[] {

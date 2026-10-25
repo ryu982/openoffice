@@ -363,3 +363,105 @@ body {
   flex-direction: column;
   gap: 6px;
 }
+
+/* skills (spec 6.2 to 6.5): the input with its `/` list and chips */
+.agent-input-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.agent-msg-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.agent-msg-skill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.agent-skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-skill-template {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-skill-template select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.agent-install {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-install-address {
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* the settings' skill preview dialog, reused for an install a session proposed */
+.agent .set-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-hover);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.agent .set-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.agent .set-btn.primary {
+  background: var(--accent);
+  color: var(--agent-on-accent);
+}
+
+.agent .set-field-desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* a project folder's own skills on the start screen (decision 0064) */
+.agent-project-skills {
+  margin: 4px 0;
+  padding-left: 18px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

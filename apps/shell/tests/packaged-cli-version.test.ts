@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
+import { PRODUCT_NAME } from '@genoffice/i18n'
 
 const require = createRequire(import.meta.url)
 const shellRoot = resolve(import.meta.dirname, '..')
@@ -61,9 +62,15 @@ function loadConfig(opts: {
               return `const __cliAppVersion = ${JSON.stringify(baked)};\n`
             }
             // Packaging also gates on a generated third-party notice. Serve a
-            // valid one so the CLI version check is what these tests exercise.
+            // valid one so the CLI version check is what these tests exercise
+            // (third-party-notices.test.ts covers that gate).
             if (String(path).endsWith('THIRD-PARTY-NOTICES.txt')) {
-              return '@embedpdf/pdfium\nCopyright 2014 PDFium Authors\nApache License\n'
+              return [
+                require('node:fs').readFileSync(resolve(shellRoot, '../../NOTICE'), 'utf8').trim(),
+                `${PRODUCT_NAME} — Third-Party Software Notices`,
+                '@embedpdf/pdfium\nCopyright 2014 PDFium Authors\nApache License',
+                '1 crates, all under permissive terms:\n1 crates, all under permissive terms:\n',
+              ].join('\n')
             }
             return require('node:fs').readFileSync(path, encoding as BufferEncoding)
           },

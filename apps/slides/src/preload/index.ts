@@ -1,6 +1,9 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
+import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
 import { splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
@@ -535,11 +538,16 @@ const api: SlidesApi = {
   takeGenerateHandoff: () => ipcRenderer.invoke('slides:handoff-take'),
   reportGenerateRunStarted: (attachedPaths: string[]) =>
     ipcRenderer.invoke('slides:handoff-run-started', attachedPaths),
+  // the open deck as edited, for a skill's template (spec 5.6)
+  templateBytes: () => ipcRenderer.invoke('slides:template-bytes'),
 }
 
 contextBridge.exposeInMainWorld('slidesApi', api)
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
+contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
 contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
 

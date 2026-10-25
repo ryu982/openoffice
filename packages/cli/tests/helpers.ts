@@ -1,6 +1,7 @@
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { buildCompatibilityFixture } from '../../../apps/sheets/tests/fixture-builder'
 import { runCli, type RunOptions } from '../src/cli'
 
 export interface CapturedRun {
@@ -77,4 +78,16 @@ export function writeMinimalPdf(
   body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R${infoRef} >>\nstartxref\n${xref}\n%%EOF\n`
   writeFileSync(path, body, 'latin1')
   return path
+}
+
+/**
+ * The sheets compatibility workbook, built in memory into a fresh temp dir.
+ * Built here rather than read from apps/sheets/fixtures/generated, which only
+ * exists after `npm run fixtures -w @genoffice/sheets`: on a machine that has
+ * the xlsx sidecar but never ran the generator, the tests read a missing file.
+ */
+export async function compatibilityXlsx(): Promise<string> {
+  const file = join(tempDir(), 'compatibility-basic.xlsx')
+  writeFileSync(file, await buildCompatibilityFixture())
+  return file
 }

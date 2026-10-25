@@ -10,6 +10,7 @@ import type {
   AgentSession,
   AgentSessionEvent,
   AgentSessionOptions,
+  AgentSkillEntry,
 } from '@genoffice/ai-provider/agent-session'
 import type { AiSettings, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import { normalizeAiSettings } from '@genoffice/ai-provider'
@@ -30,6 +31,7 @@ import {
   agentLogAfterAnswer,
   agentLogAfterSend,
   agentLogWith,
+  coveredBySessionAllow,
 } from '../../src/renderer/src/agent/agent-log'
 
 vi.mock('electron', () => ({
@@ -114,6 +116,58 @@ describe('instructions', () => {
     expect(codex).not.toContain('Agents file.')
     expect(codex).not.toContain('ieumoffice-editor')
   })
+
+  it('points to the two skill tools only when the app tools are there', async () => {
+    const project = temp()
+    for (const provider of ['claude-code', 'codex'] as const) {
+      const withTools = await agentInstructions(provider, project, 'ko', true)
+      expect(withTools).toMatch(/call propose_skill:/)
+      expect(withTools).toMatch(/propose_skill_install/)
+      expect(withTools).toMatch(/never install skills with a command/)
+      expect(await agentInstructions(provider, project, 'ko', false)).not.toMatch(/propose_skill/)
+    }
+  })
+
+  it('lists the skills of the copy for Codex, with their SKILL.md and whether they wait to be called', async () => {
+    const project = temp()
+    const skills: AgentSkillEntry[] = [
+      {
+        id: 'app:home-letter',
+        name: 'home-letter',
+        source: 'app',
+        plugin: undefined,
+        title: '가정통신문',
+        description: 'Writes a letter\nto families.',
+        invoke: 'auto',
+        skillMd: join(project, 'bundle', 'skills', 'home-letter', 'SKILL.md'),
+      },
+      {
+        id: 'user:review',
+        name: 'review--user',
+        source: 'user',
+        plugin: undefined,
+        title: 'review',
+        description: 'Reviews a draft.',
+        invoke: 'manual',
+        skillMd: join(project, 'bundle', 'skills', 'review--user', 'SKILL.md'),
+      },
+    ]
+    const codex = await agentInstructions('codex', project, 'ko', false, skills)
+    expect(codex).toContain('read its SKILL.md first and follow it')
+    expect(codex).toContain('only when the person asks for it')
+    expect(codex).toContain(
+      `- home-letter (id: app:home-letter; title: 가정통신문): Writes a letter to families.; SKILL.md: ${skills[0]!.skillMd}`,
+    )
+    expect(codex).toContain(
+      `- review--user (id: user:review; title: review): Reviews a draft.; SKILL.md: ${skills[1]!.skillMd}; manual: only when the person asks`,
+    )
+    expect(codex).not.toMatch(/home-letter[^\n]*manual/)
+    // Claude finds them in its plugin; no list for it, and none when there are no skills
+    expect(await agentInstructions('claude-code', project, 'ko', false, skills)).not.toContain(
+      'SKILL.md',
+    )
+    expect(await agentInstructions('codex', project, 'ko', false, [])).not.toContain('SKILL.md')
+  })
 })
 
 function fakeSession(): AgentSession & { sent: string[]; stopped: number } {
@@ -151,6 +205,13 @@ function manager(
   }))
   const emitted: Array<[number, string, AgentSessionEvent]> = []
   const mcpStop = vi.fn(async () => undefined)
+  const startAppMcp = vi.fn(
+    async (_root: string, _session: { ownerId: number; sessionId: string }) => ({
+      url: 'http://127.0.0.1:5/mcp',
+      token: 't',
+      stop: mcpStop,
+    }),
+  )
   const m = createAgentManager({
     runners: { claude, codex },
     statuses: () =>
@@ -160,12 +221,27 @@ function manager(
     userData: join(home, 'AppData', 'IeumOffice'),
     homeDir: home,
     language: () => 'ko',
-    startAppMcp: async () => ({ url: 'http://127.0.0.1:5/mcp', token: 't', stop: mcpStop }),
-    buildSkills: async () => join(home, 'skills'),
+    startAppMcp,
+    buildSkills: async () => ({
+      dir: join(home, 'skills'),
+      skills: [
+        {
+          id: 'app:deck',
+          name: 'deck',
+          source: 'app' as const,
+          plugin: undefined,
+          title: 'Deck',
+          description: 'Makes a deck.',
+          invoke: 'auto' as const,
+          skillMd: join(home, 'skills', 'skills', 'deck', 'SKILL.md'),
+        },
+      ],
+      skipped: [],
+    }),
     emit: (owner, id, event) => emitted.push([owner, id, event]),
   })
   managers.push(m)
-  return { m, project, home, session, claude, codex, emitted, mcpStop }
+  return { m, project, home, session, claude, codex, emitted, mcpStop, startAppMcp }
 }
 
 describe('starting a session', () => {
@@ -189,8 +265,27 @@ describe('starting a session', () => {
     expect(options.protectedPaths).toContain(join(home, 'AppData', 'IeumOffice'))
   })
 
-  it('gives Codex no skill copy, and passes on a metered login the person accepted', async () => {
-    const { m, project, codex } = manager({
+  it('names the window and session the MCP server’s skill tools answer to, and gives the window the session’s skills', async () => {
+    const { m, project, home, startAppMcp } = manager()
+    const result = await m.start(4, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    if (!result.ok) throw new Error('not started')
+    expect(startAppMcp.mock.calls[0]![1]).toEqual({ ownerId: 4, sessionId: result.sessionId })
+    expect(result.skills).toEqual([
+      expect.objectContaining({
+        id: 'app:deck',
+        name: 'deck',
+        skillMd: join(home, 'skills', 'skills', 'deck', 'SKILL.md'),
+        template: undefined,
+      }),
+    ])
+  })
+
+  it('gives Codex the same skill copy, listed in its instructions, and passes on a metered login the person accepted', async () => {
+    const { m, project, home, codex } = manager({
       statuses: {
         codex: {
           provider: 'codex',
@@ -201,10 +296,14 @@ describe('starting a session', () => {
       settings: { meteredAccepted: { codex: true } },
     })
     await m.start(1, { provider: 'codex', projectRoot: project, mode: 'trust-project' })
-    expect(codex.mock.calls[0]![0]).toMatchObject({
+    const options = codex.mock.calls[0]![0]
+    expect(options).toMatchObject({
       meteredAccepted: true,
-      skillBundleDir: undefined,
+      skillBundleDir: join(home, 'skills'),
     })
+    expect(options.instructions).toContain(
+      `- deck (id: app:deck; title: Deck): Makes a deck.; SKILL.md: ${join(home, 'skills', 'skills', 'deck', 'SKILL.md')}`,
+    )
   })
 
   it('refuses a program that is not connected, and a metered login only half accepted', async () => {
@@ -274,6 +373,20 @@ describe('driving a session', () => {
     await m.send(1, result.sessionId, 'hi')
     expect(session.sent).toEqual(['hi'])
     expect(session.setOpenDocuments).toHaveBeenCalled()
+  })
+
+  it('keeps the skills the session got, for its window only', async () => {
+    const { m, project } = manager()
+    const result = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    if (!result.ok) throw new Error('did not start')
+    expect(m.skillsOf(1, result.sessionId).map((skill) => [skill.id, skill.name])).toEqual([
+      ['app:deck', 'deck'],
+    ])
+    expect(m.skillsOf(2, result.sessionId)).toEqual([])
   })
 
   it('forwards events to its window and cleans up when the session ends', async () => {
@@ -406,6 +519,52 @@ describe('the window log', () => {
     ])
     expect(log.pending).toEqual([])
     expect(log.busy).toBe(false)
+  })
+
+  it('shows the search words a finished search names when its start had none', () => {
+    const started = { kind: 'web-search' as const, tool: 'webSearch', paths: [] }
+    let log = agentLogAfterSend(EMPTY_AGENT_LOG, 'go')
+    log = agentLogWith(log, { type: 'tool', action: started, status: 'running' })
+    log = agentLogWith(log, {
+      type: 'tool',
+      action: { ...started, target: 'pblsketch openoffice' },
+      status: 'done',
+    })
+    expect(log.entries[1]).toEqual({
+      kind: 'tool',
+      action: { ...started, target: 'pblsketch openoffice' },
+      status: 'done',
+    })
+  })
+
+  it('lets a session-wide allowance answer the same kind of request still waiting', () => {
+    const search = (target: string) => ({
+      kind: 'web-search' as const,
+      tool: 'WebSearch',
+      paths: [],
+      target,
+    })
+    const fetch = (host: string) => ({
+      kind: 'web-fetch' as const,
+      tool: 'WebFetch',
+      paths: [],
+      host,
+    })
+    let log = agentLogAfterSend(EMPTY_AGENT_LOG, 'go')
+    log = agentLogWith(log, { type: 'permission', id: 's1', action: search('a') })
+    log = agentLogWith(log, { type: 'permission', id: 's2', action: search('b') })
+    log = agentLogWith(log, { type: 'permission', id: 'f1', action: fetch('example.com') })
+    log = agentLogWith(log, { type: 'permission', id: 'f2', action: fetch('example.com') })
+    log = agentLogWith(log, { type: 'permission', id: 'f3', action: fetch('other.org') })
+    log = agentLogWith(log, {
+      type: 'permission',
+      id: 'c1',
+      action: { kind: 'command' as const, tool: 'Bash', command: 'dir', paths: [] },
+    })
+    expect(coveredBySessionAllow(log, 's1')).toEqual(['s2'])
+    expect(coveredBySessionAllow(log, 'f1')).toEqual(['f2'])
+    expect(coveredBySessionAllow(log, 'c1')).toEqual([])
+    expect(coveredBySessionAllow(log, 'gone')).toEqual([])
   })
 
   it('marks a failed turn and the end', () => {

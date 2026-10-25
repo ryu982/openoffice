@@ -30,13 +30,11 @@ const REPO_OWNER = 'pblsketch'
 const REPO_NAME = 'openoffice'
 const MAINTAINER = 'pblsketch <pblsketch@users.noreply.github.com>'
 
-// GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
-// arm64. Off by default: Intel packages must only ever ship signed with the
-// company certificate (planned dual-track pipeline), so the current release
-// pipeline stays arm64-only and never produces a personally-signed Intel
-// artifact. The downstream layout (feed archive name, GenOffice-intel.dmg
-// alias) keys off which dmgs exist, so flipping this flag is the single
-// switch.
+// GENOFFICE_MAC_X64=1 — package the Intel (x64) dmg/zip alongside arm64.
+// The release build on GitHub's Mac runner sets it (.github/workflows/
+// mac-build.yml, decision 0065); both are the same unsigned beta, signed ad
+// hoc. Off by default, so a local `dist:mac` stays one arm64 package that
+// needs no universal sidecar.
 const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 
 // GENOFFICE_WIN_ARM64=1 — package the Windows ARM64 installer instead of x64.
@@ -58,12 +56,16 @@ const WIN_SIDECAR = `../sheets/native/xlsx-engine/target/${winSidecarTarget}/rel
 
 function assertExtraResourceSources() {
   for (const rel of [
+    '../../LICENSE',
+    '../../NOTICE',
+    '../../LICENSE-UNICODE.txt',
     '../../node_modules/electron/dist/LICENSES.chromium.html',
     '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
     '../pdf/node_modules/harfbuzzjs/hb-subset.wasm',
     '../../node_modules/@neslinesli93/qpdf-wasm/dist/qpdf.wasm',
     '../../packages/ui/template-fonts/README.md',
     '../../node_modules/@rhwp/core/rhwp_bg.wasm',
+    'resources/builtin-skills/builtin-skills.json',
   ]) {
     if (!existsSync(join(__dirname, rel))) {
       throw new Error(
@@ -125,11 +127,9 @@ function ensurePlatformHelpers() {
   }
   if (process.platform === 'win32' && !existsSync(join(__dirname, WIN_QUICKLOOK_HELPER))) {
     try {
-      execFileSync(
-        process.execPath,
-        [join(__dirname, 'src/main/quick-look/build-win.mjs')],
-        { stdio: 'inherit' },
-      )
+      execFileSync(process.execPath, [join(__dirname, 'src/main/quick-look/build-win.mjs')], {
+        stdio: 'inherit',
+      })
     } catch (err) {
       throw new Error(`win-quicklook helper compile failed: ${err}`, { cause: err })
     }
@@ -204,6 +204,7 @@ function assertModuleTreesPresent() {
     '../html/out',
     '../mindmap/out',
     '../hwp/out',
+    '../epub/out',
     '../../packages/cli/dist/genoffice.cjs',
     '../../packages/cli/dist/node_modules/jsdom',
   ]) {
@@ -281,25 +282,49 @@ function ensureCliBundleCarriesAppVersion() {
 
 const NOTICE_PATH = join(__dirname, 'build/THIRD-PARTY-NOTICES.txt')
 const PDFIUM_NOTICE_TERMS = ['@embedpdf/pdfium', 'Copyright 2014 PDFium Authors', 'Apache License']
+// tools/gen-third-party-notices.mjs writes this header after the repo NOTICE,
+// and one crate-count line per Rust component (xlsx-sidecar, rhwp_bg.wasm)
+const NOTICE_HEADER = `${PRODUCT_NAME} — Third-Party Software Notices`
+const RUST_COMPONENTS = 2
+const CRATE_COUNT_LINE = /^[1-9]\d* crates, all under permissive terms:$/gm
 
-function hasValidThirdPartyNotice() {
-  if (!existsSync(NOTICE_PATH)) return false
+/**
+ * What keeps a generated notice from shipping, or [] when it may ship. A stale
+ * file (written before a NOTICE change, or by the upstream generator) or a
+ * partial one (cargo was missing, so a Rust section is only a pointer) is
+ * regenerated rather than packaged.
+ */
+function thirdPartyNoticeProblems() {
+  let text
   try {
-    const text = readFileSync(NOTICE_PATH, 'utf8')
-    return PDFIUM_NOTICE_TERMS.every((term) => text.includes(term))
+    text = readFileSync(NOTICE_PATH, 'utf8')
   } catch {
-    return false
+    return ['the file is missing']
   }
+  const problems = PDFIUM_NOTICE_TERMS.filter((term) => !text.includes(term)).map(
+    (term) => `PDFium redistribution term "${term}" is missing`,
+  )
+  const notice = readFileSync(join(__dirname, '../../NOTICE'), 'utf8').trim()
+  if (!text.startsWith(notice)) problems.push('it does not open with the current NOTICE')
+  if (!text.includes(NOTICE_HEADER)) problems.push(`the "${NOTICE_HEADER}" header is missing`)
+  const rustSections = text.match(CRATE_COUNT_LINE)?.length ?? 0
+  if (rustSections < RUST_COMPONENTS) {
+    problems.push(`${rustSections} of ${RUST_COMPONENTS} Rust crate sections are listed`)
+  }
+  return problems
 }
 
 function ensureThirdPartyNotices() {
-  if (!hasValidThirdPartyNotice()) {
+  if (thirdPartyNoticeProblems().length > 0) {
+    // IEUM_RELEASE makes the generator fail on a gap instead of degrading
     execFileSync(process.execPath, [join(__dirname, '../../tools/gen-third-party-notices.mjs')], {
       stdio: 'inherit',
+      env: { ...process.env, IEUM_RELEASE: '1' },
     })
   }
-  if (!hasValidThirdPartyNotice()) {
-    throw new Error('third-party notice missing PDFium redistribution terms')
+  const problems = thirdPartyNoticeProblems()
+  if (problems.length > 0) {
+    throw new Error(`third-party notice cannot ship: ${problems.join('; ')}`)
   }
 }
 
@@ -308,14 +333,14 @@ function ensureThirdPartyNotices() {
 // office types that is the point, for plain text and JSON it would hijack the
 // system editor, so Windows leaves those two out (mac/Linux only offer them
 // in Open With).
-// A mind map file keeps the program the user already opens it with, and HWP
-// and HWPX must not be taken from Hancom Office on a PC that has it, so
-// Windows takes none of the three as the extension's default. They are still
-// offered in Explorer's "Open with": build/installer.nsh writes a product-own
-// ProgId with the per-type document icon for each, so choosing this app for
-// them shows the Hangul or mind-map icon instead of the bare app icon (the
-// .ico files ship via win.extraResources below).
-const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx'])
+// A mind map file and a book keep the program the user already opens them
+// with, and HWP and HWPX must not be taken from Hancom Office on a PC that has
+// it, so Windows takes none of the four as the extension's default. They are
+// still offered in Explorer's "Open with": build/installer.nsh writes a
+// product-own ProgId with the per-type document icon for each, so choosing
+// this app for them shows the Hangul, mind-map or book icon instead of the
+// bare app icon (the .ico files ship via win.extraResources below).
+const WIN_OPEN_WITH_ONLY_EXTS = new Set(['txt', 'json', 'xmind', 'hwp', 'hwpx', 'epub'])
 // NSIS registers each association under a ProgId taken from its `name`
 // (HKCU\Software\Classes\<name>). The upstream app registers the bare names
 // below ("Word Document"), so sharing them would let either install overwrite
@@ -454,6 +479,18 @@ const FILE_ASSOCIATIONS = [
     icon: 'hwp',
     mimeType: 'application/hwp+zip',
   },
+  {
+    // Open With only, like .xmind: Windows leaves it out (WIN_OPEN_WITH_ONLY_EXTS)
+    // and macOS ranks the app as an alternate, so the reader the user already
+    // has stays the default.
+    ext: 'epub',
+    name: 'EPUB Book',
+    description: 'EPUB Book',
+    role: 'Editor',
+    rank: 'Alternate',
+    icon: 'epub',
+    mimeType: 'application/epub+zip',
+  },
 ]
 
 const config = {
@@ -468,6 +505,20 @@ const config = {
   },
   files: ['out/**'],
   extraResources: [
+    // Apache-2.0 §4(a)/(d): every copy carries the license and the NOTICE of
+    // the work; NOTICE refers to LICENSE-UNICODE.txt for the Unicode data
+    {
+      from: '../../LICENSE',
+      to: 'LICENSE.txt',
+    },
+    {
+      from: '../../NOTICE',
+      to: 'NOTICE.txt',
+    },
+    {
+      from: '../../LICENSE-UNICODE.txt',
+      to: 'LICENSE-UNICODE.txt',
+    },
     {
       from: 'build/THIRD-PARTY-NOTICES.txt',
       to: 'THIRD-PARTY-NOTICES.txt',
@@ -507,6 +558,10 @@ const config = {
     {
       from: '../hwp/out',
       to: 'modules/hwp',
+    },
+    {
+      from: '../epub/out',
+      to: 'modules/epub',
     },
     // PDF text editing engines: the bundled main resolves these under
     // Resources/wasm when node_modules is absent (apps/pdf/src/main/wasm-path.ts)
@@ -583,6 +638,13 @@ const config = {
       from: '../../packages/ui/template-fonts',
       to: 'template-fonts',
     },
+    // the skills shipped with the app (read-only in the install folder): each
+    // folder is the upstream skill as fetched, listed with its source, commit
+    // and license in builtin-skills.json and NOTICE
+    {
+      from: 'resources/builtin-skills',
+      to: 'builtin-skills',
+    },
   ],
   // `mimeType` is read only by the Linux target, where it becomes the
   // desktop entry's MimeType= list; associations without it are dropped
@@ -602,12 +664,12 @@ const config = {
   npmRebuild: false,
   mac: {
     // Two separate arch packages (NOT universal): arm64 keeps the exact
-    // artifact names and update-feed entries it always had, x64 (opt-in via
-    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
-    // electron-builder's default arch-less names (GenOffice-<v>.dmg /
-    // GenOffice-<v>-mac.zip). Both zips land in one latest-mac.yml and
-    // electron-updater picks by process.arch. Dual-arch packs ship the same
-    // lipo fat xlsx-sidecar (see assertUniversalSidecar above).
+    // artifact names and update-feed entries it always had, x64 (via
+    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds the Intel package:
+    // IeumOffice-<v>-x64.dmg (config.dmg.artifactName below) and the
+    // arch-less IeumOffice-<v>-mac.zip. Both zips land in one latest-mac.yml,
+    // which a Mac install only reads for the version. Dual-arch packs ship the
+    // same lipo fat xlsx-sidecar (see assertUniversalSidecar above).
     target: [
       { target: 'dmg', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
       { target: 'zip', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
@@ -646,10 +708,10 @@ const config = {
         to: 'shell-new',
         filter: ['*.docx', '*.xlsx', '*.pptx'],
       },
-      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind
+      // The Open-With ProgIds build/installer.nsh writes for .hwp/.hwpx/.xmind/.epub
       // point their DefaultIcon at these; without the explicit entries the
       // icons are absent (electron-builder places an icon only for the types
-      // in win.fileAssociations, and these three stay off that list).
+      // in win.fileAssociations, and these four stay off that list).
       {
         from: 'build/hwp.ico',
         to: 'hwp.ico',
@@ -657,6 +719,10 @@ const config = {
       {
         from: 'build/mindmap.ico',
         to: 'mindmap.ico',
+      },
+      {
+        from: 'build/epub.ico',
+        to: 'epub.ico',
       },
     ],
   },
@@ -849,6 +915,10 @@ config.mac.identity = '-'
 config.mac.hardenedRuntime = false
 config.mac.notarize = false
 config.dmg.sign = false
+// Every dmg names its CPU (decision 0065). electron-builder leaves the arch
+// out of an x64 name, which would make the Intel dmg the one without a label;
+// the arm64 name stays the one the site and the README point at.
+config.dmg.artifactName = '${productName}-${version}-${arch}.${ext}'
 
 // Auto-update feed: the releases of the public repository. Always configured,
 // so every installer carries an app-update.yml and can update itself — the

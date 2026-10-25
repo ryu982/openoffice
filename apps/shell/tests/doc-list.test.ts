@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DocListItem } from '../src/shared/doc-picker-api'
-import { createDocList, type DocListDeps } from '../src/main/doc-picker/doc-list'
+import { createDocList, toMentionItems, type DocListDeps } from '../src/main/doc-picker/doc-list'
+import type { DocAsker } from '../src/main/doc-picker/doc-asker'
 
 /** small caps so the size cases read at a glance */
 const MAX = 50
@@ -23,8 +24,8 @@ function deps(over: Partial<DocListDeps> = {}): DocListDeps {
   }
 }
 
-async function itemsOf(config: DocListDeps): Promise<DocListItem[]> {
-  const got = await createDocList(config)()
+async function itemsOf(config: DocListDeps, asker?: DocAsker): Promise<DocListItem[]> {
+  const got = await createDocList(config)(asker)
   expect(got.ok).toBe(true)
   if (!got.ok) throw new Error('unreachable')
   return got.items
@@ -217,5 +218,200 @@ describe('createDocList', () => {
       }),
     )
     expect(items).toHaveLength(1)
+  })
+
+  it('marks a saved open document with unsaved changes as modified', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'a', path: 'C:/docs/a.docx', title: 'a.docx', dirty: true },
+          { id: 'b', path: 'C:/docs/b.docx', title: 'b.docx', dirty: false },
+        ],
+      }),
+    )
+    expect(items.map((i) => [i.id, i.state])).toEqual([
+      ['C:/docs/a.docx', 'modified'],
+      ['C:/docs/b.docx', 'ok'],
+    ])
+  })
+
+  it('marks a path modified when any open copy of it has unsaved changes', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'a', path: 'C:/docs/same.docx', title: 'same.docx', dirty: false },
+          { id: 'b', path: 'C:/docs/same.docx', title: 'same.docx', dirty: true },
+        ],
+      }),
+    )
+    expect(items).toEqual([
+      {
+        id: 'C:/docs/same.docx',
+        title: 'same.docx',
+        dir: 'C:/docs',
+        state: 'modified',
+        group: 'open',
+      },
+    ])
+  })
+
+  it('keeps a missing saved file missing even when its tab is dirty', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'a', path: 'C:/docs/gone.docx', title: 'gone.docx', dirty: true },
+        ],
+        stat: async () => null,
+      }),
+    )
+    expect(items[0]?.state).toBe('missing')
+  })
+
+  it('puts the other split pane first, then the other open documents, then recent ones', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-1', path: 'C:/docs/me.docx', title: 'me.docx', dirty: false },
+          { id: 'tab-2', path: 'C:/docs/other.docx', title: 'other.docx', dirty: false },
+          { id: 'tab-3', path: 'C:/docs/pane.pdf', title: 'pane.pdf', dirty: false },
+        ],
+        recent: async () => [{ path: 'C:/docs/old.txt', title: 'old.txt', missing: false }],
+      }),
+      { tabId: 'tab-1', path: 'C:/docs/me.docx', paneTabId: 'tab-3' },
+    )
+    expect(items.map((i) => [i.group, i.title])).toEqual([
+      ['pane', 'pane.pdf'],
+      ['open', 'other.docx'],
+      ['recent', 'old.txt'],
+    ])
+  })
+
+  it('shows a never-saved document in the other pane as an unsaved pane row', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-1', path: 'C:/docs/me.docx', title: 'me.docx', dirty: false },
+          { id: 'tab-2', title: '제목 없는 문서', dirty: true },
+        ],
+      }),
+      { tabId: 'tab-1', path: 'C:/docs/me.docx', paneTabId: 'tab-2' },
+    )
+    expect(items).toEqual([
+      { id: 'unsaved:tab-2', title: '제목 없는 문서', dir: '', state: 'unsaved', group: 'pane' },
+    ])
+  })
+
+  it('leaves out the asking tab and every copy of its file, open or recent', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-1', path: 'C:/Docs/Plan.docx', title: 'Plan.docx', dirty: false },
+          // the same file shown in the other pane, its path written in another case
+          { id: 'tab-2', path: 'C:/docs/plan.docx', title: 'plan.docx', dirty: false },
+          { id: 'tab-3', path: 'C:/docs/b.pdf', title: 'b.pdf', dirty: false },
+        ],
+        recent: async () => [
+          { path: 'C:/docs/PLAN.docx', title: 'PLAN.docx', missing: false },
+          { path: 'C:/docs/./c.txt', title: 'c.txt', missing: false },
+          { path: 'C:/docs/sub/../c.txt', title: 'c.txt', missing: false },
+        ],
+      }),
+      { tabId: 'tab-1', path: 'C:/Docs/Plan.docx', paneTabId: 'tab-2' },
+    )
+    expect(items.map((i) => [i.group, i.title])).toEqual([
+      ['open', 'b.pdf'],
+      ['recent', 'c.txt'],
+    ])
+  })
+
+  it('leaves out a never-saved asking tab by its tab id', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-7', title: '제목 없는 문서', dirty: false },
+          { id: 'tab-8', title: '새 스프레드시트', dirty: false },
+        ],
+      }),
+      { tabId: 'tab-7' },
+    )
+    expect(items.map((i) => i.id)).toEqual(['unsaved:tab-8'])
+  })
+
+  it('leaves out a detached asker (no pane) and keeps every other document', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-1', path: 'C:/docs/a.docx', title: 'a.docx', dirty: false },
+          { id: 'detached:9', path: 'C:/docs/d.docx', title: 'd.docx', dirty: false },
+        ],
+      }),
+      { tabId: 'detached:9', path: 'C:/docs/d.docx' },
+    )
+    expect(items.map((i) => [i.group, i.title])).toEqual([['open', 'a.docx']])
+  })
+
+  it('excludes nothing when the asker is unknown', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-1', path: 'C:/docs/a.docx', title: 'a.docx', dirty: false },
+          { id: 'tab-2', title: '새 문서', dirty: false },
+        ],
+      }),
+      {},
+    )
+    expect(items.map((i) => i.id)).toEqual(['C:/docs/a.docx', 'unsaved:tab-2'])
+  })
+
+  it('keeps one row per path ignoring case, the earlier group winning', async () => {
+    const items = await itemsOf(
+      deps({
+        openDocuments: async () => [
+          { id: 'tab-2', path: 'C:/docs/A.docx', title: 'A.docx', dirty: false },
+          { id: 'tab-3', path: 'C:/docs/a.docx', title: 'a.docx', dirty: false },
+        ],
+        recent: async () => [{ path: 'C:/DOCS/a.DOCX', title: 'a.DOCX', missing: false }],
+      }),
+      { paneTabId: 'tab-3' },
+    )
+    expect(items).toEqual([
+      { id: 'C:/docs/a.docx', title: 'a.docx', dir: 'C:/docs', state: 'ok', group: 'pane' },
+    ])
+  })
+})
+
+describe('toMentionItems', () => {
+  it('turns the list into @ rows: file names, null path for never-saved, missing ones gone', () => {
+    const items: DocListItem[] = [
+      { id: 'C:/docs/pane.pdf', title: 'pane.pdf', dir: 'C:/docs', state: 'ok', group: 'pane' },
+      {
+        id: 'C:/docs/plan.docx',
+        title: 'Plan (tab title)',
+        dir: 'C:/docs',
+        state: 'modified',
+        group: 'open',
+      },
+      { id: 'unsaved:tab-4', title: '제목 없는 문서', dir: '', state: 'unsaved', group: 'open' },
+      {
+        id: 'C:/docs/gone.txt',
+        title: 'gone.txt',
+        dir: 'C:/docs',
+        state: 'missing',
+        group: 'recent',
+      },
+      { id: 'C:/docs/old.txt', title: 'old.txt', dir: 'C:/docs', state: 'ok', group: 'recent' },
+    ]
+    expect(toMentionItems(items)).toEqual([
+      { path: 'C:/docs/pane.pdf', name: 'pane.pdf', dir: 'C:/docs', group: 'pane', state: 'ok' },
+      {
+        path: 'C:/docs/plan.docx',
+        name: 'plan.docx',
+        dir: 'C:/docs',
+        group: 'open',
+        state: 'modified',
+      },
+      { path: null, name: '제목 없는 문서', dir: '', group: 'open', state: 'unsaved' },
+      { path: 'C:/docs/old.txt', name: 'old.txt', dir: 'C:/docs', group: 'recent', state: 'ok' },
+    ])
   })
 })

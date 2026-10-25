@@ -9,6 +9,8 @@ import { PassThrough, Writable } from 'node:stream'
 import type { SpawnOptions } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  AGENT_APP_MCP_TOOLS,
+  CLAUDE_AGENT_TOOLS,
   claudeAgentAction,
   claudeAgentInitProblem,
   claudeAgentLaunchArgs,
@@ -76,7 +78,18 @@ class FakeClaude extends EventEmitter {
 const INIT = {
   type: 'system',
   subtype: 'init',
-  tools: ['Bash', 'Edit', 'Glob', 'Grep', 'PowerShell', 'Read', 'Skill', 'Write'],
+  tools: [
+    'Bash',
+    'Edit',
+    'Glob',
+    'Grep',
+    'PowerShell',
+    'Read',
+    'Skill',
+    'WebFetch',
+    'WebSearch',
+    'Write',
+  ],
   mcp_servers: [],
   model: 'claude-test',
   skills: ['ieum-skills:probe'],
@@ -164,7 +177,7 @@ describe('the command line and the session files', () => {
       '--setting-sources',
       '',
       '--tools',
-      'Read,Edit,Write,Glob,Grep,Bash,PowerShell,Skill',
+      'Read,Edit,Write,Glob,Grep,Bash,PowerShell,Skill,WebSearch,WebFetch',
       '--permission-prompts',
       'host',
       '--permission-prompt-tool',
@@ -228,6 +241,23 @@ describe('the command line and the session files', () => {
   })
 })
 
+describe('the tools the session turns on', () => {
+  it('are the eight file, command and skill tools and the two web tools, nothing else', () => {
+    expect([...CLAUDE_AGENT_TOOLS]).toEqual([
+      'Read',
+      'Edit',
+      'Write',
+      'Glob',
+      'Grep',
+      'Bash',
+      'PowerShell',
+      'Skill',
+      'WebSearch',
+      'WebFetch',
+    ])
+  })
+})
+
 describe('what the CLI reports at the start', () => {
   it('accepts the tools it was given and the app MCP server', () => {
     expect(claudeAgentInitProblem(INIT)).toBeUndefined()
@@ -241,7 +271,10 @@ describe('what the CLI reports at the start', () => {
   })
 
   it('refuses any other tool or MCP server', () => {
-    expect(claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'WebFetch'] })).toMatch(/tools/)
+    expect(claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'Agent'] })).toMatch(/tools/)
+    expect(claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'NotebookEdit'] })).toMatch(
+      /tools/,
+    )
     expect(
       claudeAgentInitProblem({ ...INIT, tools: [...INIT.tools, 'mcp__github__create_issue'] }),
     ).toMatch(/tools/)
@@ -249,6 +282,41 @@ describe('what the CLI reports at the start', () => {
       claudeAgentInitProblem({ ...INIT, mcp_servers: [{ name: 'github', status: 'connected' }] }),
     ).toMatch(/MCP server/)
     expect(claudeAgentInitProblem({ ...INIT, tools: undefined })).toMatch(/tool list/)
+  })
+
+  it('accepts each of the 13 app tools by name and nothing else of the app server', () => {
+    expect([...AGENT_APP_MCP_TOOLS]).toEqual([
+      'open_documents',
+      'read_document',
+      'insert_content',
+      'replace_blocks',
+      'apply_ops',
+      'read_sheet',
+      'apply_sheet_ops',
+      'read_deck',
+      'apply_slide_ops',
+      'read_hwp',
+      'read_pdf',
+      'propose_skill',
+      'propose_skill_install',
+    ])
+    const server = [{ name: 'ieumoffice-editor', status: 'connected' }]
+    expect(
+      claudeAgentInitProblem({
+        ...INIT,
+        tools: [...INIT.tools, ...AGENT_APP_MCP_TOOLS.map((t) => `mcp__ieumoffice-editor__${t}`)],
+        mcp_servers: server,
+      }),
+    ).toBeUndefined()
+    for (const outside of ['create_docx', 'close_document', 'use_skill', 'save_session']) {
+      expect(
+        claudeAgentInitProblem({
+          ...INIT,
+          tools: [...INIT.tools, `mcp__ieumoffice-editor__${outside}`],
+          mcp_servers: server,
+        }),
+      ).toMatch(/tools/)
+    }
   })
 
   it('reads what each tool call does', () => {
@@ -264,6 +332,23 @@ describe('what the CLI reports at the start', () => {
     expect(claudeAgentAction('mcp__ieumoffice-editor__apply_ops', {})).toMatchObject({
       kind: 'app-tool',
     })
+    expect(claudeAgentAction('WebSearch', { query: 'tide tables' })).toEqual({
+      kind: 'web-search',
+      tool: 'WebSearch',
+      target: 'tide tables',
+      paths: [],
+    })
+    expect(
+      claudeAgentAction('WebFetch', { url: 'https://Docs.Example.com/a?b=1', prompt: 'x' }),
+    ).toEqual({
+      kind: 'web-fetch',
+      tool: 'WebFetch',
+      target: 'https://Docs.Example.com/a?b=1',
+      host: 'docs.example.com',
+      paths: [],
+    })
+    // an address that is not http(s) has no site to remember
+    expect(claudeAgentAction('WebFetch', { url: 'file:///C:/a.txt' }).host).toBeUndefined()
   })
 })
 
@@ -340,7 +425,7 @@ describe('a session', () => {
 
   it('stops when the CLI starts with a tool it was not given', async () => {
     const { session, harness } = await start((child) => {
-      child.send({ ...INIT, tools: [...INIT.tools, 'WebFetch'] })
+      child.send({ ...INIT, tools: [...INIT.tools, 'Agent'] })
     })
     await session.send('hi')
     await tick()
@@ -432,6 +517,88 @@ describe('a session', () => {
     const count = harness.child.lines.length
     session.answer('r9', { allow: true })
     expect(harness.child.lines.length).toBe(count)
+    session.stop()
+  })
+
+  it('asks before the web, and keeps a session allowance for searches or one site', async () => {
+    const ask = (id: string, tool: string, input: Record<string, unknown>) => ({
+      type: 'control_request',
+      request_id: id,
+      request: { subtype: 'can_use_tool', tool_name: tool, input, tool_use_id: `u-${id}` },
+    })
+    const { session, harness } = await start((child) => {
+      child.send(
+        INIT,
+        ask('s1', 'WebSearch', { query: 'weather' }),
+        ask('f1', 'WebFetch', { url: 'https://Example.com/a' }),
+      )
+    })
+    await session.send('look it up')
+    await tick()
+    const asked = () =>
+      harness.events.flatMap((event) => (event.type === 'permission' ? [event.request] : []))
+    expect(asked().map((request) => request.id)).toEqual(['s1', 'f1'])
+    expect(asked()[0]).toMatchObject({ kind: 'web-search', target: 'weather' })
+    expect(asked()[1]).toMatchObject({
+      kind: 'web-fetch',
+      host: 'example.com',
+      target: 'https://Example.com/a',
+    })
+    session.answer('s1', { allow: true, scope: 'session' })
+    session.answer('f1', { allow: true, scope: 'session' })
+    harness.child.send(
+      ask('s2', 'WebSearch', { query: 'news' }),
+      ask('f2', 'WebFetch', { url: 'http://example.com/b' }),
+      ask('f3', 'WebFetch', { url: 'https://other.org/' }),
+    )
+    await tick()
+    const answered = (id: string) =>
+      harness.child.lines.find(
+        (line) => line.type === 'control_response' && line.response?.request_id === id,
+      )?.response.response.behavior
+    expect(answered('s1')).toBe('allow')
+    expect(answered('f1')).toBe('allow')
+    // allowed for the session: answered without asking
+    expect(answered('s2')).toBe('allow')
+    expect(answered('f2')).toBe('allow')
+    // another site still asks; a plain "allow" is for this page only
+    expect(asked().map((request) => request.id)).toEqual(['s1', 'f1', 'f3'])
+    session.answer('f3', { allow: true })
+    harness.child.send(ask('f4', 'WebFetch', { url: 'https://other.org/next' }))
+    await tick()
+    expect(answered('f3')).toBe('allow')
+    expect(answered('f4')).toBeUndefined()
+    expect(asked().at(-1)?.id).toBe('f4')
+    session.answer('f4', { allow: false })
+    await tick()
+    expect(answered('f4')).toBe('deny')
+    session.stop()
+
+    // a new session starts with nothing allowed
+    const next = await start((child) => child.send(INIT, ask('s9', 'WebSearch', { query: 'x' })))
+    await next.session.send('again')
+    await tick()
+    expect(next.harness.events.some((event) => event.type === 'permission')).toBe(true)
+    next.session.stop()
+  })
+
+  it('asks before the web when the project is trusted, too', async () => {
+    const { session, harness } = await start(
+      (child) =>
+        child.send(INIT, {
+          type: 'control_request',
+          request_id: 'w1',
+          request: {
+            subtype: 'can_use_tool',
+            tool_name: 'WebFetch',
+            input: { url: 'https://example.com/' },
+          },
+        }),
+      { mode: 'trust-project' },
+    )
+    await session.send('go')
+    await tick()
+    expect(harness.events.some((event) => event.type === 'permission')).toBe(true)
     session.stop()
   })
 

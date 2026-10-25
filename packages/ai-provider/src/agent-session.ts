@@ -7,7 +7,9 @@ export * from './agent-session/types'
 export * from './agent-session/policy'
 export * from './agent-session/messages'
 export {
+  AGENT_APP_MCP_TOOLS,
   APP_MCP_SERVER_NAME,
+  isAgentAppMcpTool,
   CLAUDE_AGENT_TOOLS,
   claudeAgentAction,
   claudeAgentInitProblem,
@@ -24,6 +26,7 @@ export {
   AgentSandboxUnavailableError,
   CODEX_AGENT_PROFILE,
   codexAgentAction,
+  codexAppMcpExtraTools,
   codexAgentApprovalPolicy,
   codexAgentFilesystem,
   codexAgentLaunchArgs,

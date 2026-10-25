@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Markdown } from '@genoffice/ui'
-import { HELP_GROUPS, HELP_TOPICS, helpBody, helpImage, searchTopics } from './help-registry'
+import {
+  HELP_GROUPS,
+  HELP_TOPICS,
+  helpBody,
+  helpImage,
+  initialHelpTopic,
+  searchTopics,
+} from './help-registry'
 import { useI18n } from '../../locale'
 import { groupTitle, topicTitle } from './help-titles'
 // travels with the lazy chunk: this screen's styles are only wanted on this tab
@@ -30,7 +37,7 @@ export function HelpScreen(): React.ReactElement {
   // codes silently misses every row, so the screen showed English titles over a
   // body in whatever language matched `startsWith('zh')`.
   const [query, setQuery] = useState('')
-  const [activeId, setActiveId] = useState(HELP_TOPICS[0]!.id)
+  const [activeId, setActiveId] = useState(() => initialHelpTopic(location.search))
   // Bodies are separate chunks, so both the article and the search results are
   // state that arrives rather than values computed during render. Each load
   // carries a generation so a slower one cannot land over a newer answer.

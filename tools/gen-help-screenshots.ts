@@ -1,6 +1,15 @@
 /**
  * Regenerate the manual's screenshots: `npx tsx tools/gen-help-screenshots.ts`
  *
+ * ## Which figures
+ *
+ * Only the ones a topic body references: `file-ops` (Home's file list with a
+ * file's menu open) and `tabs` (the tab strip). The registry bundles every PNG
+ * in the img folder, so a figure no topic shows still ships; this script does
+ * not write any. The other referenced figures are ribbon strips and editor
+ * popups captured elsewhere, and `word-shortcuts` comes from
+ * gen-help-shortcut-figure.ts.
+ *
  * ## Why a script and not a hand capture
  *
  * The figures were first shot from a developer's own session, which put their
@@ -16,16 +25,18 @@
  * nothing about that. HOME and `GENOFFICE_AUTH_DIR` keep it inside the scratch
  * profile too, so nothing of the developer's own session is read or written.
  *
- * ## What the scratch profile cannot pin
+ * ## Why the AI programs are hidden from the capture
  *
- * The account row and Settings → Account show where the Claude and Codex
- * subscriptions stand. That is read from the programs installed on the
- * capturing machine, not from a file this script controls. No account name or
- * e-mail appears — only "Connect AI", or the provider's name and plan — but the
- * figures differ between a machine with a connected subscription and one
- * without. Capture where neither program is signed in for the not-connected
- * state. The first-connection notice is marked as seen below, so its dialog
- * never covers the window.
+ * The account row shows where the Claude and Codex subscriptions stand, read
+ * from the programs installed on the capturing machine: a connected machine
+ * puts the provider and the developer's own plan into the figure. So the app is
+ * launched where it cannot find either program — the Windows profile folders
+ * point into the scratch HOME, and PATH loses every directory that holds one.
+ * The row then reads "Connect AI" on every machine, and neither program is
+ * started at all, not even for a status check. macOS and Linux also search
+ * fixed bin directories the script cannot hide; capture there on a machine
+ * where neither program is signed in. The first-connection notice is marked as
+ * seen below, so its dialog never covers the window.
  */
 import {
   _electron as electron,
@@ -35,9 +46,9 @@ import {
   type Rect,
 } from '@playwright/test'
 import { createRequire } from 'node:module'
-import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { delimiter, join, resolve } from 'node:path'
 
 import { HOME_DIR_NAME } from '../packages/cli/src/names'
 import { PRODUCT_NAME } from '../packages/i18n/src/product'
@@ -52,9 +63,13 @@ const REPO = resolve(__dirname, '..')
 const SHELL_DIR = join(REPO, 'apps/shell')
 const OUT_DIR = join(REPO, 'apps/shell/src/renderer/src/i18n/help/topics/img')
 
-/** The UI languages the manual ships figures for; see the registry's language set. */
+/**
+ * The UI languages to capture. The manual ships English figures only, and the
+ * registry falls back to `<name>.en.png` for every other language, so English
+ * is the default; pass languages to write `<name>.<lang>.png` as well.
+ */
 const LANGS = process.argv.slice(2).filter((a) => !a.startsWith('-'))
-const TARGET_LANGS = LANGS.length ? LANGS : ['zh', 'en']
+const TARGET_LANGS = LANGS.length ? LANGS : ['en']
 
 /** A one-page PDF, written by hand so the capture needs no PDF library. */
 function minimalPdf(): Buffer {
@@ -151,6 +166,29 @@ async function makeScratch(): Promise<Scratch> {
   return { home, userData, samples, dispose: () => rmSync(root, { recursive: true, force: true }) }
 }
 
+/** Executable names of the two subscription programs, as the app looks for them. */
+const AI_PROGRAMS = ['claude', 'codex'].flatMap((n) => [n, `${n}.exe`, `${n}.cmd`, `${n}.ps1`])
+
+/**
+ * The host environment with the subscription programs out of reach: see "Why
+ * the AI programs are hidden" above.
+ */
+function withoutAiPrograms(env: NodeJS.ProcessEnv, home: string): NodeJS.ProcessEnv {
+  const out = { ...env }
+  const pathKey = Object.keys(out).find((k) => k.toLowerCase() === 'path') ?? 'PATH'
+  out[pathKey] = (out[pathKey] ?? '')
+    .split(delimiter)
+    .filter((dir) => dir && !AI_PROGRAMS.some((name) => existsSync(join(dir, name))))
+    .join(delimiter)
+  if (process.platform === 'win32') {
+    out.USERPROFILE = home
+    out.APPDATA = join(home, 'AppData', 'Roaming')
+    out.LOCALAPPDATA = join(home, 'AppData', 'Local')
+    delete out.LocalAppData
+  }
+  return out
+}
+
 async function launch(scratch: Scratch, lang: string): Promise<ElectronApplication> {
   const require = createRequire(join(SHELL_DIR, 'package.json'))
   // ELECTRON_RUN_AS_NODE (set by CI hosts) would boot Electron as plain Node
@@ -162,7 +200,7 @@ async function launch(scratch: Scratch, lang: string): Promise<ElectronApplicati
     executablePath: require('electron') as unknown as string,
     args,
     env: {
-      ...hostEnv,
+      ...withoutAiPrograms(hostEnv, scratch.home),
       HOME: scratch.home,
       GENOFFICE_USER_DATA: scratch.userData,
       GENOFFICE_AUTH_DIR: join(scratch.home, HOME_DIR_NAME),
@@ -255,10 +293,7 @@ async function main(): Promise<void> {
         throw new Error(`folder view did not list files; rows on screen: ${seen}`)
       }
 
-      // 1. the Home screen, listing the sample files
-      await shoot(page, cdp, 'home-screen', lang)
-
-      // 2. the same list with a file's own menu open — the surface the
+      // 1. the file list with a file's own menu open — the surface the
       //    file-operations topic is about
       // the row's own trigger, by class: its aria-label is localized, and the
       // sidebar tree carries a trigger with the same wording
@@ -284,75 +319,34 @@ async function main(): Promise<void> {
       await page.keyboard.press('Escape')
       await page.waitForTimeout(300)
 
-      // 3. Settings. There is no gear in the top-right: the modal opens from the
-      //    account row at the bottom-left (Home.tsx's AccountEntry says so), and
-      //    its aria-label is localized, so match the class rather than the text.
-      //    Two panes, each saved under the name of the pane it actually shows:
-      //    General is where the manual's own subjects live — language and theme,
-      //    plus the AutoSave switch — and Account is where the subscription
-      //    state shows. Integrations is the pane the MCP topic is
-      //    about, so it gets its own figure rather than a stand-in.
-      await page.locator('.account-btn').click()
-      const nav = page.locator('.set-nav-item')
-      const openPane = async (name: RegExp, shot: string) => {
-        const item = nav.filter({ hasText: name })
-        if (!(await item.count())) throw new Error(`settings pane not found: ${name}`)
-        await item.first().click()
-        await page.waitForTimeout(500)
-        await shoot(page, cdp, shot, lang)
+      // 2. the tab strip with Home and two documents, the second one active —
+      //    the tabs topic's figure. Each double-click opens a tab and makes it
+      //    the active one, so the Home tab is clicked in between to get the
+      //    file list back. Only the strip is captured, so the editors behind
+      //    it need not have finished loading.
+      const strip = page.locator('.tab-strip')
+      for (const name of ['doc.docx', 'book.xlsx']) {
+        await page.locator('.tab-item.tab-home').click()
+        // the name cell, not the row: see gen-help-shortcut-figure.ts on why
+        // a click elsewhere in the row can miss
+        await page
+          .locator('.recent-row')
+          .filter({ hasText: name })
+          .first()
+          .locator('.recent-name')
+          .dblclick()
+        await strip.locator('.tab-item').filter({ hasText: name }).waitFor({ timeout: 30_000 })
       }
-      // Every shipped UI language's own label for the pane, taken from
-      // `setSecGeneral` / `setSecIntegrations` in strings.ts. Matching three of
-      // them and skipping the click on a miss is how this silently captured the
-      // default pane for the other eighteen: the figure came out as Account, not
-      // General, and nobody noticed because the file name still said otherwise.
-      await openPane(
-        /通用|General|Chung|一般|일반|Général|Allgemein|ทั่วไป|Umum|Общие|عام|Geral|Generale|Ogólne|Obecné|Algemeen|כללי|सामान्य/,
-        'settings-general',
-      )
-      await openPane(
-        /集成|Integrations|Tích hợp|連携|연동|Intégrations|Integrationen|Integraciones|การเชื่อมต่อ|Integrasi|Интеграции|التكاملات|Integrações|Integrazioni|Integracje|Integrace|Integraties|שילובים|इंटीग्रेशन|整合/,
-        'settings-integrations',
-      )
-      await page.keyboard.press('Escape').catch(() => {})
-
-      // 4. the Slides ribbon, cropped to the band — the fonts topic's figure.
-      //    It was hand-captured twice, at two different moments, and the two
-      //    language editions ended up showing different things: English a whole
-      //    window, CJK a ribbon strip. Two files with one caption must show
-      //    one subject, so both come from here.
-      //
-      //    `[data-ribbon-body]` is the shared markup contract every ribbon in
-      //    the suite carries (`packages/ui/src/ribbon-collapse.tsx` documents
-      //    it), so one selector crops all six editors rather than a per-app
-      //    class that only exists in one of them.
-      await page.locator('.account-btn').waitFor({ state: 'visible', timeout: 15_000 })
-      const deckRow = page.locator('.recent-row').filter({ hasText: 'deck.pptx' }).first()
-      const slidesWindow = app.waitForEvent('window')
-      await deckRow.dblclick()
-      const slides = await slidesWindow
-      await slides.waitForLoadState('domcontentloaded')
-      await slides
-        .locator('[data-ribbon-body]')
-        .first()
-        .waitFor({ state: 'visible', timeout: 45_000 })
-      // Resize before measuring: the clip box has to be the band *after* the
-      // viewport change, and at 1360 the ribbon runs past the right edge and
-      // the capture ends mid-word on 'Find/Replace'.
-      const slidesCdp = await frame(slides, 1680)
-      const band = await slides.locator('[data-ribbon-body]').first().boundingBox()
-      if (!band || band.width < 200)
-        throw new Error(`ribbon band not measurable: ${JSON.stringify(band)}`)
+      await page.waitForTimeout(800)
+      const box = await strip.boundingBox()
+      if (!box || box.width < 200)
+        throw new Error(`tab strip not measurable: ${JSON.stringify(box)}`)
       await writeFileSync(
-        join(OUT_DIR, `fonts.${lang}.png`),
-        await capture(slides, slidesCdp, {
-          x: band.x,
-          y: band.y,
-          width: band.width,
-          height: band.height,
-        }),
+        join(OUT_DIR, `tabs.${lang}.png`),
+        await capture(page, cdp, { x: box.x, y: box.y, width: box.width, height: box.height }),
       )
-      process.stdout.write(`wrote fonts.${lang}.png\n`)
+      process.stdout.write(`wrote tabs.${lang}.png
+`)
     } finally {
       await app?.close().catch(() => {})
       scratch.dispose()

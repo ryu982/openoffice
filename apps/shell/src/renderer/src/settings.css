@@ -437,8 +437,8 @@
   font-size: 13px;
 }
 
-/* brand mark in the AI provider dropdown (trigger value + option rows are
-   flex containers from gs-dd); monochrome marks follow the text color */
+/* provider mark in the AI provider dropdown (trigger value + option rows are
+   flex containers from gs-dd); every mark follows the text color */
 .set-provider-logo {
   flex-shrink: 0;
   display: inline-flex;

@@ -1,6 +1,6 @@
 # Docs: elaborazione testi
 
-Docs è il processore di testi simile a Word: legge e scrive veri file .docx con un'impaginazione fedele a WYSIWYG.
+Docs è l'elaboratore di testi: apre e salva file .docx con un'impaginazione WYSIWYG.
 
 ## La barra multifunzione
 

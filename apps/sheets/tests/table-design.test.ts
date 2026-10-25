@@ -8,6 +8,9 @@ import {
   toSaveTableEdits,
   updateTableAdd,
 } from '../src/renderer/edit-journal'
+// imported with the file, not inside the test: loading the module takes seconds
+// when other suites share the CPU, which the 5 s test timeout must not pay for
+import { handleTableDesignCommand } from '../src/renderer/table-design-actions'
 import {
   isValidTableName,
   optionsOfTableAdd,
@@ -63,7 +66,6 @@ describe('resolveCreateTableRange', () => {
 
 describe('handleTableDesignCommand parsing', () => {
   it('keeps the colon inside the Create Table range', async () => {
-    const { handleTableDesignCommand } = await import('../src/renderer/table-design-actions')
     const messages: string[] = []
     const ctx = {
       univerRef: { current: null },

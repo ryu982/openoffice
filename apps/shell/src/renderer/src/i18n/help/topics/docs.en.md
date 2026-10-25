@@ -1,6 +1,6 @@
 # Docs: word processing
 
-Docs is the Word-like processor: reads and writes genuine .docx with true WYSIWYG pagination.
+Docs is the word processor: it opens and saves .docx files, with WYSIWYG pagination.
 
 ## The ribbon
 

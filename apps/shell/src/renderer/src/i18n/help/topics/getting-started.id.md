@@ -1,6 +1,6 @@
 # Mulai cepat: antarmuka dan dasar-dasarnya
 
-GenOffice adalah rangkaian perkantoran yang berjalan sepenuhnya di komputer Anda: satu jendela, satu deret tab, dengan enam editor — Docs (pemrosesan kata), Sheets (spreadsheet), Slides (presentasi), PDF, Markdown, dan HTML. File yang dibuka dan disimpan adalah .docx / .xlsx / .pptx / .pdf asli, sepenuhnya serasi dengan Word, Excel, dan PowerPoint. Tidak perlu jaringan.
+GenOffice adalah rangkaian perkantoran yang berjalan di komputer Anda: satu jendela, satu deret tab, dengan delapan editor — Docs (pemrosesan kata), Sheets (spreadsheet), Slides (presentasi), PDF, Markdown dan teks biasa, HTML, HWP/HWPX (dokumen Hangul), dan peta pikiran (.xmind). Setiap editor membuka dan menyimpan file dalam formatnya sendiri: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx, dan .xmind. Menyunting tidak memerlukan jaringan; fitur AI memerlukannya.
 
 ## Sekilas antarmuka
 

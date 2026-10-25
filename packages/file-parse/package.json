@@ -17,6 +17,7 @@
   "dependencies": {
     "@genoffice/agent-core": "*",
     "@genoffice/docx-engine": "*",
+    "@genoffice/epub-engine": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/xmind-engine": "*",
     "@rhwp/core": "file:../../vendor/rhwp-core",
@@ -31,6 +32,6 @@
   "devDependencies": {
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

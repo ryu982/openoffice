@@ -16,7 +16,12 @@ export function loadPdfium(): Promise<PdfiumModule> {
     const { init } = (await import('@embedpdf/pdfium')) as unknown as {
       init(overrides: object): Promise<object>
     }
-    const wrapped = (await init({ wasmBinary })) as { pdfium?: unknown }
+    // thisProgram: emscripten writes argv[1] (the vitest path) through an
+    // ASCII-only path; a checkout under a non-ASCII folder would abort init
+    // (same fix as apps/pdf/src/main/text-edit.ts loadPdfium)
+    const wrapped = (await init({ wasmBinary, thisProgram: 'genoffice-pdf' })) as {
+      pdfium?: unknown
+    }
     const m = (wrapped.pdfium ?? wrapped) as PdfiumModule & { _PDFiumExt_Init(): void }
     m._PDFiumExt_Init()
     return m

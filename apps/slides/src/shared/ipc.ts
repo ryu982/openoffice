@@ -1886,6 +1886,8 @@ export interface SlidesApi {
   } | null>
   /** A run started in this tab with these attachments; true when it was recorded as the hand-off's start */
   reportGenerateRunStarted?: (attachedPaths: string[]) => Promise<boolean>
+  /** The open deck as edited, for a skill's template, and whether it has redaction marks; null without a deck */
+  templateBytes?: () => Promise<{ bytes: Uint8Array; redacted: boolean } | null>
 }
 
 declare global {

@@ -26,6 +26,16 @@ Setiap editor boleh memanggil panel AI. Pilih sesuatu, berikan arahan, dan lihat
 - **Markdown dan HTML**: menulis semula, melanjutkan, dan menterjemah.
 - **Laman Utama ▸ Ask AI** menjawab daripada fail anda yang berbintang dan memetiknya — panel pangkalan pengetahuan ada bahagiannya sendiri dalam bab Laman Utama, dan panel AI Docs membawa kemahiran yang sama.
 
+## Melampirkan dokumen yang dibuka
+
+Dalam panel AI editor Docs, Sheets, Slides, Hangul, HTML dan peta minda, anda boleh melampirkan dokumen lain yang dibuka dalam GenOffice, atau yang dibuka baru-baru ini, sebagai bahan. Dokumen yang dilampirkan dikendalikan sama seperti fail yang dipilih daripada PC anda.
+
+- **`@` dalam kotak input**: taip `@` di awal kotak input atau selepas ruang untuk membuka senarai dokumen. Jika tetingkap dipisahkan, dokumen dalam anak tetingkap sebelah dipaparkan dahulu, diikuti dokumen lain yang dibuka dan dokumen terbaharu; dokumen yang sedang anda gunakan tidak disenaraikan. Kecilkan senarai dengan beberapa huruf nama (ruang dibenarkan) dan pilih dengan Enter atau klik: `@nama dokumen` dimasukkan ke dalam kotak input dan dokumen itu dilampirkan. **Cari lagi…** di bahagian paling bawah membuka tetingkap pemilih dokumen yang diterangkan di bawah.
+- **Lampirkan daripada dokumen GenOffice**: butang di sebelah butang lampiran ini membuka senarai yang sama dalam tetingkap, tempat anda boleh menanda beberapa dokumen dan melampirkannya sekali gus.
+- Dokumen yang mempunyai perubahan belum disimpan dan dokumen baharu yang tidak pernah disimpan kelihatan malap dan tidak boleh dipilih. Simpan dahulu, kemudian pilih semula — AI membaca fail yang disimpan.
+- Jika dua dokumen mempunyai nama yang sama tetapi berada dalam folder berbeza, nama folder yang betul-betul di atasnya ditambah, seperti `@rancangan.docx(Semester 2)`, dan nama folder itu turut dihantar kepada AI.
+- Editor PDF dan Markdown belum mempunyai lampiran, jadi kedua-dua cara tidak tersedia di situ.
+
 ## Berundur dan keselamatan
 
 - Panel dalam Docs menyimpan **senarai versi** dengan satu gambar keadaan bagi setiap pusingan. Anda boleh berundur ke mana-mana versi dalam senarai itu, dan berundur itu sendiri juga boleh dibatalkan. Gambar keadaan itu kekal walaupun dokumen ditutup dan dibuka semula.

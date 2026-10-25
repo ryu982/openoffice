@@ -1,6 +1,6 @@
 # Docs: edytor tekstu
 
-Docs to edytor tekstu podobny do Worda: otwiera i zapisuje prawdziwe pliki .docx z wiernym podziałem na strony (WYSIWYG).
+Docs to edytor tekstu: otwiera i zapisuje pliki .docx z podziałem na strony WYSIWYG.
 
 ## Wstążka
 

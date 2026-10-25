@@ -1,6 +1,6 @@
 # Slides：演示文稿
 
-Slides 是类 PowerPoint 的演示编辑器，读写真.pptx。
+Slides 是演示文稿编辑器，打开并保存 .pptx 文件。
 
 ## 界面
 

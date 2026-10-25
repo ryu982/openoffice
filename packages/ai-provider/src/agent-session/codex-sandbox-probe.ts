@@ -9,6 +9,9 @@
  * - neither: the sandbox did not start (a Windows without MXC, a policy that
  *   forbids it) → the session does not start, and the person is told why.
  *
+ * With commands' internet access on, the probe's profile opens the network too,
+ * so a sandbox that cannot start that way is found here.
+ *
  * Windows only; elsewhere Codex's own sandbox is not checked this way.
  */
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -41,6 +44,7 @@ export function tomlInlineTable(values: Record<string, string>): string {
 export function codexSandboxProbeArgs(
   filesystem: Record<string, 'read' | 'write' | 'deny'>,
   probeDir: string,
+  network = false,
 ): { args: string[]; readable: string; denied: string } {
   const readable = join(probeDir, READABLE_NAME)
   const deniedDir = join(probeDir, 'denied')
@@ -57,6 +61,7 @@ export function codexSandboxProbeArgs(
       `default_permissions="${PROBE_PROFILE}"`,
       '-c',
       `permissions.${PROBE_PROFILE}.filesystem=${tomlInlineTable(profile)}`,
+      ...(network ? ['-c', `permissions.${PROBE_PROFILE}.network.enabled=true`] : []),
       '--',
       'findstr.exe',
       '/m',
@@ -85,6 +90,8 @@ export interface CodexSandboxProbeDeps {
   baseEnv?: NodeJS.ProcessEnv | undefined
   killTree?: ((child: { readonly pid?: number | undefined }) => void) | undefined
   timeoutMs?: number | undefined
+  /** probe the profile with the network open, as the session will run it */
+  network?: boolean | undefined
 }
 
 export async function probeCodexSandbox(
@@ -93,7 +100,11 @@ export async function probeCodexSandbox(
   probeDir: string,
   deps: CodexSandboxProbeDeps = {},
 ): Promise<CodexSandboxProbeResult> {
-  const { args, readable, denied } = codexSandboxProbeArgs(filesystem, probeDir)
+  const { args, readable, denied } = codexSandboxProbeArgs(
+    filesystem,
+    probeDir,
+    deps.network === true,
+  )
   await mkdir(join(probeDir, 'denied'), { recursive: true })
   await writeFile(readable, `${MARKER}\n`)
   await writeFile(denied, `${MARKER}\n`)

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react'
 import { IconEnter, IconSend, IconStop } from './icons'
 import { useAiPanelPrefs } from './ai-panel-prefs-store'
+import type { AiComposerSkills } from './use-composer-skills'
+import { useComposerPickers, type AiComposerDocs } from './use-doc-mention'
 
 // Keep in sync with the CSS `max-height` on `.ai-input-box textarea` (7 lines à 24px)
 const MAX_TEXTAREA_HEIGHT = 168
@@ -11,6 +13,10 @@ const MAX_TEXTAREA_HEIGHT = 168
  * app-specific controls, a shortcut hint, and the send/stop button.
  * Renders the `.ai-input-box` class family; each app themes it in its own CSS.
  * While busy, Enter queues the draft instead (see useChatRunQueue).
+ * With `skills`, a `/` or `$` opens the skill list; while it is open it takes
+ * ↑/↓/Enter/Tab/Esc first (that Esc never stops a run) and picks become chips.
+ * With `docs`, an `@` opens the document list the same way; a pick attaches
+ * the document and puts `@<name>` in the text. Only one of the two lists opens.
  */
 export function AiComposer({
   value,
@@ -37,6 +43,8 @@ export function AiComposer({
   onStop,
   onPasteFiles,
   onPasteText,
+  skills,
+  docs,
 }: {
   readonly value: string
   readonly busy: boolean
@@ -73,11 +81,16 @@ export function AiComposer({
   readonly onPasteFiles?: ((files: File[]) => void) | undefined
   /** first look at pasted text; return true to consume it (e.g. a base64 image turned into an attachment) */
   readonly onPasteText?: ((text: string) => boolean) | undefined
+  /** the skill list on `/`·`$` and the skill chips (useComposerSkills().composer) */
+  readonly skills?: AiComposerSkills | undefined
+  /** the `@` document list: how this editor attaches, and its current attachments */
+  readonly docs?: AiComposerDocs | undefined
 }): React.JSX.Element {
   const innerRef = useRef<HTMLTextAreaElement | null>(null)
   const ref = textareaRef ?? innerRef
   const canSend = value.trim().length > 0 && !busy
   const { spellcheck } = useAiPanelPrefs()
+  const picker = useComposerPickers({ skills, docs, value, onChange, textareaRef: ref })
 
   // auto-grow up to ~6 lines; empty clears the inline height outright so the
   // CSS min-height governs (a hidden-at-measure pass can leave a stale value).
@@ -96,6 +109,8 @@ export function AiComposer({
     <div className="ai-input-box">
       {queueStrip}
       {header}
+      {picker.chipRow}
+      {picker.popup}
       <textarea
         ref={ref}
         value={value}
@@ -104,8 +119,18 @@ export function AiComposer({
         rows={1}
         dir="auto"
         spellCheck={spellcheck}
-        onChange={(e) => onChange(e.target.value)}
+        {...picker.inputProps}
+        onChange={(e) => {
+          onChange(e.target.value)
+          picker.track(e.target)
+        }}
+        onSelect={(e) => picker.track(e.currentTarget)}
+        onCompositionStart={picker.onCompositionStart}
+        onCompositionEnd={picker.onCompositionEnd}
+        onBlur={picker.onBlur}
         onKeyDown={(e) => {
+          // an open skill or document list takes ↑/↓/Enter/Tab/Esc first; its Esc never stops a run
+          if (picker.onKeyDown(e)) return
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
             if (canSend) onSend()

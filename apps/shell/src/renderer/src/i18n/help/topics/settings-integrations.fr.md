@@ -18,7 +18,7 @@ Clair / Sombre / Suivre le système. Suivre le système suit l’apparence de l�
 ## Général
 
 - **Position de la barre latérale IA** (à gauche ou à droite), **Taille du texte du panneau IA** et **Correction orthographique dans le chat IA**.
-- **Ouvrir le panneau IA dans les nouveaux documents** — désactivé, un nouveau document démarre avec le panneau replié, à un clic de là.
+- **Panneau IA** — Désactivé, Replié ou Dernier état.
 - **Enregistrer automatiquement tous les documents** active l'enregistrement automatique par défaut dans tous les éditeurs ; vous pouvez toujours le désactiver pour une fenêtre.
 - **Emplacement d'enregistrement** avec un bouton **Modifier** et **Application par défaut pour les documents Office** pour attribuer .docx / .xlsx / .pptx à GenOffice.
 
@@ -44,7 +44,7 @@ Les paramètres peuvent enregistrer GenOffice comme gestionnaire de .docx / .xls
 ## Mentions relatives aux logiciels tiers et mises à jour
 
 - Aide ▸ Mentions relatives aux logiciels tiers : l’inventaire complet des licences open source livré avec l’application.
-- Aide ▸ Vérifier les mises à jour : déclenche une vérification manuelle ; une version plus récente propose l’installation.
+- Menu (☰) ▸ Vérifier les mises à jour (sur un Mac, Aide ▸ Vérifier les mises à jour) : déclenche une vérification manuelle ; une version plus récente propose l’installation.
 
 ## Intégration MCP (pour les utilisateurs avancés / clients IA)
 

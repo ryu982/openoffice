@@ -1,6 +1,6 @@
 # Schnellstart: die Oberfläche und die Grundlagen
 
-GenOffice ist ein Office-Paket, das vollständig auf Ihrem Rechner läuft: ein Fenster, eine Reihe von Tabs, darin sechs Editoren — Docs (Textverarbeitung), Sheets (Tabellenkalkulation), Slides (Präsentationen), PDF, Markdown und HTML. Die Dateien sind echte .docx / .xlsx / .pptx / .pdf und lassen sich vollständig mit Word, Excel und PowerPoint austauschen. Kein Netzwerk nötig.
+GenOffice ist ein Office-Paket, das auf Ihrem Rechner läuft: ein Fenster, eine Reihe von Tabs, darin acht Editoren — Docs (Textverarbeitung), Sheets (Tabellenkalkulation), Slides (Präsentationen), PDF, Markdown und reiner Text, HTML, HWP/HWPX (Hangul-Dokumente) und Mindmaps (.xmind). Jeder Editor öffnet und speichert Dateien in seinem Format: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx und .xmind. Zum Bearbeiten ist kein Netzwerk nötig, für die KI-Funktionen schon.
 
 ## Überblick über die Oberfläche
 

@@ -1,6 +1,6 @@
 # Docs: xử lý văn bản
 
-Docs là trình xử lý văn bản giống Word: đọc và ghi .docx thật với cách ngắt trang WYSIWYG đúng nghĩa.
+Docs là trình xử lý văn bản: mở và lưu tập tin .docx với cách ngắt trang WYSIWYG.
 
 ## Dải ruy-băng
 

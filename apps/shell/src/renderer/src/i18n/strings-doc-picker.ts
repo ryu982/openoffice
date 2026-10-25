@@ -22,7 +22,7 @@ import { zhTW } from './doc-picker/zh-TW'
 import { vi } from './doc-picker/vi'
 
 /**
- * The "Attach from GenOffice documents" window: strings for its two groups,
+ * The "Attach from GenOffice documents" window: strings for its three groups,
  * its notices and its buttons. Sharded per language; `zh` defines the key set.
  */
 export const docPickerStrings = defineStrings({

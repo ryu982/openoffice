@@ -1,6 +1,6 @@
 # Szybki start: interfejs i podstawy
 
-GenOffice to pakiet biurowy działający w całości na Twoim komputerze: jedno okno, jeden rząd kart, w którym mieści się sześć edytorów — Docs (edytor tekstu), Sheets (arkusze), Slides (prezentacje), PDF, Markdown i HTML. Pliki to prawdziwe pliki .docx / .xlsx / .pptx / .pdf, w pełni zgodne z Wordem, Excelem i PowerPointem. Nie jest potrzebne połączenie z siecią.
+GenOffice to pakiet biurowy działający na Twoim komputerze: jedno okno, jeden rząd kart, w którym mieści się osiem edytorów — Docs (edytor tekstu), Sheets (arkusze), Slides (prezentacje), PDF, Markdown i zwykły tekst, HTML, HWP/HWPX (dokumenty Hangul) oraz mapy myśli (.xmind). Każdy edytor otwiera i zapisuje pliki w swoim formacie: .docx, .xlsx, .pptx, .pdf, .md, .html, .hwp/.hwpx i .xmind. Edycja nie wymaga sieci; funkcje AI jej potrzebują.
 
 ## Przegląd interfejsu
 

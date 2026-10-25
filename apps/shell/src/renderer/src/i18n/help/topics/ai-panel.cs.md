@@ -26,6 +26,16 @@ Každý editor může vyvolat panel AI: vyberte něco, zadejte pokyn a sledujte 
 - **Markdown / HTML**: přepsat, rozšířit, přeložit.
 - **Domů ▸ Ask AI** odpovídá z vašich souborů s hvězdičkou a cituje je — panel znalostní báze má vlastní sekci v kapitole Domů a AI panel Docs nese tutéž dovednost.
 
+## Připojení otevřených dokumentů
+
+V panelu AI editorů Docs, Sheets, Slides, hangul, HTML a myšlenkových map můžete jako podklad připojit další dokumenty otevřené v GenOffice nebo nedávno otevřené. Připojený dokument se zpracuje úplně stejně jako soubor vybraný z počítače.
+
+- **`@` ve vstupním poli**: napište `@` na začátek pole nebo za mezeru a otevře se seznam dokumentů. Pokud je okno rozdělené, je první dokument z vedlejšího panelu, po něm ostatní otevřené a nedávné dokumenty; dokument, ve kterém právě jste, v seznamu chybí. Zužte ho několika písmeny názvu (mezery nevadí) a vyberte klávesou Enter nebo kliknutím: do pole se vloží `@název dokumentu` a dokument se připojí. **Najít další…** úplně dole otevře okno pro výběr dokumentů popsané níže.
+- **Připojit z dokumentů GenOffice**: toto tlačítko vedle tlačítka přílohy otevře stejný seznam v okně, kde můžete zaškrtnout více dokumentů a připojit je najednou.
+- Dokumenty s neuloženými změnami a nové dokumenty, které nebyly nikdy uloženy, jsou zašedlé a nelze je vybrat. Uložte je a vyberte znovu — AI čte uložený soubor.
+- Když mají dva dokumenty stejný název, ale leží v různých složkách, přidá se název složky bezprostředně nad nimi, například `@plán.docx(2. pololetí)`, a tento název složky dostane i AI.
+- Editory PDF a Markdown zatím přílohy nemají, takže tam není k dispozici ani jeden způsob.
+
 ## Vrácení zpět a bezpečnost
 
 - Panel v Docs vede **seznam verzí**: jeden snímek na krok, můžete se vrátit k libovolnému a samotný návrat lze zase vrátit pomocí Ctrl+Z. Snímy přežijí i znovu otevření dokumentu.

@@ -47,7 +47,7 @@ Sześć narzędzi: **tusz, prostokąt, elipsa, strzałka, notatka**, a ponadto *
 ## Przypięte notatki i wątki komentarzy
 
 - **Narzędzie notatki** umieszcza pinezkę i otwiera kartę przy marginesie na tekst (imię autora można ustawić); po potwierdzeniu zapisuje się jako standardowa adnotacja tekstowa PDF.
-- Kliknij pinezkę, aby otworzyć wątek: **odpowiedz** (płaskie wątki w stylu WPS/Acrobata), **edytuj** własny komentarz, **usuń** pojedynczy komentarz lub cały wątek.
+- Kliknij pinezkę, aby otworzyć wątek: **odpowiedz** (odpowiedzi tworzą jedną płaską listę, bez zagnieżdżania), **edytuj** własny komentarz, **usuń** pojedynczy komentarz lub cały wątek.
 - Trwające zmiany pozostają aktywne, dopóki zapis nie wpisze nowego tekstu do tej samej adnotacji w pliku, zachowując łańcuch odpowiedzi.
 
 ## Edycja zawartości PDF (Edycja)

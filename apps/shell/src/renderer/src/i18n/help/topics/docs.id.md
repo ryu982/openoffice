@@ -1,6 +1,6 @@
 # Docs: pemrosesan kata
 
-Docs adalah pengolah kata mirip Word: membaca dan menulis .docx asli dengan penomoran halaman yang benar-benar sesuai dengan yang tampil (WYSIWYG).
+Docs adalah pengolah kata: membuka dan menyimpan file .docx dengan penomoran halaman sesuai yang tampil (WYSIWYG).
 
 ## Pita
 

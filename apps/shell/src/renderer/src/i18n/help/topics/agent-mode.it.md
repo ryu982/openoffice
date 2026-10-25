@@ -1,6 +1,6 @@
 # Modalità agente
 
-L'agente prende come progetto una cartella che scegli tu ed esegue in quella cartella il Claude Code o il Codex di questo PC. L'IA legge da sola il materiale della cartella, crea nuovi file, usa skill e script e modifica i documenti aperti in GenOffice. Usalo per i lavori che attingono a molto materiale.
+L'agente prende come progetto una cartella che scegli tu ed esegue in quella cartella il Claude Code o il Codex di questo PC. L'IA legge da sola il materiale della cartella, crea nuovi file, usa abilità e script e modifica i documenti aperti in GenOffice. Usalo per i lavori che attingono a molto materiale.
 
 ## Prima di iniziare
 
@@ -36,17 +36,35 @@ Qualunque cosa tu scelga, l'agente non:
 
 ## Claude Code e Codex
 
-- **Codex** esegue i comandi nel proprio spazio isolato, compresi quelli che consenti. Può scrivere solo nella cartella del progetto, internet è bloccato e non può leggere i tuoi file personali fuori dal progetto. All'avvio di una sessione, GenOffice verifica prima che questo isolamento funzioni su questo PC, e non parte se non funziona.
+- **Codex** esegue i comandi nel proprio spazio isolato, compresi quelli che consenti. Può scrivere solo nella cartella del progetto, internet è bloccato a meno che tu non lo attivi e non può leggere i tuoi file personali fuori dal progetto. All'avvio di una sessione, GenOffice verifica prima che questo isolamento funzioni su questo PC, e non parte se non funziona.
 - **Claude Code** non può isolare i comandi su Windows. Un comando che consenti può raggiungere l'intero PC e internet. Per questo, con **Fidati di questo progetto**, è il revisore di Claude Code stesso a controllare ogni azione al posto tuo.
 
 Un documento che qualcuno ti ha inviato può contenere istruzioni nascoste che dicono all'IA di fare altro. In una cartella con materiale che non conosci, usa una delle scelte che chiedono.
 
-## Note di progetto e skill
+## Ricerca web e internet
+
+- **Claude Code** può cercare sul web e leggere pagine web, e prima chiede. Chiede la prima volta che cerca e per ogni sito di cui legge le pagine. Nella domanda, **Consenti le ricerche per questa sessione** o **Consenti questo sito per questa sessione** fa sì che non lo chieda più per il resto della sessione. Con **Fidati di questo progetto** decide il revisore di Claude Code stesso.
+- Quando scegli **Codex**, la schermata di avvio mostra altre due impostazioni.
+
+| Impostazione                         | Scelte                                           | All'inizio        |
+| ------------------------------------ | ------------------------------------------------ | ----------------- |
+| **Ricerca web**                      | Risultati salvati / In tempo reale / Disattivata | Risultati salvati |
+| **Accesso a internet per i comandi** | Disattivato / Attivato                           | Disattivato       |
+
+- I risultati salvati provengono da contenuti web raccolti in anticipo; In tempo reale cerca sul web così com'è adesso.
+- Entrambe le impostazioni vengono ricordate per ogni cartella di progetto. Una cartella usata per la prima volta parte con i valori qui sopra.
+- Con l'accesso a internet per i comandi attivato, i comandi eseguiti da Codex possono raggiungere internet. Con **Fidati di questo progetto** lo raggiungono senza chiedere, e istruzioni nascoste in un documento ricevuto potrebbero far loro inviare all'esterno i tuoi dati. Questo avviso compare quando lo attivi. Attivalo solo quando ti serve. L'abilità integrata «Trova abilità» funziona solo con questa impostazione attivata.
+
+## Note di progetto e abilità
 
 - Se la cartella contiene un `CLAUDE.md` o un `AGENTS.md`, il suo contenuto viene dato all'agente come istruzioni. Scrivici ciò che deve valere ogni volta: il tono, i termini, il formato dei documenti da creare.
-- Claude Code riceve una copia delle skill che si trovano in questi punti: `.claude/skills` nella cartella del progetto, `.ieumoffice/skills` e `.claude/skills` nella tua cartella utente, e le skill dei plugin Claude installati. Il numero di skill disponibili compare sotto la riga che indica l'avvio della sessione.
-- Codex legge da solo la propria cartella delle skill.
-- I programmi usati dagli script di una skill (Python e così via) devono essere installati su questo PC.
+- La finestra dell'agente usa le abilità attivate in **Impostazioni ▸ Abilità**. Claude Code e Codex ricevono lo stesso elenco. Per saperne di più sulle abilità, vedi [Abilità](help://skills).
+- Le abilità che si trovano in `.claude/skills` e `.agents/skills` della cartella del progetto vengono usate in quella sessione senza doverle attivare.
+- Scegli un'abilità con `/` o `$` nella casella di input, e davanti alla tua richiesta viene messa l'istruzione di leggere e seguire quell'abilità.
+- L'elenco delle abilità viene fissato all'avvio della sessione. Se attivi o disattivi abilità durante una sessione, compare «Le abilità modificate valgono dalla prossima sessione».
+- Quando l'agente crea un'abilità, nella finestra compare una scheda dell'abilità; quando trova un'abilità che vale la pena installare, compare un'anteprima di installazione. Nulla viene salvato o installato finché non fai clic su **Salva** o **Installa**, e un'abilità installata è disponibile dalla sessione successiva.
+- I programmi usati dagli script di un'abilità (Python e così via) devono essere installati su questo PC.
+- Se hai usato l'agente in una versione precedente, la prima volta che apri la finestra dell'agente un avviso, mostrato una sola volta, dice: «Le abilità ora si attivano e disattivano in Impostazioni → Abilità. Le abilità delle cartelle di abilità di Claude e Codex partono disattivate.» **Apri impostazioni** ti porta direttamente lì.
 
 ## Nuovi file e documenti aperti
 
@@ -57,6 +75,7 @@ Un documento che qualcuno ti ha inviato può contenere istruzioni nascoste che d
 ## Privacy e consumo
 
 - Ciò che hai nascosto all'IA resta nascosto solo quando è l'app a leggere per l'agente un documento aperto in GenOffice. I file che l'agente legge da solo dalla cartella vengono inviati così come sono.
+- I termini delle ricerche web e gli indirizzi delle pagine lette vanno all'azienda del programma e a quei siti. Con l'accesso a internet per i comandi di Codex attivato, i dati possono andare ovunque si colleghi un comando.
 - L'agente lavora in molti passaggi, quindi consuma più limite del tuo abbonamento rispetto al pannello IA. Quando il limite è esaurito, la richiesta non va a buon fine; l'agente non passa mai a un'altra IA né a una connessione a pagamento.
 
 ## Se qualcosa va storto

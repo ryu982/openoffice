@@ -58,6 +58,7 @@ function subscriptionOf(
       onAcceptMetered: vi.fn(),
       onOpenInstallHelp: vi.fn(),
     },
+    refresh: vi.fn(),
     usage: [],
     inputTruncated: false,
     onDismissTruncated: vi.fn(),
@@ -283,7 +284,11 @@ describe('sheets AI panel: message queue in front of the gate', () => {
 
   it('starts the queued message while a provider can run', () => {
     const p = queueOne(subscriptionOf(settings(), statuses('ready', 'ready')))
-    expect(p.onSendQueued).toHaveBeenCalledExactlyOnceWith('then sort it', [])
+    // no skill chips: the queued message carries an empty skill use
+    expect(p.onSendQueued).toHaveBeenCalledExactlyOnceWith('then sort it', [], {
+      text: '',
+      chips: [],
+    })
   })
 
   it('pauses the queue in front of "not connected": nothing starts by itself after a sign-in', () => {

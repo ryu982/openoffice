@@ -47,7 +47,7 @@ Seis ferramentas: **Desenho livre, Retângulo, Elipse, Seta, Nota**, mais a **Ce
 ## Notas adesivas e fio de comentários
 
 - A **ferramenta de nota** coloca um alfinete e abre um cartão na margem para o texto (o nome do autor é configurável); depois de confirmar, guarda-o como uma anotação de Texto PDF padrão.
-- Clique num alfinete para abrir o fio: **Responder** (fios planos ao estilo do WPS/Acrobat), **Editar** o seu comentário, **Eliminar** um comentário ou o fio inteiro.
+- Clique num alfinete para abrir o fio: **Responder** (as respostas formam uma única lista plana, sem aninhamento), **Editar** o seu comentário, **Eliminar** um comentário ou o fio inteiro.
 - As edições em curso sobrevivem até o gravação escrever o novo texto na mesma anotação do ficheiro, mantendo a cadeia de respostas intacta.
 
 ## Editar o conteúdo do PDF (Editar)

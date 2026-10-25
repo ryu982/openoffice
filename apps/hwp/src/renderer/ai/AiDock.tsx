@@ -16,6 +16,7 @@ import {
   onAiRailClick,
   useSplitPaneRole,
 } from '@genoffice/ui'
+import type { TemplateDocument } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import type { AgentBridge } from './agent-bridge'
 import { AiPanel } from './AiPanel'
@@ -28,10 +29,18 @@ export interface HwpAiDockProps {
   bridge: AgentBridge
   /** the file of the open document: the conversation is kept with it */
   filePath: string | null
+  /** the document while it can go along as a skill's template (spec 5.7) */
+  templateDocument?: TemplateDocument | null
 }
 
 /** The panel at the right end, or its rail while collapsed; the panel stays mounted either way. */
-export function HwpAiDock({ open, setOpen, bridge, filePath }: HwpAiDockProps): ReactElement {
+export function HwpAiDock({
+  open,
+  setOpen,
+  bridge,
+  filePath,
+  templateDocument,
+}: HwpAiDockProps): ReactElement {
   const { lang, t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
   const shown = effectiveAiPanelOpen(open, role)
@@ -48,7 +57,13 @@ export function HwpAiDock({ open, setOpen, bridge, filePath }: HwpAiDockProps): 
           <AiMark size={22} />
         </button>
       )}
-      <AiPanel bridge={bridge} filePath={filePath} onCollapse={() => setOpen(false)} />
+      <AiPanel
+        bridge={bridge}
+        filePath={filePath}
+        onCollapse={() => setOpen(false)}
+        templateDocument={templateDocument}
+        onSkillHandoff={() => setOpen(true)}
+      />
     </div>
   )
 }

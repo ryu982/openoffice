@@ -109,6 +109,9 @@ import {
   rememberAiPanelOpen,
   AiMark,
   aiSubscriptionText,
+  templateDocumentOf,
+  type TemplateDocument,
+  useAiSidebarEnabled,
 } from '@genoffice/ui'
 import type { ChartPresetDef, IconDef, SmartArtDef } from './insert-presets'
 import { IconAiBeautify, IconAiFactCheck, IconAiImage } from './components/icons'
@@ -465,6 +468,11 @@ export function App() {
     setShowAi(open)
   }, [])
   const aiDock = useAiDock(showAi, setShowAiPref)
+  // Settings › "show the AI sidebar" off hides the panel and its rail (Word's
+  // Copilot-pane model): an explicit Ask-AI action still opens the panel for
+  // this deck, and closing it returns to hidden. The dock stays mounted; the
+  // hook closes it when the switch itself goes off.
+  const aiSidebarEnabled = useAiSidebarEnabled(setShowAi)
   const [showFormat, setShowFormat] = useState(false)
   const [showBgFormat, setShowBgFormat] = useState(false)
   const [aiSettings, setAiSettings] = useState<AiSettings | null>(null)
@@ -3271,6 +3279,32 @@ export function App() {
 
   const _fileName = slide ? path?.split('/').pop() || t('appUntitledPresentation') : undefined
 
+  /**
+   * The deck as a skill's template (spec 5.7): a .pptx file, or a new deck, as
+   * the engine writes it now (nothing is saved). Any "withheld from the
+   * model" mark anywhere in the deck blocks "save as is".
+   */
+  const hasDeck = !!slide
+  const templateDocument = useMemo<TemplateDocument | null>(
+    () =>
+      !hasDeck
+        ? null
+        : templateDocumentOf({
+            filePath: path,
+            extensions: ['pptx'],
+            defaultExtension: 'pptx',
+            untitledTitle: () => t('appUntitledPresentation'),
+            bytes: async () =>
+              (await window.slidesApi.templateBytes?.().catch(() => null))?.bytes ?? null,
+            redacted: async () => {
+              const answer = await window.slidesApi.templateBytes?.().catch(() => null)
+              // no answer is no proof of no marks: block
+              return answer ? answer.redacted : true
+            },
+          }),
+    [hasDeck, path],
+  )
+
   // genoffice CLI (`open --slide/--el`, `selection`): the shell evaluates this hook
   useEffect(() => {
     ;(window as unknown as Record<string, unknown>).__genofficeControl = (req: ControlRequest) =>
@@ -3615,7 +3649,11 @@ export function App() {
 
       <div className="app-main">
         {slide && viewMode !== 'reading' && viewMode !== 'sorter' && (
-          <div className={`ai-dock${aiDock.open && aiSettings ? '' : ' collapsed'}`}>
+          <div
+            className={`ai-dock${aiDock.open && aiSettings ? '' : ' collapsed'}${
+              !aiSidebarEnabled && !aiDock.open ? ' ai-dock-off' : ''
+            }`}
+          >
             {/* always mounted once settings load: collapse must not drop state or in-flight runs */}
             {aiSettings ? (
               <AiPanel
@@ -3654,8 +3692,9 @@ export function App() {
                 onQueueConsume={(keys) =>
                   setEditQueue((prev) => prev.filter((it) => !keys.includes(it.key)))
                 }
+                templateDocument={templateDocument}
               />
-            ) : (
+            ) : aiSidebarEnabled ? (
               <button
                 className="ai-rail"
                 onClick={toggleAi}
@@ -3664,7 +3703,7 @@ export function App() {
               >
                 <AiMark size={22} />
               </button>
-            )}
+            ) : null}
           </div>
         )}
         <div className="app-content">

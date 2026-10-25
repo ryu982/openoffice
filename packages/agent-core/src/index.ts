@@ -9,6 +9,7 @@ export type {
   AgentToolDef,
   AgentToolResult,
   AgentTransport,
+  MindMapTreeNode,
   ToolDisplay,
   ToolExecution,
 } from './types'
@@ -29,6 +30,15 @@ export {
   isOutboundCall,
   windowDriveBridge,
 } from './drive-skill'
+export {
+  ADDRESS_DECLINED,
+  INTERNET_TOOLS_OFF,
+  addressInConversation,
+  fetchedAddresses,
+  guardOutbound,
+  windowOutboundBridge,
+} from './outbound-guard'
+export type { OutboundBridgeLike } from './outbound-guard'
 export type {
   DriveBridgeLike,
   DriveCallResult,
@@ -37,11 +47,54 @@ export type {
   DriveSkill,
   DriveSkillDeps,
 } from './drive-skill'
+export {
+  createDocumentSkill,
+  CREATE_DOCUMENT_MAX_CHARS,
+  CREATE_DOCUMENT_TOOL,
+} from './create-document-skill'
+export type {
+  CreateDocumentDeps,
+  CreateDocumentFormat,
+  CreateDocumentRequest,
+  CreateDocumentSkill,
+} from './create-document-skill'
 export type { AgentSkill, ExecutedToolCall } from './skill'
+export {
+  AUTO_SKILLS_MAX,
+  AUTO_SKILLS_NAMES_ONLY_MAX,
+  AUTO_SKILL_DESCRIPTION_MAX,
+  PROPOSE_SKILL_TOOL,
+  READ_SKILL_FILE_TOOL,
+  RESERVED_USER_SKILL_NAMES,
+  SKILL_TEXT_FILE_EXTENSIONS,
+  USER_SKILL_TOOL_NAMES,
+  USE_SKILL_TOOL,
+  attachedSkillIdsOf,
+  autoSkillsSection,
+  createBridgedUserSkillsSkill,
+  createUserSkillsSkill,
+  proposedTitleOf,
+  skillFileAnswerOf,
+  skillTextAnswerOf,
+  userSkillEntriesOf,
+  windowUserSkillsBridge,
+} from './user-skills-skill'
+export type {
+  AutoSkillsLimits,
+  SkillProposal,
+  UserSkillEntry,
+  UserSkillLabels,
+  UserSkillRead,
+  UserSkillText,
+  UserSkillsBridgeLike,
+  UserSkillsDeps,
+  UserSkillsSkill,
+} from './user-skills-skill'
 export {
   AgentLoop,
   COMPLETED_VIA_TOOLS_TEXT,
   DEFAULT_MAX_TURNS,
+  MATERIAL_NOT_INSTRUCTIONS,
   TOOL_ABORTED_OUTPUT,
   coerceArgumentFields,
   invalidArgumentFields,

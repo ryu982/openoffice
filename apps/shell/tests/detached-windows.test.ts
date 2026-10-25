@@ -116,9 +116,19 @@ vi.mock('../../html/src/main/html-main', () => ({
   requestHtmlClose: vi.fn(() => Promise.resolve(true)),
 }))
 
+vi.mock('../../hwp/src/main/hwp-main', () => ({
+  hwpIsDirty: vi.fn(() => false),
+  requestHwpClose: vi.fn(() => Promise.resolve(true)),
+}))
+
 vi.mock('../../mindmap/src/main/mindmap-main', () => ({
   mindmapIsDirty: vi.fn(() => false),
   requestMindmapClose: vi.fn(() => Promise.resolve(true)),
+}))
+
+vi.mock('../../epub/src/main/epub-main', () => ({
+  epubIsDirty: vi.fn(() => false),
+  requestEpubClose: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('../src/main/tab-manager', () => ({
@@ -215,6 +225,28 @@ describe('detachedOpenDocuments', () => {
   })
 })
 
+describe('detachedSessionTabs', () => {
+  it('lists live windows synchronously with kind, title and file only', () => {
+    detached.createDetachedEditorWindow({
+      view: fakeView(41) as never,
+      kind: 'hwp',
+      title: 'report.hwp',
+      filePath: 'C:/docs/report.hwp',
+      applyMenuFor: () => {},
+    })
+    detached.createDetachedEditorWindow({
+      view: fakeView(42) as never,
+      kind: 'markdown',
+      title: 'Notes',
+      applyMenuFor: () => {},
+    })
+    instances[1]!.destroyed = true
+    expect(detached.detachedSessionTabs()).toEqual([
+      { id: 'detached:41', kind: 'hwp', title: 'report.hwp', filePath: 'C:/docs/report.hwp' },
+    ])
+  })
+})
+
 describe('a detached mind map', () => {
   it('is reported to MCP agents as kind mindmap, with its own dirty state', async () => {
     const { mindmapIsDirty } = await import('../../mindmap/src/main/mindmap-main')
@@ -296,6 +328,50 @@ describe('a detached mind map', () => {
     await flush()
     expect(win.destroyed).toBe(true)
     vi.mocked(mindmapIsDirty).mockReturnValue(false)
+  })
+})
+
+describe('a detached book', () => {
+  it('is reported to MCP agents as kind epub, with its own dirty state', async () => {
+    const { epubIsDirty } = await import('../../epub/src/main/epub-main')
+    vi.mocked(epubIsDirty).mockImplementation((id) => id === 51)
+    detached.createDetachedEditorWindow({
+      view: fakeView(51) as never,
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: 'C:/books/novel.epub',
+      applyMenuFor: () => {},
+    })
+    const docs = await detached.detachedOpenDocuments()
+    expect(docs.map((d) => [d.id, d.kind, d.filePath, d.dirty])).toEqual([
+      ['detached:51', 'epub', 'C:/books/novel.epub', true],
+    ])
+    vi.mocked(epubIsDirty).mockReturnValue(false)
+  })
+
+  it('asks before closing when dirty and keeps the window on cancel', async () => {
+    const { epubIsDirty, requestEpubClose } = await import('../../epub/src/main/epub-main')
+    vi.mocked(epubIsDirty).mockReturnValue(true)
+    vi.mocked(requestEpubClose).mockResolvedValueOnce(false)
+    const view = fakeView(52)
+    detached.createDetachedEditorWindow({
+      view: view as never,
+      kind: 'epub',
+      title: 'novel.epub',
+      filePath: 'C:/books/novel.epub',
+      applyMenuFor: () => {},
+    })
+    const win = instances[0]!
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(requestEpubClose).toHaveBeenCalledWith(view.webContents, win)
+    expect(win.destroyed).toBe(false)
+
+    vi.mocked(requestEpubClose).mockResolvedValueOnce(true)
+    win.emit('close', { preventDefault: vi.fn() })
+    await flush()
+    expect(win.destroyed).toBe(true)
+    vi.mocked(epubIsDirty).mockReturnValue(false)
   })
 })
 

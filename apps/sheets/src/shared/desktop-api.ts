@@ -1484,6 +1484,8 @@ export const workbookPageSetupStateSchema = z
     zoomScale: z.number().int().min(10).max(400).optional(),
     showFormulas: z.boolean().optional(),
     showHeadings: z.boolean().optional(),
+    /// sheetView/@rightToLeft — the grid is mirrored (column A at the right).
+    rightToLeft: z.boolean().optional(),
     printArea: z.union([z.string().min(1).max(255), z.null()]).optional(),
     printTitles: z.union([z.string().regex(/^\d{1,7}:\d{1,7}$/), z.null()]).optional(),
     /// Frozen pane counts; both present together, 0/0 removes the pane.
@@ -2847,18 +2849,6 @@ export interface AutoSaveDefault {
   updatedAt: number
 }
 
-/** Autosave-recovery prompt raised by main during workbook open (strings pre-localized). */
-export interface RecoveryPromptPayload {
-  title: string
-  body: string
-  restoreLabel: string
-  discardLabel: string
-  /** base name of the workbook being opened */
-  fileName: string
-  /** mtime of the recovery copy (epoch ms) — when the unsaved work was last autosaved */
-  savedAtMs: number
-}
-
 /** MCP visible-grid bridge message (shell → renderer, correlated by requestId). */
 export interface McpCommandMessage {
   requestId: string
@@ -2946,6 +2936,10 @@ export interface DesktopApi {
   /// Crash-recovery copy of the pending edits, written under userData.
   /// Best-effort: never prompts, never touches the opened file.
   writeWorkbookRecovery(request: WorkbookSaveRequest): Promise<{ ok: boolean }>
+  /// The workbook as edited, as .xlsx bytes, for a skill's template (spec
+  /// 5.6). Written to a temp file and read back; the opened file and the
+  /// session are untouched.
+  workbookTemplateBytes?(request: WorkbookSaveRequest): Promise<{ ok: boolean; bytes?: Uint8Array }>
   /// Rename a still-untitled workbook after AI-generated content (no-op unless
   /// the file still carries the shell's auto-created untitled name).
   autoRenameWorkbook(
@@ -2973,11 +2967,12 @@ export interface DesktopApi {
   /// Main asks the renderer to save before closing; reply via reportCloseSaveResult.
   onCloseSaveRequest(callback: () => void): () => void
   reportCloseSaveResult(ok: boolean): void
-  /// Main found a newer autosaved recovery copy while opening a workbook; the
-  /// renderer shows the styled restore prompt and replies via replyRecoveryPrompt.
-  /// Strings arrive pre-localized from the main process.
-  onRecoveryPrompt(callback: (prompt: RecoveryPromptPayload) => void): () => void
-  replyRecoveryPrompt(restore: boolean): void
+  /// The workbook just opened in this tab keeps no recovery copy (password
+  /// protected): main sends the localized notice once per tab.
+  onRecoveryNotice(callback: (text: string) => void): () => void
+  /// The OS is ending the session: write the recovery copy now. The preload
+  /// answers main once the returned promise settles.
+  onRecoveryWriteNow(callback: () => Promise<void>): () => void
   /// Returns true once when this tab was opened via "New Spreadsheet" from the
   /// shell home.
   consumeNewBlankWorkbook(): Promise<boolean>
@@ -2995,8 +2990,9 @@ export interface DesktopApi {
   consumeHeadlessExport(): Promise<string | null>
   /// Headless export mode: report the export outcome so the main process can quit.
   headlessExportDone(result: { ok: boolean; error?: string }): void
-  /// Display name for authored threaded comments (OS account name).
+  /// Author name for threaded comments (Settings → General, falling back to the OS account).
   getUserDisplayName(): Promise<string>
+  onUserDisplayNameChanged(handler: (name: string) => void): () => void
   getAiSettings(): Promise<AiSettings>
   setAiSettings(settings: AiSettings): Promise<void>
   /// ai-settings.json was rewritten by any renderer; re-read it

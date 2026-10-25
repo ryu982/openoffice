@@ -7,6 +7,7 @@ import type {
   ChatMessage,
   ChatMeta,
   ChatScope,
+  ChatSkillChip,
   ProjectSummary,
   TimelineEntry,
   ToolActivity,
@@ -17,6 +18,7 @@ export type {
   ChatMessage,
   ChatMeta,
   ChatScope,
+  ChatSkillChip,
   ProjectSummary,
   TimelineEntry,
   ToolActivity,
@@ -30,6 +32,7 @@ export interface AppendChatArgs {
   tools?: ToolActivity[]
   attachments?: ChatAttachment[]
   scope?: ChatScope
+  skills?: ChatSkillChip[]
 }
 
 export interface LoadChatArgs {

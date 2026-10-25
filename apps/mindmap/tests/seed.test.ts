@@ -19,7 +19,7 @@ vi.mock('electron', () => ({
 import { noteText } from '@genoffice/xmind-engine'
 import { MINDMAP_CHANNELS } from '../src/shared/ipc'
 import { queueMindmapSeedFor, registerMindmapSeedIpc } from '../src/main/seed-main'
-import { seededMap } from '../src/renderer/document/open'
+import { openCopiedMap, seededMap } from '../src/renderer/document/open'
 
 class FakeContents {
   destroyed = false
@@ -102,5 +102,31 @@ describe('the seeded map', () => {
     const [tab] = session.tabs()
     expect(tab!.title).toBe('Sans titre')
     expect(session.sheet(tab!.key).rootTopic.title).toBe('Sans titre')
+  })
+})
+
+describe('a skill template’s copy (spec 5.7)', () => {
+  it('hands the copy’s bytes to its own tab once', () => {
+    const tab = new FakeContents(41)
+    const bytes = new Uint8Array([1, 2, 3])
+    queueMindmapSeedFor(tab, { bytes })
+    expect(take(41)).toEqual({ bytes })
+    expect(take(41)).toBeNull()
+  })
+
+  it('opens the copy as a new, unsaved map with the template’s content', async () => {
+    const template = await seededMap({ outline: '# Trip\n\n- Date\n- Place\n' }, 'Untitled')
+    const bytes = await template.produceBytes()
+    const opened = await openCopiedMap({ bytes })
+    expect(opened.status).toBe('ok')
+    if (opened.status !== 'ok') return
+    expect(opened.session.dirty).toBe(true)
+    const [tab] = opened.session.tabs()
+    expect(tab!.title).toBe('Trip')
+  })
+
+  it('reports a copy that is not a map', async () => {
+    const opened = await openCopiedMap({ bytes: new Uint8Array([1, 2, 3]) })
+    expect(opened.status).not.toBe('ok')
   })
 })

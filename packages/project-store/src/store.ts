@@ -53,6 +53,27 @@ const MAX_ATTACHMENTS_PER_MESSAGE = 32
 const TOOL_NAME_MAX_CHARS = 200
 const TOOL_SUMMARY_MAX_CHARS = 2_000
 const ATTACHMENT_FIELD_MAX_CHARS = 1_000
+const MAX_SKILLS_PER_MESSAGE = 32
+const SKILL_ID_MAX_CHARS = 512
+const SKILL_FIELD_MAX_CHARS = 200
+
+// Skill chips are references (id, source, title); malformed entries are dropped
+function skillChipsOf(value: unknown): Array<{ id: string; source: string; title: string }> {
+  if (!Array.isArray(value)) return []
+  const out: Array<{ id: string; source: string; title: string }> = []
+  for (const entry of value) {
+    if (out.length >= MAX_SKILLS_PER_MESSAGE) break
+    if (!entry || typeof entry !== 'object') continue
+    const chip = entry as Record<string, unknown>
+    if (typeof chip.id !== 'string' || !chip.id || chip.id.length > SKILL_ID_MAX_CHARS) continue
+    out.push({
+      id: chip.id,
+      source: clampChatField(chip.source, SKILL_FIELD_MAX_CHARS),
+      title: clampChatField(chip.title, SKILL_FIELD_MAX_CHARS),
+    })
+  }
+  return out
+}
 
 function clampChatField(value: unknown, max: number): string {
   return typeof value === 'string' ? value.slice(0, max) : ''
@@ -729,6 +750,10 @@ export class ProjectStore {
             ? { text: msg.scope.text.slice(0, SCOPE_TEXT_MAX_CHARS) }
             : {}),
         }
+      }
+      if (msg.skills !== undefined) {
+        const skills = skillChipsOf(msg.skills)
+        if (skills.length > 0) record.skills = skills
       }
 
       const key = this.seqKey(projectId, chatId)

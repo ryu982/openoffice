@@ -8,6 +8,7 @@ import { ReactNodeViewRenderer } from '@tiptap/react'
 import { Placeholder } from '@tiptap/extensions'
 import { CodeBlockView } from './CodeBlockView'
 import { ImageAwareLink, LocalImage } from './localImage'
+import { MarkdownLinkOpen } from './linkOpen'
 import { BlockDragHandle } from './blockDragHandle'
 import { BlockKeymap } from './blockKeymap'
 import { AiHighlight } from './aiHighlight'
@@ -35,12 +36,20 @@ import {
   renderTable,
 } from './markdownStyleRenderers'
 import { boundOrderedList, boundTable, boundTaskList } from './boundedTokenizers'
+import { WikiLink, WikiLinkResolve } from './wikilink'
+import type { WikiLinkOptions } from './wikilink'
 import type { SlashController, SlashItem } from './slashCommand'
 import { t } from '../i18n/locale'
 
 export interface BuildExtensionsOptions {
   slashController: SlashController
   slashItems: () => SlashItem[]
+  /**
+   * Wiki-link navigation. Omitted in tests and headless paths: the resolver is
+   * then left on its default, which reports every link unresolved rather than
+   * reaching for the filesystem.
+   */
+  wikiLink?: Partial<WikiLinkOptions>
 }
 
 export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[] {
@@ -122,8 +131,12 @@ export function buildExtensions(options: BuildExtensionsOptions): AnyExtension[]
     // and in the file, and only the model-facing view replaces them
     Redaction,
     LocalImage,
-    // links open externally via main-process guard
+    // links open externally via the main-process window-open guard, on
+    // Cmd/Ctrl+click while editing and a plain click in the read-only show
     ImageAwareLink.configure({ openOnClick: false }),
+    MarkdownLinkOpen,
+    WikiLink,
+    WikiLinkResolve.configure(options.wikiLink ?? {}),
     BlockDragHandle,
     BlockKeymap,
     AiHighlight,

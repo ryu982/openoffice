@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { brandText, type Lang } from '@genoffice/i18n'
 import { DOC_ATTACH_STRINGS } from './strings-doc-attach'
+import type { DocMentionListResult } from './doc-mention-types'
 
 /** The document-picker calls an editor's preload exposes as window.aiOfficeDocs */
 interface DocAttachBridge {
   available(): Promise<boolean>
   pick(): Promise<unknown>
+  /** the `@` document list; absent in a preload that predates it */
+  list?(): Promise<DocMentionListResult>
 }
 
 function bridge(): DocAttachBridge | null {

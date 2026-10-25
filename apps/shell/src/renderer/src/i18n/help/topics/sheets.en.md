@@ -1,6 +1,6 @@
 # Sheets: spreadsheets
 
-Sheets is the Excel-like editor; calculation runs in a separate Rust engine process (a crash there never takes the app down). Opens and saves genuine .xlsx; .csv and .tsv open as tables.
+Sheets is the spreadsheet editor; calculation runs in a separate Rust engine process (a crash there never takes the app down). It opens and saves .xlsx files; .csv and .tsv open as tables.
 
 ## The interface
 

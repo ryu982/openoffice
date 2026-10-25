@@ -1,6 +1,6 @@
 # Docs: textový editor
 
-Docs je textový procesor podobný Wordu: čte a zapisuje skutečné soubory .docx se stránkováním typu WYSIWYG.
+Docs je textový procesor: otevírá a ukládá soubory .docx se stránkováním typu WYSIWYG.
 
 ## Pásek
 

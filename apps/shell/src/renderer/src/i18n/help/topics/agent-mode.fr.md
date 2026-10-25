@@ -36,17 +36,35 @@ Quel que soit votre choix, l’agent ne peut pas :
 
 ## Claude Code et Codex
 
-- **Codex** exécute les commandes dans son propre espace isolé, y compris celles que vous autorisez. Il ne peut écrire que dans le dossier du projet, Internet lui est fermé, et il ne peut pas lire vos fichiers personnels hors du projet. Au début d’une session, GenOffice vérifie d’abord que cet isolement fonctionne sur ce PC, et ne démarre pas si ce n’est pas le cas.
+- **Codex** exécute les commandes dans son propre espace isolé, y compris celles que vous autorisez. Il ne peut écrire que dans le dossier du projet, Internet lui est fermé tant que vous ne l’activez pas, et il ne peut pas lire vos fichiers personnels hors du projet. Au début d’une session, GenOffice vérifie d’abord que cet isolement fonctionne sur ce PC, et ne démarre pas si ce n’est pas le cas.
 - **Claude Code** ne peut pas isoler les commandes sous Windows. Une commande que vous autorisez peut atteindre tout le PC et Internet. C’est pourquoi, avec **Faire confiance à ce projet**, c’est le propre vérificateur de Claude Code qui contrôle chaque action à votre place.
 
 Un document que quelqu’un vous a envoyé peut contenir des instructions cachées qui poussent l’IA à faire autre chose. Dans un dossier dont vous ne connaissez pas le contenu, choisissez une des options qui vous demandent.
 
+## Recherche web et Internet
+
+- **Claude Code** peut faire des recherches sur le web et lire des pages web, mais il demande d’abord. Il demande la première fois qu’il lance une recherche, puis pour chaque site dont il lit des pages. Dans la question, **Autoriser les recherches pour cette session** ou **Autoriser ce site pour cette session** lui évite de redemander jusqu’à la fin de la session. Avec **Faire confiance à ce projet**, c’est le propre vérificateur de Claude Code qui décide.
+- Quand vous choisissez **Codex**, l’écran de démarrage affiche deux réglages de plus.
+
+| Réglage                                 | Choix                                          | Au départ             |
+| --------------------------------------- | ---------------------------------------------- | --------------------- |
+| **Recherche web**                       | Résultats enregistrés / En direct / Désactivée | Résultats enregistrés |
+| **Accès à Internet pour les commandes** | Désactivé / Activé                             | Désactivé             |
+
+- Les résultats enregistrés proviennent de contenus web collectés à l’avance ; En direct interroge le web tel qu’il est maintenant.
+- Les deux réglages sont mémorisés pour chaque dossier de projet. Un dossier utilisé pour la première fois part des valeurs ci-dessus.
+- Quand l’accès à Internet pour les commandes est activé, les commandes lancées par Codex peuvent atteindre Internet. Avec **Faire confiance à ce projet**, elles y accèdent sans demander, et des instructions cachées dans un document reçu pourraient leur faire envoyer vos données à l’extérieur. Cet avertissement s’affiche quand vous l’activez. Ne l’activez que si vous en avez besoin. La compétence intégrée « Trouver des compétences » ne fonctionne qu’avec ce réglage activé.
+
 ## Notes de projet et compétences
 
 - Si le dossier contient un `CLAUDE.md` ou un `AGENTS.md`, son contenu est transmis à l’agent comme instructions. Notez-y ce qui doit valoir à chaque fois : le ton, les termes, le format des documents à produire.
-- Claude Code reçoit une copie des compétences situées à ces endroits : `.claude/skills` dans le dossier du projet, `.ieumoffice/skills` et `.claude/skills` dans votre dossier personnel, et les compétences des plugins Claude installés. Le nombre de compétences disponibles s’affiche sous la ligne qui annonce le démarrage de la session.
-- Codex lit lui-même son propre dossier de compétences.
+- La fenêtre de l’agent utilise les compétences activées dans **Paramètres ▸ Compétences**. Claude Code et Codex reçoivent la même liste. Pour en savoir plus sur les compétences, voir [Compétences](help://skills).
+- Les compétences des dossiers `.claude/skills` et `.agents/skills` du projet sont utilisées dans cette session sans avoir besoin d’être activées.
+- Choisissez une compétence avec `/` ou `$` dans la zone de saisie : une instruction demandant de lire et de suivre cette compétence est placée devant votre demande.
+- La liste des compétences est fixée au démarrage de la session. Si vous activez ou désactivez des compétences pendant une session, « Les compétences modifiées s’appliquent à partir de la prochaine session » s’affiche.
+- Quand l’agent crée une compétence, une carte de compétence apparaît dans la fenêtre ; quand il trouve une compétence qui mérite d’être installée, un aperçu d’installation apparaît. Rien n’est enregistré ni installé tant que vous n’avez pas cliqué sur **Enregistrer** ou **Installer**, et une compétence installée est disponible à partir de la prochaine session.
 - Les programmes dont se servent les scripts d’une compétence (Python, etc.) doivent être installés sur ce PC.
+- Si vous avez utilisé l’agent dans une version précédente, la première fois que vous ouvrez la fenêtre de l’agent, un avis affiché une seule fois indique : « Les compétences s’activent et se désactivent désormais dans Paramètres → Compétences. Les compétences des dossiers de compétences Claude et Codex sont désactivées au départ. » **Ouvrir les paramètres** vous y mène directement.
 
 ## Nouveaux fichiers et documents ouverts
 
@@ -57,6 +75,7 @@ Un document que quelqu’un vous a envoyé peut contenir des instructions caché
 ## Confidentialité et consommation
 
 - Ce que vous avez masqué pour l’IA ne reste masqué que lorsque l’application lit pour l’agent un document ouvert dans GenOffice. Les fichiers que l’agent lit lui-même dans le dossier sont envoyés tels quels.
+- Les termes des recherches web et les adresses des pages lues sont transmis à l’entreprise qui édite le programme et à ces sites. Quand l’accès à Internet pour les commandes de Codex est activé, des données peuvent partir partout où une commande se connecte.
 - L’agent travaille en de nombreuses étapes : il consomme donc davantage la limite de votre abonnement que le panneau IA. Quand la limite est atteinte, la demande échoue ; l’agent ne passe jamais à une autre IA ni à une connexion payante.
 
 ## En cas de problème

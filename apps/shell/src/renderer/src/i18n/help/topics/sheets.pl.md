@@ -1,6 +1,6 @@
 # Sheets: arkusze
 
-Sheets to edytor podobny do Excela; obliczenia obsługuje osobny proces silnika napisanego w Rust (awaria w nim nie wywróci aplikacji). Otwiera i zapisuje prawdziwe pliki .xlsx; pliki .csv i .tsv otwierają się jako tabele.
+Sheets to edytor arkuszy kalkulacyjnych; obliczenia obsługuje osobny proces silnika napisanego w Rust (awaria w nim nie wywróci aplikacji). Otwiera i zapisuje pliki .xlsx; pliki .csv i .tsv otwierają się jako tabele.
 
 ## Interfejs
 

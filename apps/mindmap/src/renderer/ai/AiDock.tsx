@@ -27,6 +27,7 @@ import type { MindmapAiApi } from '../../shared/ipc'
 import type { DocumentSession } from '../document/session'
 import type { MapController } from '../map/controller'
 import { t as translate, useI18n } from '../i18n/locale'
+import type { TemplateDocument } from '@genoffice/ui'
 import { AiPanel, type MindmapAiRequest, type MindmapAiRunStart } from './AiPanel'
 import type { MapAiHost } from './map-tools'
 
@@ -99,6 +100,10 @@ export interface MindmapAiDockProps {
   request?: MindmapAiRequest | null
   /** a run is starting */
   onRunStart?: (run: MindmapAiRunStart) => void
+  /** the map while it can go along as a skill's template (spec 5.7) */
+  templateDocument?: TemplateDocument | null
+  /** a request handed over by the template flow: show the panel */
+  onSkillHandoff?: () => void
 }
 
 /**
@@ -112,6 +117,8 @@ export function MindmapAiDock({
   filePath,
   request,
   onRunStart,
+  templateDocument,
+  onSkillHandoff,
 }: MindmapAiDockProps): ReactElement {
   const { t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -135,6 +142,8 @@ export function MindmapAiDock({
         request={request}
         onRunStart={onRunStart}
         onCollapse={() => ai.setOpen(false)}
+        templateDocument={templateDocument}
+        onSkillHandoff={onSkillHandoff}
       />
     </div>
   )

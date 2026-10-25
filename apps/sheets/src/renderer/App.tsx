@@ -60,6 +60,11 @@ import {
   structuralDeleteFormulaErrorSync,
   type PlanContext,
 } from './plan-operations'
+import {
+  registerCellFontAliases,
+  untilCellFontsLoaded,
+  workbookFontFamilies,
+} from './cell-font-fallback'
 import { isNumericIdentifierText } from './cell-warning'
 import { consumePendingUndoCarry, undoStackDepth } from './undo-carry'
 import { createSaveGate, shouldRunSaveTick } from './save-scheduler'
@@ -69,9 +74,21 @@ import {
   addTokenUsage,
   useAiSendGate,
   useSplitPaneFocusPing,
+  NO_SKILL_USE,
+  skillChipRefsOf,
+  panelUserSkills,
+  useSkillProposals,
+  useSkillTemplates,
+  templateDocumentOf,
+  type TemplateDocument,
   type AiTokenUsageView,
   type AiScopeQuoteData,
   type DriveAttachPicked,
+  type SkillChipRef,
+  type SkillUse,
+  docMentionActions,
+  presentationKeyOf,
+  type AiComposerDocs,
 } from '@genoffice/ui'
 
 import {
@@ -227,7 +244,6 @@ import type {
   AttachmentAddResult,
   AttachmentMeta,
   MenuAction,
-  RecoveryPromptPayload,
   WorkbookFile,
   WorkbookVisualObject,
 } from '../shared/desktop-api'
@@ -262,6 +278,7 @@ import {
   safeJsonInput,
   SET_FROZEN_MUTATION,
   SET_NUMFMT_MUTATION,
+  SET_RIGHT_TO_LEFT_MUTATION,
   TOGGLE_GRIDLINES_MUTATION,
   SET_ZOOM_OPERATION,
   SET_ZOOM_COMMAND,
@@ -347,6 +364,7 @@ import { installCachedValueFallbackInterceptor } from './formula-cached-fallback
 import { readLiveFunctionInfos } from './function-catalog'
 import { installSupportedFunctionProbe } from './function-registry-probe'
 import { installCellFilenameFunction } from './cell-function'
+import { installRightToLeftCommand, refreshSheetRender, sheetIsRightToLeft } from './sheet-rtl-view'
 import { installFormulaLexerFix } from './formula-lexer-fix'
 import { installErrorValueAlignment } from './error-value-align'
 import { installFormulaNewlineDisplay } from './formula-newline-display'
@@ -487,7 +505,6 @@ import { planStillMatches } from './lazy-plan'
 import { lastSurvivingScreenLine, netAxisDelta, screenToFile } from './view-transform'
 import { selectionFormatEquals, toSelectionFormat, type SelectionFormat } from './selection-format'
 import { ExcelShell, type SelectedShapeRibbon } from './ExcelShell'
-import { RecoveryDialog } from './RecoveryDialog'
 import { ToastHost } from './toast'
 import { showToast } from './toast-bus'
 import { AdvancedFilterDialog, type AdvancedFilterColumn } from './AdvancedFilterDialog'
@@ -680,7 +697,6 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'save',
-          restoredFromRecovery: false,
           automaticRecoveryDisabled: false,
         })
       )
@@ -696,15 +712,16 @@ export function App({
   }, [autoSave])
 
   // Crash-recovery copy: independent of the AutoSave pill — a dirty
-  // workbook gets a real .xlsx copy under userData every 30 s, so a force-quit or a
+  // workbook gets a real copy under userData every 30 s, so a force-quit or a
   // renderer crash no longer costs everything since the last manual save. A normal
-  // save removes the copy; reopening a file whose copy is newer offers Restore.
+  // save removes the copy; reopening a file that has one asks to restore it first.
+  // The OS ending the session asks for one right away (onRecoveryWriteNow).
   useEffect(() => {
-    const tick = () => {
+    const writeCopy = async (): Promise<void> => {
       const state = lazyWorkbookRef.current
-      // The in-cell editor's pending text is not in the journal yet, a
-      // converted import has no original file to recover into, and a restored
-      // recovery session is backed by the recovery copy itself.
+      // The in-cell editor's pending text is not in the journal yet. Which copy
+      // a session writes (if any) is the main process's call: a CSV or
+      // converted import writes an untitled one.
       if (
         !state ||
         !shouldRunSaveTick({
@@ -715,19 +732,23 @@ export function App({
           needsSaveAsNotUnsavedNew: Boolean(state.file.needsSaveAs) && !state.file.unsavedNew,
           isCsv: state.file.csvPath !== undefined,
           kind: 'recovery',
-          restoredFromRecovery: state.file.restoredFromRecovery === true,
           automaticRecoveryDisabled: state.file.automaticRecoveryDisabled === true,
         })
       )
         return
-      void handleSaveRef.current('recovery')
+      await handleSaveRef.current('recovery')
     }
-    const id = window.setInterval(tick, 30_000)
-    return () => window.clearInterval(id)
+    const id = window.setInterval(() => void writeCopy(), 30_000)
+    const stopWriteNow = window.desktopApi?.onRecoveryWriteNow?.(writeCopy)
+    return () => {
+      window.clearInterval(id)
+      stopWriteNow?.()
+    }
   }, [])
-  const [recoveryPrompt, setRecoveryPrompt] = useState<RecoveryPromptPayload | null>(null)
+  /// A password workbook keeps no recovery copy: main says so once per tab.
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
   useEffect(
-    () => window.desktopApi?.onRecoveryPrompt?.((prompt) => setRecoveryPrompt(prompt)) ?? undefined,
+    () => window.desktopApi?.onRecoveryNotice?.((text) => setRecoveryNotice(text)) ?? undefined,
     [],
   )
   /// Streaming-mode filter gate: the filter panel builds
@@ -748,6 +769,8 @@ export function App({
   const [emptyCsvNotice, setEmptyCsvNotice] = useState(false)
   /// Zoom of the active sheet in percent, echoed by the status-bar slider.
   const [zoomPercent, setZoomPercent] = useState(100)
+  /** F5: the grid alone in fullscreen (presentation) */
+  const [presenting, setPresenting] = useState(false)
   const [statusBarFuncs, setStatusBarFuncs] = useState<readonly StatusBarFunc[]>(() =>
     readStatusBarFuncs(localStorage),
   )
@@ -779,6 +802,48 @@ export function App({
   /// The user clicked × on the scope chip: this run targets the sheet at large.
   /// Re-arms on the next selection change, so a fresh drag means a fresh scope.
   const [aiScopeDismissed, setAiScopeDismissed] = useState(false)
+
+  // F5: the grid alone in fullscreen; F5 starts at A1, Ctrl/Shift+F5 keeps the cell.
+  useEffect(() => {
+    const enter = (fromCurrent: boolean): void => {
+      const sheet = univerRef.current?.univerAPI.getActiveWorkbook()?.getActiveSheet()
+      if (!sheet) return
+      if (!fromCurrent) sheet.scrollToCell(0, 0)
+      setPresenting(true)
+      const root = document.documentElement
+      if (!document.fullscreenElement && root.requestFullscreen)
+        void root.requestFullscreen().catch(() => {})
+    }
+    const exit = (): void => {
+      setPresenting(false)
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const action = presentationKeyOf(event, presenting)
+      if (!action) return
+      // Excel's own plain F5 is Go To; the sheet keeps it. Ctrl+F5 starts at A1,
+      // Shift+F5 keeps the reader's cell.
+      if (action === 'present') return
+      event.preventDefault()
+      if (action === 'exit') {
+        // the grid's own Esc (leave edit mode, clear a pick) waits until the show is over
+        event.stopPropagation()
+        exit()
+      } else enter(event.shiftKey)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [presenting])
+
+  // OS-level Esc leaves fullscreen without a keydown: end the show with it.
+  useEffect(() => {
+    if (!presenting) return
+    const onFullScreenChange = (): void => {
+      if (!document.fullscreenElement) setPresenting(false)
+    }
+    document.addEventListener('fullscreenchange', onFullScreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullScreenChange)
+  }, [presenting])
   /// Selection scope of the run in flight. undefined = no run owns a scope
   /// (report the live selection); null = the user dropped it. The ref is what
   /// the skill's getActiveSheetInfo reads mid-run; the state is what the chip
@@ -857,7 +922,7 @@ export function App({
   /// menuActionRef, so the interval closure never goes stale).
   const handleSaveRef = useRef<
     (
-      mode: 'save' | 'save-as' | 'recovery',
+      mode: 'save' | 'save-as' | 'recovery' | 'template',
       quiet?: boolean,
       explicitTarget?: { path: string; overwrite: boolean },
     ) => Promise<SaveOutcome>
@@ -1087,11 +1152,20 @@ export function App({
     instruction: string | undefined
     attachments: readonly AttachmentMeta[] | undefined
     retryIndex: number | undefined
+    skillUse: SkillUse
+    onAdmitted: (() => void) | undefined
   }>({
     settings: aiSettings,
     statuses: subscription.statuses,
     store: AI_SETTINGS_STORE,
-    start: (held) => handleSend(held.instruction, held.attachments, held.retryIndex),
+    start: (held) =>
+      handleSend(
+        held.instruction,
+        held.attachments,
+        held.retryIndex,
+        held.skillUse,
+        held.onAdmitted,
+      ),
     onSettingsSaved: (next) => {
       // the ref is updated at once for a run started right after
       aiSettingsRef.current = next
@@ -1131,6 +1205,59 @@ export function App({
   const [chat, setChat] = useState<readonly AiChatMessage[]>([])
   /** History loaded from project-store (read-only transcript, not fed to the model) */
   const [historicChat, setHistoricChat] = useState<readonly AiChatMessage[]>([])
+  /**
+   * The workbook as a skill's template (spec 5.7): an .xlsx, .xlsm, .xls,
+   * .csv or .tsv file, or a new workbook, as a save would write it now (an
+   * .xlsx, or .xlsm for one). Sheets recognizes no redaction marks.
+   */
+  const templateFilePath = workbookFile ? (workbookFile.csvPath ?? workbookFile.path) : null
+  const templateDocument = useMemo<TemplateDocument | null>(
+    () =>
+      !templateFilePath
+        ? null
+        : templateDocumentOf({
+            filePath: templateFilePath,
+            extensions: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv'],
+            defaultExtension: 'xlsx',
+            savedExtension: (ext) => (ext === 'xlsm' ? 'xlsm' : 'xlsx'),
+            untitledTitle: () => 'workbook',
+            bytes: async () => (await handleSaveRef.current('template')).bytes ?? null,
+          }),
+    [templateFilePath],
+  )
+  /** the skill cards `propose_skill` shows; nothing is written before their Save */
+  const skillCards = useSkillProposals({
+    lang: getLang(),
+    // the workbook goes along as a template while it can be one (spec 5.7)
+    templateDocument,
+    persistSaved: (record) => void persistChatMessage('assistant', '', [record]),
+  })
+  const skillCardsRef = useRef(skillCards)
+  skillCardsRef.current = skillCards
+  /** a request handed over by the template flow opens the AI panel */
+  const [openAiRequest, setOpenAiRequest] = useState(0)
+  /**
+   * The template flow (spec 5.6, 5.7): a chip whose skill has a template runs
+   * in a new tab, a template the model used offers its new document, and the
+   * request a new tab was opened for runs here once (after the workbook is
+   * open) through the send gate.
+   */
+  const skillTemplates = useSkillTemplates({
+    lang: getLang(),
+    editor: 'sheets',
+    cards: skillCards,
+    busy: aiBusy,
+    ready: !!workbookFile,
+    send: (text, use) => {
+      handleSend(text, undefined, undefined, use)
+    },
+    onTaken: () => setOpenAiRequest((n) => n + 1),
+    setComposer: setPrompt,
+  })
+  const skillTemplatesRef = useRef(skillTemplates)
+  skillTemplatesRef.current = skillTemplates
+  /** the skills of the last send: a retry of a message with chips sends the same skill text */
+  const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
   // ── Chat attachments (same structure as docs/slides: text types go through the
   // read_attachment tool, images go multimodal) ──
   const [attachments, setAttachments] = useState<readonly AttachmentMeta[]>([])
@@ -1296,12 +1423,14 @@ export function App({
         }
         if (stale()) return
         chatRefIdsRef.current = ids
-        const msgs = await api.loadChat({
+        const stored = await api.loadChat({
           projectId: ids.projectId,
           chatId: ids.chatId,
           limit: 200,
         })
-        if (stale() || msgs.length === 0) return
+        if (stale() || stored.length === 0) return
+        // skill cards come back closed; a saved card's record is not part of the conversation
+        const msgs = skillCardsRef.current.restore(stored)
         setHistoricChat(
           msgs.map((m) => ({
             role: m.role,
@@ -1327,6 +1456,10 @@ export function App({
                 }
               : {}),
             ...(m.scope ? { scope: m.scope } : {}),
+            ...(m.role === 'user' && skillChipRefsOf(m.skills).length > 0
+              ? { skills: skillChipRefsOf(m.skills) }
+              : {}),
+            ...(m.skillProposals ? { skillProposals: m.skillProposals } : {}),
           })),
         )
         // Restore model context: follow-ups after reopening the file continue the
@@ -1350,6 +1483,7 @@ export function App({
     }>,
     attachments?: readonly AttachmentMeta[],
     scope?: AiScopeQuoteData,
+    skillChips?: readonly SkillChipRef[],
   ): boolean => {
     // Reports whether a write was issued: right after a workbook opens the
     // chat refs resolve asynchronously, and a send in that window is dropped.
@@ -1376,6 +1510,7 @@ export function App({
             }
           : {}),
         ...(scope ? { scope } : {}),
+        ...(skillChips && skillChips.length > 0 ? { skills: [...skillChips] } : {}),
       })
       .catch(() => {
         /* silent */
@@ -1440,6 +1575,20 @@ export function App({
         }),
         createSearchSkill(),
         createImageSkill(() => imageGenRef.current),
+        // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
+        ...panelUserSkills({
+          lang: getLang,
+          messages: () => agentLoopRef.current?.messages ?? [],
+          // a template skill the model used offers its new document (spec 5.7)
+          onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          onProposal: (proposal) => {
+            skillCardsRef.current.add(proposal)
+            patchLastAssistant((entry) => ({
+              ...entry,
+              skillProposals: [...(entry.skillProposals ?? []), proposal.key],
+            }))
+          },
+        }),
       ]),
       events: {
         onText: (text) => {
@@ -1690,6 +1839,17 @@ export function App({
     })
   }
 
+  /** The `@` document list in the input attaches through the same route as the buttons */
+  const docMention: AiComposerDocs = {
+    lang: getLang(),
+    ...docMentionActions({
+      lang: getLang(),
+      add: (paths) => window.desktopApi.addAttachmentPaths([...paths]),
+      merge: mergeAttachments,
+    }),
+    attachments,
+  }
+
   async function handleAddPastedImage(data: ArrayBuffer, ext: string): Promise<void> {
     mergeAttachments(await window.desktopApi.addPastedImage(data, ext))
   }
@@ -1718,6 +1878,8 @@ export function App({
     setAiBusy(false)
     setChat([])
     setHistoricChat([])
+    skillCards.reset()
+    skillTemplates.reset()
     // Unsent composer attachments would otherwise ride into the next chat's
     // file context (availableAttachments merges sent + live) — same as docs
     // (#224) and slides. The typed draft itself is kept.
@@ -1926,6 +2088,9 @@ export function App({
     // sheetView rightToLeft="1": mirror the grid geometry (column A on the
     // right, headers on the right) while keeping logical indices.
     installRtlGridMirror()
+    // Univer defines the right-to-left command/mutation pair but never
+    // registers it; without this the View tab's toggle would silently no-op.
+    installRightToLeftCommand(runtime)
     installRichTextBidiFix()
     // Excel's "Center Across Selection": center anchor text over its run of
     // blank same-format neighbors instead of folding it inside one cell.
@@ -2114,6 +2279,9 @@ export function App({
       setPendingEdits(journalSize(state.editJournal))
     }
     void window.desktopApi.getUserDisplayName?.().then((name) => threadStore.setAuthor(name))
+    const offAuthorChanged = window.desktopApi.onUserDisplayNameChanged?.((name) =>
+      threadStore.setAuthor(name),
+    )
     // Univer's own UI (rule-management panels, dialogs) follows the app
     // language instead of hard-coded English.
     void applyUniverLocale(runtime, getLang())
@@ -2346,6 +2514,7 @@ export function App({
           event.id !== MOVE_ROWS_MUTATION &&
           event.id !== SET_FROZEN_MUTATION &&
           event.id !== TOGGLE_GRIDLINES_MUTATION &&
+          event.id !== SET_RIGHT_TO_LEFT_MUTATION &&
           event.id !== SET_ZOOM_OPERATION &&
           event.id !== SET_ZOOM_COMMAND
         ) {
@@ -2626,6 +2795,25 @@ export function App({
             })
             setPendingEdits(journalSize(state.editJournal))
           }
+          return
+        }
+        if (event.id === SET_RIGHT_TO_LEFT_MUTATION) {
+          // Journaling from the mutation (not the ribbon handler) keeps the
+          // save in step with Univer's own undo/redo of the direction flip;
+          // the rebuild also re-runs the mirrored viewport anchors, which
+          // undo/redo dispatches without the command's render side effects.
+          const rtl = event.params as { subUnitId?: string; rightToLeft?: number } | undefined
+          if (
+            rtl?.subUnitId &&
+            rtl.rightToLeft !== undefined &&
+            !isSheetRemoved(state.editJournal, rtl.subUnitId)
+          ) {
+            recordPageSetup(state.editJournal, rtl.subUnitId, {
+              rightToLeft: rtl.rightToLeft === 1,
+            })
+            setPendingEdits(journalSize(state.editJournal))
+          }
+          refreshSheetRender(runtime)
           return
         }
         if (event.id === SET_ZOOM_OPERATION || event.id === SET_ZOOM_COMMAND) {
@@ -3349,6 +3537,7 @@ export function App({
       unsubscribeCloseSave()
       offThemeChanged?.()
       offDocThemeChanged?.()
+      offAuthorChanged?.()
       undoRedoSub.unsubscribe()
       findRevealDispose()
       gridGrowthDispose()
@@ -3446,9 +3635,20 @@ export function App({
     overrideInstruction?: string,
     overrideAttachments?: readonly AttachmentMeta[],
     retryIndex?: number,
+    /** the chosen skills: their text goes to the model, their chips onto the bubble */
+    givenSkillUse: SkillUse = NO_SKILL_USE,
+    /** the request was admitted (now, or later when a held request starts) */
+    onAdmitted?: () => void,
   ): void {
     const instruction = (overrideInstruction ?? prompt).trim()
     if (!instruction || aiBusy) return
+    // a retried message that carried skills sends the same skill text again
+    const skillUse =
+      retryIndex !== undefined &&
+      givenSkillUse === NO_SKILL_USE &&
+      (chat[retryIndex]?.skills?.length ?? 0) > 0
+        ? lastSkillUseRef.current
+        : givenSkillUse
     // No provider can run, or the first-use notice of a subscription is pending:
     // the panel shows what to do about it and nothing is sent (the draft is kept).
     // A request made during a status check or in front of the notice is held and
@@ -3458,10 +3658,15 @@ export function App({
         instruction: overrideInstruction,
         attachments: overrideAttachments,
         retryIndex,
+        skillUse,
+        onAdmitted,
       })
     ) {
       return
     }
+    onAdmitted?.()
+    lastSkillUseRef.current = skillUse
+    skillTemplatesRef.current.noteRequest(instruction)
     runToolsRef.current = []
     runUsageRef.current = undefined
     // The message consumes the composer attachments: they ride along (echoed on the
@@ -3486,7 +3691,8 @@ export function App({
           ? { label: scopeLabel(aiScope.a1, aiScope.columns ?? null, t) }
           : undefined
     const persisted =
-      alreadyPersisted || persistChatMessage('user', instruction, undefined, sentAtts, scope)
+      alreadyPersisted ||
+      persistChatMessage('user', instruction, undefined, sentAtts, scope, skillUse.chips)
     appendChat({
       role: 'user',
       text: instruction,
@@ -3494,6 +3700,7 @@ export function App({
       persisted,
       ...(sentAtts.length > 0 ? { attachments: sentAtts } : {}),
       ...(scope ? { scope } : {}),
+      ...(skillUse.chips.length > 0 ? { skills: skillUse.chips } : {}),
     })
     if (!overrideInstruction) setPrompt('')
     // the deterministic path consumes the composer too — the bubble already echoes the set
@@ -3509,7 +3716,8 @@ export function App({
     // otherwise fall back to the local, deterministic regex planner
     // (kept for offline use and for the fixed micro-DSL it still supports).
     if (agentConfigured) {
-      runAgent(instruction, sentAtts)
+      // the skill text rides with this request only; the bubble and the record keep the chips
+      runAgent(instruction + skillUse.text, sentAtts)
       return
     }
     const outcome = runDeterministicPlan(instruction)
@@ -4306,9 +4514,12 @@ export function App({
     if (!(await commitActiveEditor())) return false
     // the bundled faces this workbook names, before its first skeleton measures
     // (the Normal font's digit width sizes every column); bounded like boot fonts
-    await Promise.race([
-      loadTemplateFontsFor(workbookTemplateFontUses(opened)),
-      new Promise((resolve) => setTimeout(resolve, 3000)),
+    await Promise.all([
+      Promise.race([
+        loadTemplateFontsFor(workbookTemplateFontUses(opened)),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]),
+      untilCellFontsLoaded(registerCellFontAliases(workbookFontFamilies(opened))),
     ])
     if (opts?.continueChat) chatContinuesRef.current = true
     const selected: WorkbookFile = {
@@ -4682,7 +4893,7 @@ export function App({
   }
 
   async function handleSave(
-    mode: 'save' | 'save-as' | 'recovery',
+    mode: 'save' | 'save-as' | 'recovery' | 'template',
     quiet = false,
     explicitTarget?: { path: string; overwrite: boolean },
   ): Promise<SaveOutcome> {
@@ -4982,6 +5193,7 @@ export function App({
         (worksheet
           ? worksheet.getSheet().getConfig().rowHeader.hidden !== BooleanNumber.TRUE
           : true),
+      rightToLeft: journalState.rightToLeft ?? (worksheet ? sheetIsRightToLeft(worksheet) : false),
       pageBreakPreview: worksheet ? pageBreakPreviewSheets.has(worksheet.getSheetId()) : false,
     }
   })()
@@ -5031,15 +5243,6 @@ export function App({
   return (
     <>
       <ToastHost />
-      {recoveryPrompt && (
-        <RecoveryDialog
-          prompt={recoveryPrompt}
-          onChoose={(restore) => {
-            setRecoveryPrompt(null)
-            window.desktopApi?.replyRecoveryPrompt?.(restore)
-          }}
-        />
-      )}
       {fullLoadPrompt && (
         <div className="dialog-backdrop">
           <div
@@ -5155,6 +5358,8 @@ export function App({
         emptyCsvNotice={emptyCsvNotice}
         onOpenWorkbook={() => void handleInspectWorkbook()}
         onDismissEmptyCsvNotice={() => setEmptyCsvNotice(false)}
+        recoveryNotice={recoveryNotice}
+        onDismissRecoveryNotice={() => setRecoveryNotice(null)}
         aiBusy={aiBusy}
         {...(sessionUsage !== undefined ? { sessionUsage } : {})}
         aiSubscription={{
@@ -5166,6 +5371,8 @@ export function App({
           admitQueued: sendGate.admitQueued,
           busy: subscription.busy,
           actions: subscription.actions,
+          openConnectHelp: subscription.openConnectHelp,
+          refresh: subscription.refresh,
           usage: subscriptionUsage,
           inputTruncated,
           onDismissTruncated: () => setInputTruncated(false),
@@ -5174,10 +5381,15 @@ export function App({
         }}
         chat={chat}
         historicChat={historicChat}
+        renderSkillCard={skillCards.render}
+        skillNotes={skillTemplates.notes}
+        onTemplateSkill={(request) => skillTemplatesRef.current.onTemplateSkill(request)}
+        openAiRequest={openAiRequest}
         attachments={attachments}
         attachNotice={attachNotice}
         onPickAttachments={() => void handlePickAttachments()}
         onDrivePicked={handleDrivePicked}
+        docMention={docMention}
         onAddAttachmentPaths={(paths) => void handleAddAttachmentPaths(paths)}
         onAddPastedImage={(data, ext) => void handleAddPastedImage(data, ext)}
         onRemoveAttachment={handleRemoveAttachment}
@@ -5199,6 +5411,7 @@ export function App({
         canUndo={univerHist.canUndo || (!lazyWorkbookRef.current && adapterRef.current.canUndo)}
         canRedo={univerHist.canRedo}
         onCommand={handleRibbonCommand}
+        presenting={presenting}
         onIsCellEditing={isCellEditing}
         zoomPercent={zoomPercent}
         statusBarFuncs={statusBarFuncs}
