@@ -449,12 +449,12 @@ Hoàn tác và Làm lại chuyển bước trong lịch sử tài liệu; khi co
 
 ### Xem
 
-| Hành động            | macOS         | Windows / Linux  |
-| -------------------- | ------------- | ---------------- |
-| Phóng to             | ⌘=            | Ctrl+=           |
-| Thu nhỏ              | ⌘-            | Ctrl+-           |
-| Vừa chiều rộng       | ⌘0            | Ctrl+0           |
-| Thu phóng (liên tục) | ⌘ + lăn chuột | Ctrl + lăn chuột |
+| Hành động              | macOS         | Windows / Linux  |
+| ---------------------- | ------------- | ---------------- |
+| Phóng to               | ⌘=            | Ctrl+=           |
+| Thu nhỏ                | ⌘-            | Ctrl+-           |
+| Vừa chiều rộng         | ⌘0            | Ctrl+0           |
+| Thu phóng (mỗi nấc 5%) | ⌘ + lăn chuột | Ctrl + lăn chuột |
 
 Phóng to cũng nhận ⌘+ và Ctrl++.
 

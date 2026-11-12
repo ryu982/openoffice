@@ -1825,9 +1825,9 @@ export function App() {
     return () => cancelRespellKick()
   }, [editor, spellcheck, spellcheckActive, respellNonce])
 
-  // Ctrl/⌘+wheel zoom: Chromium delivers a trackpad pinch as ctrlKey wheel
-  // events with small fractional deltas (kept continuous), while a mouse notch
-  // steps ten percentage points. Must be non-passive to preventDefault.
+  // Ctrl/⌘+wheel zoom: five percentage points per mouse notch, whatever delta
+  // the OS scroll settings give it; a trackpad pinch (ctrlKey wheel events in
+  // Chromium) moves in the same steps. Must be non-passive to preventDefault.
   // The viewport point under the cursor is stashed for the zoom layout effect
   // below so the content there stays put (public #238); set only when the zoom
   // actually changes, else a clamped tick would leave a stale anchor behind.
@@ -1843,7 +1843,7 @@ export function App() {
       const rect = scrollContainerRef.current?.getBoundingClientRect()
       const anchor = rect ? { vx: e.clientX - rect.left, vy: e.clientY - rect.top } : null
       setZoom((z) => {
-        const next = nextDocsZoom(z, intent, e.deltaY)
+        const next = nextDocsZoom(z, intent)
         if (next !== z) zoomAnchorRef.current = anchor
         return next
       })

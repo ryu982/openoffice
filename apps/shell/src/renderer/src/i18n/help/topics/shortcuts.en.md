@@ -449,12 +449,12 @@ Undo and Redo step the document history; when the cursor sits in a text field th
 
 ### View
 
-| Action            | macOS            | Windows / Linux     |
-| ----------------- | ---------------- | ------------------- |
-| Zoom In           | ⌘=               | Ctrl+=              |
-| Zoom Out          | ⌘-               | Ctrl+-              |
-| Fit to width      | ⌘0               | Ctrl+0              |
-| Zoom (continuous) | ⌘ + scroll wheel | Ctrl + scroll wheel |
+| Action          | macOS            | Windows / Linux     |
+| --------------- | ---------------- | ------------------- |
+| Zoom In         | ⌘=               | Ctrl+=              |
+| Zoom Out        | ⌘-               | Ctrl+-              |
+| Fit to width    | ⌘0               | Ctrl+0              |
+| Zoom (5% steps) | ⌘ + scroll wheel | Ctrl + scroll wheel |
 
 Zoom In also answers to ⌘+ and Ctrl++.
 

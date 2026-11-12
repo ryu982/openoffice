@@ -449,12 +449,12 @@ Zpět a Znovu procházejí historií dokumentu; když je kurzor v textovém poli
 
 ### Zobrazení
 
-| Akce                 | macOS            | Windows / Linux     |
-| -------------------- | ---------------- | ------------------- |
-| Přiblížit            | ⌘=               | Ctrl+=              |
-| Oddálit              | ⌘-               | Ctrl+-              |
-| Přizpůsobit šířce    | ⌘0               | Ctrl+0              |
-| Plynulé přiblížování | ⌘ + kolečko myši | Ctrl + kolečko myši |
+| Akce              | macOS            | Windows / Linux     |
+| ----------------- | ---------------- | ------------------- |
+| Přiblížit         | ⌘=               | Ctrl+=              |
+| Oddálit           | ⌘-               | Ctrl+-              |
+| Přizpůsobit šířce | ⌘0               | Ctrl+0              |
+| Přiblížení po 5 % | ⌘ + kolečko myši | Ctrl + kolečko myši |
 
 Přiblížit reagují také ⌘+ a Ctrl++.
 

@@ -340,6 +340,9 @@ export {
   createWheelPager,
   createZoomWheelClassifier,
   notchStep,
+  WHEEL_ZOOM_STEP,
+  wheelZoomStep,
+  wheelZoomStepPercent,
   type ZoomWheelIntent,
 } from './wheel-zoom'
 export { AiModelPicker, aiModelPopoverStyle, type AiModelPickerBridge } from './AiModelPicker'

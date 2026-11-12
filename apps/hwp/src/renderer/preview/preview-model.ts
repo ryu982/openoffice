@@ -23,6 +23,14 @@ export function clampZoom(value: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(value)))
 }
 
+/** The percentages the zoom list shows: the steps, plus a wheel-set percentage between them. */
+export function zoomChoices(mode: ZoomMode): readonly number[] {
+  if (typeof mode !== 'number' || (ZOOM_STEPS as readonly number[]).includes(mode)) {
+    return ZOOM_STEPS
+  }
+  return [...ZOOM_STEPS, mode].sort((a, b) => a - b)
+}
+
 /** The next or previous percentage in the list; a value between steps moves to the neighbour. */
 export function nextZoom(current: number, direction: 1 | -1): number {
   const value = clampZoom(current)

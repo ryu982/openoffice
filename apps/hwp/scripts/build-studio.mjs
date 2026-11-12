@@ -34,6 +34,7 @@ import {
   HANCOM_KEYS_MODULE,
   PC_FONTS_MODULE,
   STUDIO_PATCHES,
+  WHEEL_ZOOM_MODULE,
   missingHancomCommands,
   missingPluginHooks,
   rhwpPatches,
@@ -82,6 +83,8 @@ const DOCUMENT_INFO = join(APP, 'studio-plugin', 'document-info.mjs')
 const FORMAT_COPY = join(APP, 'studio-plugin', 'format-copy.mjs')
 const CLIPBOARD_HTML = join(APP, 'studio-plugin', 'clipboard-html.mjs')
 const PC_FONTS = join(APP, 'studio-plugin', 'pc-fonts.mjs')
+/** The Ctrl+wheel zoom steps every editor shares; it has no imports, so the studio takes it as is. */
+const WHEEL_ZOOM = join(APP, '..', '..', 'packages', 'ui', 'src', 'wheel-zoom.ts')
 const HANJA = join(APP, 'studio-plugin', 'hanja.mjs')
 const TABLE_AUTO_FILL = join(APP, 'studio-plugin', 'table-auto-fill.mjs')
 const TABLE_SIZES = join(APP, 'studio-plugin', 'table-sizes.mjs')
@@ -108,6 +111,7 @@ function stampValue() {
   hash.update(readFileSync(FORMAT_COPY))
   hash.update(readFileSync(CLIPBOARD_HTML))
   hash.update(readFileSync(PC_FONTS))
+  hash.update(readFileSync(WHEEL_ZOOM))
   hash.update(readFileSync(HANJA))
   hash.update(readFileSync(TABLE_AUTO_FILL))
   hash.update(readFileSync(TABLE_SIZES))
@@ -206,6 +210,7 @@ async function buildStudio() {
         [FORMAT_COPY_MODULE]: FORMAT_COPY,
         [CLIPBOARD_HTML_MODULE]: CLIPBOARD_HTML,
         [PC_FONTS_MODULE]: PC_FONTS,
+        [WHEEL_ZOOM_MODULE]: WHEEL_ZOOM,
       },
     },
     // upstream registers a service worker for its website build; this build

@@ -449,12 +449,12 @@ Annuler et Rétablir font avancer l’historique du document ; lorsque le curseu
 
 ### Affichage
 
-| Action               | macOS       | Windows / Linux |
-| -------------------- | ----------- | --------------- |
-| Zoom avant           | ⌘=          | Ctrl+=          |
-| Zoom arrière         | ⌘-          | Ctrl+-          |
-| Ajuster à la largeur | ⌘0          | Ctrl+0          |
-| Zoom (continu)       | ⌘ + molette | Ctrl + molette  |
+| Action                | macOS       | Windows / Linux |
+| --------------------- | ----------- | --------------- |
+| Zoom avant            | ⌘=          | Ctrl+=          |
+| Zoom arrière          | ⌘-          | Ctrl+-          |
+| Ajuster à la largeur  | ⌘0          | Ctrl+0          |
+| Zoom (par pas de 5 %) | ⌘ + molette | Ctrl + molette  |
 
 Le zoom avant répond aussi à `⌘+` et Ctrl++.
 

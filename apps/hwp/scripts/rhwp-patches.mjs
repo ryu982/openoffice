@@ -139,6 +139,12 @@
  *   so its font lists held the base fonts and the document's own until then. At start-up
  *   it now asks the PC for its font list and detects anew when that differs from the
  *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
+ *
+ * studio-wheel-zoom
+ *   The studio scales its zoom by the wheel's pixel delta, so how far one notch zoomed
+ *   followed the OS scroll setting. Ctrl/⌘+wheel now goes through the app's shared
+ *   classifier (packages/ui/src/wheel-zoom.ts), as in the other editors: five percentage
+ *   points per notch onto the 5% grid, a trackpad pinch in the same steps.
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
@@ -165,6 +171,9 @@ export { CLIPBOARD_HTML_MODULE }
 
 /** Module specifier the studio-pc-fonts patch imports; build-studio.mjs aliases it. */
 export { PC_FONTS_MODULE }
+
+/** Module specifier the studio-wheel-zoom patch imports; build-studio.mjs aliases it. */
+export const WHEEL_ZOOM_MODULE = '@ieum/wheel-zoom'
 
 const PATCHES = {
   'sdk-scheme': {
@@ -1147,6 +1156,37 @@ const PATCHES = {
       },
     ],
   },
+  'studio-wheel-zoom': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]view[\\/]viewport-manager\.ts$/,
+    edits: [
+      {
+        find: "import { ZoomInputSettle, type ZoomInputSettleHost } from './zoom-input-settle.ts';",
+        replace:
+          "import { ZoomInputSettle, type ZoomInputSettleHost } from './zoom-input-settle.ts';\n" +
+          `import { createZoomWheelClassifier, wheelZoomStep } from '${WHEEL_ZOOM_MODULE}';`,
+      },
+      {
+        find: '  private onWheelBound: (e: WheelEvent) => void;',
+        replace: [
+          '  private onWheelBound: (e: WheelEvent) => void;',
+          '  private readonly ieumZoomWheel = createZoomWheelClassifier();',
+        ].join('\n'),
+      },
+      {
+        find: '    const target = this.clampZoom(this.zoomTarget * Math.exp(-boundedDelta * WHEEL_ZOOM_SENSITIVITY));',
+        replace: [
+          '    const wheelIntent = this.ieumZoomWheel.feed(e, e.timeStamp);',
+          '    if (wheelIntent === null) return;',
+          '    const target = this.clampZoom(wheelZoomStep(',
+          '      this.zoomTarget,',
+          "      wheelIntent === 'zoom-in' ? 1 : -1,",
+          '      MIN_DOCUMENT_ZOOM,',
+          '      MAX_DOCUMENT_ZOOM,',
+          '    ));',
+        ].join('\n'),
+      },
+    ],
+  },
   // Paste onto a cell block fills the selected cells (hancom-keys.mjs); the key handler
   // keeps the block for Ctrl+V, and the paste event asks the module before the studio
   // pastes at the caret. Menu "paste" comes through the same event.
@@ -1213,6 +1253,7 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-font-memo-use',
   'studio-cell-block-paste',
   'studio-pc-fonts',
+  'studio-wheel-zoom',
 ])
 
 /** Whether a patch is written against this file. */

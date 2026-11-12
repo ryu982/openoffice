@@ -454,7 +454,7 @@ Buat Asal dan Buat Semula melangkah melalui sejarah dokumen; apabila kursor bera
 | Zum Masuk        | ⌘=               | Ctrl+=              |
 | Zum Keluar       | ⌘-               | Ctrl+-              |
 | Muat ke lebar    | ⌘0               | Ctrl+0              |
-| Zum (berterusan) | ⌘ + roda tetikus | Ctrl + roda tetikus |
+| Zum (langkah 5%) | ⌘ + roda tetikus | Ctrl + roda tetikus |
 
 Zum Masuk juga menerima ⌘+ dan Ctrl++.
 

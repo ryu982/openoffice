@@ -449,12 +449,12 @@ Rückgängig und Wiederholen gehen durch die Dokumenthistorie; steht der Cursor 
 
 ### Ansicht
 
-| Aktion             | macOS       | Windows / Linux |
-| ------------------ | ----------- | --------------- |
-| Vergrößern         | ⌘=          | Ctrl+=          |
-| Verkleinern        | ⌘-          | Ctrl+-          |
-| An Breite anpassen | ⌘0          | Ctrl+0          |
-| Zoom (stufenlos)   | ⌘ + Mausrad | Ctrl + Mausrad  |
+| Aktion                  | macOS       | Windows / Linux |
+| ----------------------- | ----------- | --------------- |
+| Vergrößern              | ⌘=          | Ctrl+=          |
+| Verkleinern             | ⌘-          | Ctrl+-          |
+| An Breite anpassen      | ⌘0          | Ctrl+0          |
+| Zoom (in 5-%-Schritten) | ⌘ + Mausrad | Ctrl + Mausrad  |
 
 Vergrößern reagiert auch auf `⌘+` und Ctrl++.
 

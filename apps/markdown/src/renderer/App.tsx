@@ -19,6 +19,8 @@ import {
   useAiSidebarEnabled,
   useSplitPaneFocusPing,
   useSplitPaneRole,
+  createZoomWheelClassifier,
+  wheelZoomStepPercent,
   type TemplateDocument,
 } from '@genoffice/ui'
 import {
@@ -1186,14 +1188,19 @@ export default function App() {
     }
   }, [doSave, printDoc, zoomIn, zoomOut, openFind, toggleSource, loadFromPath, sourceMode, t])
 
-  // Chromium reports trackpad pinch as ctrl+wheel. Also support Cmd/Ctrl+scroll
-  // while the pointer is over the document canvas.
+  // Cmd/Ctrl+wheel over the document canvas: five percentage points per notch
+  // whatever the OS scroll setting; a trackpad pinch (ctrl+wheel in Chromium)
+  // moves in the same steps.
   useEffect(() => {
+    const zoomWheel = createZoomWheelClassifier()
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return
       if (!(event.target as HTMLElement | null)?.closest?.('.editor-scroll')) return
       event.preventDefault()
-      setZoom((value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value - event.deltaY * 0.6)))
+      const intent = zoomWheel.feed(event, event.timeStamp)
+      if (!intent) return
+      const dir = intent === 'zoom-in' ? 1 : -1
+      setZoom((value) => wheelZoomStepPercent(value, dir, MIN_ZOOM, MAX_ZOOM))
     }
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)

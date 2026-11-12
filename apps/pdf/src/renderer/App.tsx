@@ -272,6 +272,8 @@ import {
   useSplitPaneFocusPing,
   useSplitPaneRole,
   templateDocumentOf,
+  createZoomWheelClassifier,
+  wheelZoomStep,
   type TemplateDocument,
 } from '@genoffice/ui'
 import { useI18n } from './i18n/locale'
@@ -8492,8 +8494,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  // Ctrl/⌘ + wheel zoom (native listener: React's wheel is passive and can't preventDefault)
+  // Ctrl/⌘ + wheel zoom (native listener: React's wheel is passive and can't preventDefault).
+  // Five percentage points per notch whatever the OS scroll setting; a pinch moves in the
+  // same steps. The classifier lives in a ref: the listener below is re-attached per render.
   const queuedScaleRef = useRef<number | null>(null)
+  const zoomWheelRef = useRef<ReturnType<typeof createZoomWheelClassifier> | null>(null)
   useLayoutEffect(() => {
     queuedScaleRef.current = null
   }, [scale])
@@ -8527,11 +8532,13 @@ export default function App() {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
-      if (e.deltaY === 0) return
-      // Accumulate against the queued scale so a fast pinch loses no ticks between renders
+      zoomWheelRef.current ??= createZoomWheelClassifier()
+      const intent = zoomWheelRef.current.feed(e, e.timeStamp)
+      if (!intent) return
+      // Step from the queued scale so a fast pinch loses no ticks between renders
       const committed = layoutRef.current.scale
       const current = queuedScaleRef.current ?? committed
-      const next = clampScale(current - e.deltaY * 0.006)
+      const next = wheelZoomStep(current, intent === 'zoom-in' ? 1 : -1, MIN_SCALE, MAX_SCALE)
       if (next === current) return
       if (next === committed) {
         // nets out to no change: the queue must still be overridden, else an intermediate

@@ -449,12 +449,12 @@ Deshacer y Rehacer avanzan por el historial del documento; cuando el cursor est�
 
 ### Vista
 
-| Acción           | macOS               | Windows / Linux        |
-| ---------------- | ------------------- | ---------------------- |
-| Acercar          | ⌘=                  | Ctrl+=                 |
-| Alejar           | ⌘-                  | Ctrl+-                 |
-| Ajustar al ancho | ⌘0                  | Ctrl+0                 |
-| Zoom (continuo)  | ⌘ + rueda del ratón | Ctrl + rueda del ratón |
+| Acción               | macOS               | Windows / Linux        |
+| -------------------- | ------------------- | ---------------------- |
+| Acercar              | ⌘=                  | Ctrl+=                 |
+| Alejar               | ⌘-                  | Ctrl+-                 |
+| Ajustar al ancho     | ⌘0                  | Ctrl+0                 |
+| Zoom (de 5 % en 5 %) | ⌘ + rueda del ratón | Ctrl + rueda del ratón |
 
 Acercar también responde a `⌘+` y Ctrl++.
 

@@ -1,6 +1,6 @@
-// Ctrl+wheel in Sheets: a mouse notch steps ten percentage points through the
-// worksheet zoom API and is kept from Univer; a trackpad pinch is left to
-// Univer's continuous handler; nothing zooms while a cell is being edited.
+// Ctrl+wheel in Sheets: a mouse notch steps five percentage points through the
+// worksheet zoom API whatever the OS scroll setting, a trackpad pinch moves in
+// the same steps, Univer sees neither; nothing zooms while a cell is edited.
 import { describe, expect, it } from 'vitest'
 import { SHEET_ZOOM_MAX, SHEET_ZOOM_MIN, createWheelZoomStepper } from '../src/renderer/wheel-zoom'
 
@@ -31,14 +31,18 @@ function harness(zoom: number, editing = false) {
 }
 
 describe('createWheelZoomStepper', () => {
-  it('50% plus one Windows notch is 60%, not the cap', () => {
+  it('50% plus one Windows notch is 55%, not the cap, at any lines-per-notch', () => {
     const h = harness(0.5)
     h.wheel(-100, 0)
-    expect(h.set).toEqual([0.6])
+    expect(h.set).toEqual([0.55])
     expect(h.stopped()).toBe(1)
     h.wheel(-100, 150)
     h.wheel(100, 300)
-    expect(h.set).toEqual([0.6, 0.7, 0.6])
+    expect(h.set).toEqual([0.55, 0.6, 0.55])
+    const oneLine = harness(0.5)
+    oneLine.wheel(-100 / 3, 0)
+    oneLine.wheel(-100 / 3, 150)
+    expect(oneLine.set).toEqual([0.55, 0.6])
   })
 
   it('clamps to the slider range and skips a no-op set', () => {
@@ -48,30 +52,30 @@ describe('createWheelZoomStepper', () => {
     expect(lo.set).toEqual([])
     const below = harness(0.5)
     below.wheel(100, 0)
-    expect(below.set).toEqual([0.4])
-    const hi = harness(3.95)
+    expect(below.set).toEqual([0.45])
+    const hi = harness(3.98)
     hi.wheel(-100, 0)
     expect(hi.set).toEqual([SHEET_ZOOM_MAX])
   })
 
-  it('lets a trackpad pinch through to Univer', () => {
+  it('steps a trackpad pinch in the same five points, kept from Univer', () => {
     const h = harness(1)
     h.wheel(-3.4, 0)
-    h.wheel(-7.25, 16)
-    expect(h.set).toEqual([])
-    expect(h.prevented()).toBe(0)
-    expect(h.stopped()).toBe(0)
+    h.wheel(-3.4, 16)
+    h.wheel(-7.25, 32)
+    expect(h.set).toEqual([1.05, 1.1])
+    expect(h.prevented()).toBe(3)
+    expect(h.stopped()).toBe(3)
   })
 
-  it('swallows the accumulating part of a Cmd+two-finger stream and steps once', () => {
+  it('steps once per event of a Cmd+two-finger stream, however large', () => {
     const h = harness(1)
     const cmd = { ctrlKey: false, metaKey: true }
-    h.wheel(-10, 0, cmd)
-    h.wheel(-20, 16, cmd)
-    h.wheel(-40, 32, cmd)
-    h.wheel(-120, 48, cmd)
-    expect(h.set).toEqual([1.1])
-    expect(h.stopped()).toBe(4)
+    h.wheel(-4, 0, cmd)
+    h.wheel(-4, 16, cmd)
+    h.wheel(-120, 32, cmd)
+    expect(h.set).toEqual([1.05, 1.1])
+    expect(h.stopped()).toBe(3)
   })
 
   it('ignores plain scrolling and wheel events during cell editing', () => {
