@@ -454,7 +454,7 @@ Annulla e Ripeti scorrono la cronologia del documento; quando il cursore è in u
 | Ingrandisci           | ⌘=          | Ctrl+=          |
 | Riduci                | ⌘-          | Ctrl+-          |
 | Adatta alla larghezza | ⌘0          | Ctrl+0          |
-| Zoom (continuo)       | ⌘ + rotella | Ctrl + rotella  |
+| Zoom (passi del 5%)   | ⌘ + rotella | Ctrl + rotella  |
 
 Ingrandisci risponde anche a `⌘+` e Ctrl++.
 

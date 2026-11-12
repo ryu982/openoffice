@@ -449,12 +449,12 @@ Cofnij i Ponów przechodzą po historii dokumentu; gdy kursor znajduje się w po
 
 ### Widok
 
-| Czynność            | macOS                 | Windows / Linux          |
-| ------------------- | --------------------- | ------------------------ |
-| Powiększ            | ⌘=                    | Ctrl+=                   |
-| Pomniejsz           | ⌘-                    | Ctrl+-                   |
-| Dopasuj szerokość   | ⌘0                    | Ctrl+0                   |
-| Powiększanie ciągłe | ⌘ + kółko przewijania | Ctrl + kółko przewijania |
+| Czynność             | macOS                 | Windows / Linux          |
+| -------------------- | --------------------- | ------------------------ |
+| Powiększ             | ⌘=                    | Ctrl+=                   |
+| Pomniejsz            | ⌘-                    | Ctrl+-                   |
+| Dopasuj szerokość    | ⌘0                    | Ctrl+0                   |
+| Powiększanie (co 5%) | ⌘ + kółko przewijania | Ctrl + kółko przewijania |
 
 Powiększ reaguje też na ⌘+ i Ctrl++.
 

@@ -1,5 +1,6 @@
-// Zoom stepping mirrors PowerPoint: +/- walk the preset ladder and a Ctrl+wheel
-// notch moves ten percentage points within the 10-400% range.
+// Zoom stepping mirrors PowerPoint: +/- walk the preset ladder, the status-bar
+// buttons move ten percentage points and a Ctrl+wheel notch five, onto the 5%
+// grid, within the 10-400% range.
 import { describe, expect, it } from 'vitest'
 import {
   ZOOM_MAX,
@@ -9,6 +10,7 @@ import {
   nextPreset,
   notchStep,
   prevPreset,
+  wheelStep,
 } from '../src/renderer/zoom-steps'
 
 describe('zoom presets', () => {
@@ -48,13 +50,13 @@ describe('zoom presets', () => {
 })
 
 describe('notchStep', () => {
-  it('moves exactly ten percentage points per notch: 50% + one notch is 60%, not 300%', () => {
+  it('moves exactly ten percentage points per button click: 50% + one is 60%', () => {
     expect(notchStep(0.5, 1)).toBeCloseTo(0.6, 10)
     expect(notchStep(0.6, 1)).toBeCloseTo(0.7, 10)
     expect(notchStep(0.5, -1)).toBeCloseTo(0.4, 10)
   })
 
-  it('rounds to whole percents so repeated notches do not drift', () => {
+  it('rounds to whole percents so repeated clicks do not drift', () => {
     let z = 0.6437
     for (let i = 0; i < 5; i++) z = notchStep(z, 1)
     expect(z).toBe(1.14)
@@ -65,5 +67,23 @@ describe('notchStep', () => {
     expect(notchStep(3.95, 1)).toBe(4)
     expect(clampZoom(0)).toBe(0.1)
     expect(clampZoom(9)).toBe(4)
+  })
+})
+
+describe('wheelStep', () => {
+  it('moves five percentage points per notch: 50% + one notch is 55%', () => {
+    expect(wheelStep(0.5, 1)).toBe(0.55)
+    expect(wheelStep(0.55, 1)).toBe(0.6)
+    expect(wheelStep(0.5, -1)).toBe(0.45)
+  })
+
+  it('lands a fit-width zoom on the 5% grid', () => {
+    expect(wheelStep(0.6437, 1)).toBe(0.65)
+    expect(wheelStep(0.6437, -1)).toBe(0.6)
+  })
+
+  it('clamps to the 10-400% range', () => {
+    expect(wheelStep(0.12, -1)).toBe(0.1)
+    expect(wheelStep(3.98, 1)).toBe(4)
   })
 })

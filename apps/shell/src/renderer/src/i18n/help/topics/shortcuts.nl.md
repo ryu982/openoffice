@@ -454,7 +454,7 @@ Ongedaan maken en Opnieuw uitvoeren lopen door de documentgeschiedenis; staan de
 | Inzoomen                 | ⌘=             | Ctrl+=            |
 | Uitzoomen                | ⌘-             | Ctrl+-            |
 | Passend maken op breedte | ⌘0             | Ctrl+0            |
-| Zoomen (doorlopend)      | ⌘ + scrollwiel | Ctrl + scrollwiel |
+| Zoomen (stappen van 5%)  | ⌘ + scrollwiel | Ctrl + scrollwiel |
 
 Inzoomen reageert ook op ⌘+ en Ctrl++.
 

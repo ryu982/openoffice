@@ -449,12 +449,12 @@ Urungkan dan Ulangi melangkah melalui riwayat dokumen; ketika kursor berada di k
 
 ### Tampilan
 
-| Tindakan            | macOS            | Windows / Linux     |
-| ------------------- | ---------------- | ------------------- |
-| Perbesar            | ⌘=               | Ctrl+=              |
-| Perkecil            | ⌘-               | Ctrl+-              |
-| Sesuaikan lebar     | ⌘0               | Ctrl+0              |
-| Perbesar (bertahap) | ⌘ + roda tetikus | Ctrl + roda tetikus |
+| Tindakan          | macOS            | Windows / Linux     |
+| ----------------- | ---------------- | ------------------- |
+| Perbesar          | ⌘=               | Ctrl+=              |
+| Perkecil          | ⌘-               | Ctrl+-              |
+| Sesuaikan lebar   | ⌘0               | Ctrl+0              |
+| Perbesar (per 5%) | ⌘ + roda tetikus | Ctrl + roda tetikus |
 
 Perbesar juga menerima ⌘+ dan Ctrl++.
 

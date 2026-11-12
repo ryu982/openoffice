@@ -11,6 +11,8 @@ import {
   viewFromValue,
   viewValue,
   visibleSlots,
+  zoomChoices,
+  ZOOM_STEPS,
 } from '../src/renderer/preview/preview-model'
 
 describe('the preview zoom', () => {
@@ -27,6 +29,12 @@ describe('the preview zoom', () => {
     expect(nextZoom(500, 1)).toBe(500)
     expect(nextZoom(120, 1)).toBe(125)
     expect(nextZoom(120, -1)).toBe(100)
+  })
+
+  it('lists a wheel-set percentage between the steps so the zoom list can show it', () => {
+    expect(zoomChoices('fit-page')).toBe(ZOOM_STEPS)
+    expect(zoomChoices(125)).toBe(ZOOM_STEPS)
+    expect(zoomChoices(105)).toEqual([10, 25, 50, 75, 100, 105, 125, 150, 200, 300, 400, 500])
   })
 })
 

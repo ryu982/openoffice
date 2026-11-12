@@ -449,12 +449,12 @@ Anular e Refazer avançam no histórico do documento; quando o cursor está num 
 
 ### Vista
 
-| Ação              | macOS            | Windows / Linux     |
-| ----------------- | ---------------- | ------------------- |
-| Ampliar           | ⌘=               | Ctrl+=              |
-| Reduzir           | ⌘-               | Ctrl+-              |
-| Ajustar à largura | ⌘0               | Ctrl+0              |
-| Zoom (contínuo)   | ⌘ + roda do rato | Ctrl + roda do rato |
+| Ação                | macOS            | Windows / Linux     |
+| ------------------- | ---------------- | ------------------- |
+| Ampliar             | ⌘=               | Ctrl+=              |
+| Reduzir             | ⌘-               | Ctrl+-              |
+| Ajustar à largura   | ⌘0               | Ctrl+0              |
+| Zoom (passos de 5%) | ⌘ + roda do rato | Ctrl + roda do rato |
 
 Ampliar também responde a `⌘+` e Ctrl++.
 
