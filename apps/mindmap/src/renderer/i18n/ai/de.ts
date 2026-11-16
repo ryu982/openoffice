@@ -37,10 +37,6 @@ export const de = {
   aiRetry: 'Erneut versuchen',
   aiCopyReplyTitle: 'Antwort kopieren',
   aiRegenerateTitle: 'Neu generieren',
-  aiTurnsTitle: 'KI-Durchgang rückgängig machen',
-  aiRollback: 'Zurücksetzen',
-  aiRollbackIncomplete:
-    'Ein Teil dieses Durchgangs konnte nicht rückgängig gemacht werden: Der Rückgängig-Verlauf der Map reicht nicht mehr so weit zurück.',
   aiUnknownError: 'KI-Anfrage fehlgeschlagen, bitte erneut versuchen',
   aiTimeoutError: 'Zeitüberschreitung der KI-Antwort',
   aiCreditsExhausted: 'Guthaben aufgebraucht — beim KI-Anbieter aufladen',

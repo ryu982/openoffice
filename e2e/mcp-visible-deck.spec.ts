@@ -97,7 +97,12 @@ test.describe('MCP visible deck session', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'genoffice-mcp-deck-userdata-'))
     await writeFile(
       join(userDataDir, 'app-settings.json'),
-      JSON.stringify({ onboardingSeen: true, mcpEnabled: true, mcpPort: port }),
+      JSON.stringify({
+        onboardingSeen: true,
+        editorPickSeen: true,
+        mcpEnabled: true,
+        mcpPort: port,
+      }),
     )
     const launched = await launchShell({
       videoDir: 'mcp-visible-deck',

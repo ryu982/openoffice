@@ -9,8 +9,7 @@ import type {
 } from 'react'
 import type { ChainedCommands, Editor } from '@tiptap/core'
 import type { Command } from '@tiptap/pm/state'
-import { closeHistory } from '@tiptap/pm/history'
-import type { Mark, Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
+import type { Mark, Node as PMNode } from '@tiptap/pm/model'
 import {
   addColumnAfter,
   addColumnBefore,
@@ -62,7 +61,6 @@ import { pasteFromClipboard } from '../editor/paste-actions'
 import type { PasteMode } from '../editor/paste-options'
 import { formatNumber } from '../editor/numbering'
 import { getActiveSubEditor } from '../editor/active-editor'
-import { wordUnitAt } from '../editor/word-range'
 import {
   BULLET_LIBRARY,
   MULTILEVEL_LIBRARY,
@@ -169,6 +167,7 @@ import {
 } from './ribbon-tabs'
 import { WRAP_OPTIONS } from './ContextMenu'
 import { CropDialog, CutoutDialog } from './PictureDialogs'
+import { useAiVisible } from '../ai-visibility'
 import {
   IconAlignCenter,
   IconAlignJustify,
@@ -409,108 +408,19 @@ interface RibbonProps {
   onPagePreview: () => void
 }
 
-export interface PainterFormat {
-  marks: Array<{ type: string; attrs: Record<string, unknown> }>
-  /** source paragraph's node type + formatting attrs (null when the caret is not in a paintable block) */
-  block: { type: string; attrs: Record<string, unknown> } | null
-}
-
-interface PainterState extends PainterFormat {
-  /** double-click on the button: stays armed until Esc or another click */
-  locked: boolean
-}
-
-/** Character-formatting marks the painter transfers; semantic marks (links,
- *  comments, revisions, fields) are neither picked up nor stripped from the target. */
-const PAINTER_MARK_TYPES = ['bold', 'italic', 'underline', 'strike', 'docTextStyle']
-
-/** Paragraph-formatting attrs the painter transfers. Identity/anchor attrs
- *  (docxIndex, bookmarks, comment ranges, revisions, sdtShell…) stay with the target. */
-const PAINTER_PARA_KEYS = [
-  'styleId',
-  'align',
-  'lineSpacing',
-  'lineRule',
-  'lineRawTwips',
-  'snapToGrid',
-  'indentLeft',
-  'indentRight',
-  'indentFirstLine',
-  'spaceBefore',
-  'spaceAfter',
-  'pageBreakBefore',
-  'bidi',
-  'autoSpace',
-  'shadingFill',
-  'emptyRunSize',
-  'borders',
-  'borderLines',
-  'tabStops',
-]
-
-/** Per-block-type attrs that define the block's identity as formatting (heading level, list numbering) */
-const PAINTER_BLOCK_EXTRA: Record<string, string[]> = {
-  docParagraph: [],
-  docHeading: ['level'],
-  docListItem: ['kind', 'numId', 'ilvl'],
-}
-
-/** the word under a painter click: Word brushes the word and its trailing spaces */
-function painterWordRangeAt($pos: ResolvedPos): { from: number; to: number } | null {
-  const para = $pos.parent
-  if (!para.isTextblock) return null
-  const text = para.textBetween(0, para.content.size, '\0', '\0')
-  const base = $pos.start()
-  const span = wordUnitAt(text, $pos.parentOffset)
-  // no word under the pointer: nothing to mark, the paragraph format still applies
-  if (!span) return { from: base + $pos.parentOffset, to: base + $pos.parentOffset }
-  return { from: base + span.start, to: base + span.end }
-}
-
-export function applyPainterFormat(
-  editor: Editor,
-  fmt: PainterFormat,
-  from: number,
-  to: number,
-  caretAfter: number | null,
-): void {
-  // Word: every brush stroke is its own undo step, even quick strokes on
-  // neighbouring paragraphs that history would otherwise merge into one
-  let c = editor
-    .chain()
-    .focus()
-    .command(({ tr }) => {
-      closeHistory(tr)
-      return true
-    })
-    .setTextSelection({ from, to })
-  if (to > from) {
-    // strip only formatting marks, then re-add the picked-up ones: semantic
-    // marks on the target (links, comments, revisions) survive the brush
-    for (const t of PAINTER_MARK_TYPES) c = c.unsetMark(t)
-    for (const m of fmt.marks) c = c.setMark(m.type, m.attrs)
-  }
-  c = c.command(({ tr }) => {
-    const block = fmt.block
-    if (!block) return true
-    const type = editor.schema.nodes[block.type]
-    if (!type) return true
-    const sel = tr.selection
-    const jobs: Array<{ pos: number; attrs: Record<string, unknown> }> = []
-    tr.doc.nodesBetween(sel.from, sel.to, (node, pos) => {
-      if (!(node.type.name in PAINTER_BLOCK_EXTRA)) return true
-      // keep the target's identity attrs, overwrite every formatting attr
-      // (explicit nulls in block.attrs reset what the source didn't set)
-      jobs.push({ pos, attrs: { ...node.attrs, ...block.attrs } })
-      return false
-    })
-    for (const job of jobs) tr.setNodeMarkup(job.pos, type, job.attrs)
-    return true
-  })
-  if (caretAfter != null) c = c.setTextSelection(caretAfter)
-  c.run()
-}
-
+// Format painter was extracted to ./ribbon-painter to keep Ribbon.tsx from carrying a second feature;
+// Painter types stay re-exported so existing importers keep working.
+import {
+  PAINTER_BLOCK_EXTRA,
+  PAINTER_MARK_TYPES,
+  PAINTER_PARA_KEYS,
+  applyPainterFormat,
+  painterWordRangeAt,
+  type PainterFormat,
+  type PainterState,
+} from './ribbon-painter'
+export { applyPainterFormat } from './ribbon-painter'
+export type { PainterFormat } from './ribbon-painter'
 // Word for Mac has no File ribbon tab: file actions live in the native menu
 // bar (which we provide). Windows Word does have one, so keep it there.
 const IS_MAC = navigator.platform.toLowerCase().includes('mac')
@@ -891,6 +801,7 @@ function RibbonInner({
   onPagePreview,
 }: RibbonProps) {
   const { t, lang } = useI18n()
+  const aiOn = useAiVisible()
   const collapse = useRibbonCollapse('aidocs.ribbonCollapsed', {
     collapse: t('ribbonCollapse'),
     expand: t('ribbonExpand'),
@@ -1408,6 +1319,11 @@ function RibbonInner({
   useLayoutEffect(() => {
     const el = styleGalleryRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
+    // the pending deferred re-check, so a second check() cancels the first's
+    let raf: number | null = null
+    // the last applied outcome: a re-check that recomputes exactly this stops
+    // the chain, so a settled layout converges instead of looping
+    let lastApplied: string | null = null
     const check = () => {
       // measure the natural (uncapped) layout at the current wrapper width
       el.style.maxWidth = ''
@@ -1419,16 +1335,34 @@ function RibbonInner({
         el.style.maxWidth = `${last.offsetLeft - firstRow[0].offsetLeft + last.offsetWidth}px`
       }
       setStyleGalleryOverflow(overflow)
+      // A cap shrinks the gallery without resizing the wrapper, so the
+      // ResizeObserver below never fires again — a measurement taken during
+      // a layout transition (density flip, fonts still swapping in) would
+      // lock the cap forever. Re-measure next frame while the outcome keeps
+      // changing; a settled layout recomputes the same cap and stops.
+      const applied = `${overflow ? el.style.maxWidth : ''}|${overflow}`
+      if (applied !== lastApplied) {
+        lastApplied = applied
+        if (raf !== null) cancelAnimationFrame(raf)
+        raf = requestAnimationFrame(() => {
+          raf = null
+          check()
+        })
+      }
     }
     check()
     const ro = new ResizeObserver(check)
     // observe the wrapper, not the gallery: once capped, the gallery no longer
     // resizes with the window, so it would never re-trigger the observer
     ro.observe(el.parentElement ?? el)
-    return () => ro.disconnect()
-    // re-check when the card set can change, and after the expander mounts or
-    // unmounts (it takes row width, which can change how many cards fit)
-  }, [tab, galleryEntries.length, lang, styleGalleryOverflow])
+    return () => {
+      if (raf !== null) cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
+    // re-check when the card set can change, after the expander mounts or
+    // unmounts (it takes row width, which can change how many cards fit), and
+    // on a density switch (compact cards size to their label, full ones don't)
+  }, [tab, galleryEntries.length, lang, styleGalleryOverflow, collapse.density])
 
   const currentSize = fs.fontSizePt
   // computed unconditionally (not inside the dropdown render): cheap, and the
@@ -3218,146 +3152,154 @@ function RibbonInner({
           </div>
         ) : tab === 'home' ? (
           <>
-            {/* ---- AI (first slot: entry + one-click AI actions) ---- */}
-            <div className="ribbon-group">
-              <div className="ribbon-group-items">
-                <button
-                  className={`rb-big ai-entry ${showAi ? 'active' : ''}`}
-                  data-tip={t('aiOpenAssistant')}
-                  onClick={onToggleAi}
-                >
-                  <span className="rb-big-icon">
-                    <AiMark size={26} />
-                  </span>
-                  <span>{aiSubscriptionText(lang, 'aiAssistant')}</span>
-                </button>
-                <button
-                  className="rb-big ai-entry"
-                  disabled={docEmpty}
-                  data-tip={t('aiSummarizeBtn')}
-                  onClick={() => onAiPreset(t('aiSummarizePrompt'))}
-                >
-                  <span className="rb-big-icon">
-                    <span className="ai-feature-icon" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path
-                          d="M13.875 21H12H6.5C5.39543 21 4.5 20.1046 4.5 19V5C4.5 3.89543 5.39543 3 6.5 3H17.5C18.6046 3 19.5 3.89543 19.5 5V9V12V13"
-                          strokeLinecap="round"
-                        />
-                        <path d="M8.00001 7H16" strokeLinecap="round" />
-                        <path d="M8.00007 10.2032H14.0001" strokeLinecap="round" />
-                        <path d="M8.00007 13.4062H12.0001" strokeLinecap="round" />
-                        <path
-                          d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  </span>
-                  <span>{t('aiSummarizeBtn')}</span>
-                </button>
-                <button
-                  className="rb-big ai-entry"
-                  disabled={docEmpty}
-                  data-tip={t('aiPolishBtn')}
-                  onClick={() =>
-                    onAiPreset(
-                      t(
-                        editor.state.selection.empty ? 'aiPolishPrompt' : 'aiPolishSelectionPrompt',
-                      ),
-                    )
-                  }
-                >
-                  <span className="rb-big-icon">
-                    <span className="ai-feature-icon" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path
-                          d="M5.00012 20.7481L8.80319 20.7482L21.7482 7.80317L17.945 4L5 16.945L5.00012 20.7481Z"
-                          strokeLinejoin="round"
-                        />
-                        <path d="M15.1406 6.80469L18.9438 10.6079" />
-                        <path
-                          d="M8 3L8.22106 3.59745C8.51094 4.38087 8.65589 4.77259 8.94166 5.05833C9.22743 5.34409 9.61914 5.48903 10.4026 5.77893L11 6L10.4026 6.22107C9.61914 6.51097 9.22743 6.65592 8.94166 6.94167C8.65589 7.22741 8.51094 7.61913 8.22106 8.40255L8 9L7.77894 8.40255C7.48906 7.61913 7.34411 7.22741 7.05834 6.94167C6.77257 6.65592 6.38086 6.51097 5.59743 6.22107L5 6L5.59743 5.77893C6.38086 5.48903 6.77257 5.34409 7.05834 5.05833C7.34411 4.77259 7.48906 4.38087 7.77894 3.59745L8 3Z"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  </span>
-                  <span>{t('aiPolishBtn')}</span>
-                </button>
-                <button
-                  className="rb-big ai-entry"
-                  disabled={docEmpty}
-                  data-tip={t('aiTidyBtn')}
-                  onClick={() => onAiPreset(t('aiTidyPrompt'))}
-                >
-                  <span className="rb-big-icon">
-                    <span className="ai-feature-icon" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M4 5H20" strokeLinecap="round" />
-                        <path d="M4 9H16" strokeLinecap="round" />
-                        <path d="M4 13H11" strokeLinecap="round" />
-                        <path d="M4 17H10" strokeLinecap="round" />
-                        <path
-                          d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  </span>
-                  <span>{t('aiTidyBtn')}</span>
-                </button>
-                <button
-                  className="rb-big ai-entry"
-                  disabled={docEmpty}
-                  data-tip={t('aiMindMapBtn')}
-                  onClick={() => onAiPreset(t('aiMindMapPrompt'))}
-                >
-                  <span className="rb-big-icon">
-                    <span className="ai-feature-icon" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="2.5" y="9.5" width="6" height="5" rx="1.5" />
-                        <rect x="15.5" y="4" width="6" height="5" rx="1.5" />
-                        <rect x="15.5" y="15" width="6" height="5" rx="1.5" />
-                        <path d="M8.5 12h3.5M12 12V6.5h3.5M12 12v5.5h3.5" />
-                      </svg>
-                    </span>
-                  </span>
-                  <span>{t('aiMindMapBtn')}</span>
-                </button>
-              </div>
-              <div className="ribbon-group-label">{aiSubscriptionText(lang, 'aiAssistant')}</div>
-            </div>
+            {/* ---- AI (first slot: entry + one-click AI actions); none while AI is off ---- */}
+            {aiOn && (
+              <>
+                <div className="ribbon-group">
+                  <div className="ribbon-group-items">
+                    <button
+                      className={`rb-big ai-entry ${showAi ? 'active' : ''}`}
+                      data-tip={t('aiOpenAssistant')}
+                      onClick={onToggleAi}
+                    >
+                      <span className="rb-big-icon">
+                        <AiMark size={26} />
+                      </span>
+                      <span>{aiSubscriptionText(lang, 'aiAssistant')}</span>
+                    </button>
+                    <button
+                      className="rb-big ai-entry"
+                      disabled={docEmpty}
+                      data-tip={t('aiSummarizeBtn')}
+                      onClick={() => onAiPreset(t('aiSummarizePrompt'))}
+                    >
+                      <span className="rb-big-icon">
+                        <span className="ai-feature-icon" aria-hidden="true">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path
+                              d="M13.875 21H12H6.5C5.39543 21 4.5 20.1046 4.5 19V5C4.5 3.89543 5.39543 3 6.5 3H17.5C18.6046 3 19.5 3.89543 19.5 5V9V12V13"
+                              strokeLinecap="round"
+                            />
+                            <path d="M8.00001 7H16" strokeLinecap="round" />
+                            <path d="M8.00007 10.2032H14.0001" strokeLinecap="round" />
+                            <path d="M8.00007 13.4062H12.0001" strokeLinecap="round" />
+                            <path
+                              d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </span>
+                      <span>{t('aiSummarizeBtn')}</span>
+                    </button>
+                    <button
+                      className="rb-big ai-entry"
+                      disabled={docEmpty}
+                      data-tip={t('aiPolishBtn')}
+                      onClick={() =>
+                        onAiPreset(
+                          t(
+                            editor.state.selection.empty
+                              ? 'aiPolishPrompt'
+                              : 'aiPolishSelectionPrompt',
+                          ),
+                        )
+                      }
+                    >
+                      <span className="rb-big-icon">
+                        <span className="ai-feature-icon" aria-hidden="true">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path
+                              d="M5.00012 20.7481L8.80319 20.7482L21.7482 7.80317L17.945 4L5 16.945L5.00012 20.7481Z"
+                              strokeLinejoin="round"
+                            />
+                            <path d="M15.1406 6.80469L18.9438 10.6079" />
+                            <path
+                              d="M8 3L8.22106 3.59745C8.51094 4.38087 8.65589 4.77259 8.94166 5.05833C9.22743 5.34409 9.61914 5.48903 10.4026 5.77893L11 6L10.4026 6.22107C9.61914 6.51097 9.22743 6.65592 8.94166 6.94167C8.65589 7.22741 8.51094 7.61913 8.22106 8.40255L8 9L7.77894 8.40255C7.48906 7.61913 7.34411 7.22741 7.05834 6.94167C6.77257 6.65592 6.38086 6.51097 5.59743 6.22107L5 6L5.59743 5.77893C6.38086 5.48903 6.77257 5.34409 7.05834 5.05833C7.34411 4.77259 7.48906 4.38087 7.77894 3.59745L8 3Z"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </span>
+                      <span>{t('aiPolishBtn')}</span>
+                    </button>
+                    <button
+                      className="rb-big ai-entry"
+                      disabled={docEmpty}
+                      data-tip={t('aiTidyBtn')}
+                      onClick={() => onAiPreset(t('aiTidyPrompt'))}
+                    >
+                      <span className="rb-big-icon">
+                        <span className="ai-feature-icon" aria-hidden="true">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M4 5H20" strokeLinecap="round" />
+                            <path d="M4 9H16" strokeLinecap="round" />
+                            <path d="M4 13H11" strokeLinecap="round" />
+                            <path d="M4 17H10" strokeLinecap="round" />
+                            <path
+                              d="M17 14L17.2579 14.697C17.5961 15.611 17.7652 16.068 18.0986 16.4014C18.432 16.7348 18.889 16.9039 19.803 17.2421L20.5 17.5L19.803 17.7579C18.889 18.0961 18.432 18.2652 18.0986 18.5986C17.7652 18.932 17.5961 19.389 17.2579 20.303L17 21L16.7421 20.303C16.4039 19.389 16.2348 18.932 15.9014 18.5986C15.568 18.2652 15.111 18.0961 14.197 17.7579L13.5 17.5L14.197 17.2421C15.111 16.9039 15.568 16.7348 15.9014 16.4014C16.2348 16.068 16.4039 15.611 16.7421 14.697L17 14Z"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </span>
+                      <span>{t('aiTidyBtn')}</span>
+                    </button>
+                    <button
+                      className="rb-big ai-entry"
+                      disabled={docEmpty}
+                      data-tip={t('aiMindMapBtn')}
+                      onClick={() => onAiPreset(t('aiMindMapPrompt'))}
+                    >
+                      <span className="rb-big-icon">
+                        <span className="ai-feature-icon" aria-hidden="true">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect x="2.5" y="9.5" width="6" height="5" rx="1.5" />
+                            <rect x="15.5" y="4" width="6" height="5" rx="1.5" />
+                            <rect x="15.5" y="15" width="6" height="5" rx="1.5" />
+                            <path d="M8.5 12h3.5M12 12V6.5h3.5M12 12v5.5h3.5" />
+                          </svg>
+                        </span>
+                      </span>
+                      <span>{t('aiMindMapBtn')}</span>
+                    </button>
+                  </div>
+                  <div className="ribbon-group-label">
+                    {aiSubscriptionText(lang, 'aiAssistant')}
+                  </div>
+                </div>
 
-            <div className="ribbon-sep" />
+                <div className="ribbon-sep" />
+              </>
+            )}
 
             {/* ---- Clipboard ---- */}
             <div className="ribbon-group">

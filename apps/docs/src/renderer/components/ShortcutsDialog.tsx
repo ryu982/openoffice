@@ -7,24 +7,29 @@ import { useState } from 'react'
 import { useI18n } from '../i18n/locale'
 import { SHORTCUT_GROUPS, SHORTCUTS, shortcutKeys } from '../shortcuts'
 import { useModalKeys } from './modal-keys'
+import { useAiVisible } from '../ai-visibility'
 
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
+  // AI actions are not listed while AI is off (Settings › Editors and AI)
+  const listed = useAiVisible() ? SHORTCUTS : SHORTCUTS.filter((def) => !def.ai)
   const modalKeys = useModalKeys(onClose)
   const [query, setQuery] = useState('')
 
   const needle = query.trim().toLowerCase()
-  const rows = SHORTCUTS.map((def) => ({
-    id: def.id,
-    group: def.group,
-    label: t(def.labelKey) + (def.labelSuffix ?? ''),
-    keys: shortcutKeys(def),
-  })).filter(
-    (row) =>
-      !needle ||
-      row.label.toLowerCase().includes(needle) ||
-      row.keys.toLowerCase().includes(needle),
-  )
+  const rows = listed
+    .map((def) => ({
+      id: def.id,
+      group: def.group,
+      label: t(def.labelKey) + (def.labelSuffix ?? ''),
+      keys: shortcutKeys(def),
+    }))
+    .filter(
+      (row) =>
+        !needle ||
+        row.label.toLowerCase().includes(needle) ||
+        row.keys.toLowerCase().includes(needle),
+    )
 
   return (
     <div

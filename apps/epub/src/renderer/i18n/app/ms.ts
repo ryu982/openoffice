@@ -30,6 +30,7 @@ export const ms = {
   darkView: 'Paparan gelap',
   toc: 'Kandungan',
   tocEmpty: 'Buku ini tiada senarai kandungan',
+  sideResize: 'Ubah lebar panel',
   statusChapter: 'Bab {n}/{total}',
   prevChapter: 'Bab sebelumnya',
   nextChapter: 'Bab seterusnya',

@@ -48,6 +48,11 @@ export const fr = {
   saveFailedStatus: "Échec de l'enregistrement",
   exportFailed: "Échec de l'export",
   printFailed: "Échec de l'impression : {error}",
+  printRangeEmpty:
+    'Ce document compte {count} pages. Saisissez des numéros de page compris dans cette plage.',
+  printPagesFailed: 'Impossible de compter les pages à imprimer : {error}',
+  printLayoutSaved: 'Le résultat mis en page a été enregistré en PDF.',
+  printLayoutSaveFailed: 'Impossible d’enregistrer le PDF : {error}',
   exportHtmlSkipped: 'Exporté, mais {count} ressource(s) n’ont pas pu être intégrées (ex. {first})',
   viewPreview: 'Aperçu',
   viewSplit: 'Scindé',
@@ -83,7 +88,7 @@ export const fr = {
   previewNeedsSave:
     "Les images et styles relatifs apparaîtront dans l'aperçu une fois le fichier enregistré",
   inspectHint:
-    "Cliquez sur un élément de l'aperçu pour le sélectionner, double-cliquez pour modifier le texte",
+    "Cliquez sur un élément de l'aperçu pour le sélectionner, double-cliquez pour modifier le texte, Maj+clic ou {alt}+glisser pour en sélectionner plusieurs",
   nodeDynamic:
     "Cet élément a été créé par le script de la page et n'existe pas dans la source ; modifiez via la source ou l'IA",
   nodeDynamicShort: 'généré par script',

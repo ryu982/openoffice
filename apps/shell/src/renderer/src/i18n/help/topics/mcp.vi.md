@@ -58,7 +58,7 @@ Mỗi lệnh là một công cụ. Những cái đáng chú ý:
 Một yêu cầu đến từ lệnh `ieumoffice` hoặc từ một ứng dụng khách MCP không phải do bạn gõ trong ứng dụng, nên GenOffice thận trọng với nó.
 
 - **Tìm kiếm** lúc nào cũng dùng được và mặc định miễn phí. Khóa của nhà cung cấp tìm kiếm chỉ được dùng nếu bạn đã chọn.
-- **Tạo một hình ảnh** cần khóa của nhà cung cấp hình ảnh. Trong phiên bản này, gói đăng ký không tạo được hình ảnh.
+- **Tạo một hình ảnh** làm theo lựa chọn tạo hình ảnh trong Cài đặt. Lựa chọn mặc định Gói ChatGPT (chương trình Codex) dùng gói ChatGPT của bạn qua chương trình Codex và **không được dùng trừ khi bạn cho phép** (xem bên dưới). Nếu không, khóa của nhà cung cấp hình ảnh đã thiết lập sẽ được dùng. Mô hình mà tác nhân nêu tên được dùng khi con đường đó cung cấp nó.
 - **Mô tả một hình ảnh** sẽ dùng nhà cung cấp dùng khóa khi có một nhà cung cấp như vậy được thiết lập. Gói đăng ký Claude hoặc Codex của bạn **không được dùng trừ khi bạn cho phép**.
 - **Video và âm thanh** cần một nhà cung cấp dùng khóa có hỗ trợ video.
 

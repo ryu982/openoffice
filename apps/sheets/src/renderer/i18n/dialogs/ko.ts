@@ -74,6 +74,19 @@ export const ko = {
   dlgGoToNote:
     '셀 참조를 입력하거나 이름 범위를 선택하세요. 이동을 누르면 대상으로 이동하여 선택합니다. 이름을 클릭하면 입력란에 채워지고, 두 번 클릭하면 바로 이동합니다.',
   dlgGoToGo: '이동',
+  dlgQueriesTitle: '쿼리 및 연결',
+  dlgQueriesEmpty: '이 통합 문서에는 쿼리나 데이터 연결이 없습니다.',
+  dlgQueriesKindPowerQuery: 'Power Query',
+  dlgQueriesKindWeb: '웹 쿼리',
+  dlgQueriesKindText: '텍스트/CSV 가져오기',
+  dlgQueriesKindDatabase: '데이터베이스 연결',
+  dlgQueriesKindOther: '데이터 연결',
+  dlgQueriesLoaded: '{rows}행 → {target}',
+  dlgQueriesConnectionOnly: '연결만',
+  dlgQueriesNote:
+    '쿼리 새로 고침은 아직 지원되지 않습니다. 쿼리는 파일에 그대로 남아 Excel에서 새로 고칠 수 있으며, 표시되는 행은 마지막으로 저장된 결과입니다.',
+  dlgQueriesGoHint: '클릭하면 불러온 행을 선택합니다',
+  dlgQueriesError: '통합 문서의 연결을 읽을 수 없습니다: {error}',
   dlgPasteSpecialTitle: '선택하여 붙여넣기',
   dlgPasteSpecialPaste: '붙여넣기',
   dlgPasteSpecialAll: '모두',
@@ -404,7 +417,7 @@ export const ko = {
     '각 영역은 첫 열의 레이블로 행을 맞춥니다. 결과는 {target}부터 출력되며 원본 영역을 참조하는 실시간 수식입니다.',
   dlgConsNotePosition:
     '각 영역을 위치별로 통합합니다. 결과는 {target}부터 출력되며 원본 영역을 참조하는 실시간 수식입니다.',
-  dlgConsBadRef: '잘못된 참조: {ref} — A1:C5 또는 Sheet2!A1:C5 형식으로 입력하세요.',
+  dlgConsBadRef: '잘못된 참조: {ref}. A1:C5 또는 Sheet2!A1:C5 형식으로 입력하세요.',
   dlgConsNeedOneRef: '원본 참조를 하나 이상 추가하세요.',
 
   dlgSubtotalTitle: '부분합',
@@ -427,7 +440,7 @@ export const ko = {
   dlgNmAdd: '추가',
   dlgNmUpdate: '업데이트',
 
-  dlgFnTitle: '함수 삽입 — 대상 {target}',
+  dlgFnTitle: '함수 삽입: 대상 {target}',
   dlgFnSearchPlaceholder: '함수 검색…',
   dlgFnNoMatch: '일치하는 함수가 없습니다.',
   dlgFnCatRecent: '최근에 사용한 함수',
@@ -494,8 +507,8 @@ export const ko = {
   dlgFnDescNow: '현재 날짜와 시간을 반환합니다(다시 계산됨).',
   dlgFnDescDate: '연, 월, 일로 날짜를 만듭니다.',
   dlgFnDescYear: '날짜의 연도를 반환합니다.',
-  dlgFnDescMonth: '날짜의 월(1–12)을 반환합니다.',
-  dlgFnDescDay: '날짜의 일(1–31)을 반환합니다.',
+  dlgFnDescMonth: '날짜의 월(1~12)을 반환합니다.',
+  dlgFnDescDay: '날짜의 일(1~31)을 반환합니다.',
   dlgFnDescEdate: '지정한 개월 수 전이나 후의 날짜를 반환합니다.',
   dlgFnDescPmt: '정기적으로 일정 금액을 지불하는 대출의 상환금을 계산합니다.',
   dlgFnDescFv: '투자의 미래 가치를 반환합니다.',

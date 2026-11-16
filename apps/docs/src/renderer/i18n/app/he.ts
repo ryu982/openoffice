@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const he = {
+  appLegacyDocImported:
+    'קובץ ה-.{ext} נפתח כעותק .docx מומר. הקובץ המקורי נשאר כפי שהיה; השמירה כותבת קובץ .docx חדש.',
   appScTitle: 'קיצורי מקלדת',
   appScFilter: 'חיפוש קיצור',
   appScNone: 'לא נמצאו קיצורים מתאימים',
@@ -51,6 +53,7 @@ export const he = {
   appFontsMissing: 'גופני המסמך חסרים: {names} (מוצגים גופנים חלופיים)',
   appVerticalTextNotice: 'המסמך מכיל טקסט אנכי (מוצג אופקית בינתיים; השמירה אינה מושפעת)',
   appNewDocCreated: 'נוצר מסמך ריק. תארו בחלונית ה-AI משמאל מה ליצור.',
+  appNewDocCreatedNoAi: 'נוצר מסמך ריק.',
   appNewFailed: 'יצירת המסמך נכשלה: {error}',
   appSaveFailed: 'השמירה נכשלה: {error}',
   appAutoSavedAt: 'נשמר אוטומטית ({time})',
@@ -90,6 +93,9 @@ export const he = {
   appPrintRangeAll: 'כל העמודים',
   appPrintRangeCurrent: 'עמוד נוכחי',
   appPrintRangeCustom: 'טווח מותאם אישית',
+  appPrintRangeSelection: 'הבחירה',
+  appPrintSelectionPreparing: 'מחלק את הבחירה לעמודים…',
+  appPrintSelectionFailed: 'לא ניתן לחלק את הבחירה לעמודים: {error}',
   appPrintRangeHint: 'לדוגמה: 1,3,5-8',
   appPrintPageCount: '{n} עמודים',
   appPrintNoPages: 'אין עמודים להדפסה',
@@ -342,6 +348,9 @@ export const he = {
   appAiBadgeTip: 'משתמש ב-AI',
   appTranslate: 'תרגום',
   appTranslateTo: 'תרגום ל{lang}',
+  appEasyWords: 'הסבר במילים פשוטות',
+  appEasyWordsPrompt:
+    'הסבר את הקטע שנבחר בעברית כך שגם מי שזקוק לטקסט קל יבין אותו (ילדים, קשישים, אנשים שלומדים עברית). השתמש במילים יומיומיות ובמשפטים קצרים, ושמור על כל העובדות, המספרים והתנאים. אל תשנה את המסמך: "{text}"',
   redactMenuLabel: 'הסתרת הבחירה מהמודל',
   redactDialogDesc:
     'המילים נשארות במסמך ובקובץ; המודל רואה רק את הסימון. תן לו שם כדי שיהיה ברור מה הוא מייצג.',
@@ -372,6 +381,7 @@ export const he = {
   appLangHindi: 'הינדית',
   appLangTraditionalChinese: 'סינית מסורתית',
   appLangVietnamese: 'וייטנאמית',
+  appLangTurkish: 'טורקית',
   appWrapTextMenu: 'גלישת טקסט',
   appViewImage: 'הצג תמונה',
   appSaveImageAs: 'שמור תמונה בשם…',
@@ -572,4 +582,9 @@ export const he = {
   appMergeSourceLoaded: '{name} נטען ({n} רשומות)',
   appMergeWritten: 'נכתבו {n} מסמכים',
   appMergeNothingToWrite: 'אין מה לכתוב',
+  appExportingHwp: 'מייצא מסמך HWP…',
+  appExportedHwp: 'מסמך HWP יוצא: {path}',
+  appExportHwpFailed: 'הייצוא ל-HWP נכשל: {error}',
+  appExportHwpCanceled: 'הייצוא ל-HWP בוטל',
+  appExportHwpReadback: 'לא ניתן היה לכתוב את המסמך הזה במדויק כ-.hwp. נסו לשמור אותו כ-.hwpx.',
 } satisfies Record<keyof typeof zh, string>

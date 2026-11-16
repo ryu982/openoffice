@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` dan `media` menggunakan apa yang disediakan dalam aplikasi di bawah Tetapan ▸ AI ▸ Lanjutan:
 
 - `search` sentiasa berfungsi. Ia menggunakan carian percuma secara lalai, atau penyedia carian yang kuncinya anda pilih.
-- `image` memerlukan kunci penyedia imej. Dalam versi ini, langganan tidak menjana imej.
+- `image` mengikut pilihan penjanaan imej dalam Tetapan. Dengan pilihan lalai, Pelan ChatGPT (program Codex), ia melukis dengan pelan ChatGPT anda melalui program Codex, tetapi hanya jika anda membenarkan langganan digunakan untuk panggilan automatik (**dimatikan secara lalai**; lihat [Menyambungkan ejen penulisan kod](help://mcp)). Jika tidak, ia menggunakan kunci penyedia imej yang disediakan. `--model` digunakan apabila laluan itu menawarkan model tersebut; jika tidak, arahan menjawab dengan model yang boleh anda gunakan. Gambar yang diberikan dengan `--ref` berfungsi pada kedua-dua laluan.
 - `media` untuk gambar menggunakan penyedia berasaskan kunci apabila ada yang disediakan. Ia menggunakan langganan Claude atau Codex anda hanya apabila anda membenarkannya, dan kebenaran itu **dimatikan secara lalai**; [Menyambungkan ejen penulisan kod](help://mcp) menerangkan suis itu dan hadnya.
 - `media` untuk video atau audio memerlukan penyedia berasaskan kunci yang menyokong video.
 

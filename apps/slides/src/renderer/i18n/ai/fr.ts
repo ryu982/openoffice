@@ -91,8 +91,6 @@ export const fr = {
   aiStopGeneration: 'Arrêter la génération',
   aiStop: 'Arrêter',
   aiSend: 'Envoyer',
-  aiSnapshotsTitle: 'Instantanés de version',
-  aiRollback: 'Restaurer',
   aiStarterPolishTitle: 'Améliorer le titre et le texte de cette diapositive',
   aiStarterTighten: 'Rendre les puces de cette diapositive plus concises',
   aiStarterProofread: 'Vérifier et corriger les fautes de frappe dans toute la présentation',
@@ -244,6 +242,11 @@ export const fr = {
   aiTplFontsNotice:
     "Les polices du modèle sont incluses dans cette application. D'autres logiciels, comme PowerPoint, peuvent afficher une police différente.",
   aiTplOpenFonts: 'Ouvrir le dossier des polices',
+  aiTplFontsAuto: 'Polices : choisies par l’IA',
+  aiTplFontsOne: 'Polices : {font}',
+  aiTplFontsTwo: 'Polices : titres {title}, corps {body}',
+  aiTplFontsTemplate: 'Polices : celles du modèle choisi',
+  aiTplFontsChange: 'Modifier',
   aiTplDesc_coral:
     'Crème et rose orangé sur fond presque noir, avec de très grands titres étroits.',
   aiTplDesc_blue_professional:

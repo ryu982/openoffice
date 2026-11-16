@@ -248,6 +248,87 @@ describe('keys that are Hangul table keys where the caret is', () => {
     expect(goHome).toHaveBeenCalledTimes(1)
   })
 
+  it.each(['darwin', 'win32'] as const)(
+    'Ctrl/Cmd+C and X the editor does not take still copy and cut (%s)',
+    async (platform) => {
+      // macOS copies only through the menu's roles, which never see a resent
+      // key: Cmd+C did nothing while Cmd+V worked (2026-11-02 report)
+      const real = process.platform
+      Object.defineProperty(process, 'platform', { value: platform })
+      try {
+        const mod =
+          platform === 'darwin' ? { meta: true, control: false } : { meta: false, control: true }
+        for (const code of ['KeyC', 'KeyX'] as const) {
+          const body = withEditorFrame(false) as FakeContents & Record<string, unknown>
+          const clipboard = { copy: vi.fn(), cut: vi.fn(), sendInputEvent: vi.fn() }
+          Object.assign(body, clipboard)
+          expect(press(code, mod, body).preventDefault, code).toHaveBeenCalled()
+          await flush()
+          if (platform === 'darwin') {
+            expect(clipboard[code === 'KeyC' ? 'copy' : 'cut'], code).toHaveBeenCalledTimes(1)
+            expect(clipboard.sendInputEvent, code).not.toHaveBeenCalled()
+          } else {
+            expect(clipboard.copy, code).not.toHaveBeenCalled()
+            expect(clipboard.cut, code).not.toHaveBeenCalled()
+            expect(
+              clipboard.sendInputEvent.mock.calls.map((call) => call[0].type),
+              code,
+            ).toEqual(['keyDown', 'keyUp'])
+          }
+        }
+      } finally {
+        Object.defineProperty(process, 'platform', { value: real })
+      }
+    },
+  )
+
+  it.each([
+    ['darwin', ['cmd-c', 'cmd-x']],
+    ['win32', ['ctrl-c', 'ctrl-x']],
+  ] as const)(
+    'asks the editor for its own Cmd+C/X on a Mac, where a selected table needs them (%s)',
+    async (platform, asked) => {
+      // the page's copy event (webContents.copy) carries no table selected as an
+      // object; elsewhere the resent key reaches the editor's keydown (issue #311)
+      const real = process.platform
+      Object.defineProperty(process, 'platform', { value: platform })
+      try {
+        const mod =
+          platform === 'darwin' ? { meta: true, control: false } : { meta: false, control: true }
+        const names: string[] = []
+        for (const code of ['KeyC', 'KeyX'] as const) {
+          const body = withEditorFrame(true) as FakeContents & Record<string, unknown>
+          Object.assign(body, { copy: vi.fn(), cut: vi.fn(), sendInputEvent: vi.fn() })
+          press(code, mod, body)
+          await flush()
+          const ask = body.mainFrame!.framesInSubtree[1].executeJavaScript as ReturnType<
+            typeof vi.fn
+          >
+          names.push(String(ask.mock.calls[0][0]).match(/__ieumHancomKey\("([^"]+)"\)/)![1])
+        }
+        expect(names).toEqual(asked)
+      } finally {
+        Object.defineProperty(process, 'platform', { value: real })
+      }
+    },
+  )
+
+  it('leaves Cmd+C to the editor when it takes the key (a cell block)', async () => {
+    const real = process.platform
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    try {
+      const block = withEditorFrame(true) as FakeContents & Record<string, unknown>
+      const clipboard = { copy: vi.fn(), cut: vi.fn(), sendInputEvent: vi.fn() }
+      Object.assign(block, clipboard)
+      press('KeyC', { meta: true, control: false }, block)
+      await flush()
+      expect(clipboard.copy).not.toHaveBeenCalled()
+      expect(clipboard.sendInputEvent).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, 'platform', { value: real })
+    }
+  })
+
   it('fall back to what the app does when the editor frame cannot say', async () => {
     const lost = withEditorFrame(true)
     lost.mainFrame!.framesInSubtree[1].executeJavaScript = async () => {
@@ -259,5 +340,36 @@ describe('keys that are Hangul table keys where the caret is', () => {
     press('KeyH', { shift: true })
     await flush()
     expect(goHome).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the Open item of the editor File menu', () => {
+  it('asks the shell to open a file, as Ctrl+O does, and only for a Hangul view', async () => {
+    const { ipcMain } = await import('electron')
+    const view = createHwpView()
+    const registered = vi
+      .mocked(ipcMain.on)
+      .mock.calls.find(([channel]) => channel === 'hwp:file-command')
+    const onFileCommand = registered?.[1] as unknown as (event: unknown, command: unknown) => void
+    expect(onFileCommand).toBeTypeOf('function')
+
+    onFileCommand({ sender: view.webContents }, 'open')
+    expect(openFileDialog).toHaveBeenCalledTimes(1)
+
+    // a sender that is not one of this module's views is not answered
+    onFileCommand({ sender: { id: -1 } }, 'open')
+    expect(openFileDialog).toHaveBeenCalledTimes(1)
+  })
+
+  it('does nothing when the shell passed no action', async () => {
+    const { ipcMain } = await import('electron')
+    configureHwpRuntime({ preloadPath: '' })
+    const view = createHwpView()
+    const registered = vi
+      .mocked(ipcMain.on)
+      .mock.calls.find(([channel]) => channel === 'hwp:file-command')
+    const onFileCommand = registered?.[1] as unknown as (event: unknown, command: unknown) => void
+    expect(() => onFileCommand({ sender: view.webContents }, 'open')).not.toThrow()
+    expect(openFileDialog).not.toHaveBeenCalled()
   })
 })

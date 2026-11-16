@@ -18,6 +18,8 @@ export const pt = {
   cardErrNeedsUpdatePath: 'Arquivo que este aplicativo executa:',
   cardErrNeedsUpdateWindows:
     'Atualizar o {provider} dentro do WSL (Ubuntu) ou em outra pasta não altera este arquivo. Execute {command} no Windows PowerShell.',
+  claudeDesktopNote:
+    'O aplicativo de desktop do Claude não é o Claude Code, que é o que este aplicativo executa. O Claude Code é um programa separado usado no terminal, então instalar ou atualizar o aplicativo de desktop não o altera.',
   cardErrTimeout: 'O programa {provider} não respondeu a tempo. Verifique novamente em instantes.',
   cardErrFailed: 'Algo deu errado ao verificar {provider}. Verifique novamente.',
   actionInstall: 'Instalar',
@@ -55,6 +57,8 @@ export const pt = {
   errRateLimit: 'O limite da assinatura {provider} foi atingido.',
   errRateLimitReset:
     'O limite da assinatura {provider} foi atingido. Ele será redefinido às {time}.',
+  errChatGptAppLimit:
+    'Este aplicativo esgotou o uso do ChatGPT de que dispõe. Pode ser o limite de todo o seu plano ou um limite definido para este aplicativo. Confira no ChatGPT, em Configurações → Uso.',
   errUnsafeTools:
     'O programa {provider} foi iniciado com as próprias ferramentas ativadas, então a execução foi interrompida por segurança.',
   errMeteredNotAccepted:
@@ -119,7 +123,7 @@ export const pt = {
   stepLogin: 'Entrar',
   stepReady: 'Conectado',
   installReturnNote:
-    'Quando a instalação terminar naquela janela, volte para cá. O app verifica de novo sozinho.',
+    'Durante o download, aquela janela pode não mostrar nada por alguns minutos. Deixe-a aberta. Quando a instalação terminar, volte para cá. O app verifica de novo sozinho.',
   loginHowNote:
     'Ao clicar, um navegador se abre. Entre com sua conta da {vendor} e clique em Permitir; a conexão é concluída sozinha.',
   signingInStalledNote:
@@ -157,6 +161,16 @@ export const pt = {
     'Uma página de login do ChatGPT abre no navegador. Entre e permita que este aplicativo use seu plano do ChatGPT; a conexão é concluída sozinha.',
   chatgptLoginUnfinishedNote:
     'O login não terminou. Pressione de novo para recomeçar. Para conectar, você precisa permitir o uso do seu plano do ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Você entrou no ChatGPT, mas este aplicativo não recebeu permissão para usar seu plano. Pressione de novo e permita o uso do plano na página de autorização. Se você já permitiu, talvez a OpenAI não ofereça esse uso para sua conta (por exemplo, uma conta gerenciada por uma empresa ou escola) ou para seu plano. Nesse caso, você pode conectar com o programa Codex.',
+  chatgptLoginDeniedNote:
+    'Você entrou no navegador, mas a OpenAI não aceitou esta conexão, ou a resposta dela não pôde ser verificada. Confira se a data e a hora deste PC estão certas e pressione de novo para recomeçar.',
+  chatgptLoginNetworkNote:
+    'Não foi possível concluir o login: não deu para alcançar a OpenAI ou nenhum navegador abriu. Verifique a conexão com a internet (incluindo rede da empresa, VPN ou proxy) e pressione de novo.',
+  chatgptLoginWorkspacePolicyNote:
+    'Esta conta ChatGPT pertence a um espaço de trabalho gerido por uma empresa ou escola, e a OpenAI não permite que aplicações usem o plano ChatGPT de um espaço de trabalho. O administrador do espaço de trabalho não tem nenhuma definição para permitir esta aplicação, por isso iniciar sessão novamente não vai ajudar. Inicie sessão com uma conta ChatGPT pessoal (Go, Plus ou Pro) ou ligue-se pelo cartão Codex.',
+  chatgptLoginNotAllowedNote:
+    'Você não permitiu que este aplicativo use seu plano do ChatGPT, ou o navegador voltou do login com uma falha. Pressione de novo, entre e permita na página de autorização.',
   chatgptSigningInNote:
     'Entre com sua conta do ChatGPT no navegador que abriu e permita que este aplicativo use seu plano. A conexão é concluída sozinha.',
   chatgptPlanNote:
@@ -166,4 +180,18 @@ export const pt = {
   browserPageDoneBody: 'Você pode fechar esta aba e voltar ao aplicativo.',
   browserPageFailedTitle: 'A conexão não foi concluída',
   browserPageFailedBody: 'Volte ao aplicativo e tente novamente.',
+  cardOff: 'Desativado neste aplicativo',
+  offNote:
+    'Este aplicativo não executa o programa {provider} nem verifica o estado dele. O login do {provider} neste PC e o uso no terminal continuam como estão.',
+  offElsewhereNote: 'Você pode voltar a usá-lo em Configurações → IA.',
+  offSwitchNote:
+    '“Não usar neste aplicativo” mantém o login do {provider} neste PC e só para este aplicativo. Sair vale para o PC inteiro.',
+  actionTurnOff: 'Não usar neste aplicativo',
+  actionTurnOn: 'Usar novamente',
+  connectOffTitle: '{provider} está desativado neste aplicativo',
+  connectOffBody:
+    'Clique em “Usar novamente” no cartão do {provider} em Configurações → IA ou escolha outra IA.',
+  errOffInApp:
+    'O {provider} está desativado neste aplicativo, então nada foi executado. Você pode voltar a usá-lo em Configurações → IA.',
+  guideBadgeOff: 'Desativado',
 } satisfies Record<keyof typeof zh, string>

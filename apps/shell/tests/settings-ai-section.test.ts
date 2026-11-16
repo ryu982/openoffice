@@ -31,7 +31,10 @@ import type { SettingsTarget } from '../src/renderer/src/SettingsModal'
  */
 
 const HEADLESS_WARNING =
-  'There is no hourly limit, so a program can send as many requests as it likes, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.'
+  'There is no hourly limit, so a program can send as many requests as it likes, image generation included, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.'
+
+/** the image generation choice that runs on the ChatGPT plan through the Codex program */
+const CODEX_IMAGE_CHOICE = 'ChatGPT plan (Codex program)'
 
 const actEnvironment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
 actEnvironment.IS_REACT_ACT_ENVIRONMENT = true
@@ -42,6 +45,8 @@ let root: Root
 let stored: AiSettings
 let setAiSettings: ReturnType<typeof vi.fn<(settings: AiSettings) => Promise<void>>>
 let settingsListeners: Array<() => void>
+/** what `ai:tool-capabilities` answers; null: the main process has no answer */
+let toolCapabilities: { imageGeneration: { available: boolean } } | null
 let unhandled: unknown[]
 const onUnhandled = (reason: unknown) => unhandled.push(reason)
 
@@ -50,6 +55,7 @@ beforeEach(() => {
   document.body.append(host)
   root = createRoot(host)
   settingsListeners = []
+  toolCapabilities = null
   unhandled = []
   process.on('unhandledRejection', onUnhandled)
 })
@@ -102,6 +108,7 @@ function installHome(settings: AiSettings): void {
     },
     getCodexModels: async () => ({ models: [], defaultModel: '' }),
     getFileSearchSettings: async () => null,
+    aiToolCapabilities: async () => toolCapabilities,
   } as unknown as HomeApi
 }
 
@@ -317,17 +324,61 @@ describe('the default view', () => {
     expect(host.querySelector('input[type="password"]:not(.free-ai-key)')).toBeNull()
   })
 
-  it('does not offer Claude in the key pane', async () => {
+  it('offers both subscription CLIs in the key pane, for the path of a custom install', async () => {
     installHome(defaultAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
     await openAdvanced()
     const labels = (await optionsOf('Provider')).map((option) => option.label)
-    expect(labels).not.toContain('Claude Code')
-    // "Claude" here is the Anthropic key provider; Codex stays for the path of a custom install
+    // "Claude" among the key providers is the Anthropic key; these two are the CLIs
+    expect(labels).toContain('Claude Code')
     expect(labels).toContain('Codex CLI')
     expect(labels).toContain('OpenAI')
+  })
+
+  it('checks Claude again once its path is saved, and not for a save that left the path alone', async () => {
+    installHome(defaultAiSettings())
+    const subscription = installSubscription(statusMap('not-installed', 'ready'))
+    await openModal()
+    await openAiSection()
+    await openAdvanced()
+    await pick('Provider', 'Claude Code')
+    subscription.recheck.mockClear()
+
+    const field = host.querySelector<HTMLInputElement>('#set-ai-cli-path')!
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    await act(async () => {
+      setter.call(field, '/Users/me/tools/claude')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await click(button('Save'))
+    expect(lastSaved().providers['claude-code']?.cliPath).toBe('/Users/me/tools/claude')
+    expect(subscription.recheck).toHaveBeenCalledWith(['claude-code'])
+
+    subscription.recheck.mockClear()
+    await pick('Model', 'sonnet')
+    await click(button('Save'))
+    expect(lastSaved().providers['claude-code']?.model).toBe('sonnet')
+    expect(subscription.recheck).not.toHaveBeenCalled()
+  })
+
+  it('gives a CLI a path field and no key field, with the program named in both texts', async () => {
+    installHome(defaultAiSettings())
+    installSubscription(statusMap('ready', 'ready'))
+    await openModal()
+    await openAiSection()
+    await openAdvanced()
+    await pick('Provider', 'Claude Code')
+    expect(host.querySelector('#set-ai-cli-path')).not.toBeNull()
+    expect(host.querySelector('#set-ai-key')).toBeNull()
+    expect(host.textContent).toContain('Claude Code executable')
+    expect(host.textContent).not.toContain('{name}')
+
+    await pick('Provider', 'Codex CLI')
+    expect(host.querySelector('#set-ai-cli-path')).not.toBeNull()
+    expect(host.textContent).toContain('Codex CLI executable')
   })
 
   it('opens straight on the Advanced media area when an outside entry point asks for it', async () => {
@@ -491,9 +542,12 @@ describe('the connect cards', () => {
     await openAiSection()
     subscription.recheck.mockClear()
 
-    // nothing was started yet: coming back to the window checks nothing
+    // nothing was started yet, but a program not found may have been installed
+    // from the vendor's guide: coming back looks for it, and only for it
     await act(async () => window.dispatchEvent(new Event('focus')))
-    expect(subscription.recheck).not.toHaveBeenCalled()
+    await flush()
+    expect(subscription.recheck).toHaveBeenCalledWith(['claude-code'])
+    subscription.recheck.mockClear()
 
     await click(button('Install', card('claude-code')))
     expect(subscription.install).toHaveBeenCalledWith('claude-code')
@@ -873,7 +927,7 @@ describe('automatic requests', () => {
     await openAdvanced()
     await click(host.querySelector('.set-switch[role="switch"]'))
     expect(host.querySelector('.set-adv-confirm')?.textContent).toContain(
-      '시간당 한도가 없어 프로그램이 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
+      '시간당 한도가 없어 프로그램이 이미지 생성 같은 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
     )
   })
 })
@@ -980,7 +1034,7 @@ describe('media providers', () => {
     installSubscription(statusMap('ready', 'ready'), { codexImage: false })
     await openMedia()
     const without = (await optionsOf('Image generation')).map((option) => option.label)
-    expect(without).not.toContain('Codex subscription')
+    expect(without).not.toContain(CODEX_IMAGE_CHOICE)
     expect(without[0]).toBe('None selected')
     // the stored default (the Codex subscription) reads as "none" in such a build
     expect(dropdown('Image generation')?.textContent).toBe('None selected')
@@ -992,11 +1046,125 @@ describe('media providers', () => {
     installSubscription(statusMap('ready', 'ready'), { codexImage: true })
     await openMedia()
     const labels = (await optionsOf('Image generation')).map((option) => option.label)
-    expect(labels.slice(0, 2)).toEqual(['Codex subscription', 'None selected'])
-    expect(dropdown('Image generation')?.textContent).toBe('Codex subscription')
+    expect(labels.slice(0, 2)).toEqual([CODEX_IMAGE_CHOICE, 'None selected'])
+    expect(dropdown('Image generation')?.textContent).toBe(CODEX_IMAGE_CHOICE)
     // no key rows for a selection that needs none, and the Codex line is shown
     expect(host.querySelector('#set-ai-image-key')).toBeNull()
     expect(host.querySelector('section .ai-sub-codex')).not.toBeNull()
+  })
+
+  describe('the ChatGPT plan line under image generation', () => {
+    const CONNECT_LINE =
+      'To make images with your ChatGPT plan, connect the Codex program with the same ChatGPT account. OpenAI does not allow image generation through the app’s direct ChatGPT connection.'
+
+    function statuses(
+      chatgpt: AiSubscriptionStatus['state'],
+      codex: AiSubscriptionStatus['state'],
+    ): SubscriptionStatusMap {
+      return {
+        'claude-code': status('claude-code', 'signed-out'),
+        chatgpt: status('chatgpt', chatgpt),
+        codex: status('codex', codex),
+      }
+    }
+
+    function line(): HTMLElement | null {
+      return host.querySelector<HTMLElement>('[data-image-codex-connect]')
+    }
+
+    it('shows with its button when ChatGPT is ready, Codex is not and images are unavailable', async () => {
+      installHome(defaultAiSettings())
+      installSubscription(statuses('ready', 'signed-out'), { codexImage: true })
+      toolCapabilities = { imageGeneration: { available: false } }
+      await openMedia()
+      expect(line()?.textContent).toContain(CONNECT_LINE)
+      expect(button('Connect Codex', line()!)).toBeTruthy()
+      // it sits in the image generation block, not elsewhere
+      expect(line()?.closest('section')?.querySelector('.set-pane-subtitle')?.textContent).toBe(
+        'Image generation',
+      )
+    })
+
+    it('stays hidden while images can be made, Codex is ready, or ChatGPT is not', async () => {
+      installHome(defaultAiSettings())
+      installSubscription(statuses('ready', 'signed-out'), { codexImage: true })
+      toolCapabilities = { imageGeneration: { available: true } }
+      await openMedia()
+      expect(line()).toBeNull()
+
+      act(() => root.unmount())
+      root = createRoot(host)
+      installSubscription(statuses('ready', 'ready'), { codexImage: true })
+      toolCapabilities = { imageGeneration: { available: false } }
+      await openMedia()
+      expect(line()).toBeNull()
+
+      act(() => root.unmount())
+      root = createRoot(host)
+      installSubscription(statuses('signed-out', 'signed-out'), { codexImage: true })
+      await openMedia()
+      expect(line()).toBeNull()
+    })
+
+    it('does not decide from the stored selection: no report, no line', async () => {
+      installHome(defaultAiSettings())
+      installSubscription(statuses('ready', 'off'), { codexImage: true })
+      toolCapabilities = null
+      await openMedia()
+      // the stored default is the Codex choice, yet without the report nothing is claimed
+      expect(dropdown('Image generation')?.textContent).toBe(CODEX_IMAGE_CHOICE)
+      expect(line()).toBeNull()
+    })
+
+    it('follows the report when the statuses or the settings change', async () => {
+      installHome(defaultAiSettings())
+      const api = installSubscription(statuses('ready', 'signed-out'), { codexImage: true })
+      toolCapabilities = { imageGeneration: { available: false } }
+      await openMedia()
+      expect(line()).not.toBeNull()
+
+      // a key image provider saved elsewhere: the report says images can be made now
+      toolCapabilities = { imageGeneration: { available: true } }
+      await act(async () => {
+        for (const listener of settingsListeners) listener()
+      })
+      await flush()
+      expect(line()).toBeNull()
+
+      // the key is gone again and a status changes: the report is read again
+      toolCapabilities = { imageGeneration: { available: false } }
+      await act(async () => api.emit(statuses('ready', 'metered')))
+      await flush()
+      expect(line()).not.toBeNull()
+
+      // Codex signed in on the plan: nothing to say
+      await act(async () => api.emit(statuses('ready', 'ready')))
+      await flush()
+      expect(line()).toBeNull()
+    })
+
+    it('its button brings up the Codex card, the existing way to connect', async () => {
+      installHome(defaultAiSettings())
+      installSubscription(statuses('ready', 'signed-out'), { codexImage: true })
+      toolCapabilities = { imageGeneration: { available: false } }
+      const scrolled: Element[] = []
+      const scrollIntoView = vi.fn(function (this: Element) {
+        scrolled.push(this)
+      })
+      const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+      Element.prototype.scrollIntoView = scrollIntoView
+      try {
+        await openMedia()
+        await click(button('Connect Codex', line()!))
+        expect(scrolled).toContain(card('codex'))
+        expect(card('codex').contains(document.activeElement)).toBe(true)
+        // nothing was started: the card's own buttons do that
+        expect(window.aiOfficeSubscription!.login).not.toHaveBeenCalled()
+      } finally {
+        if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original)
+        else delete (Element.prototype as Partial<Element>).scrollIntoView
+      }
+    })
   })
 
   it('defaults image analysis to the chat AI and video analysis to none', async () => {
@@ -1140,7 +1308,7 @@ describe('without the main-process handlers', () => {
     await openAdvanced()
     await click(tab('AI Media & Search'))
     expect((await optionsOf('Image generation')).map((option) => option.label)).not.toContain(
-      'Codex subscription',
+      CODEX_IMAGE_CHOICE,
     )
     await settle()
     expect(unhandled).toEqual([])

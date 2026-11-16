@@ -49,7 +49,9 @@ const MARKUPS: MarkupInput[] = [
 
 /** taken with the save code before MarkupInput.subject existed */
 const BASELINE_INPUT = '5ea9553c3809ce08868b54dfb6386b4a1ccedd14bd8f817c197003ad5cf3cbba'
-const BASELINE_OUTPUT = '3928334e29d69dd9c28984fbb16cb53430108541e6c5960502685d5df29d99f4'
+// upstream #2467 writes a new markup's /T as a text string (it was the name
+// /GenOffice), which moved this hash once; the subject still adds no bytes
+const BASELINE_OUTPUT = '99815a44814d269ca0948df081854b3b70ae22a09b65988614179e852e275419'
 
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex')
 

@@ -118,6 +118,7 @@ import {
   recoveryEditor,
   resetAppShuttingDown,
   resumeDiscardedCopies,
+  setHeadlessMode,
 } from '@genoffice/electron-utils'
 import type { RecoveryIdentity } from '@genoffice/electron-utils'
 import {
@@ -195,8 +196,8 @@ function masterPage(kind: number): Buffer {
   ])
 }
 
-/** an engine document with master pages after the body, as Hangul writes them */
-function fileWithTails(...lines: string[]): Uint8Array {
+/** an engine document of these lines, with nothing after the body */
+function plainFile(...lines: string[]): Uint8Array {
   const doc = HwpDocument.createEmpty()
   doc.createBlankDocument()
   lines.forEach((line, index) => {
@@ -205,7 +206,12 @@ function fileWithTails(...lines: string[]): Uint8Array {
   })
   const bytes = doc.exportHwp()
   doc.free()
-  const cfb = CFB.read(Buffer.from(bytes), { type: 'buffer' })
+  return bytes
+}
+
+/** an engine document with master pages after the body, as Hangul writes them */
+function fileWithTails(...lines: string[]): Uint8Array {
+  const cfb = CFB.read(Buffer.from(plainFile(...lines)), { type: 'buffer' })
   const entry = CFB.find(cfb, SECTION0)!
   const body = inflateRawSync(Buffer.from(entry.content as Uint8Array))
   CFB.utils.cfb_add(
@@ -297,9 +303,9 @@ describe('a recovery copy of a file', () => {
     const copy = store().copyInfo(fileIdentity(path))
     expect(copy).toMatchObject({ state: 'undecided', title: 'report.hwp' })
     expect(dirname(copy!.copyPath)).toBe(join(userData, 'hwp-autosave'))
-    // the save-time corrections against the opened file are in: the master pages are back
+    // the save-time corrections against the opened file are in: the master pages are there
+    // once, whether the engine kept them (rhwp devel) or they were put back
     const bytes = new Uint8Array(readFileSync(copy!.copyPath))
-    expect(sectionTailsOf(exported)).toBeNull()
     expect(sectionTailsOf(bytes)?.tails.get(0)).toHaveLength(2)
     const base = { tails: sectionTailsOf(original)!, kinds: fieldKindsOf(original) ?? undefined }
     expect(bytes).toEqual(applySaveFixes(exported, 'hwp', [], base).bytes)
@@ -672,9 +678,9 @@ describe('opening a file with a copy left over', () => {
     const { path } = await crashed('edited.hwp', original)
     const contents = view(path)
     const shown = await call<Promise<Uint8Array>>(HWP_CHANNELS.readFile, contents, path)
-    // the engine drops the lists of a section it rewrites: the save puts them back
+    // the save has the lists once, whether the engine kept them (rhwp devel) or the save
+    // put them back
     const exported = edited(shown, '더 ')
-    expect(sectionTailsOf(exported)).toBeNull()
     await call(HWP_CHANNELS.beginSave, contents, 'save')
     await call(HWP_CHANNELS.commitSave, contents, exported, [])
     const saved = new Uint8Array(readFileSync(path))
@@ -687,7 +693,7 @@ describe('opening a file with a copy left over', () => {
     const original = fileWithTails('본문', '둘째 문단')
     writeFileSync(path, original)
     // a copy without the lists (as when putting them back had to be skipped)
-    const bare = edited(original, '고친 ')
+    const bare = edited(plainFile('본문', '둘째 문단'), '고친 ')
     expect(sectionTailsOf(bare)).toBeNull()
     await store().writeCopy(fileIdentity(path), Buffer.from(bare), { title: 'lacking.hwp' })
     const contents = view(path)
@@ -895,5 +901,28 @@ describe('an open memo editor at close', () => {
     expect(hwpMemoModalOpen(contents.id)).toBe(true)
     contents.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false })
     expect(hwpMemoModalOpen(contents.id)).toBe(false)
+  })
+})
+
+describe('a headless export (--headless-export)', () => {
+  afterEach(() => setHeadlessMode(false))
+
+  it('reads the file on disk: a copy left for it is not asked about, used or settled', async () => {
+    const path = join(dir, 'report.hwp')
+    const original = fileWithTails('본문')
+    writeFileSync(path, original)
+    // a copy left by the GUI app, which would otherwise be offered when the file opens
+    await store().writeCopy(fileIdentity(path), Buffer.from(fileWithTails('남은')), {
+      title: 'report.hwp',
+    })
+    setHeadlessMode(true)
+    const contents = view(path)
+    const bytes = await call<Promise<Uint8Array>>(HWP_CHANNELS.readFile, contents, path)
+    expect(textOf(bytes)).toBe(textOf(original))
+    expect(showMessageBox).not.toHaveBeenCalled()
+    // nor does the hidden view write a copy of its own
+    expect(await writeCopy(contents, edited(original, '고친 '))).toBe('refused')
+    contents.emit('destroyed')
+    expect(store().copyInfo(fileIdentity(path))).not.toBeNull()
   })
 })

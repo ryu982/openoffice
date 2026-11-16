@@ -45,6 +45,10 @@ export const vi = {
   saveFailedStatus: 'Lưu thất bại',
   exportFailed: 'Xuất thất bại',
   printFailed: 'In thất bại: {error}',
+  printRangeEmpty: 'Tài liệu này có {count} trang. Hãy nhập số trang nằm trong phạm vi đó.',
+  printPagesFailed: 'Không thể đếm số trang cần in: {error}',
+  printLayoutSaved: 'Đã lưu kết quả sắp xếp thành PDF.',
+  printLayoutSaveFailed: 'Không thể lưu PDF: {error}',
   exportHtmlSkipped: 'Đã xuất, nhưng {count} tài nguyên không thể nhúng (ví dụ {first})',
   viewPreview: 'Xem trước',
   viewSplit: 'Chia đôi',
@@ -79,7 +83,8 @@ export const vi = {
   slideThumbGo: 'Đi tới trang chiếu {n}',
   previewNeedsSave:
     'Hình ảnh và kiểu dáng có đường dẫn tương đối sẽ hiển thị trong bản xem trước sau khi tệp được lưu',
-  inspectHint: 'Nhấp vào một phần tử trong bản xem trước để chọn, nhấp đúp để chỉnh sửa văn bản',
+  inspectHint:
+    'Nhấp vào một phần tử trong bản xem trước để chọn, nhấp đúp để chỉnh sửa văn bản, Shift+nhấp hoặc {alt}+kéo để chọn nhiều phần tử',
   nodeDynamic:
     'Phần tử này được tạo bởi tập lệnh trang và không có mã nguồn; hãy chỉnh sửa qua mã nguồn hoặc AI',
   nodeDynamicShort: 'tạo bởi tập lệnh',

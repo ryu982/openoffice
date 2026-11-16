@@ -88,6 +88,8 @@ export interface PassageReadingProps {
   t: TFunc
   /** the document cannot be edited: "Keep as note" is refused */
   readOnly: boolean
+  /** why it is read-only (the encrypted-document wording when absent) */
+  readOnlyReason?: string
   /** the document title sent with a passage ('' when none) */
   title: string
   /** an original page's text as the PDF.js text layer reads it */
@@ -108,6 +110,8 @@ export interface PassageReadingProps {
    * the AI panel" and "Regenerate" (the notes task adds "Add to note").
    */
   cardActions?: (card: PassageCard) => ReactNode
+  /** AI is turned off (Settings): no card is asked for or shown */
+  hidden?: boolean
 }
 
 export interface PassageReadingHandle {
@@ -416,10 +420,11 @@ export const PassageReading = forwardRef<PassageReadingHandle, PassageReadingPro
 
     useImperativeHandle(ref, () => ({
       request(kind, selection) {
+        if (propsRef.current.hidden) return
         void request(kind, selection)
       },
       open(id, anchor) {
-        if (!propsRef.current.cards.get(id)) return
+        if (propsRef.current.hidden || !propsRef.current.cards.get(id)) return
         dropHeld()
         setView({ kind: 'card', id, anchor: anchor ?? centerAnchor() })
       },
@@ -490,7 +495,7 @@ export const PassageReading = forwardRef<PassageReadingHandle, PassageReadingPro
       if (view?.kind === 'card' && !openCard) setView(null)
     }, [view, openCard])
 
-    if (!view || (view.kind === 'card' && !openCard)) return null
+    if (props.hidden || !view || (view.kind === 'card' && !openCard)) return null
 
     let body: PassageCardBody
     let heading: string
@@ -573,6 +578,7 @@ export const PassageReading = forwardRef<PassageReadingHandle, PassageReadingPro
           anchor={view.anchor}
           body={body}
           readOnly={readOnly}
+          readOnlyReason={props.readOnlyReason}
           extraActions={openCard && props.cardActions ? props.cardActions(openCard) : undefined}
           onCopy={() => openCard && copy(openCard)}
           onKeepAsNote={() => openCard && keepAsNote(openCard)}

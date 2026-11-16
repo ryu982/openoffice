@@ -6,7 +6,7 @@ export const AI_PANEL_SIDE_LABELS: Record<Lang, Record<AiPanelSide, string>> = {
   zh: { left: '将 AI 面板移到左侧', right: '将 AI 面板移到右侧' },
   en: { left: 'Move AI panel to the left', right: 'Move AI panel to the right' },
   ja: { left: 'AI パネルを左側に移動', right: 'AI パネルを右側に移動' },
-  ko: { left: 'AI 패널을 왼쪽으로 이동', right: 'AI 패널을 오른쪽으로 이동' },
+  ko: { left: 'AI 창을 왼쪽으로 이동', right: 'AI 창을 오른쪽으로 이동' },
   fr: { left: 'Déplacer le panneau IA à gauche', right: 'Déplacer le panneau IA à droite' },
   de: { left: 'KI-Panel nach links verschieben', right: 'KI-Panel nach rechts verschieben' },
   es: { left: 'Mover el panel de IA a la izquierda', right: 'Mover el panel de IA a la derecha' },
@@ -30,4 +30,5 @@ export const AI_PANEL_SIDE_LABELS: Record<Lang, Record<AiPanelSide, string>> = {
   hi: { left: 'AI पैनल को बाईं ओर ले जाएँ', right: 'AI पैनल को दाईं ओर ले जाएँ' },
   'zh-TW': { left: '將 AI 面板移到左側', right: '將 AI 面板移到右側' },
   vi: { left: 'Di chuyển bảng AI sang trái', right: 'Di chuyển bảng AI sang phải' },
+  tr: { left: 'AI panelini sola taşı', right: 'AI panelini sağa taşı' },
 }

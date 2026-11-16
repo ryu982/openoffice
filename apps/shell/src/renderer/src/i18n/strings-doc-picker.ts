@@ -20,6 +20,7 @@ import { he } from './doc-picker/he'
 import { hi } from './doc-picker/hi'
 import { zhTW } from './doc-picker/zh-TW'
 import { vi } from './doc-picker/vi'
+import { tr } from './doc-picker/tr'
 
 /**
  * The "Attach from GenOffice documents" window: strings for its three groups,
@@ -47,6 +48,7 @@ export const docPickerStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type DocPickerStringKey = keyof typeof zh

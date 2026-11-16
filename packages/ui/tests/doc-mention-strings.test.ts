@@ -21,8 +21,7 @@ describe('DOC_MENTION_STRINGS', () => {
     )
   })
 
-  it('has every key, non-empty, in all 21 languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('has every key, non-empty, in every UI language', () => {
     expect(Object.keys(DOC_MENTION_STRINGS).sort()).toEqual([...LANGS].sort())
     for (const lang of LANGS) {
       const dict = DOC_MENTION_STRINGS[lang] as Record<string, string>

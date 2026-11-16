@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` en `media` gebruiken wat in de app is ingesteld onder Instellingen ▸ AI ▸ Geavanceerd:
 
 - `search` werkt altijd. Het gebruikt standaard de gratis zoekfunctie, of de zoekprovider waarvan je de sleutel hebt geselecteerd.
-- `image` heeft een sleutel van een afbeeldingsprovider nodig. In deze versie genereert een abonnement geen afbeeldingen.
+- `image` volgt de keuze voor afbeeldingen genereren in de instellingen. Met de standaardkeuze, ChatGPT-abonnement (Codex-programma), tekent het met je ChatGPT-abonnement via het Codex-programma, maar alleen als je abonnementen voor automatische aanroepen hebt toegestaan (**standaard uit**; zie [Verbinden met een coding agent](help://mcp)). Anders gebruikt het de sleutel van een ingestelde afbeeldingsprovider. `--model` wordt gebruikt als die route het model aanbiedt; anders antwoordt de opdracht met de modellen die je kunt gebruiken. Afbeeldingen die je met `--ref` meegeeft, werken op beide routes.
 - `media` op een afbeelding gebruikt een provider met een sleutel als die is ingesteld. Je Claude- of Codex-abonnement wordt alleen gebruikt als je dat hebt toegestaan, en dat staat **standaard uit**; [Verbinden met een coding agent](help://mcp) legt de schakelaar en de grenzen ervan uit.
 - `media` op video of audio heeft een provider met een sleutel nodig die video ondersteunt.
 

@@ -46,6 +46,10 @@ export const en = {
   saveFailedStatus: 'Save failed',
   exportFailed: 'Export failed',
   printFailed: 'Print failed: {error}',
+  printRangeEmpty: 'This document has {count} pages. Type page numbers within them.',
+  printPagesFailed: 'Could not count the pages to print: {error}',
+  printLayoutSaved: 'Saved the arranged result as PDF.',
+  printLayoutSaveFailed: 'Could not save the PDF: {error}',
   exportHtmlSkipped: 'Exported, but {count} asset(s) could not be inlined (e.g. {first})',
   viewPreview: 'Preview',
   viewSplit: 'Split',
@@ -79,7 +83,8 @@ export const en = {
   slideThumbs: 'Slides',
   slideThumbGo: 'Go to slide {n}',
   previewNeedsSave: 'Relative images and styles show in the preview once the file is saved',
-  inspectHint: 'Click an element in the preview to select it, double-click to edit text',
+  inspectHint:
+    'Click an element in the preview to select it, double-click to edit text, Shift+click or {alt}+drag to select several',
   nodeDynamic:
     'This element was created by the page script and has no source; edit through the source or AI',
   nodeDynamicShort: 'script-generated',

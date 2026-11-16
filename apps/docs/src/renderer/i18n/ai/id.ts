@@ -82,7 +82,6 @@ export const id = {
   aiCopied: 'Disalin',
   aiRegenerateTitle: 'Buat ulang',
   aiSnapshotsTitle: 'Snapshot versi',
-  aiRollback: 'Kembalikan',
   aiScopeSelected: '{count} paragraf dipilih',
   aiScopeEmptyDoc: 'Dokumen kosong',
   aiScopeCursor: 'Di posisi kursor',
@@ -197,4 +196,7 @@ export const id = {
   aiMindMapReset: 'Setel ulang tampilan',
   aiMindMapExpand: 'Bentangkan cabang',
   aiMindMapCollapse: 'Lipat cabang',
+  aiMindMapToggleLayout: 'Ganti tata letak',
+  aiMindMapLayoutTopDown: 'Beralih ke tata letak atas ke bawah',
+  aiMindMapLayoutLeftRight: 'Beralih ke tata letak kiri ke kanan',
 } satisfies Record<keyof typeof zh, string>

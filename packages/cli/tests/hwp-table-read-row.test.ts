@@ -35,7 +35,7 @@ function skill() {
   }
 }
 
-for (const from_row of [0, -1, 1.5, '2', null, true]) {
+for (const from_row of [0, -1, 1.5, 'two', null, true]) {
   it(`refuses an explicit invalid row ${JSON.stringify(from_row)} before reading`, async () => {
     const { call, readTable } = skill()
     const result = await call({ table: 1, from_row })
@@ -53,6 +53,13 @@ for (const from_row of [undefined, 1, 2]) {
     expect(readTable).toHaveBeenCalledWith(1, from_row ?? null)
   })
 }
+
+it('reads a quoted row number as the number, as the app does', async () => {
+  const { call, readTable } = skill()
+  const result = await call({ table: '1', from_row: '2' })
+  expect(result.isError).toBeUndefined()
+  expect(readTable).toHaveBeenCalledWith(1, 2)
+})
 
 for (const format of ['hwp', 'hwpx']) {
   it(`reads the requested ${format} table row and rejects a negative row`, async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseDocx } from '../src/parse'
 import { buildDocx } from './helpers/build-docx'
 
-// IeumOffice divergence (genoffice #2331): Word places a page/margin-relative
+// IeumOffice divergence (genoffice#2331): Word places a page/margin-relative
 // anchor at its page position whatever the wrap kind; wrap only decides how
 // the body text flows around it. Cover pages built from wrapTopAndBottom /
 // wrapSquare rectangles were stacked into the flow, shifted by the margins.
@@ -95,6 +95,36 @@ describe('page-anchored wrapped shapes keep their page position', () => {
       expect(box.wrapSide).toBeUndefined()
     })
   }
+
+  it('bands a narrow page-relative wrapTopAndBottom box starting inside the first line', async () => {
+    // a logo hanging 8 pt under the body top of the first paragraph: Word keeps
+    // the anchor line and flows the next paragraphs below the box
+    const y = MARGIN + 100000
+    const h = 900000
+    const [[box]] = await boxesOf(
+      para(rect({ posH: '5000000', posV: String(y), cx: 1000000, cy: h, wrap: TOP_AND_BOTTOM })),
+    )
+    expect(box.floating).toBe(true)
+    expect(box.pageRelV).toBe(true)
+    expect(box.bandTopPx).toBe(Math.round(100000 / EMU_PER_PX))
+    expect(box.bandBottomPx).toBe(Math.round(100000 / EMU_PER_PX) + Math.round(h / EMU_PER_PX))
+  })
+
+  it('keeps a narrow page-relative wrapTopAndBottom box below the first line in the flow', async () => {
+    const [[box]] = await boxesOf(
+      para(
+        rect({
+          posH: '5000000',
+          posV: String(MARGIN + 400000),
+          cx: 1000000,
+          cy: 900000,
+          wrap: TOP_AND_BOTTOM,
+        }),
+      ),
+    )
+    expect(box.floating).toBeUndefined()
+    expect(box.bandBottomPx).toBeUndefined()
+  })
 
   it('keeps a narrow wrapSquare box covering the body top in the flow (guard)', async () => {
     const [[box]] = await boxesOf(

@@ -16,6 +16,16 @@ if [ -f "$profile_src" ] && apparmor_status --enabled >/dev/null 2>&1; then
     fi
   fi
 fi
+# Start the app through the launcher that raises the open-file soft limit
+# before Chromium forks its zygote (#488, see build/linux-launch.sh).
+# electron-builder refuses a custom Exec for the desktop entry it writes, so
+# the entry is repointed here. Only the line that starts our own binary is
+# changed, and a payload without the launcher keeps the entry as it is.
+desktop="/usr/share/applications/ieumoffice.desktop"
+launch="$app/resources/ieumoffice-launch"
+if [ -x "$launch" ] && [ -f "$desktop" ]; then
+  sed -i -e "s#^Exec=$app/ieumoffice #Exec=$launch #" -e "s#^Exec=$app/ieumoffice\$#Exec=$launch#" "$desktop"
+fi
 # electron-builder stamps every MIME type it registers with
 # <icon name="x-office-document"/>, which overrides the system's per-type
 # icons (spreadsheet, presentation, text, pdf...) for all 21 types we claim
@@ -27,6 +37,27 @@ if [ -f "$mime" ] && grep -q '<icon name="x-office-document"' "$mime"; then
 fi
 command -v update-mime-database >/dev/null 2>&1 && update-mime-database /usr/share/mime >/dev/null 2>&1 || true
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+# KDE Plasma's Dolphin lists the "Create New" menu from the XDG templates
+# directories, which include the system-wide /usr/share/templates
+# (genoffice#2384). Only our three exact file names are written, so another
+# suite's templates are never overwritten here or removed later. AppImage
+# runs no install script, and a payload without shell-new skips this.
+shell_new="$app/resources/shell-new"
+templates_dir="/usr/share/templates"
+if [ -d "$shell_new" ]; then
+  mkdir -p "$templates_dir"
+  for ext in docx xlsx pptx; do
+    case "$ext" in
+      docx) name="IeumOffice Document.docx" ;;
+      xlsx) name="IeumOffice Spreadsheet.xlsx" ;;
+      pptx) name="IeumOffice Presentation.pptx" ;;
+    esac
+    # cp -f is the fallback for a busybox install(1) without -m. A template
+    # that cannot be written must not fail the whole package install.
+    install -m 0644 "$shell_new/blank.$ext" "$templates_dir/$name" 2>/dev/null ||
+      cp -f "$shell_new/blank.$ext" "$templates_dir/$name" || true
+  done
+fi
 # Expose the ieumoffice command line shipped inside the app. Only an absent
 # name, a dead link or a link into our own install dir is taken over; anything
 # else at /usr/bin/ieumoffice belongs to another program (genoffice#893).

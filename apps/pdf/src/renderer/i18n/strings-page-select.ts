@@ -20,6 +20,7 @@ import { he } from './page-select/he'
 import { hi } from './page-select/hi'
 import { zhTW } from './page-select/zh-TW'
 import { vi } from './page-select/vi'
+import { tr } from './page-select/tr'
 
 /** Copy for page actions on several picked thumbnails */
 export const pageSelectStrings = defineStrings({
@@ -44,4 +45,5 @@ export const pageSelectStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

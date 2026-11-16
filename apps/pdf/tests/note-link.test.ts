@@ -380,3 +380,56 @@ describe('note link service: refusals', () => {
     expect(await first).toEqual({ ok: false, reason: 'cancelled' })
   })
 })
+
+describe('note link service: the Markdown editor turned off (editor choice spec 7.3)', () => {
+  it('asks before the save dialog; a cancel picks, writes and opens nothing', async () => {
+    const r = rig()
+    const asked: Array<string | null> = []
+    const deps: NoteLinkDeps = {
+      ...r.deps,
+      editorReady: async (notePath) => {
+        asked.push(notePath)
+        return false
+      },
+    }
+    expect(await createNoteLinkService(deps).open(1, r.pdf, { title: 'T' })).toEqual({
+      ok: false,
+      reason: 'cancelled',
+    })
+    expect(asked).toEqual([null])
+    expect(r.picked).toEqual([])
+    expect(r.opened).toEqual([])
+    expect(existsSync(join(r.dir, 'Paper 노트.md'))).toBe(false)
+    expect(await r.store.readNoteLinks()).toEqual({ version: 1, links: {} })
+  })
+
+  it('names the linked note, so an open one is not asked about, and inserts nothing on a cancel', async () => {
+    const r = rig()
+    const notePath = join(r.dir, 'n.md')
+    writeFileSync(notePath, '# n\n')
+    await r.store.setNoteLink(r.pdf, { notePath, docHash: HASH_A })
+    const asked: Array<string | null> = []
+    const deps: NoteLinkDeps = {
+      ...r.deps,
+      editorReady: async (path) => {
+        asked.push(path)
+        return false
+      },
+    }
+    const result = await createNoteLinkService(deps).insert(1, r.pdf, {
+      kind: 'quote',
+      excerpt: 'x',
+      page: 1,
+    })
+    expect(result).toEqual({ ok: false, reason: 'cancelled' })
+    expect(asked).toEqual([notePath])
+    expect(r.inserted).toEqual([])
+  })
+
+  it('goes on once the editor is on', async () => {
+    const r = rig()
+    const deps: NoteLinkDeps = { ...r.deps, editorReady: async () => true }
+    expect(await createNoteLinkService(deps).open(1, r.pdf, {})).toEqual({ ok: true })
+    expect(r.opened).toEqual([join(r.dir, 'Paper 노트.md')])
+  })
+})

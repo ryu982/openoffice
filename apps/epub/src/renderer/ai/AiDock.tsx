@@ -29,6 +29,7 @@ import { BLOCK_ATTR } from '../reader/chapter-html'
 import { useI18n } from '../i18n/locale'
 import { AiPanel } from './AiPanel'
 import type { BookAiEditor, BookAiHost, BookAiView, StartBookTranslation } from './book-tools'
+import type { BookMarks } from './run-changes'
 
 export type {
   BookTranslationAnswer,
@@ -83,12 +84,15 @@ export interface EpubAi {
   host: BookAiHost
   open: boolean
   setOpen(open: boolean): void
+  /** the blocks the last AI run changed, for the reader to mark; null while none are marked */
+  marks: BookMarks | null
 }
 
 /** The AI's view of the editor, and whether its panel is open. */
 export function useEpubAi(wiring: EpubAiWiring): EpubAi {
   const { book, readChapter, editor, shownChapter, frameDoc, startBookTranslation } = wiring
   const [open, setOpen] = useState(() => aiPanelInitiallyOpen(OPEN_KEY))
+  const [marks, setMarks] = useState<BookMarks | null>(null)
   useEffect(() => rememberAiPanelOpen(OPEN_KEY, open), [open])
 
   // the shell's AI panel preferences (text size): read once, then followed
@@ -117,10 +121,13 @@ export function useEpubAi(wiring: EpubAiWiring): EpubAi {
         }
       },
       startBookTranslation: startBookTranslation ?? null,
+      showChangeMarks: setMarks,
     }),
     [book, readChapter, editor, shownChapter, frameDoc, startBookTranslation],
   )
-  return { host, open, setOpen }
+  // another book in this tab: the last one's marks do not belong to it
+  useEffect(() => setMarks(null), [book])
+  return { host, open, setOpen, marks }
 }
 
 export interface EpubAiDockProps {

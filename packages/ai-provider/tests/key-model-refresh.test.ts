@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { OPENROUTER_FREE_MODELS } from '../src/free-ai'
 import {
+  KEY_MODEL_RELIST_AFTER_MS,
   createKeyModelRefresher,
   withKeyProviderModels,
+  withListedFreeModel,
   withStoredKeyModels,
 } from '../src/key-model-refresh'
 import { defaultAiSettings } from '../src/providers'
@@ -11,6 +14,8 @@ import type { AiProviderId, AiSettings } from '../src/types'
  * When the main process lists a key provider's models and what reaches the
  * settings file (decision 0087): once per run, again on a changed key, never
  * for a provider without one, and a list the renderer sends is never written.
+ * A list a day old is asked again, and a free connection left on a model the
+ * list no longer has moves to a tested one that it has (decision 0138).
  */
 
 function settingsWith(keys: Partial<Record<AiProviderId, string>>): AiSettings {
@@ -119,6 +124,111 @@ describe('createKeyModelRefresher', () => {
     expect(s.writes).toHaveLength(0)
   })
 
+  it('lists an unchanged key again once its list is a day old, and not before', async () => {
+    const s = store(settingsWith({ gemini: 'AIza-1' }))
+    let clock = 1_000_000
+    let asked = 0
+    const list = vi.fn(async () =>
+      ++asked === 1 ? ['gemini-4-argon'] : ['gemini-4-argon', 'gemini-5-neon'],
+    )
+    const refresher = createKeyModelRefresher({ ...s.deps, list, now: () => clock })
+
+    refresher.refreshChanged()
+    await refresher.idle()
+    clock += KEY_MODEL_RELIST_AFTER_MS - 1
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(list).toHaveBeenCalledTimes(1)
+
+    clock += 1
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(list).toHaveBeenCalledTimes(2)
+    // the model released meanwhile is in the file without a restart
+    expect(s.file.providers.gemini.models).toEqual(['gemini-4-argon', 'gemini-5-neon'])
+
+    // the day counts from the last asking, not from the first
+    clock += KEY_MODEL_RELIST_AFTER_MS - 1
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(list).toHaveBeenCalledTimes(2)
+  })
+
+  it('counts a day on a clock that was set back as well', async () => {
+    const s = store(settingsWith({ gemini: 'AIza-1' }))
+    let clock = 10 * KEY_MODEL_RELIST_AFTER_MS
+    const list = vi.fn(async () => ['gemini-4-argon'])
+    const refresher = createKeyModelRefresher({ ...s.deps, list, now: () => clock })
+    refresher.refreshChanged()
+    await refresher.idle()
+    clock -= KEY_MODEL_RELIST_AFTER_MS
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(list).toHaveBeenCalledTimes(2)
+  })
+
+  it('never lists a provider without a key, however old the run', async () => {
+    const s = store(settingsWith({}))
+    let clock = 0
+    const list = vi.fn(async () => ['x'])
+    const refresher = createKeyModelRefresher({ ...s.deps, list, now: () => clock })
+    refresher.refreshChanged()
+    clock += 3 * KEY_MODEL_RELIST_AFTER_MS
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(list).not.toHaveBeenCalled()
+  })
+
+  it('moves a free connection off a model that is gone from the list it just got', async () => {
+    const [first, second] = OPENROUTER_FREE_MODELS
+    const initial = settingsWith({ openrouter: 'sk-or-v1-x' })
+    initial.providers.openrouter = { ...initial.providers.openrouter, model: first! }
+    const s = store(initial)
+    const list = vi.fn(async () => [second!, 'anthropic/claude-opus-6'])
+    const refresher = createKeyModelRefresher({ ...s.deps, list })
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(s.file.providers.openrouter.model).toBe(second)
+    expect(s.file.providers.openrouter.apiKey).toBe('sk-or-v1-x')
+    // one write carries the list and the move together
+    expect(s.writes).toHaveLength(1)
+  })
+
+  it('moves it on a list that did not change, when the stored model is not in it', async () => {
+    // a build without the move stored this list; the next asking gets the same one
+    const [first, second] = OPENROUTER_FREE_MODELS
+    const initial = withKeyProviderModels(
+      settingsWith({ openrouter: 'sk-or-v1-x' }),
+      'openrouter',
+      [second!],
+    )
+    initial.providers.openrouter = { ...initial.providers.openrouter, model: first! }
+    const s = store(initial)
+    const refresher = createKeyModelRefresher({ ...s.deps, list: async () => [second!] })
+    refresher.refreshChanged()
+    await refresher.idle()
+    expect(s.file.providers.openrouter.model).toBe(second)
+  })
+
+  it('leaves a paid OpenRouter model and every other provider where the user put them', async () => {
+    const initial = settingsWith({ openrouter: 'sk-or-v1-x', gemini: 'AIza-1' })
+    initial.providers.openrouter = {
+      ...initial.providers.openrouter,
+      model: 'openai/gpt-withdrawn',
+    }
+    initial.providers.gemini = { ...initial.providers.gemini, model: 'gemini-withdrawn' }
+    const s = store(initial)
+    const list = vi.fn(async (provider: AiProviderId) =>
+      provider === 'openrouter' ? [OPENROUTER_FREE_MODELS[0]!] : ['gemini-4-argon'],
+    )
+    const refresher = createKeyModelRefresher({ ...s.deps, list })
+    refresher.refreshChanged()
+    await refresher.idle()
+    // a different paid model bills differently: that choice stays the user's
+    expect(s.file.providers.openrouter.model).toBe('openai/gpt-withdrawn')
+    expect(s.file.providers.gemini.model).toBe('gemini-withdrawn')
+  })
+
   it('survives a settings file it cannot read', () => {
     const list = vi.fn()
     const refresher = createKeyModelRefresher({
@@ -130,6 +240,22 @@ describe('createKeyModelRefresher', () => {
     })
     expect(() => refresher.refreshChanged()).not.toThrow()
     expect(list).not.toHaveBeenCalled()
+  })
+})
+
+describe('withListedFreeModel', () => {
+  it('returns the same settings when there is nothing to move', () => {
+    const [first] = OPENROUTER_FREE_MODELS
+    const connected = settingsWith({ openrouter: 'sk-or-v1-x' })
+    connected.providers.openrouter = { ...connected.providers.openrouter, model: first! }
+    // no list yet
+    expect(withListedFreeModel(connected)).toBe(connected)
+    // still listed
+    const listed = withKeyProviderModels(connected, 'openrouter', [first!])
+    expect(withListedFreeModel(listed)).toBe(listed)
+    // every tested model is gone: an untried one is not picked for the user
+    const none = withKeyProviderModels(connected, 'openrouter', ['acme/untested:free'])
+    expect(withListedFreeModel(none)).toBe(none)
   })
 })
 

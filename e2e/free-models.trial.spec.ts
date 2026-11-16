@@ -4,8 +4,9 @@
  * requests. `npm run free-models:trial` runs it once per model and reads the
  * `TRIAL {json}` line it prints; by hand:
  *   TRIAL_MODEL=<id> npx playwright test -c e2e/playwright.config.ts free-models.trial
- * The key is copied from the installed app's settings into a scratch folder
- * and never printed.
+ * The key comes from the runner (TRIAL_OPENROUTER_KEY, already opened if the
+ * app had sealed it), else from the installed app's settings; it is copied into
+ * a scratch folder and never printed.
  */
 import { test, expect, type Page } from '@playwright/test'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -17,9 +18,16 @@ const MODEL = process.env.TRIAL_MODEL ?? ''
 const RUN_TIMEOUT = 240_000
 
 async function storedKey(): Promise<string> {
+  const fromRunner = process.env.TRIAL_OPENROUTER_KEY?.trim()
+  if (fromRunner) return fromRunner
   const path = join(process.env.APPDATA ?? '', 'IeumOffice', 'ai-settings.json')
   const settings = JSON.parse(await readFile(path, 'utf8'))
-  return settings.providers.openrouter.apiKey
+  const key: string = settings.providers.openrouter.apiKey
+  // the scratch folder's app cannot open another folder's seal (decision 0063)
+  if (key.startsWith('sealed:v1:')) {
+    throw new Error('the stored key is sealed: run this through npm run free-models:trial')
+  }
+  return key
 }
 
 test(`free model trial: ${MODEL}`, async () => {
@@ -113,7 +121,12 @@ test(`free model trial: ${MODEL}`, async () => {
     await editor?.screenshot({ path: screenshotPath(`free-trial-${slug}-failed`) }).catch(() => {})
   } finally {
     console.log('TRIAL ' + JSON.stringify(report))
-    await closeAndSaveVideo(launched, `free-trial-${slug}`)
-    await rm(userDataDir, { recursive: true, force: true })
+    try {
+      await closeAndSaveVideo(launched, `free-trial-${slug}`)
+    } finally {
+      // the folder holds the plain key: removed even when closing fails, retried
+      // while the app process still holds its files on Windows
+      await rm(userDataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 })
+    }
   }
 })

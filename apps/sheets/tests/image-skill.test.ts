@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createImageSkill } from '../src/renderer/ai/image-skill'
+import { createImageSkill, IMAGE_GEN_OFF_NOTE } from '../src/renderer/ai/image-skill'
 
 function stubDesktopApi(api: Record<string, unknown>): void {
   vi.stubGlobal('window', { desktopApi: api })
@@ -84,6 +84,41 @@ describe('image skill: generate_image', () => {
     expect(result.isError).toBeUndefined()
     expect(result.output).toContain('https://cdn.example.com/gen/1.png')
     expect(result.output).toContain('add_image')
+  })
+
+  it("passes the image tool's note on to the model with the URL", async () => {
+    const generateImage = vi.fn().mockResolvedValue({
+      url: 'https://cdn.example.com/gen/1.png',
+      note: 'Codex picks the image model on this route',
+    })
+    stubDesktopApi({ generateImage })
+    const result = await createImageSkill().executeTool(
+      call('generate_image', { prompt: 'minimal logo', model: 'gpt-image-2' }),
+    )
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toContain('\nNote: Codex picks the image model on this route')
+  })
+})
+
+describe('image skill: generate_image model and availability', () => {
+  it('passes a model the user named to the channel and offers it as an optional input', async () => {
+    const generateImage = vi.fn().mockResolvedValue({ error: 'stop here' })
+    stubDesktopApi({ generateImage })
+    const skill = createImageSkill()
+    const tool = skill.tools.find((entry) => entry.name === 'generate_image')!
+    expect(tool.inputSchema.properties).toHaveProperty('model')
+    expect(tool.inputSchema.required).toEqual(['prompt'])
+    await skill.executeTool(call('generate_image', { prompt: 'a kite', model: 'gpt-image-2' }))
+    expect(generateImage).toHaveBeenCalledWith({ prompt: 'a kite', model: 'gpt-image-2' })
+  })
+
+  it('hides generate_image without a route and tells the model the ChatGPT plan path', () => {
+    const off = createImageSkill(() => false)
+    expect(off.tools.map((entry) => entry.name)).not.toContain('generate_image')
+    expect(off.systemPrompt).toContain(IMAGE_GEN_OFF_NOTE)
+    expect(IMAGE_GEN_OFF_NOTE).toContain('Codex program signed in with the same ChatGPT account')
+    expect(IMAGE_GEN_OFF_NOTE).toContain('OpenAI does not allow it')
+    expect(createImageSkill(() => true).systemPrompt).not.toContain(IMAGE_GEN_OFF_NOTE)
   })
 })
 

@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const pt = {
+  appLegacyPptImported:
+    'O arquivo .ppt foi aberto como uma cópia .pptx convertida. O original permanece inalterado; ao salvar, é gravado um novo arquivo .pptx. As anotações do orador e as animações não são transferidas.',
   redactMenuLabel: 'Ocultar a seleção da IA',
   redactDialogDesc:
     'O conteúdo selecionado continua no documento e no arquivo; o modelo vê apenas o marcador. Dê-lhe um nome para que saiba o que representa.',
@@ -9,7 +11,7 @@ export const pt = {
   redactDialogPlaceholder: 'Nome do marcador, ex.: telefone do cliente',
   redactCancel: 'Cancelar',
   redactInsert: 'Ocultar',
-  redactEnable: 'Clique com o botão direito numa seleção para ocultá-la do modelo.',
+  redactEnable: 'Clique com o botão direito em uma seleção para ocultá-la do modelo.',
 
   appPhPromptTitle: 'Clique para adicionar um título',
   appPhPromptSubtitle: 'Clique para adicionar um subtítulo',
@@ -179,6 +181,9 @@ export const pt = {
   appPrintLandscape: 'Paisagem',
   appPrintFrame: 'Emoldurar slides',
   appPrintHidden: 'Imprimir slides ocultos',
+  appPrintRangeSelected: 'Slides selecionados',
+  appPrintLayoutBlocked:
+    'Folhetos e páginas de anotações são impressos com uma página por folha. Para organizar as páginas, escolha Slides em Página Inteira.',
   appPrintPageCount: '{n} páginas',
   appPrintNoPages: 'Nenhum slide para imprimir',
   appPrintRendering: 'Gerando a visualização…',
@@ -189,6 +194,7 @@ export const pt = {
   appCtxSendToBack: 'Enviar para Trás',
   appCtxBringForward: 'Avançar',
   appCtxSendBackward: 'Recuar',
+  appCtxRotate: 'Girar',
   appCtxRotateLeft90: 'Girar 90° para a Esquerda',
   appCtxRotateRight90: 'Girar 90° para a Direita',
   appCtxFlipH: 'Inverter Horizontalmente',

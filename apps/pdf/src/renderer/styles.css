@@ -83,7 +83,7 @@
   --pdf-shadow-page: 0 1px 4px rgb(0 0 0 / 18%);
   --pdf-shadow-pin: 0 1px 4px rgb(0 0 0 / 30%);
   --pdf-shadow-drop: 0 6px 20px rgb(0 0 0 / 14%), 0 1px 3px rgb(0 0 0 / 8%);
-  --pdf-shadow-composer: 0 6px 30px rgb(0 0 0 / 8%);
+  --pdf-shadow-composer: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 [data-theme='dark'] {
@@ -198,6 +198,7 @@ button {
 .app.pdf-presenting .ai-dock,
 .app.pdf-presenting .pdf-thumbs,
 .app.pdf-presenting .pdf-side-resizer,
+.app.pdf-presenting .pdf-side-reopen,
 .app.pdf-presenting .status-bar,
 .app.pdf-presenting .pdf-search-bar {
   display: none !important;
@@ -776,6 +777,14 @@ button {
   background: var(--border);
 }
 
+/* shortcut beside a menu label (cut / copy / paste pages) */
+.thumb-menu-key {
+  margin-left: auto;
+  padding-left: 24px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* ── Markup context menu (right click on a highlight/underline/strikeout) ── */
 
 .pdf-markup-menu {
@@ -830,18 +839,68 @@ button {
 
 /* ── Markup floating bar for selected text ── */
 
+/* Placed by App.tsx (placeSelectionBar) inside the viewer; above the selection the
+   color row goes on top so the button row keeps its place next to the text */
 .pdf-sel-popup {
   position: fixed;
   z-index: 30;
   display: flex;
-  gap: 2px;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--pdf-shadow-popup);
-  transform: translateX(-50%);
   user-select: none;
+}
+
+.pdf-sel-popup.is-above {
+  flex-direction: column-reverse;
+}
+
+.pdf-sel-popup-row {
+  display: flex;
+  gap: 2px;
+}
+
+/* The color row under (or over) the buttons after an underline, squiggly or strikeout */
+.pdf-sel-colors {
+  display: flex;
+  gap: 6px;
+  padding: 2px 4px;
+}
+
+.pdf-sel-popup .pdf-sel-colors button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background-clip: padding-box;
+}
+
+.pdf-sel-popup .pdf-sel-colors button.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pdf-sel-popup button.pdf-sel-pen {
+  width: 26px;
+}
+
+.pdf-sel-popup button.pdf-sel-pen.is-editing {
+  background: var(--hover);
+}
+
+/* A pen's color picker (right-click on a pen), placed by App.tsx like the bar */
+.pdf-sel-pen-picker {
+  position: fixed;
+  z-index: 31;
+}
+
+.pdf-sel-pen-picker .pdf-color-popover {
+  position: static;
 }
 
 .pdf-sel-popup button {
@@ -1244,6 +1303,38 @@ button {
   cursor: col-resize;
   z-index: 20;
   background: transparent;
+}
+
+/* a closed sidebar leaves this tab on the edge of the page area where the
+ * sidebar sits: one press brings the thumbnails back (the View tab button does
+ * the same). Logical sides, so it follows the sidebar in right-to-left languages. */
+.pdf-side-reopen {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-inline-start: none;
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pdf-side-reopen:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+[dir='rtl'] .pdf-side-reopen svg {
+  transform: scaleX(-1);
 }
 
 .pdf-thumb {
@@ -1681,6 +1772,14 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* The print dialog carries the shared page layout panel: it scrolls inside the view */
+.pdf-modal.pdf-print-dialog {
+  width: 420px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 128px);
+  overflow-y: auto;
 }
 
 .pdf-modal-title {
@@ -2290,6 +2389,25 @@ button {
 .pdf-scroll.pdf-drawing .textLayer {
   user-select: none;
   pointer-events: none;
+}
+
+/* Hand tool: dragging the pane moves the view instead of selecting text
+   (pan-drag.ts); links keep their pointer and still follow on a plain click */
+.pdf-scroll.pdf-hand,
+.pdf-scroll.pdf-hand .pdf-page,
+.pdf-scroll.pdf-hand .textLayer span {
+  cursor: grab;
+}
+
+.pdf-scroll.pdf-hand .textLayer {
+  user-select: none;
+}
+
+/* set by pan-drag.ts for the length of a drag, from either button */
+.pdf-scroll[data-panning],
+.pdf-scroll[data-panning] * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .pdf-draw-shape {
@@ -3234,6 +3352,54 @@ button {
   color: var(--pdf-on-accent);
 }
 
+/* Ink color: the signature's own, apart from the drawing pen */
+.pdf-sign-colors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-sign-colors-label {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.pdf-sign-color {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background-clip: padding-box;
+  cursor: pointer;
+}
+
+.pdf-sign-color.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pdf-sign-color-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.pdf-sign-color-more-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.pdf-sign-color-more-wrap .pdf-color-popover {
+  left: 0;
+  right: auto;
+  z-index: 8;
+}
+
 .pdf-sign-pad {
   border: 1px dashed var(--border-strong);
   border-radius: 6px;
@@ -3517,6 +3683,20 @@ button {
   cursor: default;
 }
 
+.rb-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* Section name inside a ribbon dropdown (the PNG / JPG exports of the converter menu) */
+.rb-menu-heading {
+  padding: 4px 10px 2px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* Dialog color well (stamp dialog): swatch trigger + the shared picker popover.
    The popover is fixed + anchored so it escapes the modal's overflow-y clip. */
 .pdf-color-well-wrap {
@@ -3587,18 +3767,21 @@ button {
   pointer-events: none;
 }
 
+/* Links take no pointer input either: the text under them stays selectable by
+   drag and keeps its right-click menu. LinkLayer.tsx follows a plain click on a
+   link and marks the hovered one (is-hover, data-link-hover on the page). */
 .pdf-link {
   position: absolute;
   border-radius: 2px;
-  pointer-events: auto;
 }
 
-/* Text editing owns page clicks, including text covered by link annotations. */
-.pdf-editing-text .pdf-link {
-  pointer-events: none;
+.pdf-scroll .pdf-page[data-link-hover] .pdf-page-content,
+.pdf-scroll .pdf-page[data-link-hover] .textLayer span,
+.pdf-scroll .pdf-page[data-link-hover] .pdf-ocr-layer span {
+  cursor: pointer;
 }
 
-.pdf-link:hover {
+.pdf-link.is-hover {
   background: var(--pdf-link-hover-bg);
   box-shadow: 0 0 0 1px var(--pdf-link-hover-ring);
 }
@@ -4079,6 +4262,24 @@ button {
 .ai-header-btn:hover {
   background: var(--hover);
   color: var(--text);
+}
+
+/* icon buttons in the composer footer beside the model picker (the MCP server button) */
+.ai-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ai-attach-btn:hover {
+  filter: brightness(0.7);
 }
 
 .ai-chat {
@@ -4930,16 +5131,20 @@ button {
   color: var(--text);
   background: var(--pdf-prop-bg);
   border-bottom: 1px solid var(--border);
-  border-inline-start: 3px solid var(--pdf-ok);
 }
 
-.pdf-sig-banner.warning,
-.pdf-sig-banner.untrusted {
-  border-inline-start-color: var(--pdf-sig-warn);
+.pdf-sig-banner > svg {
+  flex-shrink: 0;
+  color: var(--pdf-ok);
 }
 
-.pdf-sig-banner.invalid {
-  border-inline-start-color: var(--danger);
+.pdf-sig-banner.warning > svg,
+.pdf-sig-banner.untrusted > svg {
+  color: var(--pdf-sig-warn);
+}
+
+.pdf-sig-banner.invalid > svg {
+  color: var(--danger);
 }
 
 .pdf-sig-banner > span {
@@ -4948,6 +5153,24 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Another program changed the open file (issue #405) ── */
+
+.pdf-disk-change-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--pdf-prop-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.pdf-disk-change-bar > span {
+  flex: 1;
+  min-width: 0;
 }
 
 .pdf-sig-dialog {
@@ -4961,17 +5184,7 @@ button {
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--border);
-  border-inline-start: 3px solid var(--pdf-ok);
   border-radius: 8px;
-}
-
-.pdf-sig-card.warning,
-.pdf-sig-card.untrusted {
-  border-inline-start-color: var(--pdf-sig-warn);
-}
-
-.pdf-sig-card.invalid {
-  border-inline-start-color: var(--danger);
 }
 
 .pdf-sig-head {
@@ -5229,6 +5442,22 @@ button {
   flex-wrap: wrap;
 }
 
+.pdf-job-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-job-provider > span {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.pdf-job-provider > select {
+  max-width: 220px;
+}
+
 .pdf-ai-read-paid {
   font-weight: 600;
   color: var(--pdf-sig-warn);
@@ -5243,15 +5472,14 @@ button {
   color: var(--text);
   background: var(--pdf-prop-bg);
   border-bottom: 1px solid var(--border);
-  border-inline-start: 3px solid var(--accent);
 }
 
-.pdf-job-strip.is-done {
-  border-inline-start-color: var(--pdf-ok);
+.pdf-job-strip.is-done .pdf-job-strip-title {
+  color: var(--pdf-ok);
 }
 
-.pdf-job-strip.is-stopped {
-  border-inline-start-color: var(--pdf-sig-warn);
+.pdf-job-strip.is-stopped .pdf-job-strip-title {
+  color: var(--pdf-sig-warn);
 }
 
 .pdf-job-strip-text {
@@ -5320,8 +5548,7 @@ button {
   padding: 10px 12px;
   font-size: 12.5px;
   color: var(--text);
-  border: 1px solid var(--border);
-  border-inline-start: 3px solid var(--pdf-sig-warn);
+  border: 1px solid var(--pdf-sig-warn);
   border-radius: 6px;
 }
 
@@ -5561,10 +5788,20 @@ button {
   white-space: pre-wrap;
 }
 
-.bl-item.bl-linked:hover,
+/* a sentence-linked paragraph reacts per sentence, so it does not light as a whole on hover */
+.bl-item.bl-linked:not(.bl-sentences):hover,
 .bl-item.bl-hover,
 .bl-continued.bl-hover {
   background: var(--accent-soft);
+}
+
+.bl-sent {
+  border-radius: 2px;
+}
+
+.bl-sent.bl-sent-hover {
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .bl-heading {
@@ -5663,6 +5900,14 @@ button {
   box-sizing: border-box;
   border: 2px solid var(--accent);
   border-radius: 2px;
+}
+
+/* the lines of the source sentence whose translation is hovered: same screen-only layer */
+.bl-overlay-sent {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.28;
 }
 
 @media print {
@@ -6210,6 +6455,19 @@ button.ai-overview-term-page:hover {
   animation: pdf-quote-flash 2s ease-out forwards;
 }
 
+/* what the last AI run changed (screen only, like the search hits); the look is the
+   shared .ai-changed-mark */
+.pdf-ai-marks-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pdf-ai-mark {
+  position: absolute;
+}
+
 @keyframes pdf-quote-flash {
   0%,
   70% {
@@ -6695,4 +6953,18 @@ button.ai-overview-term-page:hover {
 .pdf-compare-truncated {
   color: var(--pdf-sig-warn);
   font-size: 0.82em;
+}
+
+/* a page whose probe failed: same frame as a rendered page, an error line instead of a canvas */
+.pdf-page-broken {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--surface);
+  color: var(--danger);
+  font-size: 12px;
 }

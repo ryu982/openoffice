@@ -477,6 +477,7 @@ export const ru = {
   appGridlinesHidden: 'Сетка скрыта.',
   appGridlinesShown: 'Сетка показана.',
   appShowingFormulas: 'Показ формул — переключите снова, чтобы увидеть значения.',
+  appShowingFormulasActive: 'Показываются формулы',
   appShowingValues: 'Показ вычисленных значений.',
   appTraceNoFormula: 'Влияющие ячейки: в активной ячейке нет формулы.',
   appTraceNoRefs: 'Влияющие ячейки: в этой формуле нет ссылок на ячейки.',
@@ -569,6 +570,9 @@ export const ru = {
     'Экспорт в CSV требует полностью загруженной книги — дождитесь завершения загрузки.',
   appCsvExportTooLarge: 'Лист слишком большой для экспорта в CSV.',
   appCsvExportCanceled: 'Экспорт в CSV отменён.',
+  appOdsExported: 'Экспортировано: {path}.',
+  appOdsExportCanceled: 'Экспорт в ODS отменён.',
+  appOdsExportFailed: 'Не удалось экспортировать в ODS.',
   appCsvExported: 'Экспортировано: {path}.',
   appCsvExportedActiveOnly:
     'Файлы CSV содержат только один лист — активный лист «{name}» экспортирован в {path}.',
@@ -606,6 +610,10 @@ export const ru = {
     'В таблице стилей этой книги нет базовой структуры, изменения стилей сохранить нельзя.',
   appSaveErrPackageGuard:
     'Сохранение изменило бы структуру пакета книги — прервано для защиты файла.',
+  appSaveErrSheetNotFound:
+    'Лист, на который ссылается это сохранение, не найден в книге — сохранение остановлено, файл остался без изменений.',
+  appSaveErrSheetNameReused:
+    'Новый лист использует прежнее имя переименованного листа, поэтому сохранить нельзя. Временно дайте новому листу другое имя, сохраните, затем переименуйте его. Файл остался без изменений.',
   appSaveErrChartUnsupported:
     'Этот тип диаграммы не поддерживает такое изменение, сохранение прервано — отмените изменение диаграммы.',
   appSaveErrMoveOverlap:
@@ -718,6 +726,12 @@ export const ru = {
   appSaveAs: 'Сохранить как',
   appUndo: 'Отменить',
   appRedo: 'Вернуть',
+  appQuickAccessCustomize: 'Настроить панель быстрого доступа',
+  appQuickAccessHint: 'Нажмите Alt и цифру, чтобы выполнить кнопку на этой позиции, считая слева.',
+  appQuickAccessMoveEarlier: 'Переместить ближе к началу',
+  appQuickAccessMoveLater: 'Переместить ближе к концу',
+  appQuickAccessReset: 'Вернуть по умолчанию',
+  appQuickAccessFull: 'На панели помещается не более 10 кнопок.',
   appUnsavedEditOne: '● Несохранённых изменений: {count}',
   appUnsavedEditMany: '● Несохранённых изменений: {count}',
   appSavedState: 'Сохранено',
@@ -1180,6 +1194,8 @@ export const ru = {
   appRefreshAll: 'Обновить все',
   appWorkbookNoPivot: 'В книге нет сводных таблиц.',
   appRefreshAllTitle: 'Обновить все сводные таблицы',
+  appQueriesConnections: 'Запросы и подключения',
+  appQueriesConnectionsTitle: 'Показать запросы и подключения к данным книги',
   appErrorCheckingDetail: 'Найти значения ошибок на листе',
   appErrorsFound: 'Ошибок: {count} — в {cell}: {value}',
   appCheckingErrors: 'Идёт поиск ошибок по всему листу…',
@@ -1575,4 +1591,8 @@ export const ru = {
   appSpellUnavailable: 'Проверка орфографии недоступна в этом окне.',
   appSpellReplaceAll: 'Заменить все на «{suggestion}»',
   appSpellChangedAll: 'Исправлено {count} ячеек со словом «{word}».',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'Файл ODS открыт как копия xlsx. При сохранении будет записан файл xlsx.',
+  appOdsFormulasDropped: 'В {count} формулах остались только значения.',
 } satisfies Record<keyof typeof zh, string>

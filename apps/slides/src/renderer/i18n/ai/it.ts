@@ -90,8 +90,6 @@ export const it = {
   aiStopGeneration: 'Interrompi la generazione',
   aiStop: 'Interrompi',
   aiSend: 'Invia',
-  aiSnapshotsTitle: 'Snapshot delle versioni',
-  aiRollback: 'Ripristina',
   aiStarterPolishTitle: 'Migliora il titolo e il testo di questa diapositiva',
   aiStarterTighten: 'Rendi più concisi i punti elenco di questa diapositiva',
   aiStarterProofread: 'Controlla i refusi in tutta la presentazione e correggili',
@@ -244,6 +242,11 @@ export const it = {
   aiTplFontsNotice:
     'I caratteri del modello sono inclusi in questa app. Altri programmi, come PowerPoint, potrebbero mostrare un carattere diverso.',
   aiTplOpenFonts: 'Apri la cartella dei caratteri',
+  aiTplFontsAuto: 'Caratteri: sceglie l’IA',
+  aiTplFontsOne: 'Caratteri: {font}',
+  aiTplFontsTwo: 'Caratteri: titoli {title}, testo {body}',
+  aiTplFontsTemplate: 'Caratteri: quelli del modello scelto',
+  aiTplFontsChange: 'Cambia',
   aiTplDesc_coral: 'Crema e rosa aranciato su fondo quasi nero, con titoli enormi e stretti.',
   aiTplDesc_blue_professional:
     'Sfondo crema con accenti blu cobalto acceso. Pulito, moderno e formale.',

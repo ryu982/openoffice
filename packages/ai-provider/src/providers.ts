@@ -1,8 +1,10 @@
 import { openAiSecrets } from './settings-secrets'
 import { resolveCustomEndpoints } from './custom-endpoints'
+import { aiModelEffortsOf } from './effort'
 import { defaultAiMediaSettings, resolveAiMediaSettings } from './media'
 import { defaultAiSearchSettings, resolveAiSearchSettings } from './search-settings'
 import type {
+  AiProviderConfig,
   AiProviderId,
   AiProviderMeta,
   AiReadUrlSettings,
@@ -38,6 +40,7 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     models: ['opus', 'sonnet', 'haiku'],
     defaultModel: '',
     keyPlaceholder: '',
+    needsCliPath: true,
   },
   {
     id: 'chatgpt',
@@ -64,13 +67,15 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     // current lineup per platform.claude.com models overview (2026-10-27):
     // Sonnet 5.5 (2026-09-28) replaces Sonnet 5 as the speed/intelligence
     // default; it accepts only tool_choice auto/none, which is all this
-    // adapter sends. Fable needs data retention enabled on the org, otherwise
-    // the API answers model_not_available; every other id is served to any key.
+    // adapter sends. Fable 5.2 (2026-11) supersedes 5.1 at a lower price.
+    // Fable needs data retention enabled on the org, otherwise the API
+    // answers model_not_available; every other id is served to any key.
     models: [
       'claude-opus-5-5',
       'claude-sonnet-5-5',
-      'claude-fable-5-1',
+      'claude-fable-5-2',
       'claude-haiku-5-5',
+      'claude-fable-5-1',
       'claude-sonnet-5',
       'claude-opus-5',
       'claude-fable-5',
@@ -270,6 +275,16 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'up_...',
   },
   {
+    id: 'exaone',
+    label: 'EXAONE',
+    // LG AI Research's API (docs.exaone.ai): GET api.exaone.ai/v1/models lists
+    // this one id (2026-11-10), and it answered a tool call, a streamed tool
+    // call and the turn after a tool result. Text only, 512K context.
+    models: ['k-exaone_v2.5'],
+    defaultModel: 'k-exaone_v2.5',
+    keyPlaceholder: 'sk-...',
+  },
+  {
     id: 'openrouter',
     label: 'OpenRouter',
     // vendor-prefixed slugs exactly as openrouter.ai/api/v1/models lists them —
@@ -277,6 +292,7 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     models: [
       'openrouter/auto',
       'anthropic/claude-opus-5.5',
+      'anthropic/claude-fable-5.2',
       'anthropic/claude-sonnet-5',
       'openai/gpt-6-astra',
       'openai/gpt-6-sol',
@@ -402,6 +418,46 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'sk-...',
   },
   {
+    id: 'siliconflow',
+    label: 'SiliconFlow',
+    // Lab-namespaced ids exactly as the pricing page and GET
+    // api.siliconflow.cn/v1/models (type=text&sub_type=chat) list them
+    // (2026-11-02); the rest of the catalog works as-is when typed in, and a
+    // Pro/<id> prefix selects the accelerated serving. OpenAI-compatible
+    // /chat/completions; docs: https://api-docs.siliconflow.cn. The CN and
+    // global platforms (api.siliconflow.com) do not share keys or base URLs.
+    models: [
+      'deepseek-ai/DeepSeek-V4.1-Flash',
+      'deepseek-ai/DeepSeek-V4-Pro',
+      'deepseek-ai/DeepSeek-V3.2',
+      'zai-org/GLM-5.3',
+      'zai-org/GLM-5.3-Flash',
+      'moonshotai/Kimi-K2.7-Code',
+      'Qwen/Qwen3.8-27B',
+    ],
+    defaultModel: 'deepseek-ai/DeepSeek-V4-Pro',
+    keyPlaceholder: 'sk-...',
+  },
+  {
+    id: 'ppio',
+    label: 'PPIO',
+    // Lowercase lab-namespaced ids exactly as GET <base>/models lists them for
+    // the OpenAI-compatible endpoint (2026-11-02); the rest of the catalog
+    // works as-is when typed in. Docs: https://ppio.com/docs/model/llm — the
+    // official SDK base_url is https://api.ppio.com/openai, so the chat
+    // endpoint rides /openai/v1.
+    models: [
+      'deepseek/deepseek-v4.1-flash',
+      'deepseek/deepseek-v4-pro',
+      'moonshotai/kimi-k3',
+      'zai-org/glm-5.3',
+      'qwen/qwen3.8-max',
+      'minimax/minimax-m3.1-flash',
+    ],
+    defaultModel: 'deepseek/deepseek-v4.1-flash',
+    keyPlaceholder: 'sk-...',
+  },
+  {
     id: 'opencode-zen',
     label: 'OpenCode Zen',
     // Pay-as-you-go gateway (opencode.ai/docs/zen); ids exactly as GET
@@ -412,6 +468,7 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
       'claude-sonnet-5',
       'claude-opus-5-5',
       'claude-opus-5',
+      'claude-fable-5-2',
       'claude-fable-5-1',
       'claude-haiku-5-5',
       'gemini-3.7-flash',
@@ -458,6 +515,37 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     ],
     defaultModel: 'kimi-k2.7-code',
     keyPlaceholder: 'API Key',
+  },
+  {
+    id: 'commandcode',
+    label: 'Command Code',
+    // Coding-plan gateway (commandcode.ai/docs/provider): one key serves
+    // OpenAI Chat Completions and Anthropic Messages at
+    // api.commandcode.ai/provider/v1; every plan except the $1 Go tier has
+    // API access (GOAT = $10/month). Vendor-prefixed ids exactly as the CLI
+    // model reference lists them (2026-11-03); the rest of the catalog works
+    // as-is when typed in. Claude ids answer only on /v1/messages, so they
+    // ride the Anthropic route. GPT-5.4+/6 call tools only over the Responses
+    // API, which this route does not take, so GPT and Grok stay out as on the
+    // OpenCode tiers.
+    models: [
+      'zai-org/GLM-5.3',
+      'zai-org/GLM-5.2',
+      'deepseek/deepseek-v4-pro',
+      'deepseek/deepseek-v4.1-flash',
+      'deepseek/deepseek-v4-flash',
+      'moonshotai/Kimi-K2.7-Code',
+      'moonshotai/Kimi-K3',
+      'Qwen/Qwen3.8-Max',
+      'Qwen/Qwen3.8-27B',
+      'MiniMaxAI/MiniMax-M3',
+      'minimax/minimax-m3.1-flash',
+      'tencent/hy3-paid',
+      'google/gemini-3.8-flash',
+      'google/gemini-3.7-flash',
+    ],
+    defaultModel: 'zai-org/GLM-5.3',
+    keyPlaceholder: 'CMD API key',
   },
   {
     id: 'custom',
@@ -594,6 +682,107 @@ export function sanitizeMeteredAccepted(stored: unknown): Record<AiSubscriptionC
 }
 
 /**
+ * The vendor CLIs turned off in this app (decision 0114), or undefined when
+ * none is. Only a literal `true` under a CLI id turns one off: anything else
+ * (absent, `false`, a ChatGPT entry, a string) leaves it on, so a damaged
+ * value never stops a provider the person did not turn off.
+ */
+export function sanitizeSubscriptionOff(
+  stored: unknown,
+): Partial<Record<AiSubscriptionCliId, true>> | undefined {
+  if (!isRecord(stored)) return undefined
+  const off: Partial<Record<AiSubscriptionCliId, true>> = {}
+  for (const id of AI_SUBSCRIPTION_CLIS) if (stored[id] === true) off[id] = true
+  return Object.keys(off).length > 0 ? off : undefined
+}
+
+/**
+ * `next` with the CLIs turned off as `stored` has them. Only the switch on the
+ * Settings card changes them: a window that saves a copy it read earlier
+ * neither turns a CLI back on nor off.
+ */
+export function withStoredSubscriptionOff(next: AiSettings, stored: AiSettings): AiSettings {
+  const { subscriptionOff: _sent, ...settings } = next
+  return stored.subscriptionOff
+    ? { ...settings, subscriptionOff: stored.subscriptionOff }
+    : settings
+}
+
+/** Every top-level field this build reads, with the pre-provider ones it migrates */
+const KNOWN_SETTINGS_FIELDS: Record<keyof AiSettings | keyof LegacyAiSettings, true> = {
+  provider: true,
+  providers: true,
+  customEndpoints: true,
+  customEndpoint: true,
+  media: true,
+  search: true,
+  readUrl: true,
+  maxOutputTokens: true,
+  meteredAccepted: true,
+  subscriptionOff: true,
+  headlessSubscriptionEnabled: true,
+  headlessSubscriptionConsentVersion: true,
+  subscriptionNoticeSeen: true,
+  subscriptionNoticeVersion: true,
+  pdfSendNoticeSeen: true,
+  internetTools: true,
+  apiKey: true,
+  model: true,
+  baseUrl: true,
+}
+
+/** Every field of a provider config this build reads */
+const KNOWN_PROVIDER_FIELDS: Record<keyof AiProviderConfig, true> = {
+  apiKey: true,
+  model: true,
+  baseUrl: true,
+  cliPath: true,
+  models: true,
+  effort: true,
+  modelEfforts: true,
+}
+
+/** The fields of `stored` this build does not know and `next` does not carry */
+function unknownFieldsOf(
+  stored: unknown,
+  known: Readonly<Record<string, true>>,
+  next: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!isRecord(stored)) return {}
+  return Object.fromEntries(
+    Object.entries(stored).filter(([key]) => !Object.hasOwn(known, key) && !(key in next)),
+  )
+}
+
+/**
+ * `next` with the fields of the settings file that this build does not know put
+ * back, at the top and in each provider config `next` carries. A newer build or
+ * another program wrote them, and a save here must not erase them. They come
+ * from the file as it is on disk (a sealed value stays sealed) and never from a
+ * renderer, whose payload the IPC guard has already reduced to known fields.
+ * Provider configs under an id this build does not know are still dropped.
+ */
+export function withStoredUnknownFields<T>(next: T, stored: unknown): T {
+  if (!isRecord(next) || !isRecord(stored)) return next
+  const merged: Record<string, unknown> = {
+    ...next,
+    ...unknownFieldsOf(stored, KNOWN_SETTINGS_FIELDS, next),
+  }
+  if (isRecord(next.providers) && isRecord(stored.providers)) {
+    const storedProviders = stored.providers
+    merged.providers = Object.fromEntries(
+      Object.entries(next.providers).map(([id, config]) => [
+        id,
+        isRecord(config)
+          ? { ...config, ...unknownFieldsOf(storedProviders[id], KNOWN_PROVIDER_FIELDS, config) }
+          : config,
+      ]),
+    )
+  }
+  return merged as T
+}
+
+/**
  * The read_url slot when it carries a usable token; anything else (absent,
  * not an object, a non-string or blank token) means public pages only.
  */
@@ -624,6 +813,11 @@ const RETIRED_MODELS: Partial<Record<AiProviderId, Record<string, string>>> = {
   glm: { 'glm-5-turbo': 'glm-5.3-flash' },
   // deprecated 2026-10-08; Google routes its requests to 3.8 Flash
   gemini: { 'gemini-3.7-flash': 'gemini-3.8-flash' },
+  // the free variant OpenRouter withdrew (gone from its list since 2026-11-02);
+  // the next tested free model, so a free connection stays free
+  openrouter: {
+    'nvidia/nemotron-3-super-120b-a12b:free': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+  },
 }
 
 /**
@@ -702,20 +896,28 @@ function mergeProviderConfigs(
   return merged
 }
 
-/** pasted keys/URLs/model ids often carry stray whitespace, which turns into a 401 with a valid key */
+/**
+ * Each provider config with only the fields this build knows, typed as it types
+ * them: a field a newer build added stays in the file (withStoredUnknownFields)
+ * but never reaches a renderer, whose IPC schema rejects it. Pasted keys, URLs
+ * and model ids often carry stray whitespace, which turns into a 401 with a
+ * valid key, so they are trimmed.
+ */
 function trimConfigs(providers: Record<string, unknown>): AiSettings['providers'] {
   const trimmed: Record<string, unknown> = {}
   for (const [id, config] of Object.entries(providers)) {
     if (!isRecord(config)) continue
-    const { models: rawModels, ...rest } = config
-    const models = listedModelsOf(rawModels)
+    const models = listedModelsOf(config.models)
+    // a level this build does not know, from a newer build or a hand edit, is never listed
+    const modelEfforts = aiModelEffortsOf(config.modelEfforts)
     trimmed[id] = {
-      ...rest,
+      ...(typeof config.effort === 'string' ? { effort: config.effort } : {}),
       apiKey: str(config.apiKey),
       model: str(config.model),
       ...(config.baseUrl !== undefined ? { baseUrl: str(config.baseUrl) } : {}),
       ...(config.cliPath !== undefined ? { cliPath: str(config.cliPath) } : {}),
       ...(models ? { models } : {}),
+      ...(modelEfforts ? { modelEfforts } : {}),
     }
   }
   return trimmed as AiSettings['providers']
@@ -742,6 +944,9 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
   const settings = (isRecord(stored) ? openAiSecrets(stored) : {}) as Partial<AiSettings> &
     LegacyAiSettings
   const readUrl = readUrlSettingsOf(settings.readUrl ?? defaults.readUrl)
+  const subscriptionOff = sanitizeSubscriptionOff(
+    settings.subscriptionOff ?? defaults.subscriptionOff,
+  )
   const storedProviders = isRecord(settings.providers) ? settings.providers : undefined
   if (!storedProviders) {
     if (settings.apiKey) {
@@ -751,7 +956,12 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
         baseUrl: str(settings.baseUrl) || 'https://api.openai.com/v1',
       }
     }
-    return resolveCustomEndpoints(readUrl ? { ...defaults, readUrl } : defaults)
+    // a CLI turned off stays off even here: losing it would start a program the person stopped
+    return resolveCustomEndpoints({
+      ...defaults,
+      ...(readUrl ? { readUrl } : {}),
+      ...(subscriptionOff ? { subscriptionOff } : {}),
+    })
   }
   return resolveCustomEndpoints({
     provider: settings.provider ?? defaults.provider,
@@ -766,6 +976,7 @@ export function resolveAiSettings(stored: unknown, defaults: AiSettings): AiSett
     media: resolveAiMediaSettings(settings.media ?? defaults.media),
     search: resolveAiSearchSettings(settings.search ?? defaults.search),
     meteredAccepted: sanitizeMeteredAccepted(settings.meteredAccepted ?? defaults.meteredAccepted),
+    ...(subscriptionOff ? { subscriptionOff } : {}),
     headlessSubscriptionEnabled: headlessSubscriptionOn({
       headlessSubscriptionEnabled:
         settings.headlessSubscriptionEnabled ?? defaults.headlessSubscriptionEnabled,

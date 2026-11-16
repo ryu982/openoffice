@@ -310,6 +310,26 @@ describe('the run lifecycle on disk', () => {
     expect(stored()).toMatchObject({ restoreRun: false, tabs: [] })
   })
 
+  it('a restore run leaves out the tabs declined for a turned-off editor (not asked again)', () => {
+    seed(
+      record({
+        tabs: [
+          { kind: 'docs', title: 'a.docx', filePath: 'C:\\a.docx' },
+          { kind: 'slides', title: 'b.pptx', filePath: 'C:\\b.pptx' },
+          { kind: 'hwp', title: 'c.hwp', filePath: 'C:\\c.hwp' },
+        ],
+        active: 2,
+        split: { a: 0, b: 1, orientation: 'side', ratio: 0.5, focus: 'b' },
+      }),
+    )
+    const restore = recorder()
+    restore.startRun({ restoreRun: true, dropTabs: new Set([1]) })
+    expect(stored().tabs.map((tab) => tab.title)).toEqual(['a.docx', 'c.hwp'])
+    expect(stored().active).toBe(1)
+    expect(stored().split).toBeUndefined()
+    restore.dispose()
+  })
+
   it('updates before the run starts are dropped', () => {
     const run = recorder()
     run.update({ tabs: [{ kind: 'docs', title: 'a.docx', filePath: 'C:\\a.docx' }] })

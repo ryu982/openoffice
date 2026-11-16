@@ -242,6 +242,41 @@
   color: var(--hwp-error);
 }
 
+/* Edits a run left undone, under its reply */
+.ai-unfinished {
+  align-self: stretch;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--hwp-error-border);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--hwp-error);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ai-unfinished-summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-unfinished-summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--hwp-focus-ring);
+  border-radius: 4px;
+}
+
+.ai-unfinished-note {
+  margin: 6px 0 4px;
+  color: var(--color-text-primary);
+}
+
+.ai-unfinished-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-text-primary);
+}
+
 .ai-md p,
 .ai-md ul,
 .ai-md ol {
@@ -781,7 +816,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-16);
   background: var(--color-bg-page);
-  box-shadow: 0 6px 30px var(--hwp-shadow-soft);
+  box-shadow: 0 1px 3px var(--hwp-shadow-soft);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -884,7 +919,7 @@
 
 .ai-retry-btn {
   border: 1px solid var(--hwp-error-border);
-  border-radius: 4px;
+  border-radius: var(--radius-6);
   background: none;
   padding: 1px 8px;
   font-size: 12px;
@@ -894,160 +929,6 @@
 
 .ai-retry-btn:hover {
   background: var(--hwp-error-bg);
-}
-
-/* ---- what a run changed in the document, and the button that takes it back ---- */
-
-.ai-changes {
-  margin-top: 8px;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-8);
-  background: var(--color-bg-subtle);
-  font-size: 12px;
-}
-
-.ai-changes-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px 6px 10px;
-}
-
-.ai-changes-title {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-.ai-changes-revert {
-  flex: none;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  padding: 2px 10px;
-  font-size: 12px;
-  color: var(--color-text-primary);
-  cursor: pointer;
-}
-
-.ai-changes-revert:hover:not(:disabled) {
-  background: var(--hover);
-}
-
-.ai-changes-revert:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.ai-changes-revert:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* takes the marks of the changes off the pages: quieter than undo, right before it */
-.ai-changes-unmark {
-  flex: none;
-  margin-left: auto;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  padding: 2px 6px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.ai-changes-unmark:hover {
-  background: var(--hover);
-  color: var(--color-text-primary);
-}
-
-.ai-changes-unmark:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.ai-changes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 180px;
-  margin: 0;
-  padding: 0 10px 8px;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.ai-change {
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-/* a change that can be shown in the document: the whole line is the button */
-.ai-change-go {
-  display: block;
-  width: calc(100% + 8px);
-  margin: 0 -4px;
-  padding: 1px 4px;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  line-height: inherit;
-  text-align: start;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.ai-change-go:hover {
-  background: var(--hover);
-}
-
-.ai-change-go:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.ai-change-from {
-  color: var(--color-text-tertiary);
-  text-decoration: line-through;
-}
-
-.ai-change-to {
-  color: var(--color-text-primary);
-  text-decoration: none;
-}
-
-.ai-change-field {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-.ai-change-mark {
-  margin-inline-end: 6px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-.ai-change-arrow {
-  margin: 0 6px;
-  color: var(--color-text-tertiary);
-}
-
-.ai-change-count {
-  margin-inline-start: 6px;
-  color: var(--color-text-tertiary);
-}
-
-.ai-changes-reverted .ai-changes-list {
-  opacity: 0.55;
-}
-
-.ai-changes-note {
-  padding: 0 10px 8px;
-  line-height: 1.5;
-  color: var(--hwp-error);
 }
 
 /* chat attachments: the same rules as the other editors' panels */
@@ -1221,8 +1102,8 @@
 
 .ai-attach-notice {
   margin-bottom: 7px;
-  font-size: 11.5px;
-  color: var(--hx-error);
+  font-size: 12px;
+  color: var(--hwp-error);
 }
 
 .ai-panel-dragover {
@@ -1243,7 +1124,7 @@
   padding: 3px 10px;
   border-radius: var(--radius-30);
   background: var(--accent-soft);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--accent-dark);
   font-weight: 500;
 }
@@ -1282,7 +1163,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-8);
   background: var(--color-bg-page);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--color-text-secondary);
   max-height: 96px;
@@ -1388,7 +1269,7 @@
   border: 1px solid var(--danger-border);
   border-radius: var(--radius-8);
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--hwp-error);
   font-size: var(--text-caption);
   line-height: 1.45;
 }
@@ -1405,7 +1286,7 @@
 
 .memo-list-error {
   padding: 8px 4px;
-  color: var(--danger);
+  color: var(--hwp-error);
   font-size: var(--text-caption);
 }
 
@@ -1434,7 +1315,6 @@
 .memo-card.selected {
   border-color: var(--accent);
   background: var(--hover);
-  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .memo-card-select {
@@ -1483,7 +1363,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-6);
   color: var(--color-text-secondary);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .memo-card-text {
@@ -1496,15 +1376,14 @@
 }
 
 .memo-card-empty {
-  color: var(--color-text-tertiary);
-  font-style: italic;
+  color: var(--color-text-secondary);
 }
 
 .memo-card-reason {
   display: block;
   margin-top: 4px;
-  color: var(--color-text-tertiary);
-  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -1516,11 +1395,11 @@
 
 .memo-card-button {
   padding: 3px 8px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .memo-card-delete {
-  color: var(--danger);
+  color: var(--hwp-error);
 }
 
 .memo-button {

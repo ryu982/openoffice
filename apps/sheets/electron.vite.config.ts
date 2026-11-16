@@ -17,6 +17,7 @@ export default defineConfig({
           '@genoffice/file-parse',
           '@genoffice/font-metrics',
           '@genoffice/electron-utils',
+          '@genoffice/print-layout',
           '@genoffice/i18n',
           '@genoffice/pptx-render',
           '@genoffice/ui',

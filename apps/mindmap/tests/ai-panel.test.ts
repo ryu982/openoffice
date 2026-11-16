@@ -17,6 +17,7 @@ import {
 } from '@genoffice/ai-provider'
 import type { SubscriptionStatusMap } from '@genoffice/ai-provider/browser'
 import { PRODUCT_NAME, UPSTREAM_PRODUCT_NAME, type Lang } from '@genoffice/i18n'
+import { DEFAULT_AI_PANEL_PREFS, applyAiPanelPrefs, type AiPanelPrefs } from '@genoffice/ui'
 import App from '../src/renderer/App'
 import { LocaleProvider } from '../src/renderer/i18n/locale'
 import { AiPanel, type MindmapAiRequest, type MindmapAiRunStart } from '../src/renderer/ai/AiPanel'
@@ -193,6 +194,15 @@ async function sendMessage(text: string): Promise<void> {
   await settle(16)
 }
 
+/** the titles of the topics on the sheet on screen that carry the AI's mark */
+const markedTitles = (): string[] =>
+  [...container.querySelectorAll<HTMLElement>('.mm-sheet-host:not([hidden]) me-tpc.mm-ai-changed')]
+    .map((topic) => topic.querySelector('.text')?.textContent ?? topic.textContent ?? '')
+    .sort()
+
+/** the cards under the replies of runs that changed the map */
+const cards = (): HTMLElement[] => [...container.querySelectorAll<HTMLElement>('.ai-run-changes')]
+
 /** the titles of the topics drawn on the sheet on screen, in the order of the page (sides first) */
 const drawnTitles = (): string[] =>
   [...container.querySelectorAll<HTMLElement>('.mm-sheet-host:not([hidden]) me-tpc')].map(
@@ -200,7 +210,7 @@ const drawnTitles = (): string[] =>
   )
 
 describe('the AI button and panel', () => {
-  it('sits at the far end of the toolbar and opens the panel at the right of the map', async () => {
+  it('sits at the far end of the toolbar and opens the panel beside the map', async () => {
     const bytes = await (await documentOf(plainSheet())).save()
     await mountApp(
       fakeApi({ pending: 'C:/maps/a.xmind', bytes, statuses: statusMap('ready', 'ready') }),
@@ -209,14 +219,69 @@ describe('the AI button and panel', () => {
     expect(button).not.toBeNull()
     expect(button!.textContent).toContain('AI')
     const stage = container.querySelector('.mm-stage')!
-    // the dock is the last thing in the stage: the right end
+    // the dock is the last thing in the stage; ai-panel.css puts it on the chosen side
     expect(stage.lastElementChild?.classList.contains('ai-dock')).toBe(true)
-    // the theme panel and the AI panel take turns on that side
+    // the theme panel and the AI panel take turns
     act(() => container.querySelector<HTMLButtonElement>('[data-action="theme"]')!.click())
     expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(true)
     act(() => button!.click())
     expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(false)
     expect(container.querySelector('.mm-theme-panel')).toBeNull()
+  })
+})
+
+describe('the panel side (Settings → General → AI sidebar position)', () => {
+  afterEach(() => applyAiPanelPrefs({}))
+
+  /** drags the resizer to `clientX` and lets go; the panel stores the width it ends at */
+  function dragResizerTo(clientX: number): void {
+    const resizer = container.querySelector<HTMLElement>('.copilot .ai-panel-resizer')!
+    resizer.setPointerCapture = () => {}
+    act(() => {
+      resizer.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 0 }))
+    })
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX }))
+      window.dispatchEvent(new MouseEvent('pointerup', { clientX }))
+    })
+  }
+
+  it('moves from the panel header and measures a drag from the chosen edge', async () => {
+    vi.stubGlobal('innerWidth', 1200)
+    const bytes = await (await documentOf(plainSheet())).save()
+    const fake = fakeApi({
+      pending: 'C:/maps/a.xmind',
+      bytes,
+      statuses: statusMap('ready', 'ready'),
+    })
+    const setAiPanelPrefs = vi.fn(async (patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs> => ({
+      ...DEFAULT_AI_PANEL_PREFS,
+      ...patch,
+    }))
+    Object.assign(fake.api, { setAiPanelPrefs })
+    await mountApp(fake)
+    expect(container.querySelector('.ai-dock')!.classList.contains('collapsed')).toBe(false)
+
+    // the default side is the left: the header offers the right, and a drag measures from the left edge
+    const move = container.querySelector<HTMLButtonElement>('.ai-panel-side-button')!
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the right')
+    dragResizerTo(400)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('400')
+
+    await act(async () => move.click())
+    await settle()
+    expect(setAiPanelPrefs).toHaveBeenCalledWith({ side: 'right' })
+    expect(document.documentElement.dataset.aiPanelSide).toBe('right')
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the left')
+    // on the right the panel grows leftwards: 1200 - 750
+    dragResizerTo(750)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('450')
+
+    // a change made in Settings reaches an open map the same way
+    act(() => applyAiPanelPrefs({ side: 'left' }))
+    expect(move.getAttribute('aria-label')).toBe('Move AI panel to the right')
+    dragResizerTo(300)
+    expect(localStorage.getItem('mindmap-ai-panel-width')).toBe('300')
   })
 })
 
@@ -252,6 +317,42 @@ describe('a run', () => {
     expect(request.system).not.toContain(UPSTREAM_PRODUCT_NAME)
     // the map reaches the model as data, marked as such
     expect(request.system).toMatch(/never instructions/)
+
+    // the line format and relationships: the edits, their values, and what stays the user's
+    const editTool = request.tools.find((tool) => tool.name === 'edit_map') as unknown as {
+      description: string
+      inputSchema: { properties: { edits: { items: { properties: Record<string, unknown> } } } }
+    }
+    const fields = editTool.inputSchema.properties.edits.items.properties
+    expect((fields.op as { enum: string[] }).enum).toEqual(
+      expect.arrayContaining([
+        'set_line',
+        'set_relationship_style',
+        'set_summary_style',
+        'set_boundary_style',
+        'add_relationship',
+        'delete_relationship',
+      ]),
+    )
+    for (const field of ['shape', 'begin', 'end', 'width', 'pattern', 'fill', 'fromId', 'toId']) {
+      expect(fields).toHaveProperty(field)
+    }
+    expect(editTool.description).toContain('curve|straight|elbow|roundedElbow|arrowedCurve|none')
+    expect(editTool.description).toContain('curved|straight|angled|zigzag')
+    expect(editTool.description).toContain(
+      'none|normal|spearhead|triangle|dot|square|diamond|herringbone',
+    )
+    expect(editTool.description).toContain('curly|angle|square|round|bracket|sharp|fold|straight')
+    expect(editTool.description).toContain(
+      'rect|roundedRect|scallops|waves|tension|polygon|roundedPolygon',
+    )
+    expect(editTool.description).toContain('solid|dash|dot|dash-dot|dash-dot-dot|round-dot')
+    expect(editTool.description).not.toMatch(/org\.xmind/)
+    expect(request.system).toMatch(/set_line/)
+    expect(request.system).toMatch(/cannot make or delete boundaries/)
+    expect(request.system).not.toMatch(
+      /the editor does not show \(floating topics, callouts, boundaries/,
+    )
   })
 
   it('applies an edit batch from the model as one step: Ctrl+Z takes it back', async () => {
@@ -286,8 +387,13 @@ describe('a run', () => {
     expect(toolResult).toContain('2 of 3 edit(s) applied')
     expect(toolResult).toContain('FAILED')
     expect(drawnTitles()).toEqual(expect.arrayContaining(['From the AI', 'Below it']))
-    // the turn's undo point is listed
-    expect(container.querySelector('[data-action="ai-turn-undo"]')).not.toBeNull()
+    // the run's card sits under its last reply, with the topics it added; they are marked on the map
+    expect(cards()).toHaveLength(1)
+    const card = cards()[0]!
+    expect(card.closest('.ai-msg-assistant')?.textContent).toContain('Added two topics')
+    expect(card.dataset.state).toBe('applied')
+    expect(card.textContent).toContain('Changes made to the document: 2')
+    expect(markedTitles()).toEqual(['Below it', 'From the AI'])
 
     await act(async () => {
       document.body.dispatchEvent(
@@ -315,13 +421,114 @@ describe('a run', () => {
     expect(container.querySelectorAll('.mm-sheet-host')).toHaveLength(2)
     expect(drawnTitles().sort()).toEqual(['Ideas', 'First', 'Second'].sort())
 
+    // the whole written sheet is new: every topic of it is marked
+    expect(markedTitles()).toEqual(['First', 'Ideas', 'Second'])
+    expect(cards()[0]!.textContent).toContain('Changes made to the document: 3')
+
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-action="ai-turn-undo"]')!.click()
+      container.querySelector<HTMLButtonElement>('[data-action="ai-changes-revert"]')!.click()
     })
     await settle()
     expect(container.querySelectorAll('.mm-sheet-host')).toHaveLength(1)
     expect(drawnTitles().sort()).toEqual(['Center', 'One', 'Two'].sort())
-    expect(container.querySelector('[data-action="ai-turn-undo"]')).toBeNull()
+    // the card stays as a record of the run, taken back
+    expect(cards()[0]!.dataset.state).toBe('reverted')
+    expect(cards()[0]!.textContent).toContain('Changes undone')
+    expect(container.querySelector('[data-action="ai-changes-revert"]')).toBeNull()
+  })
+
+  it('marks only the last run, hides the marks on request, and takes later runs back with an earlier one', async () => {
+    const sheet = plainSheet()
+    const bytes = await (await documentOf(sheet)).save()
+    const rootId = sheet.rootTopic.id
+    const [one, two] = sheet.rootTopic.children!.attached!
+    const fake = fakeApi({
+      pending: 'C:/maps/a.xmind',
+      bytes,
+      statuses: statusMap('ready', 'ready'),
+      reply: (_request, nth) => {
+        if (nth === 1)
+          return toolCall('edit_map', {
+            edits: [{ op: 'set_title', id: one!.id, title: 'First run' }],
+          })
+        if (nth === 3) {
+          return toolCall('edit_map', {
+            edits: [
+              { op: 'add', parentId: rootId, title: 'Second run' },
+              { op: 'set_title', id: two!.id, title: 'Also second' },
+            ],
+          })
+        }
+        if (nth === 5) return [{ type: 'delta', text: 'Nothing to change.' }, { type: 'done' }]
+        return [{ type: 'delta', text: `Done ${nth}.` }, { type: 'done' }]
+      },
+    })
+    await mountApp(fake)
+    await sendMessage('rename one')
+    expect(markedTitles()).toEqual(['First run'])
+    await sendMessage('add one and rename two')
+    // the new run's marks replace the last run's; only the newest card offers to hide them
+    expect(markedTitles()).toEqual(['Also second', 'Second run'])
+    expect(cards()).toHaveLength(2)
+    expect(cards()[0]!.querySelector('[data-action="ai-changes-unmark"]')).toBeNull()
+    expect(cards()[1]!.textContent).toContain('Changes made to the document: 2')
+    // the earlier card says the later run goes back with it
+    expect(
+      cards()[0]!.querySelector('[data-action="ai-changes-revert"]')!.getAttribute('title'),
+    ).toBe('Undo this turn and every AI turn after it')
+    expect(
+      cards()[1]!.querySelector('[data-action="ai-changes-revert"]')!.getAttribute('title'),
+    ).toBe('Undo everything the AI changed in this turn')
+
+    act(() =>
+      cards()[1]!.querySelector<HTMLButtonElement>('[data-action="ai-changes-unmark"]')!.click(),
+    )
+    expect(markedTitles()).toEqual([])
+    expect(cards()[1]!.querySelector('[data-action="ai-changes-unmark"]')).toBeNull()
+    // hiding the marks keeps the changes
+    expect(drawnTitles()).toEqual(
+      expect.arrayContaining(['First run', 'Second run', 'Also second']),
+    )
+
+    await act(async () => {
+      cards()[0]!.querySelector<HTMLButtonElement>('[data-action="ai-changes-revert"]')!.click()
+    })
+    await settle()
+    expect(drawnTitles().sort()).toEqual(['Center', 'One', 'Two'].sort())
+    expect(cards().map((card) => card.dataset.state)).toEqual(['reverted', 'reverted'])
+
+    // a run that changes nothing has no card, and a new run takes the marks off
+    await sendMessage('look only')
+    expect(cards()).toHaveLength(2)
+  })
+
+  it('a new run and a new chat take the marks off', async () => {
+    const sheet = plainSheet()
+    const bytes = await (await documentOf(sheet)).save()
+    const [one] = sheet.rootTopic.children!.attached!
+    const fake = fakeApi({
+      pending: 'C:/maps/a.xmind',
+      bytes,
+      statuses: statusMap('ready', 'ready'),
+      reply: (_request, nth) =>
+        nth === 1 || nth === 4
+          ? toolCall('edit_map', {
+              edits: [{ op: 'set_title', id: one!.id, title: nth === 1 ? 'Marked' : 'Again' }],
+            })
+          : [{ type: 'delta', text: 'Done.' }, { type: 'done' }],
+    })
+    await mountApp(fake)
+    await sendMessage('rename one')
+    expect(markedTitles()).toEqual(['Marked'])
+    await sendMessage('just talk')
+    expect(markedTitles()).toEqual([])
+    expect(cards()).toHaveLength(1)
+
+    await sendMessage('rename it again')
+    expect(markedTitles()).toEqual(['Again'])
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="New chat"]')!.click())
+    expect(markedTitles()).toEqual([])
+    expect(cards()).toHaveLength(0)
   })
 
   it('fills a new untitled map and names its tab from the request', async () => {

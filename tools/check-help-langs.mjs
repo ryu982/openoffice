@@ -42,7 +42,7 @@ function topicIdsFrom(source) {
 
 /**
  * The languages the manual has to ship, read from the i18n package rather than
- * listed here: a hand-kept copy of the 21 codes is a 21-code list that goes
+ * listed here: a hand-kept copy of the 22 codes is a 22-code list that goes
  * stale the day a language is added, and the failure is silent.
  *
  * `@genoffice/i18n` exports its TypeScript source, so node cannot import it

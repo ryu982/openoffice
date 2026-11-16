@@ -104,18 +104,30 @@ export async function attachPicture(
 /** `generate_image`: one AI illustration, put on the topic by the tool itself. */
 export async function generateImage(
   host: MapAiHost,
-  input: { sheet?: unknown; topicId?: unknown; prompt?: unknown; aspectRatio?: unknown },
+  input: {
+    sheet?: unknown
+    topicId?: unknown
+    prompt?: unknown
+    aspectRatio?: unknown
+    model?: unknown
+  },
   turn: MapTurn | null,
   signal?: AbortSignal,
 ): Promise<MapToolResult> {
   const prompt = String(input.prompt ?? '').trim()
   if (!prompt) return fail('prompt must not be empty')
   const aspectRatio = String(input.aspectRatio ?? '').trim()
+  const model = String(input.model ?? '').trim()
   const generated = await window.mindmapApi.generateImage({
     prompt,
     ...(aspectRatio ? { aspectRatio } : {}),
+    ...(model ? { model } : {}),
   })
   if (signal?.aborted) return fail('stopped by the user; the picture was not inserted')
   if (!generated.url) return fail(generated.error ?? 'image generation failed')
-  return attachPicture(host, input, generated.url, turn, signal)
+  const attached = await attachPicture(host, input, generated.url, turn, signal)
+  // the shared tool's remark (e.g. Codex picked the image model) reaches the model
+  return generated.note
+    ? { ...attached, output: `${attached.output}\nNote: ${generated.note}` }
+    : attached
 }

@@ -69,6 +69,7 @@ describe('the mind map strings', () => {
     'ms',
     'he',
     'hi',
+    'tr',
     "'zh-TW'",
   ]
   const KEYS = [

@@ -12,7 +12,7 @@ Editor e-book membuka buku EPUB (`.epub`) di sebuah tab. Anda bisa membaca buku,
 
 ## Membaca
 
-- Panel **Daftar isi** di sebelah kiri menampilkan daftar isi buku. Klik sebuah entri untuk menuju ke sana. Buku yang tidak punya daftar isi mendapat daftar babnya sebagai gantinya.
+- Panel **Daftar isi** di sebelah kiri menampilkan daftar isi buku. Klik sebuah entri untuk menuju ke sana. Buku yang tidak punya daftar isi mendapat daftar babnya sebagai gantinya. Seret tepi dalam panel untuk mengubah lebarnya; klik dua kali tepinya untuk kembali ke lebar semula. Panel pencarian memakai lebar yang sama.
 - Setiap bab digulir ke atas dan ke bawah. Teruskan menggulir melewati akhir bab untuk pindah ke bab berikutnya, atau melewati awalnya untuk kembali. Baris status menunjukkan bab tempat Anda berada.
 - Tab **Tampilan** mengubah ukuran teks dan spasi baris, serta menyalakan dan mematikan **Tampilan gelap**. Pengaturan ini hanya mengubah tampilan layar, tidak pernah mengubah buku, dan berlaku untuk semua buku.
 - Posisi terakhir Anda membaca diingat untuk setiap file, di folder data aplikasi, bukan di dalam buku.
@@ -47,7 +47,7 @@ Editor e-book membuka buku EPUB (`.epub`) di sebuah tab. Anda bisa membaca buku,
 ## Panel AI
 
 - Tanyakan tentang buku, minta ringkasan sebuah bab, atau minta teksnya diperbaiki atau ditulis ulang. AI membaca daftar isi dan bab-bab buku, serta mencari teks di dalamnya.
-- Perubahan dari AI langsung terlihat, dan satu kali urungkan (Ctrl+Z) membatalkan semua yang diubahnya pada giliran itu. AI dapat membuat teks tebal atau miring, tetapi tidak dapat menambahkan gambar, tabel, atau bab.
+- Perubahan dari AI langsung terlihat, blok yang diubah ditandai kuning, dan **Batalkan perubahan ini** pada kartu di bawah balasannya membatalkan semua yang diubahnya pada giliran itu (selama buku tidak disunting setelahnya). AI dapat membuat teks tebal atau miring, tetapi tidak dapat menambahkan gambar, tabel, atau bab.
 - Teks buku adalah bahan bagi AI, bukan perintah untuknya.
 - Ketik "Terjemahkan buku ini ke bahasa Prancis" dan AI membuka jendela terjemahan dengan bahasa itu sudah terisi. Tidak ada yang dikirim sebelum Anda menekan **Mulai**.
 - Buku EPUB juga dapat dilampirkan di panel AI editor lain, dipilih dengan `@`, dan ditemukan lewat pencarian file di layar Beranda.
@@ -67,6 +67,7 @@ Editor e-book membuka buku EPUB (`.epub`) di sebuah tab. Anda bisa membaca buku,
 - Bagian yang sudah diterjemahkan disimpan. Jika Anda berhenti, pilih **Ekspor yang sudah diterjemahkan** (sisanya tetap dalam bahasa asli) atau **Lanjutkan nanti**. Saat Anda membuka buku yang terjemahannya belum selesai, GenOffice menawarkan untuk melanjutkannya. **Terjemahkan ulang dari awal** lebih dulu menghapus terjemahan tersimpan untuk bahasa itu.
 - Terjemahan tersimpan dihitung di Pengaturan ▸ Umum ▸ **Hasil AI tersimpan**, bersama hasil dari dokumen PDF, dan **Hapus semua** ikut menghapusnya.
 - Terjemahan yang sama juga dapat dijalankan dari [perintah terminal](help://cli) sebagai `ieumoffice epub translate`.
+- Pilih **Bahasa sederhana** pada **Mode** untuk menulis ulang buku dengan kata-kata sederhana dalam bahasa yang dipilih. Hasilnya **Buku bahasa sederhana** dan **Teks asli diikuti bahasa sederhana**; judulnya diberi tanda versi bahasa sederhana dalam bahasa itu, dan nama filenya diberi tanda itu dalam bahasa antarmuka agar berbeda dari nama file terjemahan. Bahasanya awalnya bahasa antarmuka dan boleh sama dengan bahasa buku. Versi sederhana disimpan terpisah dari terjemahan, tawaran untuk melanjutkannya muncul sendiri, dan perintah terminal tidak membuatnya.
 
 ## Belum didukung
 

@@ -11,9 +11,9 @@
  * Policy: the transcript keeps its text for every retained turn, but only the
  * newest {@link MAX_ROLLBACK_SNAPSHOTS} runs keep their snapshot, so one
  * roll-back still undoes any recent run. Older snapshots are set to
- * `undefined` rather than removed from the entry — the panel renders its
- * roll-back button under `entry.snapshot &&`, so a released snapshot also
- * removes the action and no button can ever point at a snapshot that is gone.
+ * `undefined` rather than removed from the entry — the changes card offers the
+ * roll-back only while `entry.snapshot` is set (a released one shows the run as
+ * expired), so no button can ever point at a snapshot that is gone.
  *
  * The panel now keeps the document node itself rather than a JSON copy. The
  * node is immutable and shares what later edits leave untouched with the live

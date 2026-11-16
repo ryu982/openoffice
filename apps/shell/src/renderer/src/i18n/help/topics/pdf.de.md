@@ -6,6 +6,8 @@ Der PDF-Editor hat fünf Tabs im Menüband: **Start / Anmerken / Bearbeiten / Se
 
 - Linke Seitenleiste: **Miniaturen** (anklicken zum Springen, der sichtbare Bereich ist hervorgehoben) oder **Gliederung** (Lesezeichen, sofern vorhanden).
 - Zoom: die Verhältnissteuerung unten rechts; Strg+Radrad zoomt stufenweise.
+- Zoom beim Öffnen: **Beim Öffnen** auf der Registerkarte Ansicht legt fest, wie eine neu geöffnete PDF startet: an Breite anpassen, an Seite anpassen oder ein Zoom von 50 % bis 200 %. Eine PDF, deren Zoom Sie selbst geändert haben, öffnet sich wieder mit diesem Zoom.
+- Ansicht verschieben: Mit dem **Hand-Werkzeug** (Registerkarten Start und Ansicht) verschieben Sie die Seite durch Ziehen in alle Richtungen. Solange es aktiv ist, wird beim Ziehen kein Text markiert, und ein einfacher Klick folgt weiterhin einem Link. Ziehen mit gedrückter mittlerer Taste (Mausrad) verschiebt die Ansicht auch ohne das Werkzeug. Esc oder ein anderes Werkzeug schaltet es aus. Ist kein Text markiert, schaltet H es ein und aus.
 - Drehung: einzelne oder alle Seiten über das Menü „Seiten“; Drehungen werden beim Speichern zurückgeschrieben.
 - Suche: Strg+F als Volltextsuche, alle Treffer werden hervorgehoben.
 - Verschlüsselte PDFs: Eine Passwortabfrage (in einem eigenen kleinen Fenster) öffnet sie; das Passwort gilt nur für diese Sitzung. Sie können ein solches Dokument bearbeiten und speichern; beim Speichern bleibt das Kennwort erhalten. **Anmerken → Schützen** legt das Kennwort und die erlaubten Aktionen für Leser fest, ändert oder entfernt sie.
@@ -18,7 +20,7 @@ Probieren Sie es an einem beliebigen Absatz aus:
 
 ![Die Annotationsleiste nach der Textauswahl](img/pdf-highlight.png)
 
-2. Wählen Sie **Hervorheben** (das gelbe Feld öffnet eine Farbpalette), **Unterstreichen** oder **Durchstreichen**; **KI fragen** sendet die Auswahl mit Ihrer Frage an den KI-Bereich.
+2. Wählen Sie eine der drei **Hervorheben**-Farben oder **Unterstreichen**, **Wellenlinie** bzw. **Durchstreichen**. Um eine Markerfarbe zu ändern, klicken Sie sie mit der rechten Maustaste an und wählen eine neue. Nach dem Unterstreichen, einer Wellenlinie oder dem Durchstreichen öffnet sich in der Leiste eine Farbreihe: Ein Klick auf eine andere Farbe ändert sie, und die nächste wird ebenfalls in dieser Farbe gezeichnet. **KI fragen** sendet die Auswahl mit Ihrer Frage an den KI-Bereich.
 3. Um eine Annotation rückgängig zu machen, wählen Sie dieselbe Stelle erneut durch Ziehen aus und klicken Sie auf die aktive Schaltfläche der Leiste (ein Umschalter im Word-Stil) oder wählen Sie sie aus und drücken Sie Entf.
 
 Referenz:
@@ -69,6 +71,7 @@ Sechs Werkzeuge: **Freihand, Rechteck, Ellipse, Pfeil, Notiz** sowie **Bereich s
 ## Seitenvorgänge (Seiten)
 
 - **Drehen / löschen / neu anordnen**: Ziehen Sie Miniaturen zum Umsortieren; beim Löschen wird nachgefragt.
+- **Mehrere Seiten auf einmal**: Klicken Sie mit gedrückter Strg- oder Umschalttaste auf Miniaturen, um mehrere Seiten auszuwählen. Entf löscht sie; Strg+C, Strg+X und Strg+V kopieren sie, schneiden sie aus und fügen sie ein. Kopierte Seiten lassen sich auch in einen anderen PDF-Tab einfügen, und das Einfügen wird sofort in der Datei gespeichert. Sind die Miniaturen geschlossen, öffnet die Schaltfläche am linken Rand des Seitenbereichs sie wieder.
 - **Seiten importieren**: ziehen Sie Seiten aus einem anderen PDF herein. **Leere Seite einfügen** fügt eine leere Seite hinzu.
 - **Seiten ersetzen** tauscht einen Bereich gegen Seiten aus einer anderen Datei; **Seiten zuschneiden** beschneidet, mit der Option, das auf alle Seiten anzuwenden.
 - **Seitengröße** skaliert alle Seiten auf ein einziges Papierformat; **Reihenfolge umkehren** dreht das Dokument von hinten nach vorne.
@@ -80,7 +83,9 @@ Sechs Werkzeuge: **Freihand, Rechteck, Ellipse, Pfeil, Notiz** sowie **Bereich s
 ## Export und Druck
 
 - **Als Word exportieren… / PowerPoint… / Excel…** im Menü Datei, oder dieselben drei über **PDF umwandeln** im Menüband — alles lokal, kein Upload. Die .pptx kommt mit einem Foliensatz pro Seite heraus, die .xlsx mit einem Arbeitsblatt pro Seite. Jede fragt nach dem Speicherort.
-- **Druck**: aktuelle Reihenfolge und Drehungen über den Systemdialog; Seitenbereiche werden unterstützt.
+- **PDF in HWP** unter **PDF umwandeln** im Menüband macht aus dem PDF ein HWP-Dokument in einem neuen HWP-Tab. Wählen Sie im PDF-Importfenster des Tabs **Importieren** (가져오기); das Dokument entsteht in diesem Tab, und beim ersten Speichern wird nach dem Ort für die .hwp- oder .hwpx-Datei gefragt. Das PDF selbst bleibt unverändert, und die Umwandlung läuft auf diesem PC. Ob der Text als Absätze, die über die Seiten fließen, oder als feste Textfelder übernommen wird, legen Sie in den Optionen (환경 설정) des HWP-Tabs unter PDF-Import fest.
+- Dieselbe Umwandlung lässt sich auch von einem HWP-Tab aus starten. Wählen Sie mit **Datei** ▸ **PDF importieren…** ein PDF; ein neuer HWP-Tab öffnet sich mit demselben PDF-Importfenster. Das Dokument des Tabs, in dem das Menü benutzt wurde, bleibt unverändert.
+- **Druck**: aktuelle Reihenfolge und Drehungen über den Systemdialog. Sie können einen Seitenbereich oder die in den Miniaturansichten ausgewählten Seiten drucken und unter **Seitenanordnung** mehrere Seiten pro Blatt, Broschüre, Graustufen und mehr wählen.
 
 ## Speichern
 
@@ -127,6 +132,9 @@ Drücken Sie **E** oder **T** oder die Chips für Erklären und Übersetzen im F
 - **Diese Seite übersetzen** (oder **Rest übersetzen**, wenn ein Teil schon fertig ist) schickt die Seite bei einem Abonnement mit einem Klick ab; neben der Schaltfläche steht, an welche KI. Bei einer nutzungsabhängig abgerechneten Verbindung fragt der erste Klick in einem Tab zuerst „berechnet dafür Kosten · Übersetzen / Abbrechen“.
 - Mit einem Doppelklick auf einen übersetzten Absatz bearbeiten Sie ihn. Bearbeitete Absätze werden als reiner Text aufbewahrt und unverändert in übersetzte PDF-, Markdown- und EPUB-Dateien übernommen. **Neu übersetzen** an einem Absatz sendet nur diesen einen und fragt vorher nach, wenn Sie ihn bearbeitet haben.
 - Fährt die Maus über einen übersetzten Absatz, wird seine Stelle im Original umrandet. Breite und Schriftgröße der Spalte sind einstellbar. **Alle Seiten übersetzen…** öffnet das Fenster **Dokument übersetzen**; dessen Format **Nur aufbewahren (keine Datei)** behält die Übersetzung, ohne eine Datei zu schreiben.
+- Neu übersetzte Absätze sind Satz für Satz verknüpft. Fährt die Maus über einen übersetzten Satz, wird dieser Satz auf der Originalseite markiert; über einem Originalsatz leuchtet seine Übersetzung auf. Wo der Satz auf der Seite nicht zu finden ist, und bei früher übersetzten oder von Ihnen bearbeiteten Absätzen bleibt die Verknüpfung absatzweise.
+- Die Leiste über der Spalte wechselt zwischen **Übersetzung** und **Einfache Sprache**. Die Erklärung in einfacher Sprache schreibt den Text mit Wörtern des Alltags und kurzen Sätzen neu, für Kinder, ältere Menschen oder Lernende der Sprache; Fakten, Zahlen und Namen bleiben, wie sie sind. Die Wahl wird gespeichert, und der Wechsel sendet nichts. Solange die Erklärung angezeigt wird, wirken die Seiten- und Absatzschaltflächen und das Bearbeiten auf sie.
+- In der einfachen Sprache öffnet **Alle Seiten einfach erklären…** das Fenster **Dokument übersetzen** mit der Art **Einfache Sprache**. Eine Erklärung ist länger als das Original und kann daher keine übersetzte PDF werden; sie wird als Markdown oder EPUB geschrieben. Mit **Original, dann Erklärung** folgt auf jeden Absatz des Originals seine Erklärung; ausgeschaltet enthält die Datei nur die Erklärung. Die Sprache ist zuerst die Sprache der Oberfläche und darf auch die des Dokuments sein.
 
 ## KI-Markierung
 

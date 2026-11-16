@@ -45,7 +45,7 @@ W panelu AI edytorów Docs, Sheets, Slides, Hangul, HTML i map myśli możesz za
 
 ## Cofanie i bezpieczeństwo
 
-- Panel w Docs prowadzi **listę wersji**: jedna migawka na turę, możesz cofnąć się do dowolnej, a samo cofnięcie da się jeszcze cofnąć przez Ctrl+Z. Miganek przetrwa ponowne otwarcie dokumentu.
+- Tura, w której AI zmieniła dokument, dostaje pod odpowiedzią kartę **Zmiany w dokumencie: N**, a zmienione miejsca są oznaczone w dokumencie na żółto. Oznaczenia są widoczne tylko na ekranie — nigdy nie trafiają do zapisu, wydruku ani eksportu — i znikają, gdy wyślesz następną prośbę albo klikniesz **Ukryj oznaczenia**. **Cofnij te zmiany** wycofuje całą turę naraz. W edytorach Docs, Markdown, HTML, Slides, map myśli i diagramów cofnięcie wcześniejszej tury cofa też tury po niej; w edytorach Hangul, Sheets, PDF i EPUB można cofnąć tylko ostatnią turę i tylko wtedy, gdy dokumentu potem nie edytowano. Gdy cofnięcie nie jest możliwe, użyj cofania w samym edytorze (Ctrl+Z).
 - Zmiany AI przechodzą tę samą ścieżkę edycji co zmiany ręczne (można je cofnąć, wymagają zapisania) — nic nie omija potwierdzenia zapisania.
 
 ## Ukrycie zaznaczenia przed AI

@@ -58,7 +58,7 @@ Setiap perintah ialah sebuah alat. Yang menarik:
 Permintaan daripada perintah `ieumoffice` atau daripada klien MCP tidak ditaip oleh anda dalam aplikasi, jadi GenOffice berhati-hati dengannya.
 
 - **Carian** sentiasa berfungsi dan percuma secara lalai. Kunci penyedia carian digunakan hanya jika anda memilihnya.
-- **Menjana gambar** memerlukan kunci penyedia imej. Dalam versi ini, langganan tidak menjana imej.
+- **Menjana gambar** mengikut pilihan penjanaan imej dalam Tetapan. Pilihan lalai, Pelan ChatGPT (program Codex), menggunakan pelan ChatGPT anda melalui program Codex dan **tidak digunakan melainkan anda membenarkannya** (lihat di bawah). Jika tidak, kunci penyedia imej yang disediakan digunakan. Model yang disebut oleh ejen digunakan apabila laluan itu menawarkannya.
 - **Menghuraikan gambar** menggunakan penyedia berasaskan kunci apabila ada yang disediakan. Langganan Claude atau Codex anda **tidak digunakan melainkan anda membenarkannya**.
 - **Video dan audio** memerlukan penyedia berasaskan kunci yang menyokong video.
 

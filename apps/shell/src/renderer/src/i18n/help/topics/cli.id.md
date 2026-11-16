@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image`, dan `media` memakai apa yang disiapkan di aplikasi pada Pengaturan ▸ AI ▸ Lanjutan:
 
 - `search` selalu berfungsi. Perintah ini memakai pencarian gratis secara bawaan, atau penyedia pencarian yang kuncinya Anda pilih.
-- `image` memerlukan kunci penyedia gambar. Pada versi ini langganan tidak membuat gambar.
+- `image` mengikuti pilihan pembuatan gambar di Pengaturan. Dengan pilihan bawaan, Paket ChatGPT (program Codex), perintah ini menggambar dengan paket ChatGPT Anda melalui program Codex, tetapi hanya jika Anda mengizinkan langganan dipakai untuk panggilan otomatis (**nonaktif secara bawaan**; lihat [Menghubungkan agen coding](help://mcp)). Jika tidak, perintah memakai kunci penyedia gambar yang sudah disiapkan. `--model` dipakai bila jalur itu menyediakan modelnya; jika tidak, perintah menjawab dengan model yang bisa Anda pakai. Gambar yang diberikan lewat `--ref` berfungsi di kedua jalur.
 - `media` untuk gambar memakai penyedia berbasis kunci bila ada yang disiapkan. Perintah ini memakai langganan Claude atau Codex Anda hanya jika Anda sudah mengizinkannya, dan itu **nonaktif secara bawaan**; [Menghubungkan agen coding](help://mcp) menjelaskan sakelar itu beserta batasannya.
 - `media` untuk video atau audio memerlukan penyedia berbasis kunci yang mendukung video.
 

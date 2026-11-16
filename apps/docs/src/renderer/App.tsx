@@ -30,6 +30,7 @@ import {
   type TemplateDocument,
 } from '@genoffice/ui'
 import { wordRangeAtCaret } from './editor/comments'
+import { isCommandLetter } from './command-letter'
 import { setFieldInstr, toggleAllFieldCodes, type FieldRange } from './editor/field-codes'
 import { linkTarget } from './editor/link-actions'
 import { FieldDialog } from './components/FieldDialog'
@@ -76,7 +77,6 @@ import {
   type WriteProtection,
   mergeFieldName,
   nextNoteId,
-  PAGE_MARK,
   placeholderText,
   type HeaderFooter,
   type HfImage,
@@ -113,6 +113,8 @@ import {
 import { ZoteroDocumentController } from './zotero/controller'
 import { AiPanel, AI_REVISION_AUTHOR } from './ai/AiPanel'
 import { useAiDock } from './ai/use-ai-dock'
+import { isAiMarksClear, sliceWithoutAiMarks } from './ai/run-changes'
+import { useAiVisible } from './ai-visibility'
 import type { AiCommentsAccess, AiDocExtras, AiHeaderFooterAccess } from './ai/tools'
 import type { AiStyleInfo } from './ai/style-ops'
 import { applyResolvedPageSetup, describeSection, type AiPageSetupAccess } from './ai/page-setup'
@@ -251,6 +253,7 @@ import {
   hfHasPageField,
   hfHasVisibleContent,
   hfReservedHeightPx,
+  hfPageNumberOnly,
   hfWithoutPageMarks,
   hfStripGeom,
   makeGapHfEl,
@@ -295,6 +298,7 @@ import {
 import { computeFormatState } from './components/ribbon-format-state'
 import {
   IconOutlineView,
+  IconStoryView,
   IconPrintLayout,
   IconReadMode,
   IconRedo,
@@ -407,8 +411,11 @@ import {
 } from './doc-state'
 import {
   applyAiDocContent as applyAiDocContentImpl,
+  buildPrintJobParts,
+  buildSelectionPrintPdf,
   exportPdf as exportPdfImpl,
   exportHtml as exportHtmlImpl,
+  exportHwp as exportHwpImpl,
   exportMarkdown as exportMarkdownImpl,
   exportImages as exportImagesImpl,
   loadFile as loadFileImpl,
@@ -830,6 +837,11 @@ export function App() {
   // returns to hidden. The dock stays mounted either way, so panel state and
   // in-flight runs survive; the hook closes it when the switch itself goes off.
   const aiSidebarEnabled = useAiSidebarEnabled(setShowAi)
+  // Settings › Editors and AI: while AI is off no AI part of this editor is drawn
+  // and nothing here starts an AI run; turning it back on brings them all back
+  const aiOn = useAiVisible()
+  const aiOnRef = useRef(aiOn)
+  aiOnRef.current = aiOn
   const [spellcheck, setSpellcheck] = useState(spellcheckEnabled)
   const [largeDocSpellOff, setLargeDocSpellOff] = useState(false)
   const spellcheckActive = spellcheck && !largeDocSpellOff
@@ -1229,6 +1241,8 @@ export function App() {
       // Word/web HTML cleanup: strip mso comments and <o:p>, unwrap <li><p>x</p></li>
       // (docListItem is an inline container; block-level p would shatter the list)
       transformPastedHTML: cleanPastedHtml,
+      // the AI's marks are the screen's: the clipboard gets the blocks without them
+      transformCopied: sliceWithoutAiMarks,
       // plain-text paste takes the insertion point's formatting like typing
       // (Word Keep Text Only) — the default parser misses storedMarks (r172)
       clipboardTextParser: (text, $context, _plain, view) => pasteTextSlice(text, $context, view),
@@ -1468,8 +1482,9 @@ export function App() {
     onSelectionUpdate: () => forceRender(),
     // typing in the main document takes ribbon routing back from any textbox
     onFocus: () => setActiveSubEditor(null),
-    onUpdate: () => {
-      dirtyRef.current = true
+    onUpdate: ({ transaction }) => {
+      // taking the AI's marks off is no change of the document
+      if (!isAiMarksClear(transaction)) dirtyRef.current = true
       forceRender()
     },
   })
@@ -1934,6 +1949,14 @@ export function App() {
     editor.commands.setOutlineViewActive(viewMode === 'outline')
   }, [editor, viewMode])
 
+  // story view (View ▸ Story View): the plugin draws the margin markers and
+  // keeps typed text off the document's hidden formatting, only while the view
+  // mode is story
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setStoryViewActive(viewMode === 'story')
+  }, [editor, viewMode])
+
   // window title follows the document, so the OS window list and Switch Window show file names
   useEffect(() => {
     document.title = doc ? doc.fileName : `${PRODUCT_NAME} Docs`
@@ -1942,10 +1965,18 @@ export function App() {
   useEffect(() => window.desktop.onTeardown?.(() => setTornDown(true)), [])
 
   // keep the native View menu's checkmarks (AI Sidebar / Dark Mode) in sync
-  // (the IPC field keeps its historical darkCanvas name)
+  // (the IPC field keeps its historical darkCanvas name); a report also lets the
+  // main process show or hide the menu's AI entries after the AI switch changed
   useEffect(() => {
     window.desktop.reportViewMenuState?.({ aiSidebar: showAi, darkCanvas: darkPage, odt: odtDoc })
-  }, [showAi, darkPage, odtDoc])
+  }, [showAi, darkPage, odtDoc, aiOn])
+
+  // AI turned off: the queued AI edits go with the panel, and so do their anchors
+  useEffect(() => {
+    if (aiOn || !editor || editQueueRef.current.length === 0) return
+    clearQueueAnchors(editor)
+    setEditQueue([])
+  }, [aiOn, editor])
 
   // Crash-recovery copy: while the document is dirty, push a serialized copy
   // to the main process about every 30s (a never-saved document's too, into
@@ -2065,6 +2096,7 @@ export function App() {
     setStatus,
     setRecent,
     setShowAi,
+    aiOn,
     setDoc,
     setAiPanelKey,
     setDocCss,
@@ -2874,6 +2906,10 @@ export function App() {
     (outPath?: string) => exportHtmlImpl(fileCtxRef.current, outPath),
     [],
   )
+  const exportHwp = useCallback(
+    (outPath?: string) => exportHwpImpl(fileCtxRef.current, outPath),
+    [],
+  )
   const exportMarkdown = useCallback(
     (outPath?: string) => exportMarkdownImpl(fileCtxRef.current, outPath),
     [],
@@ -2904,8 +2940,14 @@ export function App() {
         // A failed open falls back to an untitled blank document (filePath
         // null); exporting that would hand the CLI a blank PDF and call it
         // success, so only a document that came from disk counts as ready.
+        // A printed selection arrives as an untitled copy instead: only that
+        // copy (asking for a path on its first save) counts.
         () => {
           const doc = fileCtxRef.current.doc
+          if (target.untitled) {
+            const copy = doc?.askPathOnFirstSave === true
+            return { opened: copy, failed: !!doc && !copy }
+          }
           return { opened: typeof doc?.filePath === 'string', failed: doc?.filePath === null }
         },
         target.format === 'html' ? exportHtml : target.format === 'md' ? exportMarkdown : exportPdf,
@@ -5498,6 +5540,7 @@ export function App() {
   // Review > Editor, the Tools menu and Word's F7 all run the same AI proofread
   // behind the one-time whole-document-rewrite acknowledgement
   const runAiProofread = useCallback(() => {
+    if (!aiOnRef.current) return
     if (
       localStorage.getItem(AI_REWRITE_ACK_KEY) !== '1' &&
       !window.confirm(t('ribbonAiRewriteConfirm'))
@@ -5563,6 +5606,21 @@ export function App() {
     }
   }, [tornDown, autoSave, doc, editor, save])
 
+  // Save runs ahead of the editor keymaps (capture phase): with a non-Latin
+  // layout active the keystroke otherwise reaches the editor's own bindings and
+  // the report sees Ctrl+S undo the last edit instead of saving the document.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && isCommandLetter(e, 's')) {
+        e.preventDefault()
+        e.stopPropagation()
+        void save(e.shiftKey)
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [save])
+
   useEffect(() => {
     // editing shortcuts only fire when focus is in an editor surface (main
     // ProseMirror, textbox sub-editor, in-place table cell) or nowhere at all —
@@ -5574,15 +5632,11 @@ export function App() {
     }
     const handler = (e: KeyboardEvent) => {
       const canEdit = !!editor?.isEditable && focusInEditor()
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        void save(e.shiftKey)
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+      if ((e.metaKey || e.ctrlKey) && isCommandLetter(e, 'o')) {
         e.preventDefault()
         void openFile()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && isCommandLetter(e, 'f')) {
         e.preventDefault()
         if (doc) {
           // bump even when the panel is already open: focus returns to the find box
@@ -5592,7 +5646,7 @@ export function App() {
       }
       // Word's replace: Ctrl+H everywhere (macOS Cmd+H is the system hide role,
       // which never reaches the renderer, so this branch is Ctrl+H there too)
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'h') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && isCommandLetter(e, 'h')) {
         e.preventDefault()
         if (doc) {
           setShowFind(true)
@@ -5612,7 +5666,14 @@ export function App() {
         setFindFocusGoTo((n) => n + 1)
       }
       // Word dialog shortcuts: Font ⌘D / Paragraph ⌥⌘M / Hyperlink ⌘K
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'd' && doc && canEdit) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        isCommandLetter(e, 'd') &&
+        doc &&
+        canEdit
+      ) {
         e.preventDefault()
         openFontDialog('font')
       }
@@ -5620,7 +5681,14 @@ export function App() {
         e.preventDefault()
         setShowParaDialog(true)
       }
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'k' && doc && canEdit) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        isCommandLetter(e, 'k') &&
+        doc &&
+        canEdit
+      ) {
         e.preventDefault()
         setShowLinkModal(true)
       }
@@ -5881,7 +5949,7 @@ export function App() {
           zoomFit('multi')
           break
         case 'toggle-ai':
-          setShowAi((v) => !v)
+          if (aiOnRef.current) setShowAi((v) => !v)
           break
         case 'toggle-dark':
           updateDarkPage(!darkPageRef.current)
@@ -6013,6 +6081,9 @@ export function App() {
         case 'export-pdf':
           void exportPdf()
           break
+        case 'export-hwp':
+          void exportHwp()
+          break
         case 'export-html':
           void exportHtml()
           break
@@ -6036,6 +6107,7 @@ export function App() {
     save,
     exportPdf,
     exportHtml,
+    exportHwp,
     exportMarkdown,
     exportImages,
     printDoc,
@@ -6301,11 +6373,7 @@ export function App() {
         break
       case 'pageNumber':
         hfEditorRef.current?.exit()
-        commitHfAt(sectionOf(action.kind), action.kind, variant, {
-          text: PAGE_MARK,
-          pageNumber: true,
-          paras: [{ align: action.align, runs: [{ text: PAGE_MARK }] }],
-        })
+        commitHfAt(sectionOf(action.kind), action.kind, variant, hfPageNumberOnly(action.align))
         break
       case 'pageNumberHere':
         if (sub) insertHfField(sub, 'PAGE')
@@ -6388,9 +6456,10 @@ export function App() {
       getStatus: () => status,
       exportPdfTo: (path: string) => exportPdf(path),
       exportHtmlTo: (path: string) => exportHtml(path),
+      exportHwpTo: (path: string) => exportHwp(path),
       exportMarkdownTo: (path: string) => exportMarkdown(path),
     }
-  }, [editor, openRecent, save, status, exportPdf, exportHtml, exportMarkdown])
+  }, [editor, openRecent, save, status, exportPdf, exportHtml, exportHwp, exportMarkdown])
 
   // Pending style definitions (Styles pane / AI define_style) show before the
   // save writes them: styles.xml is re-resolved with the patches applied and
@@ -7458,6 +7527,8 @@ export function App() {
 
   const docZoomClass = [
     'doc-zoom',
+    // the AI's marks show here, and the HTML export lifts the class to leave them out
+    'ai-marks',
     multipage ? 'multipage' : '',
     showMarks ? 'show-marks' : '',
     `view-${viewMode}`,
@@ -7574,7 +7645,7 @@ export function App() {
       />
 
       <div className="app-main">
-        {doc && (
+        {doc && aiOn && (
           <div
             className={`ai-dock${aiDock.open ? '' : ' collapsed'}${
               !aiSidebarEnabled && !aiDock.open ? ' ai-dock-off' : ''
@@ -7645,7 +7716,7 @@ export function App() {
                 onClose={closeNav}
               />
             )}
-            {doc && (
+            {doc && aiOn && (
               <AiAskPopover
                 editor={editor}
                 queueFull={editQueue.length >= EDIT_QUEUE_MAX}
@@ -8048,6 +8119,14 @@ export function App() {
                     <IconOutlineView size={14} />
                   </button>
                   <button
+                    className={`status-view-btn${viewMode === 'story' ? ' on' : ''}`}
+                    data-tip={t('ribbonStoryView')}
+                    aria-label={t('ribbonStoryView')}
+                    onClick={() => setViewMode('story')}
+                  >
+                    <IconStoryView size={14} />
+                  </button>
+                  <button
                     className={`status-view-btn${readMode ? ' on' : ''}`}
                     data-tip={t('ribbonReadMode')}
                     aria-label={t('ribbonReadMode')}
@@ -8392,7 +8471,19 @@ export function App() {
         />
       )}
 
-      {doc && showPrintDialog && <PrintDialog onClose={closePrintDialog} setStatus={setStatus} />}
+      {doc && showPrintDialog && (
+        <PrintDialog
+          onClose={closePrintDialog}
+          setStatus={setStatus}
+          docName={doc.fileName}
+          buildPageJob={buildPrintJobParts}
+          prepareSelection={
+            editor && !editor.state.selection.empty
+              ? () => buildSelectionPrintPdf(fileCtxRef.current)
+              : undefined
+          }
+        />
+      )}
 
       {stats && <WordCountDialog stats={stats} onClose={() => setStats(null)} />}
 

@@ -12,10 +12,12 @@ Every editor has its own key bindings, and only a few of them work everywhere. T
 | Collapse / expand the ribbon — every editor     | ⌥⌘R   | Ctrl+F1         |
 | Compact the ribbon — Docs only                  | ⌥⌘K   | Ctrl+Alt+K      |
 | Open the Keyboard Shortcuts sheet — Word only   | ⌘/    | Ctrl+/          |
+| Open Settings — every tab except Word           | ⌘,    | Ctrl+,          |
 
 - **F1 opens this manual**, not the shortcut sheet. It belongs to the application menu, so it works from Word, Sheets, Slides, PDF or the Home tab alike.
 - **The ribbon toggle is `Ctrl+F1`, or `⌥⌘R` on macOS.** Pressing bare `F1` does nothing — F1 is the manual, and the ribbon key deliberately does not share it. `Ctrl+F1` is accepted on macOS as well, though `⌥⌘R` is the key Office for Mac uses.
 - **The Keyboard Shortcuts sheet is Word's alone** (`⌘/`). It lists exactly the Word table below. No other editor has one.
+- **`⌘,` opens Settings** (`Ctrl+,` on Windows and Linux), as in most Mac apps. In a Word tab the chord stays subscript, so open Settings there from the app menu on a Mac, or from Menu (☰) ▸ Settings… on Windows and Linux.
 
 ![Word's own Keyboard Shortcuts sheet: the action on the left, the chord on the right, grouped by File, Edit, Text, Paragraph, Insert, Review and View](img/word-shortcuts.png)
 
@@ -290,6 +292,7 @@ Excel's filter shortcut, Ctrl+Shift+L, does nothing on Windows or Linux. Press �
 | Zoom with the mouse wheel                                   | ⌘ + scroll | Ctrl + scroll   |
 | Show or hide formulas in the cells                          | ⌘`         | Ctrl+`          |
 | Expand or collapse the formula bar                          | ⌘⇧U        | Ctrl+Shift+U    |
+| Run a Quick Access Toolbar button by position (1st to 10th) |            | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -631,6 +634,8 @@ These keys work while the HWP/HWPX tab is in front and the document has focus. T
 | Find again        | ⌃L          | Ctrl+L                       |
 | Find backward     | ⌃Q, L       | Ctrl+Q, L                    |
 | Go to             | ⌥G          | Alt+G                        |
+| Start of document | ⌃⇞          | Ctrl+PageUp                  |
+| End of document   | ⌃⇟          | Ctrl+PageDown                |
 | Compare documents | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Character
@@ -757,3 +762,5 @@ These work only while the caret is in an empty table cell. Separate keys calcula
 | Go to the Home tab (outside a table) | ⇧⌘H   | Ctrl+Shift+H    |
 
 A key written `Ctrl+N,T` means press Ctrl+N, release it, then press T. `F5 → S` means select a cell block with F5 and then press S. `Ctrl+1 … Ctrl+0` stand for the document’s first through tenth styles; `Ctrl+Alt+1 … Ctrl+Alt+0` apply the same styles. While a block of cells is selected, `Ctrl+Shift+S` (on macOS `⇧⌘S`) is the block sum; elsewhere that key saves under a new name.
+
+With the mouse, as in Hangul, a double click selects a word, a triple click selects the whole paragraph, and a double click held and dragged extends the selection word by word. This also works while you edit a header, footer or footnote. Copying a cell block (`Ctrl+C`) copies the cells' text and the table itself, so pasting it in the body makes the same table again. Pasting with just the caret in a cell of another table opens the Paste Cells dialog: overwrite from that cell (cells that fall outside the table are dropped), or insert the cells above, below, to the left or to the right.

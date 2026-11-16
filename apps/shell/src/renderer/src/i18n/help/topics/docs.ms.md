@@ -53,6 +53,7 @@ Klik kanan di mana-mana bahagian teks, dan menu akan mengikut apa yang anda klik
 - **Papan keratan**: potong / salin / tampal / **tampal sebagai teks biasa**.
 - **Fon, perenggan**: tukar keluarga dan saiz fon, tebal / condong / garis bawah, penjajaran / indentasi / jarak tanpa perlu ke reben.
 - **Sinonim**: menyenaraikan sinonim bagi perkataan yang dipilih. Klik satu untuk menggantikan.
+- **Terangkan dengan kata mudah** (AI): menghantar pilihan ke panel AI supaya diterangkan dengan perkataan mudah dalam bahasa antara muka, dan terus menjalankannya. Tanpa pilihan, item ini dimatikan, dan teks yang disembunyikan daripada AI tidak dihantar.
 - **Terjemah** (AI): terjemahan pilihan ke dalam bahasa sasaran (bahasa Inggeris, Cina ringkas, Jepun, Korea, Perancis, Jerman, Sepanyol, ...) melalui panel AI.
 - **Komen baharu**: melampirkan komen pada pilihan.
 - **Ejaan** (pada perkataan yang salah ejaan): cadangan ganti, abaikan semua, tambah ke kamus, tetapkan bahasa semakan.
@@ -77,7 +78,7 @@ Klik kanan di mana-mana bahagian teks, dan menu akan mengikut apa yang anda klik
 ## AI
 
 - Butang AI pada reben dan panel sisi: tulis semula, perluaskan, terjemah, ringkaskan, sisip jadual siap, serta arahan bebas.
-- Setiap pusingan AI mengambil gambar keadaan lebih dahulu. Anda boleh berundur dari senarai versi, undur itu sendiri boleh dibatalkan.
+- Tempat yang diubah oleh AI ditanda dengan warna kuning. **Buat asal perubahan ini** pada kad di bawah jawapannya mengembalikan pusingan itu sepenuhnya (pusingan selepasnya turut dikembalikan), dan undur itu sendiri boleh dibatalkan.
 
 ## Simpanan dan eksport
 
@@ -87,4 +88,4 @@ Klik kanan di mana-mana bahagian teks, dan menu akan mengikut apa yang anda klik
 
 ## Cetak
 
-ctrl+P melalui dialog sistem, dengan halaman seperti yang dipaparkan.
+ctrl+P membuka tetingkap cetakan. Pilih pencetak, bilangan salinan, cetakan dua belah dan julat (termasuk pilihan); dalam **Susun atur halaman** anda boleh memilih beberapa halaman setiap helai, buku kecil, poster, label, muka ganjil atau genap dan skala kelabu (lihat [Operasi fail](help://file-ops)).

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  AUTO_SKILLS_HEADING,
   AUTO_SKILLS_MAX,
   AUTO_SKILL_DESCRIPTION_MAX,
+  EDITOR_SKILLS_HEADING,
   PROPOSE_SKILL_TOOL,
   READ_SKILL_FILE_TOOL,
   USE_SKILL_TOOL,
@@ -32,6 +34,7 @@ function entry(over: Partial<UserSkillEntry> & { id: string }): UserSkillEntry {
     unreadable: false,
     shadowedBy: undefined,
     owned: over.id.startsWith('app:'),
+    editors: undefined,
     ...over,
   }
 }
@@ -69,6 +72,7 @@ function makeDeps(over: Partial<UserSkillsDeps> = {}) {
           files: ['reference/tone.md'],
           template: undefined,
           hasScripts: false,
+          mcpServers: [],
         },
       }
     },
@@ -109,6 +113,23 @@ describe('autoSkillsSection', () => {
     expect(autoSkillsSection([LIST[2]!, LIST[3]!])).toBe('')
   })
 
+  it('lists a skill that lost its name in an editor its winner is not used in', () => {
+    const list = [
+      entry({ id: 'app:home-letter', editors: ['slides'] }),
+      entry({ id: 'user:home-letter', shadowedBy: 'app:home-letter' }),
+    ]
+    const inSlides = autoSkillsSection(list, { editor: 'slides' })
+    expect(inSlides).toContain('app:home-letter')
+    expect(inSlides).not.toContain('user:home-letter')
+    const inDocs = autoSkillsSection(list, { editor: 'docs' })
+    expect(inDocs).toContain('user:home-letter')
+    expect(inDocs).not.toContain('app:home-letter')
+    // no editor (home ask): the winner alone
+    const anywhere = autoSkillsSection(list)
+    expect(anywhere).toContain('app:home-letter')
+    expect(anywhere).not.toContain('user:home-letter')
+  })
+
   it('cuts each description at the limit', () => {
     const long = 'x'.repeat(AUTO_SKILL_DESCRIPTION_MAX + 50)
     const text = autoSkillsSection([entry({ id: 'app:long', description: long })])
@@ -137,6 +158,68 @@ describe('autoSkillsSection', () => {
     expect(text).toContain('app:s99 | s99 | About s99')
     expect(text).toContain('app:s100 | s100')
     expect(text).not.toContain('About s100')
+  })
+
+  it('puts the skills set for the panel’s editor first, under the line that asks for them', () => {
+    const list = [
+      entry({ id: 'builtin:minutes', description: 'Writes minutes.' }),
+      entry({ id: 'builtin:mindmap', description: 'Builds a map.', editors: ['mindmap'] }),
+      entry({ id: 'app:deck', description: 'Builds a deck.', editors: ['slides'] }),
+      entry({ id: 'app:both', description: 'Maps and decks.', editors: ['mindmap', 'slides'] }),
+    ]
+    const text = autoSkillsSection(list, { editor: 'mindmap' })
+    expect(text).toBe(
+      `${EDITOR_SKILLS_HEADING}\n` +
+        '- builtin:mindmap | mindmap | Builds a map.\n' +
+        '- app:both | both | Maps and decks.\n\n' +
+        `${AUTO_SKILLS_HEADING}\n` +
+        '- builtin:minutes | minutes | Writes minutes.',
+    )
+    // the line asks for whole new work only, and names what it is not for
+    expect(EDITOR_SKILLS_HEADING).toMatch(/whole new piece of work/)
+    expect(EDITOR_SKILLS_HEADING).toMatch(/your first tool call is use_skill/)
+    expect(EDITOR_SKILLS_HEADING).toMatch(
+      /does not apply to a change to work that is already there/,
+    )
+  })
+
+  it('keeps one plain list where no skill is set for the editor, and outside an editor', () => {
+    const list = [
+      entry({ id: 'builtin:minutes', description: 'Writes minutes.' }),
+      entry({ id: 'builtin:mindmap', description: 'Builds a map.', editors: ['mindmap'] }),
+    ]
+    // another editor: the map skill is not listed at all, and nothing is singled out
+    expect(autoSkillsSection(list, { editor: 'docs' })).toBe(
+      `${AUTO_SKILLS_HEADING}\n- builtin:minutes | minutes | Writes minutes.`,
+    )
+    // no editor (home ask, the agent window): every skill, one list
+    const anywhere = autoSkillsSection(list)
+    expect(anywhere.startsWith(AUTO_SKILLS_HEADING)).toBe(true)
+    expect(anywhere).not.toContain(EDITOR_SKILLS_HEADING)
+    expect(anywhere).toContain('builtin:mindmap')
+  })
+
+  it('lists only the editor’s own skills when there is no other', () => {
+    const text = autoSkillsSection([entry({ id: 'builtin:mindmap', editors: ['mindmap'] })], {
+      editor: 'mindmap',
+    })
+    expect(text).toBe(`${EDITOR_SKILLS_HEADING}\n- builtin:mindmap | mindmap | About mindmap`)
+  })
+
+  it('counts both groups together against the limits', () => {
+    const many = [
+      ...Array.from({ length: 3 }, (_, i) => entry({ id: `app:g${i}`, description: `g ${i}` })),
+      ...Array.from({ length: 3 }, (_, i) =>
+        entry({ id: `app:e${i}`, description: `e ${i}`, editors: ['hwp'] }),
+      ),
+    ]
+    const text = autoSkillsSection(many, { editor: 'hwp', max: 4, namesMax: 1 })
+    // the editor's three come first with their descriptions, then one general with, one without
+    expect(text).toContain('app:e2 | e2 | e 2')
+    expect(text).toContain('app:g0 | g0 | g 0')
+    expect(text).toContain('- app:g1 | g1\n')
+    expect(text).not.toContain('app:g2')
+    expect(text).toMatch(/1 more skills/)
   })
 })
 
@@ -214,6 +297,7 @@ describe('createUserSkillsSkill', () => {
           files: [],
           template: 'assets/form.hwpx',
           hasScripts: true,
+          mcpServers: [],
         },
       }),
     })
@@ -334,9 +418,9 @@ describe('createUserSkillsSkill', () => {
     expect(result.mutated).toBeFalsy()
     expect(result.output).toMatch(/card/i)
     expect(result.output).toMatch(/not saved|nothing is saved/i)
-    // the result and the tool row name the proposal by its name
-    expect(proposedTitleOf(result.output)).toBe('minutes')
-    expect(result.summary).toBe('Skill proposal: minutes')
+    // the result and the tool row name the proposal by its title
+    expect(proposedTitleOf(result.output)).toBe('Minutes')
+    expect(result.summary).toBe('Skill proposal: Minutes')
     expect(proposedTitleOf('other')).toBe('')
     expect(proposals).toEqual([
       {
@@ -392,12 +476,15 @@ describe('createUserSkillsSkill', () => {
     expect(proposals.map((p) => p.wantsTemplate)).toEqual([false, false])
   })
 
-  it('propose_skill asks for a name, not a title', () => {
+  it('propose_skill asks for a name and takes a title in the person’s language beside it', () => {
     const { deps } = makeDeps()
     const tool = createUserSkillsSkill(deps).tools.find((t) => t.name === PROPOSE_SKILL_TOOL)!
-    const schema = tool.inputSchema as { properties: Record<string, unknown>; required: string[] }
-    expect(schema.properties).not.toHaveProperty('title')
+    const schema = tool.inputSchema as {
+      properties: Record<string, { description?: string }>
+      required: string[]
+    }
     expect(schema.properties).toHaveProperty('name')
+    expect(schema.properties.title?.description).toMatch(/language the person writes in/)
     expect(schema.required).toEqual(['name', 'description', 'body'])
   })
 
@@ -442,6 +529,152 @@ describe('createUserSkillsSkill', () => {
     const { deps } = makeDeps()
     const composed = composeSkills('x', '', [createUserSkillsSkill(deps)])
     expect(composed.tools).toHaveLength(3)
+  })
+})
+
+describe('a skill named by its bare name', () => {
+  // the views as the shell's main process lists them: the id is always source:name
+  const view = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    source: id.split(':')[0],
+    name: id.split(':')[1],
+    title: id,
+    description: 'd',
+    enabled: true,
+    invoke: 'auto',
+    editors: ['hwp'],
+    ...over,
+  })
+  const depsOf = (views: unknown[]) =>
+    makeDeps({ editor: 'hwp', list: () => userSkillEntriesOf(views) })
+
+  it('use_skill reads the built-in an editor’s instructions name without its source', async () => {
+    const { deps, reads } = depsOf([view('builtin:hwp-exam-paper')])
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'hwp-exam-paper' }),
+    )
+    expect(result.isError).toBeFalsy()
+    expect(result.output).toContain('<skill id="builtin:hwp-exam-paper"')
+    expect(reads).toEqual(['builtin:hwp-exam-paper'])
+  })
+
+  it('reads the person’s own copy where it pushes the built-in of that name back', async () => {
+    const { deps, reads, fileReads } = depsOf([
+      view('builtin:hwp-exam-paper', { shadowedBy: 'user:hwp-exam-paper' }),
+      view('user:hwp-exam-paper'),
+    ])
+    const skill = createUserSkillsSkill(deps)
+    await skill.executeTool(call(USE_SKILL_TOOL, { id: 'hwp-exam-paper' }))
+    await skill.executeTool(
+      call(READ_SKILL_FILE_TOOL, { id: 'hwp-exam-paper', path: 'reference/tone.md' }),
+    )
+    expect(reads).toEqual(['user:hwp-exam-paper'])
+    expect(fileReads).toEqual([['user:hwp-exam-paper', 'reference/tone.md']])
+  })
+
+  it('refuses a source no listed skill of the name has', async () => {
+    const { deps, reads } = depsOf([view('user:letter')])
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'builtin:letter' }),
+    )
+    expect(result.isError).toBe(true)
+    expect(result.output).toBe('No skill with id builtin:letter. Use an id from the skills list.')
+    expect(reads).toEqual([])
+  })
+
+  it.each([
+    [
+      'the built-in turned off by saving the person’s own copy',
+      [view('app:hwp-exam-paper'), view('builtin:hwp-exam-paper', { enabled: false })],
+      'app:hwp-exam-paper',
+    ],
+    [
+      'the built-in hidden beside the person’s own copy',
+      [view('app:hwp-exam-paper'), view('builtin:hwp-exam-paper', { hidden: true })],
+      'app:hwp-exam-paper',
+    ],
+    [
+      'the person’s own copy set for the Word editor only',
+      [
+        view('app:hwp-exam-paper', { editors: ['docs'] }),
+        view('builtin:hwp-exam-paper', { shadowedBy: 'app:hwp-exam-paper' }),
+      ],
+      'builtin:hwp-exam-paper',
+    ],
+    [
+      'a Claude skill of the same name turned off',
+      [view('builtin:hwp-exam-paper'), view('user:hwp-exam-paper', { enabled: false })],
+      'builtin:hwp-exam-paper',
+    ],
+    [
+      'the one the list puts forward, set for every editor, over one set for this one',
+      [
+        view('user:letter', { editors: undefined }),
+        view('codex:letter', { shadowedBy: 'user:letter' }),
+      ],
+      'user:letter',
+    ],
+    [
+      'a skill whose name differs in case from the one asked for, that won the name',
+      [
+        view('project:HWP-Exam-Paper', { editors: undefined }),
+        view('builtin:hwp-exam-paper', { shadowedBy: 'project:HWP-Exam-Paper' }),
+      ],
+      'project:HWP-Exam-Paper',
+    ],
+    [
+      'the first usable one where the winner is set for another editor',
+      [
+        view('app:hwp-exam-paper', { editors: ['docs'] }),
+        view('builtin:hwp-exam-paper', { enabled: false }),
+        view('user:hwp-exam-paper', { editors: undefined, shadowedBy: 'app:hwp-exam-paper' }),
+        view('codex:hwp-exam-paper', { editors: undefined, shadowedBy: 'app:hwp-exam-paper' }),
+      ],
+      'user:hwp-exam-paper',
+    ],
+  ])('reads the one skill of a bare name that may be used here: %s', async (_name, views, id) => {
+    const { deps, reads, fileReads } = depsOf(views)
+    const skill = createUserSkillsSkill(deps)
+    const name = id.split(':')[1]!.toLowerCase()
+    const used = await skill.executeTool(call(USE_SKILL_TOOL, { id: name }))
+    expect(used.isError).toBeFalsy()
+    expect(used.output).toContain(`<skill id="${id}"`)
+    await skill.executeTool(call(READ_SKILL_FILE_TOOL, { id: name, path: 'reference/tone.md' }))
+    expect(reads).toEqual([id])
+    expect(fileReads).toEqual([[id, 'reference/tone.md']])
+  })
+
+  it('says a skill is turned off when every one of its name is', async () => {
+    const { deps, reads } = depsOf([
+      view('app:hwp-exam-paper', { enabled: false }),
+      view('builtin:hwp-exam-paper', { enabled: false }),
+    ])
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'hwp-exam-paper' }),
+    )
+    expect(result.isError).toBe(true)
+    expect(result.output).toBe(
+      'The skill hwp-exam-paper is turned off. The person can turn it on in Settings → Skills.',
+    )
+    expect(reads).toEqual([])
+  })
+
+  it('says a skill is for other editors when the only one of its name is', async () => {
+    const { deps, reads } = depsOf([view('builtin:docx-report', { editors: ['docs'] })])
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'docx-report' }),
+    )
+    expect(result.output).toMatch(/only in other editors \(docs\)/)
+    expect(reads).toEqual([])
+  })
+
+  it('keeps the refusal of a turned-off skill named so', async () => {
+    const { deps, reads } = depsOf([view('builtin:hwp-exam-paper', { enabled: false })])
+    const result = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'hwp-exam-paper' }),
+    )
+    expect(result.output).toMatch(/turned off/)
+    expect(reads).toEqual([])
   })
 })
 
@@ -497,7 +730,15 @@ describe('createBridgedUserSkillsSkill', () => {
       list: vi.fn(async () => views),
       aiRead: vi.fn(async (id: string) => ({
         ok: true,
-        skill: { id, name: 'a', title: 'A', body: 'body', files: [], hasScripts: false },
+        skill: {
+          id,
+          name: 'a',
+          title: 'A',
+          body: 'body',
+          files: [],
+          hasScripts: false,
+          mcpServers: [],
+        },
       })),
       aiReadFile: vi.fn(async () => ({ ok: false, reason: 'too-large' })),
       onChanged: (listener: () => void) => {
@@ -530,7 +771,15 @@ describe('createBridgedUserSkillsSkill', () => {
       list: vi.fn(async () => views),
       aiRead: vi.fn(async (id: string) => ({
         ok: true,
-        skill: { id, name: 'new', title: 'New', body: 'fresh body', files: [], hasScripts: false },
+        skill: {
+          id,
+          name: 'new',
+          title: 'New',
+          body: 'fresh body',
+          files: [],
+          hasScripts: false,
+          mcpServers: [],
+        },
       })),
       aiReadFile: vi.fn(async () => ({ ok: true, text: 'file text' })),
       onChanged: () => () => {},
@@ -579,5 +828,85 @@ describe('createBridgedUserSkillsSkill', () => {
     expect(used.isError).toBe(true)
     const file = await skill.executeTool(call(READ_SKILL_FILE_TOOL, { id: 'app:a', path: 'x.md' }))
     expect(file.isError).toBe(true)
+  })
+})
+
+describe('skills set for some editors', () => {
+  const SCOPED: UserSkillEntry[] = [
+    entry({ id: 'app:deck-style', editors: ['slides'] }),
+    entry({ id: 'app:minutes' }),
+  ]
+
+  function scopedDeps(editor: UserSkillsDeps['editor']) {
+    return makeDeps({ list: () => SCOPED, editor })
+  }
+
+  it('lists a slides skill to the model in the slides panel only', () => {
+    expect(createUserSkillsSkill(scopedDeps('slides').deps).systemPrompt).toContain(
+      'app:deck-style',
+    )
+    const sheets = createUserSkillsSkill(scopedDeps('sheets').deps).systemPrompt
+    expect(sheets).not.toContain('app:deck-style')
+    expect(sheets).toContain('app:minutes')
+  })
+
+  it('lists every skill where no editor is given (home ask)', () => {
+    expect(createUserSkillsSkill(scopedDeps(undefined).deps).systemPrompt).toContain(
+      'app:deck-style',
+    )
+  })
+
+  it('use_skill and read_skill_file refuse a skill set for other editors, without reading it', async () => {
+    const { deps, reads, fileReads } = scopedDeps('sheets')
+    const skill = createUserSkillsSkill(deps)
+    const used = await skill.executeTool(call(USE_SKILL_TOOL, { id: 'app:deck-style' }))
+    expect(used.isError).toBe(true)
+    expect(used.output).toMatch(/only in other editors \(slides\)/)
+    const file = await skill.executeTool(
+      call(READ_SKILL_FILE_TOOL, { id: 'app:deck-style', path: 'a.md' }),
+    )
+    expect(file.isError).toBe(true)
+    expect(file.output).toMatch(/other editors/)
+    expect(reads).toEqual([])
+    expect(fileReads).toEqual([])
+  })
+
+  it('use_skill reads the skill in its own editor', async () => {
+    const { deps, reads } = scopedDeps('slides')
+    const used = await createUserSkillsSkill(deps).executeTool(
+      call(USE_SKILL_TOOL, { id: 'app:deck-style' }),
+    )
+    expect(used.isError).toBeFalsy()
+    expect(reads).toEqual(['app:deck-style'])
+  })
+
+  it('propose_skill passes the editors the model named, and none when it named none', async () => {
+    const { deps, proposals } = scopedDeps('docs')
+    const skill = createUserSkillsSkill(deps)
+    await skill.executeTool(
+      call(PROPOSE_SKILL_TOOL, { name: 'deck', description: 'd', body: 'b', editors: ['slides'] }),
+    )
+    await skill.executeTool(
+      call(PROPOSE_SKILL_TOOL, { name: 'notes', description: 'd', body: 'b' }),
+    )
+    expect(proposals.map((p) => p.editors)).toEqual([['slides'], undefined])
+  })
+
+  it('propose_skill hands over where the changed skill is used now', async () => {
+    const { deps, proposals } = scopedDeps('docs')
+    await createUserSkillsSkill(deps).executeTool(
+      call(PROPOSE_SKILL_TOOL, {
+        name: 'x',
+        description: 'd',
+        body: 'b',
+        targetId: 'app:deck-style',
+      }),
+    )
+    expect(proposals[0]!.target?.editors).toEqual(['slides'])
+  })
+
+  it('reads the editors a view carries from the bridge', () => {
+    const [view] = userSkillEntriesOf([{ id: 'app:a', name: 'a', editors: ['slides', 'nope'] }])
+    expect(view!.editors).toEqual(['slides'])
   })
 })

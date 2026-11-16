@@ -82,7 +82,6 @@ export const cs = {
   aiCopied: 'Zkopírováno',
   aiRegenerateTitle: 'Vygenerovat znovu',
   aiSnapshotsTitle: 'Snímky',
-  aiRollback: 'Vrátit zpět',
   aiScopeSelected: 'Vybráno odstavců: {count}',
   aiScopeEmptyDoc: 'Prázdný dokument',
   aiScopeCursor: 'Na pozici kurzoru',
@@ -199,4 +198,7 @@ export const cs = {
   aiMindMapReset: 'Obnovit zobrazení',
   aiMindMapExpand: 'Rozbalit větev',
   aiMindMapCollapse: 'Sbalit větev',
+  aiMindMapToggleLayout: 'Přepnout rozvržení',
+  aiMindMapLayoutTopDown: 'Přepnout na rozvržení shora dolů',
+  aiMindMapLayoutLeftRight: 'Přepnout na rozvržení zleva doprava',
 } satisfies Record<keyof typeof zh, string>

@@ -30,6 +30,7 @@ export const ru = {
   darkView: 'Тёмный режим',
   toc: 'Содержание',
   tocEmpty: 'В этой книге нет оглавления',
+  sideResize: 'Изменить ширину панели',
   statusChapter: 'Глава {n}/{total}',
   prevChapter: 'Предыдущая глава',
   nextChapter: 'Следующая глава',

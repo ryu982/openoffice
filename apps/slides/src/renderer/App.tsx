@@ -120,9 +120,11 @@ import {
   rememberAiPanelOpen,
   AiMark,
   aiSubscriptionText,
+  aiVisible,
   templateDocumentOf,
   type TemplateDocument,
   useAiSidebarEnabled,
+  useAppChoice,
 } from '@genoffice/ui'
 import type { ChartPresetDef, IconDef, SmartArtDef } from './insert-presets'
 import { IconAiBeautify, IconAiFactCheck, IconAiImage } from './components/icons'
@@ -130,6 +132,7 @@ import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
 import { t, useI18n } from './i18n/locale'
 import { AiPanel } from './ai/AiPanel'
+import { markedNodeIds, slideKey, type DeckMarks } from './ai/run-changes'
 import { useAiDock } from './ai/use-ai-dock'
 import { ChartDataDialog } from './components/ChartDataDialog'
 import type { BrushFormat } from './format-brush'
@@ -411,6 +414,8 @@ export function App() {
   const [editingCell, setEditingCell] = useState<EditingCellState | null>(null)
   /** Element-scoped AI edits waiting to be submitted (session-only, see the queue helpers below) */
   const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
+  /** What the AI panel's last run changed: marked on the canvas and the thumbnails, screen only */
+  const [aiMarks, setAiMarks] = useState<DeckMarks | null>(null)
   // Armed shape draw mode (ribbon gallery pick); null = normal selection behavior
   const [drawKind, setDrawKind] = useState<InsertKind | null>(null)
   /** Latest-state bundle for the extracted action modules; refreshed every render (see action-context.ts). */
@@ -475,6 +480,10 @@ export function App() {
   useEffect(() => {
     window.slidesApi.setAutoSavePref?.(autoSave)
   }, [autoSave])
+  /** AI turned on in Settings: off, no AI part is drawn and nothing opens the panel */
+  const aiOn = aiVisible(useAppChoice(window.aiOfficeEditorChoice))
+  const aiOnRef = useRef(aiOn)
+  aiOnRef.current = aiOn
   const [showAi, setShowAi] = useState(() => aiPanelInitiallyOpen('ai-slides-show-ai'))
   // Split panes (decision 0036): as the secondary pane this view's panel is
   // forced to the rail, and the rail's click asks the shell to focus it first.
@@ -726,14 +735,14 @@ export function App() {
       const viewportW =
         el?.clientWidth ||
         stageViewportSize.w ||
-        window.innerWidth - (showThumbs ? thumbsW : 0) - (aiDock.open ? 360 : 34)
+        window.innerWidth - (showThumbs ? thumbsW : 0) - (!aiOn ? 0 : aiDock.open ? 360 : 34)
       const viewportH = el?.clientHeight || stageViewportSize.h || window.innerHeight - 150
       const availW = viewportW - 56
       // -72: vertical padding is 48 (AI-bar headroom) + 32, minus the same 8px slack as width
       const availH = viewportH - 72
       return Math.min(availW / s.widthPx, availH / s.heightPx)
     },
-    [showThumbs, aiDock.open, stageViewportSize.h, stageViewportSize.w, thumbsW],
+    [showThumbs, aiOn, aiDock.open, stageViewportSize.h, stageViewportSize.w, thumbsW],
   )
   /** Fit zoom for display: rawFit clamped to the 0.1–1.5 auto-fit range */
   const fitZoom = useCallback(
@@ -1303,8 +1312,11 @@ export function App() {
       .then((r) => {
         if (bootHandledRef.current) return
         bootHandledRef.current = true
-        if (r) applyOpen(r)
-        else void bootBlank()
+        if (r) {
+          applyOpen(r)
+          // a converted .ppt: the original is untouched and the first save writes a .pptx
+          if (r.importedFrom) showToast(t('appLegacyPptImported'))
+        } else void bootBlank()
       })
       // Open failures (corrupt file etc.) also land on a blank deck, or it stays at "Opening…" forever
       .catch(() => {
@@ -1339,6 +1351,7 @@ export function App() {
   }, [slides.length])
 
   const toggleAi = useCallback(() => {
+    if (!aiOnRef.current) return
     setShowAi((v) => {
       rememberAiPanelOpen('ai-slides-show-ai', !v)
       return !v
@@ -1354,6 +1367,8 @@ export function App() {
       slideShot?: boolean,
       scope?: AiScopeQuoteData,
     ) => {
+      // AI turned off: a preset that still finds its way here starts nothing
+      if (!aiOnRef.current) return
       setShowAi(() => {
         rememberAiPanelOpen('ai-slides-show-ai', true)
         return true
@@ -1378,6 +1393,10 @@ export function App() {
   /** Open annotation popover; ids are the canvas selection it was opened on */
   const [askState, setAskState] = useState<{ ids: string[]; itemKey?: string } | null>(null)
   askOpenRef.current = askState !== null
+  // AI turned off closes an open annotation popover rather than keeping it for later
+  useEffect(() => {
+    if (!aiOn) setAskState(null)
+  }, [aiOn])
   /** When the popover last dismissed itself — see the guard in openAskPopover */
   const askClosedAtRef = useRef(0)
 
@@ -1461,6 +1480,7 @@ export function App() {
   )
 
   const openAskPopover = useCallback(() => {
+    if (!aiOnRef.current) return
     if (editing || editingCell || selectedIds.length === 0) return
     // Clicking the trigger while the popover is open dismisses it through
     // the capture-phase outside-click handler before onClick runs.
@@ -3440,6 +3460,7 @@ export function App() {
         onZoom={previewZoom}
         showThumbs={showThumbs}
         onToggleThumbs={() => setShowThumbs((v) => !v)}
+        aiOn={aiOn}
         aiOpen={showAi}
         onToggleAi={toggleAi}
         onAiPreset={(text, opts) => pushAiPreset(text, true, undefined, undefined, opts?.slideShot)}
@@ -3751,7 +3772,7 @@ export function App() {
       />
 
       <div className="app-main">
-        {slide && viewMode !== 'reading' && viewMode !== 'sorter' && (
+        {slide && aiOn && viewMode !== 'reading' && viewMode !== 'sorter' && (
           <div
             className={`ai-dock${aiDock.open && aiSettings ? '' : ' collapsed'}${
               !aiSidebarEnabled && !aiDock.open ? ' ai-dock-off' : ''
@@ -3776,7 +3797,7 @@ export function App() {
                 open={aiDock.open}
                 onExpand={aiDock.onExpand}
                 onCollapse={toggleAi}
-                onUndo={() => void undo()}
+                onAiMarks={setAiMarks}
                 onPathChange={(p) => {
                   setPath(p)
                   setDirty(false)
@@ -3946,7 +3967,7 @@ export function App() {
                               data-index={i}
                               role="option"
                               aria-selected={selectedSlides.includes(i)}
-                              className={`thumb ${i === current ? 'active' : selectedSlides.includes(i) ? 'selected' : ''} ${s.hidden ? 'thumb-hidden' : ''}${thumbDragCls(i)}`}
+                              className={`thumb ${i === current ? 'active' : selectedSlides.includes(i) ? 'selected' : ''} ${s.hidden ? 'thumb-hidden' : ''}${aiMarks?.has(slideKey(s, i)) ? ' thumb-ai-changed' : ''}${thumbDragCls(i)}`}
                               data-tip={s.hidden ? t('appThumbHiddenTitle') : undefined}
                               {...thumbDragProps(i)}
                               onClick={(e) => selectThumb(i, e)}
@@ -4119,57 +4140,59 @@ export function App() {
                             : undefined
                         }
                       >
-                        <div className="stage-ai-bar">
-                          <div className="stage-ai-group">
-                            <button
-                              className={`stage-ai-btn${aiDock.open ? ' active' : ''}`}
-                              data-tip={t('aiOpenAssistant')}
-                              onClick={toggleAi}
-                            >
-                              <AiMark size={14} className="ai-mark" />
-                              <span>{aiSubscriptionText(lang, 'aiAssistant')}</span>
-                            </button>
-                            {/* Same one-click presets as the Home tab; hidden instead of
+                        {aiOn && (
+                          <div className="stage-ai-bar">
+                            <div className="stage-ai-group">
+                              <button
+                                className={`stage-ai-btn${aiDock.open ? ' active' : ''}`}
+                                data-tip={t('aiOpenAssistant')}
+                                onClick={toggleAi}
+                              >
+                                <AiMark size={14} className="ai-mark" />
+                                <span>{aiSubscriptionText(lang, 'aiAssistant')}</span>
+                              </button>
+                              {/* Same one-click presets as the Home tab; hidden instead of
                         disabled while the deck has no real content */}
-                            {!deckEmpty && (
-                              <>
-                                <span className="stage-ai-divider" aria-hidden="true" />
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiBeautifyBtn')}
-                                  onClick={() =>
-                                    pushAiPreset(
-                                      t('aiBeautifyPrompt'),
-                                      true,
-                                      undefined,
-                                      undefined,
-                                      true,
-                                    )
-                                  }
-                                >
-                                  <IconAiBeautify size={14} />
-                                  <span>{t('aiBeautifyBtn')}</span>
-                                </button>
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiFactCheckBtn')}
-                                  onClick={() => pushAiPreset(t('aiFactCheckPrompt'))}
-                                >
-                                  <IconAiFactCheck size={14} />
-                                  <span>{t('aiFactCheckBtn')}</span>
-                                </button>
-                                <button
-                                  className="stage-ai-btn"
-                                  data-tip={t('aiImageBtn')}
-                                  onClick={() => pushAiPreset(t('aiImagePrompt'))}
-                                >
-                                  <IconAiImage size={14} />
-                                  <span>{t('aiImageBtn')}</span>
-                                </button>
-                              </>
-                            )}
+                              {!deckEmpty && (
+                                <>
+                                  <span className="stage-ai-divider" aria-hidden="true" />
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiBeautifyBtn')}
+                                    onClick={() =>
+                                      pushAiPreset(
+                                        t('aiBeautifyPrompt'),
+                                        true,
+                                        undefined,
+                                        undefined,
+                                        true,
+                                      )
+                                    }
+                                  >
+                                    <IconAiBeautify size={14} />
+                                    <span>{t('aiBeautifyBtn')}</span>
+                                  </button>
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiFactCheckBtn')}
+                                    onClick={() => pushAiPreset(t('aiFactCheckPrompt'))}
+                                  >
+                                    <IconAiFactCheck size={14} />
+                                    <span>{t('aiFactCheckBtn')}</span>
+                                  </button>
+                                  <button
+                                    className="stage-ai-btn"
+                                    data-tip={t('aiImageBtn')}
+                                    onClick={() => pushAiPreset(t('aiImagePrompt'))}
+                                  >
+                                    <IconAiImage size={14} />
+                                    <span>{t('aiImageBtn')}</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div
                           ref={stageScaleRef}
                           className="stage-scale"
@@ -4225,6 +4248,7 @@ export function App() {
                               ref={canvasRef}
                               slide={slide}
                               selectedIds={selectedIds}
+                              aiMarkedIds={markedNodeIds(slide, current, aiMarks)}
                               onSelect={handleCanvasSelect}
                               onEditText={startEdit}
                               onTransform={onTransform}
@@ -4826,6 +4850,7 @@ export function App() {
           slides={slides}
           images={images}
           current={current}
+          selectedSlides={selectedSlides}
           onClose={() => setPrintDlgOpen(false)}
           setStatus={setStatus}
         />
@@ -4865,7 +4890,8 @@ export function App() {
         </div>
       )}
 
-      {!askState &&
+      {aiOn &&
+        !askState &&
         !editing &&
         !editingCell &&
         !cropTarget &&
@@ -4875,7 +4901,7 @@ export function App() {
           <AiAskTrigger getAnchorRect={getAskTriggerRect} onOpen={openAskPopover} />
         )}
 
-      {askState && askTargets.length > 0 && (
+      {aiOn && askState && askTargets.length > 0 && (
         <AiAskPopover
           targets={askTargets}
           getAnchorRect={getAskAnchorRect}

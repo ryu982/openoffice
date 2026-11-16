@@ -20,6 +20,7 @@ import { he } from './highlight/he'
 import { hi } from './highlight/hi'
 import { zhTW } from './highlight/zh-TW'
 import { vi } from './highlight/vi'
+import { tr } from './highlight/tr'
 
 /** Copy for AI highlights (reading assistant) */
 export const highlightStrings = defineStrings({
@@ -44,4 +45,5 @@ export const highlightStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

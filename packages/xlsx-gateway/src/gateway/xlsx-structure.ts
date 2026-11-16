@@ -6,6 +6,7 @@
 
 import type { WorkbookStyleEdit } from '../shared/edit-schemas'
 import { MAX_GRID_COLUMNS, MAX_GRID_ROWS } from '../shared/grid-bounds'
+import { decodeXmlText } from './xlsx-escapes'
 
 export type StructuralOp =
   | {
@@ -174,15 +175,23 @@ export function applyStructuralOps(
 ): string {
   let xml = ops.length === 0 ? worksheetXml : inferWorksheetAddresses(worksheetXml)
   let outlineTouched = false
-  for (const op of ops) {
+  for (let at = 0; at < ops.length; at += 1) {
+    const op = ops[at]!
     if ('start' in op) {
-      outlineTouched ||= 'level' in op
-      xml =
-        op.kind === 'set-row-size' ||
-        op.kind === 'set-rows-hidden' ||
-        op.kind === 'set-rows-outline'
-          ? applyRowAttributeOp(xml, op)
-          : applyColAttributeOp(xml, op, resolveColStyle)
+      if (!isRowAttributeOp(op)) {
+        outlineTouched ||= 'level' in op
+        xml = applyColAttributeOp(xml, op, resolveColStyle)
+        continue
+      }
+      // A run of row attribute ops (an undo that restores every line's
+      // height journals one op per line) patches the rows in one pass
+      // instead of rewriting the sheet once per op.
+      let end = at + 1
+      while (end < ops.length && isRowAttributeOp(ops[end]!)) end += 1
+      const run = ops.slice(at, end) as AxisAttributeOp[]
+      outlineTouched ||= run.some((entry) => 'level' in entry)
+      xml = run.length === 1 ? applyRowAttributeOp(xml, op) : applyRowAttributeRun(xml, run)
+      at = end - 1
       continue
     }
     if ('summaryBelow' in op) {
@@ -190,11 +199,18 @@ export function applyStructuralOps(
       continue
     }
     if (!('index' in op)) {
-      xml = applyMergeOp(xml, op)
+      // Same for a run of merges or of unmerges (unmerging a whole sheet
+      // journals one op per merged region).
+      let end = at + 1
+      while (end < ops.length && ops[end]!.kind === op.kind) end += 1
+      const run = ops.slice(at, end) as MergeOp[]
+      xml = run.length === 1 ? applyMergeOp(xml, op) : applyMergeRun(xml, run)
+      at = end - 1
       continue
     }
     const axis: Axis = axisOf(op)
     const shift = toShift(op)
+    if (!shift.swap) xml = materializeSharedGroupsTheShiftBreaks(xml, sheetName, shift, axis, true)
     if (axis === 'column') {
       xml = transformColumnOperation(xml, sheetName, shift)
     } else {
@@ -401,48 +417,233 @@ function applyRowAttributeOp(xml: string, op: AxisAttributeOp): string {
   const end = Math.min(op.end, MAX_GRID_ROWS - 1)
   if (start > end) return xml
   const seen = new Set<number>()
-  let result = xml.replace(/<row\b([^>]*?)(\/>|>)/g, (full, attributes: string, close: string) => {
-    const rowNumber = /(?:^|\s)r="([0-9]+)"/.exec(attributes)?.[1]
+  let result = xml.replace(ROW_OPEN_PATTERN, (full, attributes: string, close: string) => {
+    const rowNumber = ROW_NUMBER_PATTERN.exec(attributes)?.[1]
     if (rowNumber === undefined) return full
     const rowIndex = Number(rowNumber) - 1
     if (rowIndex < start || rowIndex > end) return full
     seen.add(rowIndex)
-    let patched = attributes
-    if ('size' in op) {
-      patched = patched.replace(/\s*ht="[^"]*"/, '').replace(/\s*customHeight="[^"]*"/, '')
-      if (op.size !== null) patched += ` ht="${formatSize(op.size)}" customHeight="1"`
-    } else if ('level' in op) {
-      patched = patched.replace(/\s*outlineLevel="[^"]*"/, '')
-      if (op.level > 0) patched += ` outlineLevel="${op.level}"`
-      if (op.collapsed !== undefined) {
-        patched = patched.replace(/\s*collapsed="[^"]*"/, '')
-        if (op.collapsed) patched += ' collapsed="1"'
-      }
-    } else {
-      patched = patched.replace(/\s*hidden="[^"]*"/, '')
-      if (op.hidden) patched += ' hidden="1"'
-    }
-    return `<row${patched}${close}`
+    return `<row${patchRowAttributes(attributes, op)}${close}`
   })
-  const setsSomething =
-    'size' in op
-      ? op.size !== null
-      : 'level' in op
-        ? op.level > 0 || op.collapsed === true
-        : op.hidden
-  if (!setsSomething) return result
-  const newAttributes =
-    'size' in op
-      ? ` ht="${formatSize(op.size ?? 0)}" customHeight="1"`
-      : 'level' in op
-        ? (op.level > 0 ? ` outlineLevel="${op.level}"` : '') +
-          (op.collapsed ? ' collapsed="1"' : '')
-        : ' hidden="1"'
+  if (!rowOpSetsSomething(op)) return result
+  const newAttributes = newRowAttributes(op)
   for (let rowIndex = start; rowIndex <= end; rowIndex += 1) {
     if (seen.has(rowIndex)) continue
     result = insertEmptyRow(result, rowIndex + 1, newAttributes)
   }
   return result
+}
+
+type MergeOp = Extract<StructuralOp, { range: CellArea }>
+
+const ROW_OPEN_PATTERN = /<row\b([^>]*?)(\/>|>)/g
+const ROW_NUMBER_PATTERN = /(?:^|\s)r="([0-9]+)"/
+
+function isRowAttributeOp(op: StructuralOp): op is AxisAttributeOp {
+  return (
+    op.kind === 'set-row-size' || op.kind === 'set-rows-hidden' || op.kind === 'set-rows-outline'
+  )
+}
+
+function patchRowAttributes(attributes: string, op: AxisAttributeOp): string {
+  if ('style' in op) return attributes
+  let patched = attributes
+  if ('size' in op) {
+    patched = patched.replace(/\s*ht="[^"]*"/, '').replace(/\s*customHeight="[^"]*"/, '')
+    if (op.size !== null) patched += ` ht="${formatSize(op.size)}" customHeight="1"`
+  } else if ('level' in op) {
+    patched = patched.replace(/\s*outlineLevel="[^"]*"/, '')
+    if (op.level > 0) patched += ` outlineLevel="${op.level}"`
+    if (op.collapsed !== undefined) {
+      patched = patched.replace(/\s*collapsed="[^"]*"/, '')
+      if (op.collapsed) patched += ' collapsed="1"'
+    }
+  } else {
+    patched = patched.replace(/\s*hidden="[^"]*"/, '')
+    if (op.hidden) patched += ' hidden="1"'
+  }
+  return patched
+}
+
+/// Whether the op writes onto a row the file never materialized (a reset
+/// back to the default leaves a missing row missing).
+function rowOpSetsSomething(op: AxisAttributeOp): boolean {
+  if ('style' in op) return false
+  return 'size' in op
+    ? op.size !== null
+    : 'level' in op
+      ? op.level > 0 || op.collapsed === true
+      : op.hidden
+}
+
+function newRowAttributes(op: AxisAttributeOp): string {
+  if ('style' in op) return ''
+  return 'size' in op
+    ? ` ht="${formatSize(op.size ?? 0)}" customHeight="1"`
+    : 'level' in op
+      ? (op.level > 0 ? ` outlineLevel="${op.level}"` : '') + (op.collapsed ? ' collapsed="1"' : '')
+      : ' hidden="1"'
+}
+
+/// Byte-for-byte what `applyRowAttributeOp` over each op in turn produces,
+/// in one pass over the rows. Each row takes the ops covering it in run
+/// order; a row the file lacks is created by the first covering op that sets
+/// something, and the covering ops after it patch it, as they would patch the
+/// row the sequential pass had just inserted. Sequential insertion lands
+/// each new row before the first later-numbered one, which is the sorted
+/// position only when the file's rows are already sorted — any other sheet
+/// takes the sequential path.
+function applyRowAttributeRun(xml: string, run: readonly AxisAttributeOp[]): string {
+  const ops = run
+    .map((op, order) => ({ op, order, start: op.start, end: Math.min(op.end, MAX_GRID_ROWS - 1) }))
+    .filter((entry) => entry.start <= entry.end && !('style' in entry.op))
+  if (ops.length === 0) return xml
+  const existing: number[] = []
+  for (const match of xml.matchAll(ROW_OPEN_PATTERN)) {
+    const rowNumber = ROW_NUMBER_PATTERN.exec(match[1] ?? '')?.[1]
+    if (rowNumber !== undefined) existing.push(Number(rowNumber) - 1)
+  }
+  // insertEmptyRow finds its neighbour with this looser pattern.
+  const neighbours = [...xml.matchAll(/<row\b[^>]*?\br="([1-9][0-9]*)"/g)].map(
+    (match) => Number(match[1]) - 1,
+  )
+  const sorted =
+    neighbours.length === existing.length &&
+    existing.every((row, at) => row === neighbours[at] && (at === 0 || row > existing[at - 1]!))
+  if (!sorted) {
+    let result = xml
+    for (const { op } of ops) result = applyRowAttributeOp(result, op)
+    return result
+  }
+
+  // Rows to visit, ascending: every existing row, plus every row of a span
+  // whose op creates missing rows.
+  const creating = ops
+    .filter((entry) => rowOpSetsSomething(entry.op))
+    .map((entry): [number, number] => [entry.start, entry.end])
+    .sort((left, right) => left[0] - right[0])
+  const spans: Array<[number, number]> = []
+  for (const [start, end] of creating) {
+    const last = spans[spans.length - 1]
+    if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end)
+    else spans.push([start, end])
+  }
+  const byStart = [...ops].sort((left, right) => left.start - right.start)
+  let nextStart = 0
+  let active: typeof ops = []
+  const coveringOps = (rowIndex: number): AxisAttributeOp[] => {
+    let added = false
+    while (nextStart < byStart.length && byStart[nextStart]!.start <= rowIndex) {
+      active.push(byStart[nextStart]!)
+      nextStart += 1
+      added = true
+    }
+    if (added) active.sort((left, right) => left.order - right.order)
+    active = active.filter((entry) => entry.end >= rowIndex)
+    return active.map((entry) => entry.op)
+  }
+
+  const patchedRows = new Map<number, AxisAttributeOp[]>()
+  const createdRows: string[] = []
+  const createdIndexes: number[] = []
+  let existingAt = 0
+  let spanAt = 0
+  let spanRow = spans[0]?.[0] ?? Infinity
+  for (;;) {
+    const existingRow = existing[existingAt] ?? Infinity
+    const rowIndex = Math.min(existingRow, spanRow)
+    if (rowIndex === Infinity) break
+    if (rowIndex === existingRow) existingAt += 1
+    if (rowIndex === spanRow) {
+      if (spanRow < spans[spanAt]![1]) spanRow += 1
+      else {
+        spanAt += 1
+        spanRow = spans[spanAt]?.[0] ?? Infinity
+      }
+    }
+    const covering = coveringOps(rowIndex)
+    if (covering.length === 0) continue
+    if (rowIndex === existingRow) {
+      patchedRows.set(rowIndex, covering)
+      continue
+    }
+    const first = covering.findIndex(rowOpSetsSomething)
+    if (first === -1) continue
+    let attributes = ` r="${rowIndex + 1}"${newRowAttributes(covering[first]!)}`
+    for (const op of covering.slice(first + 1)) attributes = patchRowAttributes(attributes, op)
+    createdRows.push(`<row${attributes}/>`)
+    createdIndexes.push(rowIndex)
+  }
+
+  let createdAt = 0
+  const createdBefore = (rowIndex: number): string => {
+    const from = createdAt
+    while (createdAt < createdIndexes.length && createdIndexes[createdAt]! < rowIndex) {
+      createdAt += 1
+    }
+    return createdRows.slice(from, createdAt).join('')
+  }
+  const result = xml.replace(ROW_OPEN_PATTERN, (full, attributes: string, close: string) => {
+    const rowNumber = ROW_NUMBER_PATTERN.exec(attributes)?.[1]
+    if (rowNumber === undefined) return full
+    const rowIndex = Number(rowNumber) - 1
+    const before = createdBefore(rowIndex)
+    const covering = patchedRows.get(rowIndex)
+    if (!covering) return before + full
+    let patched = attributes
+    for (const op of covering) patched = patchRowAttributes(patched, op)
+    return `${before}<row${patched}${close}`
+  })
+  const rest = createdBefore(Infinity)
+  if (rest === '') return result
+  if (result.includes('</sheetData>')) {
+    return result.replace('</sheetData>', () => `${rest}</sheetData>`)
+  }
+  const emptySheetData = /<sheetData\s*\/>/
+  if (emptySheetData.test(result)) {
+    return result.replace(emptySheetData, () => `<sheetData>${rest}</sheetData>`)
+  }
+  throw new StructuralShiftError('Worksheet has no sheetData element.')
+}
+
+/// Byte-for-byte what `applyMergeOp` over each op of a same-kind run in turn
+/// produces, without rescanning the sheet once per op.
+function applyMergeRun(xml: string, run: readonly MergeOp[]): string {
+  if (run[0]!.kind === 'merge-cells') {
+    // The first op places the section when the sheet has none; every later
+    // one appends before that same first </mergeCells>.
+    const placed = applyMergeOp(xml, run[0]!)
+    const elements = run
+      .slice(1)
+      .map((op) => `<mergeCell ref="${toRef(op.range)}"/>`)
+      .join('')
+    return refreshMergeCount(placed.replace('</mergeCells>', () => `${elements}</mergeCells>`))
+  }
+  // Each unmerge drops the first remaining element that carries its ref.
+  const pending = new Map<string, number>()
+  for (const op of run) {
+    const ref = toRef(op.range)
+    pending.set(ref, (pending.get(ref) ?? 0) + 1)
+  }
+  let ambiguous = false
+  const without = xml.replace(/<mergeCell\b[^>]*\/>/g, (element) => {
+    const refs = [...element.matchAll(/\bref="([^"]*)"/g)].map((match) => match[1]!)
+    if (refs.length !== 1) {
+      // Two ref-like attributes: which op claims it depends on op order.
+      ambiguous ||= refs.some((ref) => pending.has(ref))
+      return element
+    }
+    const left = pending.get(refs[0]!) ?? 0
+    if (left === 0) return element
+    pending.set(refs[0]!, left - 1)
+    return ''
+  })
+  if (ambiguous) {
+    let result = xml
+    for (const op of run) result = applyMergeOp(result, op)
+    return result
+  }
+  return refreshMergeCount(without)
 }
 
 function insertEmptyRow(worksheetXml: string, rowNumber: number, attributes: string): string {
@@ -607,6 +808,9 @@ export function shiftCrossSheetFormulas(
   for (const op of rowColumnOps(ops)) {
     const axis: Axis = axisOf(op)
     const shift = toShift(op)
+    if (!shift.swap) {
+      xml = materializeSharedGroupsTheShiftBreaks(xml, editedSheetName, shift, axis, false)
+    }
     const rewrite = (body: string): string =>
       escapeXmlText(shiftFormulaText(decodeEntities(body), editedSheetName, shift, axis, true))
     // The attribute part must not end with '/': a self-closing shared
@@ -1144,6 +1348,227 @@ function toShift(op: RowColumnOp): Shift {
     delta: -op.count,
     deleted: { start: op.index, end: op.index + op.count - 1 },
   }
+}
+
+function materializeSharedGroupsTheShiftBreaks(
+  xml: string,
+  shiftedSheetName: string,
+  shift: LinearShift,
+  axis: Axis,
+  cellsMove: boolean,
+): string {
+  const along = (cell: SharedFormulaCell) => (axis === 'row' ? cell.row : cell.column)
+  const moved = (cell: SharedFormulaCell) =>
+    cellsMove ? movePosition(along(cell), shift) : along(cell)
+  const maximum = (axis === 'row' ? MAX_GRID_ROWS : MAX_GRID_COLUMNS) - 1
+  return materializeSharedFormulaGroups(
+    xml,
+    ({ anchor, formula, followers }) => {
+      const anchorTo = moved(anchor)
+      if (anchorTo === null) return true
+      const references = axisReferences(formula, shiftedSheetName, axis, !cellsMove)
+      return followers.some((follower) => {
+        const to = moved(follower)
+        if (to === null) return false
+        const offset = along(follower) - along(anchor)
+        const movedOffset = to - anchorTo
+        return !references.every((reference) => {
+          const start = reference.start + (reference.startRelative ? offset : 0)
+          const end = reference.end + (reference.endRelative ? offset : 0)
+          if (start < 0 || start > maximum || end < 0 || end > maximum) return false
+          if (!reference.range) {
+            const place = (position: number) =>
+              reference.shifts ? movePosition(position, shift) : position
+            const before = place(reference.start)
+            const after = place(start)
+            return before !== null && after === before + (reference.startRelative ? movedOffset : 0)
+          }
+          const span = (first: number, last: number) =>
+            reference.shifts ? moveRange(first, last, shift) : { start: first, end: last }
+          const before = span(reference.start, reference.end)
+          const after = span(start, end)
+          return (
+            before !== null &&
+            after !== null &&
+            after.start === before.start + (reference.startRelative ? movedOffset : 0) &&
+            after.end === before.end + (reference.endRelative ? movedOffset : 0)
+          )
+        })
+      })
+    },
+    (cell) => moved(cell) === null,
+    'throw',
+  )
+}
+
+interface AxisReference {
+  readonly shifts: boolean
+  readonly range: boolean
+  readonly start: number
+  readonly startRelative: boolean
+  readonly end: number
+  readonly endRelative: boolean
+}
+
+function axisReferences(
+  formula: string,
+  sheetName: string,
+  axis: Axis,
+  qualifiedOnly: boolean,
+): AxisReference[] {
+  const references: AxisReference[] = []
+  formula.split('"').forEach((segment, index) => {
+    if (index % 2 === 1) return
+    for (const match of segment.matchAll(FORMULA_REFERENCE_PATTERN)) {
+      const qualifier = match[2]
+      const parts = (match[3] ?? '').split(':').map((part) => axisOrdinal(part, axis))
+      const first = parts[0]
+      const last = parts[parts.length - 1]
+      if (!first || !last) continue
+      references.push({
+        shifts: qualifier === undefined ? !qualifiedOnly : qualifierMatches(qualifier, sheetName),
+        range: parts.length > 1,
+        start: first.value,
+        startRelative: first.relative,
+        end: last.value,
+        endRelative: last.relative,
+      })
+    }
+  })
+  return references
+}
+
+function axisOrdinal(part: string, axis: Axis): { value: number; relative: boolean } | null {
+  const cell = /^(\$?)([A-Z]{1,3})(\$?)([0-9]+)$/.exec(part)
+  if (cell) {
+    return axis === 'row'
+      ? { value: Number(cell[4]) - 1, relative: cell[3] !== '$' }
+      : { value: lettersToColumn(cell[2] ?? 'A'), relative: cell[1] !== '$' }
+  }
+  const column = /^(\$?)([A-Z]{1,3})$/.exec(part)
+  if (column) {
+    return axis === 'column'
+      ? { value: lettersToColumn(column[2] ?? 'A'), relative: column[1] !== '$' }
+      : null
+  }
+  const row = /^(\$?)([0-9]+)$/.exec(part)
+  if (row) return axis === 'row' ? { value: Number(row[2]) - 1, relative: row[1] !== '$' } : null
+  return null
+}
+
+export interface SharedFormulaCell {
+  readonly row: number
+  readonly column: number
+}
+
+export interface SharedFormulaGroup {
+  readonly anchor: SharedFormulaCell
+  readonly formula: string
+  readonly followers: readonly SharedFormulaCell[]
+}
+
+export function materializeSharedFormulaGroups(
+  xml: string,
+  breaks: (group: SharedFormulaGroup) => boolean,
+  keeps: (cell: SharedFormulaCell) => boolean,
+  untranslatable: 'cached-value' | 'throw',
+): string {
+  if (!xml.includes('t="shared"')) return xml
+  interface Fragment extends SharedFormulaCell {
+    start: number
+    end: number
+    openTag: string
+    si: string
+    isAnchor: boolean
+    body: string
+  }
+  const fragments: Fragment[] = []
+  // The open tag is matched alone so a self-closing follower never pairs
+  // with a later </f>.
+  const sharedOpen = /<f\b[^>]*?\bt="shared"[^>]*?(\/?)>/g
+  let match: RegExpExecArray | null
+  while ((match = sharedOpen.exec(xml)) !== null) {
+    const openTag = match[0]
+    const si = /\bsi="([^"]+)"/.exec(openTag)?.[1]
+    if (si === undefined) continue
+    const openEnd = match.index + openTag.length
+    let end = openEnd
+    let body = ''
+    if (match[1] !== '/') {
+      const close = xml.indexOf('</f>', openEnd)
+      if (close === -1) continue
+      body = xml.slice(openEnd, close)
+      end = close + '</f>'.length
+    }
+    const cellOpen = xml.lastIndexOf('<c', match.index)
+    const address = /\br="([A-Z]{1,3})([0-9]+)"/.exec(xml.slice(cellOpen, match.index))
+    if (!address) continue
+    fragments.push({
+      start: match.index,
+      end,
+      openTag,
+      row: Number(address[2]) - 1,
+      column: lettersToColumn(address[1] ?? 'A'),
+      si,
+      isAnchor: /\bref="/.test(openTag),
+      body,
+    })
+  }
+  const groups = new Map<string, { anchor: Fragment; followers: Fragment[] }>()
+  for (const fragment of fragments) {
+    if (fragment.isAnchor && fragment.body !== '') {
+      groups.set(fragment.si, { anchor: fragment, followers: [] })
+    }
+  }
+  for (const fragment of fragments) {
+    if (!fragment.isAnchor && fragment.body === '') {
+      groups.get(fragment.si)?.followers.push(fragment)
+    }
+  }
+  const broken = new Map<string, string>()
+  for (const [si, { anchor, followers }] of groups) {
+    const formula = decodeXmlText(anchor.body)
+    if (breaks({ anchor, formula, followers })) broken.set(si, formula)
+  }
+  if (broken.size === 0) return xml
+  const parts: string[] = []
+  let cursor = 0
+  for (const fragment of fragments) {
+    const group = groups.get(fragment.si)
+    const formula = broken.get(fragment.si)
+    if (group === undefined || formula === undefined || keeps(fragment)) continue
+    let replacement: string
+    if (fragment === group.anchor) {
+      replacement = `<f${plainFormulaAttributes(fragment.openTag)}>${fragment.body}</f>`
+    } else if (!fragment.isAnchor && fragment.body === '') {
+      const translated = translateSharedFormula(
+        formula,
+        fragment.row - group.anchor.row,
+        fragment.column - group.anchor.column,
+      )
+      if (translated === null && untranslatable === 'throw') {
+        throw new StructuralShiftError(
+          `The shared formula in ${columnToLetters(fragment.column)}${fragment.row + 1} ` +
+            'would reference cells outside the sheet — aborted.',
+        )
+      }
+      replacement =
+        translated === null
+          ? ''
+          : `<f${plainFormulaAttributes(fragment.openTag)}>${escapeXmlText(translated)}</f>`
+    } else {
+      continue
+    }
+    parts.push(xml.slice(cursor, fragment.start), replacement)
+    cursor = fragment.end
+  }
+  if (parts.length === 0) return xml
+  parts.push(xml.slice(cursor))
+  return parts.join('')
+}
+
+function plainFormulaAttributes(openTag: string): string {
+  return openTag.slice(2, openTag.endsWith('/>') ? -2 : -1).replace(/\s+(?:t|ref|si)="[^"]*"/g, '')
 }
 
 /// Shifts a single 0-based position; null means it was deleted.

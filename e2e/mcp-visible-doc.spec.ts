@@ -100,7 +100,12 @@ test.describe('MCP visible document session', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'genoffice-mcp-userdata-'))
     await writeFile(
       join(userDataDir, 'app-settings.json'),
-      JSON.stringify({ onboardingSeen: true, mcpEnabled: true, mcpPort: port }),
+      JSON.stringify({
+        onboardingSeen: true,
+        editorPickSeen: true,
+        mcpEnabled: true,
+        mcpPort: port,
+      }),
     )
     const launched = await launchShell({
       videoDir: 'mcp-visible',

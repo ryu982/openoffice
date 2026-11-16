@@ -43,6 +43,7 @@ const DOCUMENT_KINDS: readonly DocumentTabKind[] = [
   'mindmap',
   'hwp',
   'epub',
+  'diagram',
 ]
 
 /** the same shape the recovery store accepts for an untitled copy */
@@ -394,6 +395,33 @@ export function sessionRestoreLayout(
   return layout
 }
 
+/**
+ * A layout without some of its tabs (by index): the ones the person declined
+ * to restore because their editor is turned off. The front tab and the split
+ * follow the tabs that stay; a split that loses a pane is gone.
+ */
+export function sessionLayoutWithout(
+  layout: SessionSnapshot,
+  drop: ReadonlySet<number>,
+): SessionSnapshot {
+  if (drop.size === 0) return layout
+  const newIndex = new Map<number, number>()
+  const tabs: SessionRecordTab[] = []
+  layout.tabs.forEach((tab, index) => {
+    if (drop.has(index)) return
+    newIndex.set(index, tabs.length)
+    tabs.push(tab)
+  })
+  const next: SessionSnapshot = { tabs }
+  const active = layout.active !== undefined ? newIndex.get(layout.active) : undefined
+  if (active !== undefined) next.active = active
+  const split = layout.split
+  const a = split ? newIndex.get(split.a) : undefined
+  const b = split ? newIndex.get(split.b) : undefined
+  if (split && a !== undefined && b !== undefined) next.split = { ...split, a, b }
+  return next
+}
+
 export interface SessionRecorderOptions {
   /** the app data folder (`app.getPath('userData')`) */
   userDataDir: string
@@ -413,8 +441,10 @@ export interface SessionRecorder {
    * time and whether this run restores tabs. A restore run starts from the
    * previous record's tabs, so a crash before the first tab change still
    * finds them; any other run starts empty. Updates before this are dropped.
+   * `dropTabs` are previous tabs (by index) not restored: an editor turned
+   * off and the person said no, so they are not asked about again.
    */
-  startRun(options: { restoreRun: boolean }): void
+  startRun(options: { restoreRun: boolean; dropTabs?: ReadonlySet<number> }): void
   /** the tabs changed (open, close, reorder, rename, path, front tab, split, detach) */
   update(snapshot: SessionSnapshot): void
   /** write a pending change now */
@@ -513,11 +543,14 @@ export function createSessionRecorder(options: SessionRecorderOptions): SessionR
   return {
     previous,
 
-    startRun({ restoreRun }) {
+    startRun({ restoreRun, dropTabs }) {
       if (current || ended) return
       const carried =
         restoreRun && previous.status === 'ok'
-          ? sessionRestoreLayout(previous.record, { crashLoop: false })
+          ? sessionLayoutWithout(
+              sessionRestoreLayout(previous.record, { crashLoop: false }),
+              dropTabs ?? new Set(),
+            )
           : { tabs: [] }
       current = {
         version: 1,

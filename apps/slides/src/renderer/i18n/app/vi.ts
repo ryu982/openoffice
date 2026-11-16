@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const vi = {
+  appLegacyPptImported:
+    'Đã mở tệp .ppt dưới dạng bản sao .pptx đã chuyển đổi. Tệp gốc giữ nguyên; khi lưu sẽ ghi ra một tệp .pptx mới. Ghi chú của diễn giả và hiệu ứng động không được chuyển sang.',
   redactMenuLabel: 'Ẩn phần đã chọn khỏi AI',
   redactDialogDesc:
     'Nội dung đã chọn vẫn còn trong tài liệu và tệp; mô hình chỉ thấy placeholder bên dưới. Đặt tên để mô hình biết nó đại diện cho điều gì.',
@@ -172,6 +174,9 @@ export const vi = {
   appPrintLandscape: 'Khổ ngang',
   appPrintFrame: 'Đóng khung trang chiếu',
   appPrintHidden: 'In các trang chiếu ẩn',
+  appPrintRangeSelected: 'Các trang chiếu đã chọn',
+  appPrintLayoutBlocked:
+    'Bản phát tay và trang ghi chú được in một trang trên mỗi tờ. Để sắp xếp trang, hãy chọn Trang chiếu toàn trang.',
   appPrintPageCount: '{n} trang',
   appPrintNoPages: 'Không có trang chiếu nào để in',
   appPrintRendering: 'Đang tạo bản xem trước…',
@@ -181,6 +186,7 @@ export const vi = {
   appCtxSendToBack: 'Đưa xuống dưới cùng',
   appCtxBringForward: 'Đưa lên một lớp',
   appCtxSendBackward: 'Đưa xuống một lớp',
+  appCtxRotate: 'Xoay',
   appCtxRotateLeft90: 'Xoay sang trái 90°',
   appCtxRotateRight90: 'Xoay sang phải 90°',
   appCtxFlipH: 'Lật ngang',

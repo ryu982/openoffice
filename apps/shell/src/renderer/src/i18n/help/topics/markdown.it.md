@@ -37,6 +37,7 @@ Menu File, tutto locale e tutto chiede dove mettere il risultato:
 
 - **Esporta come Word…** e **Esporta come PDF…** scrivono un vero .docx o .pdf.
 - **Esporta come ODT…** scrive un .odt (testo OpenDocument) con la stessa conversione dell'esportazione in Word; se qualcosa cambia o va perso lungo il percorso, vedi l'elenco e confermi prima.
+- **Esporta come documento HWP…** scrive un documento HWP (.hwp o .hwpx) con la stessa conversione; titoli, elenchi e tabelle arrivano come tali nel documento HWP e una tabella lunga prosegue nella pagina successiva. Se qualcosa non può essere trasferito, vedi l'elenco e confermi prima.
 - **Esporta come immagini…** scrive un PNG per pagina in una cartella che scegliete.
 - **Converti e apri in Docs** converte in .docx e lo apre nella scheda Docs integrata qui nell’app: non è un passaggio a qualcosa nel cloud, e la copia convertita resta in una cartella di cache che viene ripulita dopo circa una settimana.
 

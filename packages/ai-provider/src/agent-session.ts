@@ -5,10 +5,13 @@
  */
 export * from './agent-session/types'
 export * from './agent-session/policy'
+export * from './agent-session/program-problem'
 export * from './agent-session/messages'
 export {
   AGENT_APP_MCP_TOOLS,
   APP_MCP_SERVER_NAME,
+  agentRelayToolOf,
+  agentUsableRelays,
   isAgentAppMcpTool,
   CLAUDE_AGENT_TOOLS,
   claudeAgentAction,
@@ -33,6 +36,7 @@ export {
   codexAgentReadableDirs,
   codexAgentThreadParams,
   codexDeclineDecision,
+  codexProfilePathsLiteral,
   codexElicitationAnswer,
   startCodexAgentSession,
   type CodexAgentDeps,

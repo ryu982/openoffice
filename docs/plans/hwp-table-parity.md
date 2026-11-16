@@ -167,7 +167,7 @@ E2E는 production 빌드에서 `window.rhwpStudio.automation`과 `window.rhwpStu
 - **저장 형식과 문서 식별자를 바꾸지 않는다.** `docs/standards.md`와 `docs/security.md`를 따른다.
 - **HWP 편집기 소스는 빌드 때 받아 온 rhwp-studio v0.8.7이다.** 직접 소스를 저장소에 넣지 않고, `scripts/rhwp-patches.mjs`의 패치로만 고친다. 패치가 못 찾으면 빌드가 실패해야 한다.
 - **메뉴에 보이는 단축키 글자와 실제 동작이 같아야 한다.** `hancom-keys.mjs`의 `LABELS`를 함께 고친다.
-- **화면 문구를 더하면 21개 언어를 채운다.** HWP 편집기 안쪽은 rhwp의 한국어/영어만 맞춘다.
+- **화면 문구를 더하면 22개 언어를 채운다.** HWP 편집기 안쪽은 rhwp의 한국어/영어만 맞춘다.
 - **E2E는 production 빌드로 돈다.** `window.__wasm`에 기대지 말고 `automation`/`plugins`를 쓴다.
 - **다른 에이전트의 체크아웃을 건드리지 않는다.** 이 작업은 `hwp-table-parity` worktree에서만 한다.
 

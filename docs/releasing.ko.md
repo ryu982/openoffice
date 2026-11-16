@@ -2,7 +2,9 @@
 
 이음오피스(IeumOffice)의 새 버전을 만들어 GitHub에 올리는 순서입니다. 위에서부터 차례대로 하면 됩니다.
 
-설치된 앱은 공개 저장소 `pblsketch/openoffice`의 **릴리스(Releases)** 를 보고 스스로 업데이트합니다. 그래서 "새 버전을 낸다"는 것은 설치 파일을 만들어 그 저장소의 릴리스에 올리는 일입니다. 따로 운영하는 서버나 비밀 키는 없습니다.
+설치된 앱은 공개 저장소 `pblsketch/ieumoffice`의 **릴리스(Releases)** 를 보고 스스로 업데이트합니다. 그래서 "새 버전을 낸다"는 것은 설치 파일을 만들어 그 저장소의 릴리스에 올리는 일입니다. 따로 운영하는 서버나 비밀 키는 없습니다.
+
+저장소는 2026-11-08에 `pblsketch/openoffice`에서 지금 이름으로 바뀌었습니다. 그 전에 설치한 앱은 옛 이름으로 업데이트를 묻고 GitHub가 새 이름으로 넘겨주므로, `pblsketch/openoffice`라는 저장소를 새로 만들지 않습니다. 새로 만들면 옛 앱이 업데이트를 받지 못합니다.
 
 > **에이전트에게 맡길 때.** Claude Code 같은 에이전트로 릴리스를 맡기면 `.claude/skills/release-ieumoffice/SKILL.md`를 함께 읽게 합니다. 승인 없이는 게시하지 않는 규칙, 릴리스 본문 윤문, 업데이트 창 확인 절차가 그 스킬에 있습니다.
 
@@ -56,14 +58,16 @@ Windows SDK는 스캔 문서 글자 인식 도우미(`win-ocr.exe`)를 만들 �
 
 ## 4. 설치 파일 만들기
 
-**GitHub Actions로 만들기 (권장, 결정 0056).** Mac·Linux처럼 GitHub의 Windows 빌드 기계가 만들고, 설치 파일과 `latest.yml`에 "이 저장소의 이 커밋에서 만들었다"는 출처 증명을 붙입니다. 사용자는 `gh attestation verify IeumOffice-Setup-<버전>.exe --repo pblsketch/openoffice`로 확인할 수 있습니다.
+**GitHub Actions로 만들기 (권장, 결정 0056).** Mac·Linux처럼 GitHub의 Windows 빌드 기계가 만들고, 설치 파일과 `latest.yml`에 "이 저장소의 이 커밋에서 만들었다"는 출처 증명을 붙입니다. 사용자는 `gh attestation verify IeumOffice-Setup-<버전>.exe --repo pblsketch/ieumoffice`로 확인할 수 있습니다. 저장소 이름을 바꾸기 전(0.12.11까지)에 낸 파일의 증명에는 옛 이름이 적혀 있어서, 새 이름으로 맞지 않으면 `--repo pblsketch/openoffice`로 확인합니다.
 
-1. 6번대로 릴리스를 **본문만으로, "Set as a pre-release"를 체크해** 먼저 공개합니다. 파일은 아직 올리지 않습니다.
+1. 6번대로 릴리스를 **본문만으로** 먼저 공개합니다. 프리릴리스를 거치지 않고 바로 정식 공개합니다("Set as a pre-release"는 체크하지 않고 "Set as the latest release"를 체크). 파일은 아직 올리지 않습니다. 파일이 붙기 전까지 설치된 앱은 받을 것이 없다고 보고 조용히 넘어가고, 사이트의 내려받기 버튼은 릴리스 페이지로 갑니다.
 2. **Actions** 탭 → **Windows build** → **Run workflow**에서 가지는 `main`, **release_tag** 칸에 그 태그(예: `v0.12.4`)를 적고 실행합니다.
-3. 빌드, 검사(묶인 프로그램, `latest.yml`의 버전과 파일 이름, **서명이 없는지**), 창 없는 내보내기 시험이 모두 통과하면 설치 파일, `.blockmap`, `latest.yml`이 그 릴리스에 저절로 붙습니다. 빌드한 버전과 태그가 다르면 붙이지 않고 멈춥니다.
-4. 릴리스 페이지에서 세 파일이 붙었는지 보고, 8번의 베타 예행으로 넘어갑니다.
+3. 빌드, 검사(묶인 프로그램, `latest.yml`의 버전과 파일 이름, **서명이 없는지**), 창 없는 내보내기 시험이 모두 통과하면 설치 파일, `.blockmap`, `latest.yml`이 그 릴리스에 저절로 붙습니다. 이 순간부터 모든 사용자에게 나갑니다. 빌드한 버전과 태그가 다르면 붙이지 않고 멈춥니다.
+4. 릴리스 페이지에서 세 파일이 붙었는지 보고, 5번대로 설치본을 확인합니다. 옛 버전이 설치된 PC가 있으면 ☰ → **업데이트 확인…** 으로 업데이트가 끝까지 되는지도 봅니다. 문제가 보이면 10번을 따릅니다.
 
-**Google 드라이브 클라이언트.** 세 빌드(Windows·macOS·Linux)는 저장소 secrets의 `GENOFFICE_GOOGLE_CLIENT_ID`와 `GENOFFICE_GOOGLE_CLIENT_SECRET`을 앱 빌드와 묶기 단계에 넘깁니다(결정 0033, 0085). 두 값이 없으면 빌드는 그대로 끝나지만 설치본에 드라이브 기능이 빠집니다. 값은 저장소 주인이 `gh secret set GENOFFICE_GOOGLE_CLIENT_ID --repo pblsketch/openoffice`처럼 직접 넣고, 커밋이나 로그에 남기지 않습니다.
+빌드나 검사가 실패해 파일이 하나도 붙지 않았다면, 그 릴리스와 태그를 지워 직전 릴리스가 다시 "최신"이 되게 하고 고친 뒤 처음부터 다시 합니다. 받은 사람이 없으므로 같은 번호를 다시 써도 됩니다.
+
+**Google 드라이브 클라이언트.** 세 빌드(Windows·macOS·Linux)는 저장소 secrets의 `GENOFFICE_GOOGLE_CLIENT_ID`와 `GENOFFICE_GOOGLE_CLIENT_SECRET`을 앱 빌드와 묶기 단계에 넘깁니다(결정 0033, 0085). 두 값이 없으면 빌드는 그대로 끝나지만 설치본에 드라이브 기능이 빠집니다. 값은 저장소 주인이 `gh secret set GENOFFICE_GOOGLE_CLIENT_ID --repo pblsketch/ieumoffice`처럼 직접 넣고, 커밋이나 로그에 남기지 않습니다.
 
 release_tag를 비워 두면 결과물(`ieumoffice-windows-x64`)만 남습니다. **처음 한 번은 이렇게 돌려** 내려받은 설치 파일이 손으로 만든 것과 똑같이 설치되고 동작하는지 확인합니다. _(확인 필요: 이 워크플로는 아직 Actions에서 돌려 보지 않았습니다. 첫 실행에서 확인한 뒤 이 표시를 지워 주세요.)_
 
@@ -135,7 +139,7 @@ npm run dist:win -- -- --publish never
 
 ## 6. GitHub 릴리스 만들기
 
-1. <https://github.com/pblsketch/openoffice/releases/new> 를 엽니다.
+1. <https://github.com/pblsketch/ieumoffice/releases/new> 를 엽니다.
 2. **태그**: `v` + 버전 번호. 예: 버전이 `0.11.1`이면 `v0.11.1`. "Choose a tag"에 직접 적고 "Create new tag on publish"를 고릅니다. 대상(Target)은 3번에서 올린 커밋이 있는 브랜치입니다.
 3. **제목**: 알아보기 쉬운 이름(예: `v0.11.1`). **설명**: 바뀐 점.
    - 설명은 웹 페이지와 **앱의 업데이트 창** 모두에 그대로 나옵니다(앱은 본문을 번역하지 않습니다).
@@ -161,7 +165,7 @@ npm run dist:win -- -- --publish never
 올린 뒤 바로 확인합니다. 브라우저에서 아래 주소를 열었을 때 `latest.yml`이 내려받아지면 됩니다.
 
 ```
-https://github.com/pblsketch/openoffice/releases/latest/download/latest.yml
+https://github.com/pblsketch/ieumoffice/releases/latest/download/latest.yml
 ```
 
 (릴리스가 하나도 없던 2026-10-13에는 이 주소가 "404 찾을 수 없음"이었습니다.)
@@ -171,14 +175,14 @@ https://github.com/pblsketch/openoffice/releases/latest/download/latest.yml
 - **처음 설치할 때 "알 수 없는 게시자" 경고가 뜹니다.** 설치 파일에 서명이 없기 때문입니다. Windows가 파란 "Windows의 PC 보호" 창을 띄우면 "추가 정보" → "실행"을 눌러야 설치가 시작됩니다. 내려받는 곳에 이 안내를 적어 두세요. _(확인 필요: 창의 정확한 문구는 Windows 버전에 따라 다를 수 있습니다. 첫 릴리스 때 직접 보고 안내문을 맞추세요.)_
 - **서명이 없어도 자동 업데이트는 됩니다.** 앱에는 "특정 게시자가 서명한 파일만 받는다"는 조건이 들어 있지 않습니다. 대신 `latest.yml`에 적힌 확인 값과 내려받은 파일이 일치하는지를 검사합니다.
 - 설치된 앱은 **켜고 15초 뒤에 한 번, 그 뒤로는 4시간마다** 새 버전을 확인합니다. 새 버전이 있으면 업데이트 창이 뜨고, "지금 업데이트" → 다 받으면 "다시 시작 및 설치" 순서로 진행됩니다.
-- 사용자가 직접 확인하려면 탭 줄의 메뉴 버튼(☰) → **업데이트 확인…** 을 누릅니다. Mac은 메뉴 막대의 **도움말 → 업데이트 확인…** 입니다.
+- 사용자가 직접 확인하려면 탭 줄의 메뉴 버튼(☰) → **업데이트 확인…** 을 누릅니다. Mac은 메뉴 막대의 앱 이름 메뉴 또는 **도움말 → 업데이트 확인…** 입니다.
 - 릴리스가 하나도 없거나, 인터넷이 안 되거나, 확인이 실패해도 **오류 창은 뜨지 않고 앱은 그대로 쓸 수 있습니다.** 사용자가 직접 "업데이트 확인…"을 눌렀을 때만 "최신 버전입니다" 또는 "업데이트를 확인할 수 없습니다"라고 알려 줍니다.
 - 자동 업데이트가 두 번 연속 실패하면 업데이트 창이 "다운로드 페이지 열기" 버튼으로 바뀌고, 누르면 저장소의 릴리스 페이지가 열립니다. 거기서 설치 파일을 받아 직접 설치하면 됩니다.
 - 새 버전이 있으면 업데이트 창에 바뀐 점이 나옵니다. 길면 스크롤하고, "GitHub에서 전체 보기"로 릴리스 페이지를 열 수 있습니다. 여러 버전을 건너뛴 사용자는 그 사이 릴리스의 본문도 함께 봅니다.
 
-## 8. 업데이트가 실제로 되는지 처음부터 끝까지 확인하기 (버전 두 개로)
+## 8. 정식 공개 전에 혼자 먼저 받아 보기 (선택, 기본 절차 아님)
 
-모든 사용자에게 내보내기 전에, **베타 채널**로 먼저 혼자 받아 볼 수 있습니다. 프리릴리스로 올린 버전은 "베타 버전" 채널을 고른 앱에만 보이기 때문입니다.
+기본 절차는 프리릴리스를 거치지 않고 바로 정식 공개합니다(2026-11-01부터). 업데이트 장치를 크게 고친 버전처럼 모든 사용자에게 나가기 전에 설치본으로 꼭 확인해야 할 때만, 아래처럼 **베타 채널**로 먼저 혼자 받아 봅니다. 프리릴리스로 올린 버전은 "베타 버전" 채널을 고른 앱에만 보이기 때문입니다. 이때는 4번의 1에서 "Set as a pre-release"를 체크해 공개합니다.
 
 준비: 옛 버전 A가 설치된 PC. (예: 지금 쓰고 있는 `0.11.0`. 3~5번으로 만든 설치 파일로 설치한 것이어야 합니다. 개발용으로 띄운 앱은 업데이트를 하지 않습니다.)
 
@@ -237,21 +241,22 @@ Mac판은 Apple 개발자 서명 없는 베타로, Apple Silicon용과 Intel용�
 2. 40~70분쯤 뒤 초록색 체크가 뜨면 그 실행을 열고, 아래 **Artifacts**의 `ieumoffice-mac`을 내려받아 압축을 풉니다. 빨간색이면 올리지 않습니다. 빌드가 두 앱을 실제로 띄워 보는 검사까지 하기 때문에(Intel판은 Rosetta로), 실패했다면 그 버전의 Mac판에 문제가 있는 것입니다.
 3. 안에 든 파일을 확인합니다.
 
-| 파일                                          | 설명                                                                   | 릴리스에 올리나                |
-| --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| `IeumOffice-<버전>-arm64.dmg`                 | Apple Silicon Mac 사용자가 받는 설치 파일                              | **올린다 (필수)**              |
-| `IeumOffice-<버전>-x64.dmg`                   | Intel Mac 사용자가 받는 설치 파일                                      | **올린다 (필수)**              |
-| `latest-mac.yml` (베타 번호면 `beta-mac.yml`) | Mac 앱이 새 버전을 알아보는 안내 파일. Windows의 `latest.yml`과 다르다 | **올린다 (필수)**              |
-| `IeumOffice-<버전>-arm64-mac.zip`             | Apple Silicon 앱을 zip으로 묶은 것. `latest-mac.yml`이 가리킨다        | **올린다** (안내 파일과 한 쌍) |
-| `IeumOffice-<버전>-mac.zip`                   | Intel 앱을 zip으로 묶은 것. `latest-mac.yml`이 가리킨다                | **올린다** (안내 파일과 한 쌍) |
-| `*.blockmap`                                  | 보조 파일                                                              | 올리지 않아도 된다             |
+| 파일                                          | 설명                                                                   | 릴리스에 올리나    |
+| --------------------------------------------- | ---------------------------------------------------------------------- | ------------------ |
+| `IeumOffice-<버전>-arm64.dmg`                 | Apple Silicon Mac 사용자가 받는 설치 파일                              | **올린다 (필수)**  |
+| `IeumOffice-<버전>-x64.dmg`                   | Intel Mac 사용자가 받는 설치 파일                                      | **올린다 (필수)**  |
+| `latest-mac.yml` (베타 번호면 `beta-mac.yml`) | Mac 앱이 새 버전을 알아보는 안내 파일. Windows의 `latest.yml`과 다르다 | **올린다 (필수)**  |
+| `IeumOffice-<버전>-arm64-mac.zip`             | Apple Silicon 앱을 zip으로 묶은 것. Mac 앱이 업데이트로 받는다         | **올린다 (필수)**  |
+| `IeumOffice-<버전>-mac.zip`                   | Intel 앱을 zip으로 묶은 것. Mac 앱이 업데이트로 받는다                 | **올린다 (필수)**  |
+| `*.blockmap`                                  | 보조 파일                                                              | 올리지 않아도 된다 |
 
 4. 6번에서 만든(또는 만들) 릴리스를 "Edit"하여 위 파일을 끌어다 놓고 저장합니다. Windows 파일과 이름이 겹치지 않으므로 함께 둡니다.
 5. `latest-mac.yml`을 메모장으로 열어 `version:`이 이번 번호인지 봅니다.
 
 알아 둘 것:
 
-- **Mac 앱은 스스로 업데이트하지 않습니다.** 서명이 없으면 Mac의 업데이트 장치가 설치를 거부하기 때문입니다. 대신 `latest-mac.yml`을 읽어 새 버전을 알아보고, 업데이트 창에서 "다운로드 페이지 열기"로 안내합니다. 그래서 `latest-mac.yml`을 빠뜨리면 Mac 사용자는 새 버전이 나온 줄 모릅니다.
+- **Mac 앱은 zip을 받아 스스로를 바꿔 끼웁니다(결정 0097).** 서명이 없으면 Mac의 업데이트 장치가 설치를 거부하므로, 앱이 `latest-mac.yml`이 가리키는 zip을 받아 직접 설치합니다. 그래서 `latest-mac.yml`이나 zip 두 개 중 하나라도 빠뜨리면 Mac 사용자는 새 버전을 받지 못합니다. 손으로 올릴 때는 `latest-mac.yml`의 `sha512`가 올린 zip과 같은 빌드의 것이어야 합니다(같은 실행의 파일을 함께 올립니다).
+- 이 기능이 처음 들어간 버전의 릴리스 본문 설치 안내에는 "Mac은 이번 한 번만 새 dmg로 덮어 설치하면 다음부터 앱이 스스로 업데이트한다"고 적습니다.
 - Mac 사용자는 처음 열 때 "확인할 수 없는 개발자" 경고를 봅니다. README의 "Mac (베타)"에 대처 순서가 있습니다. 내려받기 안내에 그 순서나 링크를 함께 적어 두세요.
 - 사이트의 Mac 내려받기 단추는 `-arm64.dmg`를 고릅니다. Intel용 링크는 13번에서 사이트에 함께 둡니다.
 - Mac판의 동작은 저장소 주인이 직접 확인할 수 없습니다. Mac 사용자에게서 들어온 보고를 `docs/tracking/status.md`에 적습니다.
@@ -301,14 +306,12 @@ Linux판(64비트 x64)도 베타로 냅니다. Windows·Mac 설치 파일과 **�
 0. Anthropic 상업 약관 동의 확인
 1. apps/shell/package.json 과 package-lock.json 의 버전 올리기 → 커밋, push
 2. (손 빌드일 때만) Rust PATH 설정
-3. GitHub 릴리스: 태그 v<버전>, 본문만, pre-release 체크 → Publish
-4. Actions → Windows build → Run workflow(main, release_tag) → 설치 파일·latest.yml 이 그 릴리스에 붙었는지 확인
+3. GitHub 릴리스: 태그 v<버전>, 본문만, pre-release 체크 없이 latest 로 → Publish (프리릴리스 단계 없음)
+4. Actions → Windows build → Run workflow(main, release_tag) → 설치 파일·latest.yml 이 그 릴리스에 붙었는지 확인 (붙는 순간 모든 사용자에게 나감)
    (Actions 를 못 쓰면: native:build → xlsx-sidecar.exe 복사 → npm run dist:win -- -- --publish never → 두 파일 손으로 올리기)
-5. 설치해서 버전과 .odt "연결 프로그램" 확인
-6. 옛 버전 앱에서 채널을 "베타 버전"으로 바꿔 업데이트 확인
-7. (Mac) Actions → macOS build → Run workflow → 결과의 dmg, zip, latest-mac.yml 을 같은 릴리스에 올리기
-8. (Linux) Actions → Linux build → Run workflow → 결과의 AppImage, deb, rpm, latest-linux.yml 을 같은 릴리스에 올리기
-9. 릴리스를 pre-release 해제 + latest 로 바꾸기
-10. 소개 사이트(ieumoffice-site): /updates 맨 위에 새 버전 항목 + 메인 한 줄 안내 고치기 → 확인 받고 push → 사이트에서 확인 → 질문 도우미 지식베이스 자동 갱신(Actions)
-11. docs/tracking/status.md 에 기준 버전과 확인한 내용 기록
+5. 설치해서 버전과 .odt "연결 프로그램" 확인, 옛 버전 앱이 있으면 ☰ → 업데이트 확인… 으로 끝까지 되는지 확인
+6. (Mac) Actions → macOS build → Run workflow → 결과의 dmg, zip, latest-mac.yml 을 같은 릴리스에 올리기
+7. (Linux) Actions → Linux build → Run workflow → 결과의 AppImage, deb, rpm, latest-linux.yml 을 같은 릴리스에 올리기
+8. 소개 사이트(ieumoffice-site): /updates 맨 위에 새 버전 항목 + 메인 한 줄 안내 고치기 → 확인 받고 push → 사이트에서 확인 → 질문 도우미 지식베이스 자동 갱신(Actions)
+9. docs/tracking/status.md 에 기준 버전과 확인한 내용 기록
 ```

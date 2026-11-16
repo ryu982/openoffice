@@ -19,7 +19,8 @@
  *   other AI window. Only web search differs: the person's choice for the
  *   project folder, as in the Codex app;
  * - every user MCP server switched off for the thread, the app's own server
- *   added, and the attached list checked afterwards;
+ *   and the session's relays of the person's MCP servers in the app (user MCP
+ *   spec 9) added, and the attached list checked afterwards;
  * - the login checked before the thread opens: a metered login runs only when
  *   the person accepted it.
  */
@@ -32,9 +33,11 @@ import {
   activePermissionProfileId,
   attachBoundedRpcStdout,
   codexAttachedMcpServers,
+  codexListedEffort,
   codexMcpServerOverrides,
   codexRunError,
 } from '../codex-app-server'
+import type { AiEffort } from '../effort'
 import { isPlainObject } from '../protocols/shared'
 import { AiRunError } from '../run-error'
 import { resolveSubscriptionProgram, type SubscriptionProgram } from '../subscription/locate'
@@ -45,12 +48,14 @@ import {
   type SubscriptionSpawn,
 } from '../subscription/process'
 import { codexAccountInfo } from '../subscription/status'
-import { APP_MCP_SERVER_NAME, isAgentAppMcpTool } from './claude'
+import { APP_MCP_SERVER_NAME, agentUsableRelays, isAgentAppMcpTool } from './claude'
 import { probeCodexSandbox, type CodexSandboxProbeResult } from './codex-sandbox-probe'
 import { agentPolicyVerdict, comparablePath, isInsidePath } from './policy'
+import { AgentProgramError } from './program-problem'
 import type {
   AgentAction,
   AgentCodexWebSearch,
+  AgentMcpRelay,
   AgentPermissionAnswer,
   AgentPermissionMode,
   AgentSession,
@@ -156,6 +161,22 @@ export function codexAgentFilesystem(
 }
 
 /**
+ * Characters Codex reads as a glob in a permission profile path. A read or
+ * write entry with one is refused, and a deny entry with one does not keep the
+ * named folder out (checked 2026-11-07, codex-cli 0.166.0 under `codex
+ * sandbox`; the 0.163.0 source reads them the same way).
+ */
+const CODEX_PROFILE_GLOB = /[*?[\]]/
+
+export function codexProfilePathsLiteral(
+  filesystem: Record<string, 'read' | 'write' | 'deny'>,
+): boolean {
+  return Object.keys(filesystem).every(
+    (path) => path === ':minimal' || !CODEX_PROFILE_GLOB.test(path),
+  )
+}
+
+/**
  * The folders on PATH a command may read, so scripts can find their runtime
  * (python, node, …): absolute, existing folders that are not a drive root and
  * not inside a protected folder or the project.
@@ -177,7 +198,7 @@ export function codexAgentReadableDirs(
   const seen = new Set<string>()
   for (const raw of (pathValue ?? '').split(platform === 'win32' ? ';' : ':')) {
     const dir = raw.trim().replace(/^"|"$/g, '')
-    if (!dir || !api.isAbsolute(dir)) continue
+    if (!dir || !api.isAbsolute(dir) || CODEX_PROFILE_GLOB.test(dir)) continue
     const key = comparablePath(dir, dir, platform)
     if (seen.has(key) || api.parse(key).root === key) continue
     if (
@@ -223,6 +244,15 @@ export function codexAgentThreadParams(
   readableDirs: readonly string[] = [],
 ): Record<string, unknown> {
   const mcpServers: Record<string, unknown> = { ...userMcpServers }
+  // a relay replaces the person's Codex server of the same name: the relay is what the session
+  // gets, and the app asks before a call when the tool's permission says so (user MCP spec 9)
+  for (const relay of agentUsableRelays(options.userMcpRelays)) {
+    mcpServers[relay.name] = {
+      url: relay.url,
+      http_headers: { Authorization: `Bearer ${relay.token}` },
+      default_tools_approval_mode: 'approve',
+    }
+  }
   if (options.appMcp) {
     mcpServers[APP_MCP_SERVER_NAME] = {
       url: options.appMcp.url,
@@ -304,39 +334,59 @@ export function codexDeclineDecision(params: Record<string, unknown>): 'decline'
 }
 
 /**
- * The tools Codex lists for the app's own server in one page of
- * `mcpServerStatus/list` that the session was not meant to get (spec 6.6).
- * Other servers are the attachment check's; a tool listed under a qualified
- * name counts by its bare name.
+ * The tools Codex lists in one page of `mcpServerStatus/list` that the session
+ * was not meant to get: of the app's own server (spec 6.6), and of each relay
+ * (user MCP spec 9) beyond the tools it listed at the start. Other servers are
+ * the attachment check's; a tool listed under a qualified name counts by its
+ * bare name.
  */
-export function codexAppMcpExtraTools(statusList: unknown): string[] {
+export function codexAppMcpExtraTools(
+  statusList: unknown,
+  relays: readonly AgentMcpRelay[] = [],
+): string[] {
   const data = isPlainObject(statusList) ? statusList.data : undefined
   if (!Array.isArray(data)) return []
+  const relayByName = new Map(agentUsableRelays(relays).map((relay) => [relay.name, relay]))
   const extra: string[] = []
   for (const entry of data) {
-    if (!isPlainObject(entry) || entry.name !== APP_MCP_SERVER_NAME) continue
-    const tools = isPlainObject(entry.tools) ? entry.tools : {}
-    for (const name of Object.keys(tools)) if (!isAgentAppMcpTool(name)) extra.push(name)
+    if (!isPlainObject(entry)) continue
+    const tools = Object.keys(isPlainObject(entry.tools) ? entry.tools : {})
+    if (entry.name === APP_MCP_SERVER_NAME) {
+      for (const name of tools) if (!isAgentAppMcpTool(name)) extra.push(name)
+      continue
+    }
+    const relay = typeof entry.name === 'string' ? relayByName.get(entry.name) : undefined
+    if (!relay) continue
+    const prefix = `mcp__${relay.name}__`
+    for (const name of tools) {
+      const bare = name.startsWith(prefix) ? name.slice(prefix.length) : name
+      if (!relay.tools.includes(bare)) extra.push(name)
+    }
   }
   return extra
 }
 
 /**
  * The answer to an MCP elicitation. Codex asks this way before each MCP tool
- * call; only the app's own server is attached and its tools are the app's to
- * allow. Anything else (a form a server wants filled, a link to open) is
- * declined.
+ * call; only the app's own server and the session's relays are attached, and
+ * their tools are the app's to allow (a relay asks the person itself when the
+ * tool's permission says so). Anything else (a form a server wants filled, a
+ * link to open) is declined.
  */
-export function codexElicitationAnswer(params: Record<string, unknown>): {
+export function codexElicitationAnswer(
+  params: Record<string, unknown>,
+  relays: readonly AgentMcpRelay[] = [],
+): {
   action: 'accept' | 'decline'
   content: Record<string, never> | null
   _meta: null
 } {
   const meta = isPlainObject(params._meta) ? params._meta : {}
+  const appServer =
+    params.serverName === APP_MCP_SERVER_NAME ||
+    agentUsableRelays(relays).some((relay) => relay.name === params.serverName)
   const toolApproval =
-    params.serverName === APP_MCP_SERVER_NAME &&
-    params.mode === 'form' &&
-    meta.codex_approval_kind === 'mcp_tool_call'
+    appServer && params.mode === 'form' && meta.codex_approval_kind === 'mcp_tool_call'
   return toolApproval
     ? { action: 'accept', content: {}, _meta: null }
     : { action: 'decline', content: null, _meta: null }
@@ -416,6 +466,9 @@ export async function startCodexAgentSession(
 ): Promise<AgentSession> {
   const platform = deps.platform ?? process.platform
   const network = options.network === true
+  const relays = agentUsableRelays(options.userMcpRelays)
+  /** the MCP servers the thread may start: the app's own and the session's relays */
+  const givenServers = new Set([APP_MCP_SERVER_NAME, ...relays.map((relay) => relay.name)])
   const program = await (
     deps.resolveProgram ??
     ((configuredPath) => resolveSubscriptionProgram(PROVIDER, { configuredPath }))
@@ -425,6 +478,12 @@ export async function startCodexAgentSession(
     options,
     platform,
   )
+  if (!codexProfilePathsLiteral(codexAgentFilesystem(options, readableDirs))) {
+    throw new AgentProgramError(
+      { type: 'unsupported-path' },
+      'A path of the session has a character Codex reads as a pattern; nothing was run',
+    )
+  }
   if (platform === 'win32') {
     const probe =
       deps.probeSandbox ??
@@ -476,6 +535,8 @@ export async function startCodexAgentSession(
   let stopping = false
   let threadId = ''
   let turnId = ''
+  // the configured level when the model takes it; every turn names it, the default otherwise
+  let effort: AiEffort | undefined
   let busy = false
   let stderr = ''
   let nextId = 1
@@ -484,6 +545,7 @@ export async function startCodexAgentSession(
   const rpcPending = new Map<
     number,
     {
+      method: string
       resolve: (value: unknown) => void
       reject: (error: Error) => void
       timer: ReturnType<typeof setTimeout>
@@ -541,10 +603,15 @@ export async function startCodexAgentSession(
       const id = nextId++
       const timer = setTimeout(() => {
         rpcPending.delete(id)
-        reject(new Error(`Codex app-server request timed out: ${method}`))
+        reject(
+          new AgentProgramError(
+            { type: 'no-answer', step: method },
+            `Codex app-server request timed out: ${method}`,
+          ),
+        )
       }, timeoutMs)
       timer.unref?.()
-      rpcPending.set(id, { resolve, reject, timer })
+      rpcPending.set(id, { method, resolve, reject, timer })
       writeLine({ method, id, params })
     })
 
@@ -585,7 +652,7 @@ export async function startCodexAgentSession(
       return
     }
     if (method === 'mcpServer/elicitation/request') {
-      writeLine({ id: rpcId, result: codexElicitationAnswer(params) })
+      writeLine({ id: rpcId, result: codexElicitationAnswer(params, relays) })
       return
     }
     // anything else (more permissions, questions, attestation, sign-in tokens) is not the
@@ -601,7 +668,7 @@ export async function startCodexAgentSession(
       case 'mcpServer/startupStatus/updated': {
         const name = text(params.name)
         const status = text(params.status)
-        if ((status === 'starting' || status === 'ready') && name !== APP_MCP_SERVER_NAME) {
+        if ((status === 'starting' || status === 'ready') && !givenServers.has(name ?? '')) {
           stopNow(
             new AiRunError('unsafe-tools', 'Codex started an MCP server that was switched off'),
           )
@@ -683,11 +750,18 @@ export async function startCodexAgentSession(
       clearTimeout(waiting.timer)
       rpcPending.delete(message.id)
       if (message.error !== undefined) {
-        const detail =
-          isPlainObject(message.error) && typeof message.error.message === 'string'
-            ? message.error.message
-            : 'error'
-        waiting.reject(new Error(`Codex app-server: ${detail}`))
+        const error = isPlainObject(message.error) ? message.error : {}
+        const detail = typeof error.message === 'string' ? error.message : 'error'
+        waiting.reject(
+          new AgentProgramError(
+            {
+              type: 'refused',
+              step: waiting.method,
+              code: Number.isInteger(error.code) ? (error.code as number) : undefined,
+            },
+            `Codex app-server: ${detail}`,
+          ),
+        )
       } else waiting.resolve(message.result)
       return
     }
@@ -716,7 +790,10 @@ export async function startCodexAgentSession(
     end(
       stopping
         ? undefined
-        : new Error(`Codex app-server exited (${code ?? 'unknown'})${detail ? `: ${detail}` : ''}`),
+        : new AgentProgramError(
+            { type: 'exited', exitCode: code ?? undefined },
+            `Codex app-server exited (${code ?? 'unknown'})${detail ? `: ${detail}` : ''}`,
+          ),
     )
   })
 
@@ -748,8 +825,13 @@ export async function startCodexAgentSession(
       throw new AiRunError('unsafe-tools', 'Codex could not report its configured MCP servers')
     }
     delete (userMcpServers as Record<string, unknown>)[APP_MCP_SERVER_NAME]
+    for (const relay of relays) delete (userMcpServers as Record<string, unknown>)[relay.name]
 
-    const model = options.model.trim() || (await defaultModel(request))
+    // read once when it is needed for the default model, and again only for a level
+    let listed: unknown
+    const model =
+      options.model.trim() || defaultModelOf((listed = await request('model/list', MODEL_LIST)))
+    effort = await codexAgentEffort(request, model, options.effort, listed)
     const started = await request(
       'thread/start',
       codexAgentThreadParams(options, model, userMcpServers, readableDirs),
@@ -775,7 +857,12 @@ export async function startCodexAgentSession(
     const thread =
       isPlainObject(started) && isPlainObject(started.thread) ? started.thread : undefined
     threadId = typeof thread?.id === 'string' ? thread.id : ''
-    if (!threadId) throw new Error('Codex app-server did not return a thread id')
+    if (!threadId) {
+      throw new AgentProgramError(
+        { type: 'refused', step: 'thread/start' },
+        'Codex app-server did not return a thread id',
+      )
+    }
 
     let cursor: string | null = null
     const attached: string[] = []
@@ -788,18 +875,18 @@ export async function startCodexAgentSession(
         limit: 100,
       })
       attached.push(...codexAttachedMcpServers(result))
-      extraTools.push(...codexAppMcpExtraTools(result))
+      extraTools.push(...codexAppMcpExtraTools(result, relays))
       const next = isPlainObject(result) ? result.nextCursor : undefined
       cursor = typeof next === 'string' && next ? next : null
       if (!cursor) break
     }
-    if (cursor !== null || attached.some((name) => name !== APP_MCP_SERVER_NAME)) {
+    if (cursor !== null || attached.some((name) => !givenServers.has(name))) {
       throw new AiRunError('unsafe-tools', 'Codex attached an MCP server the app did not give it')
     }
     if (extraTools.length > 0) {
       throw new AiRunError(
         'unsafe-tools',
-        `Codex listed tools of the app server the app did not give it: ${extraTools.length}`,
+        `Codex listed tools of the app's servers the app did not give it: ${extraTools.length}`,
       )
     }
     emit({ type: 'started', provider: PROVIDER, model, skills: [] })
@@ -821,6 +908,7 @@ export async function startCodexAgentSession(
         await request('turn/start', {
           threadId,
           input: [{ type: 'text', text: message, text_elements: [] }],
+          ...(effort ? { effort } : {}),
         })
       } catch (error) {
         busy = false
@@ -852,10 +940,28 @@ function codexThreadNetworkAccess(started: unknown): boolean | undefined {
   return typeof sandbox.networkAccess === 'boolean' ? sandbox.networkAccess : undefined
 }
 
-async function defaultModel(
+/**
+ * The configured effort when Codex lists it for the model. The list is read
+ * only when a level is configured, and one that cannot be read leaves the
+ * level out rather than failing the session.
+ */
+async function codexAgentEffort(
   request: (method: string, params: unknown) => Promise<unknown>,
-): Promise<string> {
-  const result = await request('model/list', { cursor: null, limit: 100, includeHidden: false })
+  model: string,
+  configured: string | undefined,
+  listed: unknown,
+): Promise<AiEffort | undefined> {
+  if (!configured?.trim()) return undefined
+  try {
+    return codexListedEffort(listed ?? (await request('model/list', MODEL_LIST)), model, configured)
+  } catch {
+    return undefined
+  }
+}
+
+const MODEL_LIST = { cursor: null, limit: 100, includeHidden: false }
+
+function defaultModelOf(result: unknown): string {
   const data = isPlainObject(result) && Array.isArray(result.data) ? result.data : []
   let first = ''
   for (const value of data) {
@@ -865,6 +971,11 @@ async function defaultModel(
     if (value.isDefault === true) return id
     first ||= id
   }
-  if (!first) throw new Error('Codex listed no model, so there is no default model to run with')
+  if (!first) {
+    throw new AgentProgramError(
+      { type: 'no-model' },
+      'Codex listed no model, so there is no default model to run with',
+    )
+  }
   return first
 }

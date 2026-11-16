@@ -30,6 +30,7 @@ export const pt = {
   darkView: 'Visualização escura',
   toc: 'Sumário',
   tocEmpty: 'Este livro não tem sumário',
+  sideResize: 'Redimensionar painel',
   statusChapter: 'Capítulo {n}/{total}',
   prevChapter: 'Capítulo anterior',
   nextChapter: 'Próximo capítulo',

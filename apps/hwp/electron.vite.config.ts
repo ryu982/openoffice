@@ -6,7 +6,11 @@ import { rhwpPatches } from './scripts/rhwp-patches.mjs'
 export default defineConfig({
   // @genoffice/i18n and @genoffice/electron-utils ship as TS source — must be bundled
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ['@genoffice/i18n', '@genoffice/electron-utils'] })],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: ['@genoffice/i18n', '@genoffice/electron-utils', '@genoffice/print-layout'],
+      }),
+    ],
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: ['@genoffice/i18n', '@genoffice/electron-utils'] })],

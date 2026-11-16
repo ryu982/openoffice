@@ -492,6 +492,7 @@ export const ja = {
   appGridlinesHidden: '目盛線を非表示にしました。',
   appGridlinesShown: '目盛線を表示しました。',
   appShowingFormulas: '数式を表示しています — もう一度切り替えると値を表示します。',
+  appShowingFormulasActive: '数式を表示中',
   appShowingValues: '計算結果を表示しています。',
   appTraceNoFormula: '参照元のトレース：アクティブセルに数式がありません。',
   appTraceNoRefs: '参照元のトレース：この数式にはセル参照がありません。',
@@ -588,6 +589,9 @@ export const ja = {
     'CSV エクスポートにはブックの完全読み込みが必要です — 読み込みの完了をお待ちください。',
   appCsvExportTooLarge: 'シートが大きすぎるため、CSV をエクスポートできません。',
   appCsvExportCanceled: 'CSV エクスポートをキャンセルしました。',
+  appOdsExported: '{path} をエクスポートしました。',
+  appOdsExportCanceled: 'ODS へのエクスポートを中止しました。',
+  appOdsExportFailed: 'ODS へのエクスポートに失敗しました。',
   appCsvExported: '{path} をエクスポートしました。',
   appCsvExportedActiveOnly:
     'CSV ファイルには 1 枚のシートしか含められません — アクティブなシート「{name}」を {path} にエクスポートしました。',
@@ -624,6 +628,10 @@ export const ja = {
     'このブックのスタイルシートには基本構造が欠けているため、スタイルの変更を保存できません。',
   appSaveErrPackageGuard:
     '保存するとブックのパッケージ構造が変わってしまいます — ファイル保護のため中止しました。',
+  appSaveErrSheetNotFound:
+    '保存内容が参照するシートがブックに見つからないため、保存を中止しました。元のファイルはそのままです。',
+  appSaveErrSheetNameReused:
+    '名前を変更したシートの元の名前を新しいシートが使っているため、保存できません。新しいシートの名前をいったん別の名前にして保存してから、希望の名前に戻してください。元のファイルはそのままです。',
   appSaveErrChartUnsupported:
     'このグラフの種類はこの編集をサポートしていないため保存を中止しました — グラフの変更を元に戻してください。',
   appSaveErrMoveOverlap:
@@ -737,6 +745,12 @@ export const ja = {
   appSaveAs: '名前を付けて保存',
   appUndo: '元に戻す',
   appRedo: 'やり直し',
+  appQuickAccessCustomize: 'クイック アクセス ツール バーのユーザー設定',
+  appQuickAccessHint: 'Alt キーと数字キーを押すと、左から数えてその位置にあるボタンを実行します。',
+  appQuickAccessMoveEarlier: '前へ移動',
+  appQuickAccessMoveLater: '後ろへ移動',
+  appQuickAccessReset: '既定に戻す',
+  appQuickAccessFull: 'ツール バーに置けるボタンは 10 個までです。',
   appUnsavedEditOne: '● 未保存の編集 {count} 件',
   appUnsavedEditMany: '● 未保存の編集 {count} 件',
   appSavedState: '保存済み',
@@ -1209,6 +1223,8 @@ export const ja = {
   appRefreshAll: 'すべて更新',
   appWorkbookNoPivot: 'ブックにピボットテーブルがありません。',
   appRefreshAllTitle: 'すべてのピボットテーブルを更新',
+  appQueriesConnections: 'クエリと接続',
+  appQueriesConnectionsTitle: 'ブックのクエリとデータ接続を一覧表示',
   appErrorCheckingDetail: 'シート内のエラー値をスキャン',
   appErrorsFound: '{count} 件のエラー — {cell}:{value}',
   appCheckingErrors: 'シート全体のエラーをスキャンしています…',
@@ -1607,4 +1623,8 @@ export const ja = {
   appSpellUnavailable: 'このウィンドウではスペルチェックを利用できません。',
   appSpellReplaceAll: 'すべて「{suggestion}」に置換',
   appSpellChangedAll: '「{word}」を {count} か所修正しました。',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'ODS を xlsx のコピーとして開きました。保存すると xlsx ファイルになります。',
+  appOdsFormulasDropped: '数式 {count} 個は値のみ残しました。',
 } satisfies Record<keyof typeof zh, string>

@@ -5,8 +5,8 @@
  * would otherwise insert a drawing this app never journals or saves, so the
  * window-capture listener claims image-only transfers before it runs.
  */
+import { clipboardPictureIsRendering } from '@genoffice/ui/clipboard-picture'
 import { isGridKeyTarget } from './clear-selection-keyboard'
-
 export const PICTURE_MAX_BYTES = 20 * 1024 * 1024
 const PICTURE_MEDIA_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif'])
 
@@ -34,14 +34,40 @@ export function transferHasImage(data: Pick<TransferLike, 'items'>): boolean {
   )
 }
 
-/// The image to insert when the transfer is a picture rather than cell data:
-/// Excel/Numbers copy a bitmap of the cells next to their table markup, and
-/// text without an <img> counterpart is still text, so both stay cell pastes.
+/**
+ * Whether a transfer's HTML comes from Excel.
+ *
+ * The engine's own rule (sheets-ui's htmlIsFromExcel, which its clipboard
+ * service uses to decide what a transfer pastes as): a copy from Excel carries
+ * a bitmap of the cells next to the table markup, and there the cells are
+ * pasted and the bitmap is incidental. Mirrored here because the app has to
+ * claim exactly the transfers the engine would paste as a file — the picture
+ * the engine inserts is a drawing in its own model, which the save path never
+ * sees (genoffice#2566).
+ */
+export function htmlIsFromExcel(html: string): boolean {
+  if (!html) return false
+  return [
+    /<td[^>]*class=".*?xl.*?"[^>]*>/i,
+    /xmlns:x="urn:schemas-microsoft-com:office:excel"/i,
+    /ProgId="Excel.Sheet"/i,
+    /xmlns:o="urn:schemas-microsoft-com:office:office"/i,
+    /@mso-|mso-excel/i,
+    /<x:ExcelWorkbook>/i,
+  ].some((marker) => marker.test(html))
+}
+
+/// The image to insert when the transfer is a picture rather than cell data.
+/// A picture that only renders the transfer's cells or text (Excel's copy,
+/// Numbers', and this editor's own range copy, which puts a picture of the
+/// cells next to its table: copy-picture.ts) stays a cell paste. In this fork
+/// the engine's paste drops the files of such a transfer too, so no picture
+/// lands in the engine's drawing model, where nothing would save it
+/// (genoffice#2566). Every other transfer that carries an image is claimed.
 export function pickTransferImage(data: TransferLike): File | null {
   if (!transferHasImage(data)) return null
   const html = data.getData('text/html')
-  if (/<(table|tr|td|th)\b/i.test(html)) return null
-  if (data.getData('text/plain').trim() && !/<img\b/i.test(html)) return null
+  if (clipboardPictureIsRendering(html, data.getData('text/plain'))) return null
   for (const item of Array.from(data.items)) {
     if (item.kind !== 'file' || !item.type.startsWith('image/')) continue
     const file = item.getAsFile()

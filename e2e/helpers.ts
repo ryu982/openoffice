@@ -39,6 +39,12 @@ interface LaunchOptions {
   lang?: string
   /** pre-seed app-settings.json with onboardingSeen=true to start at the home screen */
   onboardingSeen?: boolean
+  /**
+   * with `onboardingSeen`, also seed editorPickSeen=true (default true) so the
+   * one-time editor picker for existing users does not cover the home screen.
+   * Pass false to see that picker.
+   */
+  editorPickSeen?: boolean
   /** extra app-settings.json keys (e.g. defaultSaveDir) written before launch */
   settings?: Record<string, unknown>
   /**
@@ -79,6 +85,9 @@ export async function launchShell(options: LaunchOptions): Promise<LaunchedApp> 
       join(userDataDir, 'app-settings.json'),
       JSON.stringify({
         ...(options.onboardingSeen ? { onboardingSeen: true } : {}),
+        ...(options.onboardingSeen && options.editorPickSeen !== false
+          ? { editorPickSeen: true }
+          : {}),
         ...options.settings,
       }),
     )

@@ -28,6 +28,10 @@ export type {
   AiProviderSelection,
   AiReadUrlSettings,
   AiRunErrorKind,
+  AiSubscriptionCliId,
+  AiSubscriptionLoginFailure,
+  AiSubscriptionLoginFailureReason,
+  AiSubscriptionLoginFailureStep,
   AiSubscriptionLoginMethod,
   AiSubscriptionSigningIn,
   AiSubscriptionModel,
@@ -46,6 +50,7 @@ export {
   providerSelectionOf,
   selectAiProvider,
   subscriptionConnection,
+  subscriptionOffIn,
   subscriptionStateOf,
 } from './provider-selection'
 export type { AiNotConnectedReason, AiProviderChoice } from './provider-selection'
@@ -77,6 +82,24 @@ export {
   setCodexImageGenerationAvailable,
 } from './image-backend'
 export type { AiImageBackend, AiImageBackendContext } from './image-backend'
+export {
+  CODEX_IMAGE_MAX_BYTES,
+  CODEX_IMAGE_MIN_VERSION,
+  CODEX_IMAGE_TIMEOUT_MS,
+  generateCodexImage,
+  listCodexModels,
+} from './codex-image'
+export type { CodexImageCall, CodexImageOutcome, CodexImageReference } from './codex-image'
+export {
+  AI_EFFORTS,
+  CLAUDE_EFFORTS,
+  aiEffortOf,
+  aiEffortsOf,
+  aiModelEffortOf,
+  aiModelEffortsOf,
+} from './effort'
+export type { AiEffort, AiModelEffort } from './effort'
+export { keyEffortBody, keyModelEffort, keyProviderEffort, takesKeyEffort } from './key-effort'
 export { subscriptionConnectHelpUrl } from './connect-help'
 export type { SubscriptionConnectHelpPath } from './connect-help'
 export {
@@ -88,10 +111,13 @@ export {
   checkingSubscriptionStatus,
   checkingSubscriptionStatuses,
   isSubscriptionProviderId,
+  offSubscriptionStatus,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
+  subscriptionOffResultOf,
   subscriptionNeedsUpdate,
   subscriptionStatusErrorKind,
+  subscriptionLoginFailureOf,
   subscriptionStatusMapOf,
 } from './subscription/contract'
 export type {
@@ -101,6 +127,8 @@ export type {
   SubscriptionLaunchResult,
   SubscriptionMeteredRequest,
   SubscriptionMeteredResult,
+  SubscriptionOffRequest,
+  SubscriptionOffResult,
   SubscriptionProviderRequest,
   SubscriptionRecheckRequest,
   SubscriptionStatusErrorKind,
@@ -122,6 +150,8 @@ export {
   resolveAiSettings,
   subscriptionNoticeVersionOf,
   withMigratedSubscriptionNoticeVersion,
+  withStoredSubscriptionOff,
+  withStoredUnknownFields,
 } from './providers'
 export {
   activeCustomEndpoint,

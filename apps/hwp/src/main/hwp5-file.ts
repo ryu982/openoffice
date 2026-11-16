@@ -160,11 +160,15 @@ export function writeContainer(cfb: CFB.CFB$Container): Buffer {
 export const pathsOf = (opened: OpenedHwp): string[] =>
   opened.cfb.FullPaths.filter((_path, index) => opened.cfb.FileIndex[index]?.type !== 0)
 
-/** The two containers hold the same streams with the same bytes; `changed` ones hold these. */
+/**
+ * The two containers hold the same streams with the same bytes; `changed` ones hold these.
+ * `plain` names changed streams kept uncompressed in a compressed file (the preview).
+ */
 export function sameStreams(
   before: OpenedHwp,
   after: OpenedHwp,
   changed: Map<string, Buffer>,
+  plain: ReadonlySet<string> = new Set(),
 ): boolean {
   const paths = pathsOf(before)
   const now = pathsOf(after)
@@ -179,7 +183,9 @@ export function sameStreams(
     if (!was || !is || was.type !== is.type) return false
     const meant = changed.get(name)
     if (meant) {
-      const back = streamOf(after, name)
+      const back = plain.has(name)
+        ? Buffer.from((is.content ?? []) as Uint8Array)
+        : streamOf(after, name)
       if (!back || !back.equals(meant)) return false
     } else if (
       !Buffer.from((was.content ?? []) as Uint8Array).equals(
@@ -195,17 +201,22 @@ export function sameStreams(
 /**
  * The file with some streams replaced (`changed`: path → uncompressed bytes), written and
  * read back: null unless every other stream came back as it was and the changed ones as
- * meant.
+ * meant. The streams named in `plain` are written as given even in a compressed file:
+ * HWP 5 never compresses the preview (`/PrvText`, `/PrvImage`).
  */
-export function rewriteStreams(opened: OpenedHwp, changed: Map<string, Buffer>): Buffer | null {
+export function rewriteStreams(
+  opened: OpenedHwp,
+  changed: Map<string, Buffer>,
+  plain: ReadonlySet<string> = new Set(),
+): Buffer | null {
   for (const [path, data] of changed) {
     const entry = CFB.find(opened.cfb, path)
     if (!entry) return null
-    const content = opened.compressed ? deflateRawSync(data) : data
+    const content = opened.compressed && !plain.has(path) ? deflateRawSync(data) : data
     entry.content = content
     entry.size = content.length
   }
   const written = writeContainer(opened.cfb)
   const check = openHwp(written)
-  return check && sameStreams(opened, check, changed) ? written : null
+  return check && sameStreams(opened, check, changed, plain) ? written : null
 }

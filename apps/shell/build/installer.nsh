@@ -48,21 +48,45 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODT_PROGID}"
 !macroend
 
-; .hwp, .hwpx, .xmind and .epub are offered in Explorer's "Open with" and never
-; made the default, for the same reason as .odt above: a win.fileAssociations
-; entry would also write the extension's default value and take it over (from
-; Hancom Office for the Hangul formats, from whatever opens the mind map or
-; reads the book today). Each gets a product-own ProgId whose DefaultIcon is the
-; per-type document icon (resources\hwp.ico / resources\mindmap.ico /
-; resources\epub.ico, placed by the win.extraResources entries in
+; .ods is offered in Explorer's "Open with" for the same reason: it opens as a
+; converted .xlsx copy that saves as .xlsx (decision 0119), so taking over the
+; user's ODS program would hide that the original is not what gets written
+; back. The spreadsheet opens in the Sheets tab, so the ProgId borrows the
+; spreadsheet icon the installer already places for .xlsx.
+!define GENOFFICE_ODS_PROGID "IeumOffice.OpenDocumentSpreadsheet"
+
+!macro GenOfficeRegisterOpenWithOds
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODS_PROGID}" "" "OpenDocument Spreadsheet"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODS_PROGID}\DefaultIcon" "" "$INSTDIR\resources\xlsx.ico"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODS_PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegNone SHELL_CONTEXT "Software\Classes\.ods\OpenWithProgids" "${GENOFFICE_ODS_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterOpenWithOds
+  ; Only our value and our ProgId: the .ods key, its default value and other
+  ; programs' OpenWithProgids entries belong to whoever wrote them.
+  DeleteRegValue SHELL_CONTEXT "Software\Classes\.ods\OpenWithProgids" "${GENOFFICE_ODS_PROGID}"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_ODS_PROGID}"
+!macroend
+
+; .hwp, .hwpx, .xmind, .epub and .vsdx are offered in Explorer's "Open with" and
+; never made the default, for the same reason as .odt above: a
+; win.fileAssociations entry would also write the extension's default value and
+; take it over (from Hancom Office for the Hangul formats, from whatever opens
+; the mind map, reads the book or draws the Visio drawing today). Each gets a
+; product-own ProgId whose DefaultIcon is the per-type document icon
+; (resources\hwp.ico / resources\mindmap.ico / resources\epub.ico /
+; resources\diagram.ico, placed by the win.extraResources entries in
 ; electron-builder.cjs), so choosing this app in "Open with" shows the Hangul,
-; mind-map or book icon instead of the bare app icon. The ProgIds match
+; mind-map, book or diagram icon instead of the bare app icon. The ProgIds match
 ; the name-to-ProgId rule electron-builder.cjs uses for its Windows list
 ; (see tests/product-identity.test.ts).
 !define GENOFFICE_HWP_PROGID "IeumOffice.HWPDocument"
 !define GENOFFICE_HWPX_PROGID "IeumOffice.HWPXDocument"
 !define GENOFFICE_MINDMAP_PROGID "IeumOffice.MindMap"
 !define GENOFFICE_EPUB_PROGID "IeumOffice.EPUBBook"
+; a Visio drawing opens as a new diagram (it is never written), with the diagram icon
+!define GENOFFICE_VSDX_PROGID "IeumOffice.VSDXDrawing"
 
 !macro GenOfficeRegisterOpenWithHwp
   WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_HWP_PROGID}" "" "HWP Document"
@@ -112,6 +136,18 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_EPUB_PROGID}"
 !macroend
 
+!macro GenOfficeRegisterOpenWithVsdx
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_VSDX_PROGID}" "" "VSDX Drawing"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_VSDX_PROGID}\DefaultIcon" "" "$INSTDIR\resources\diagram.ico"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_VSDX_PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegNone SHELL_CONTEXT "Software\Classes\.vsdx\OpenWithProgids" "${GENOFFICE_VSDX_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterOpenWithVsdx
+  DeleteRegValue SHELL_CONTEXT "Software\Classes\.vsdx\OpenWithProgids" "${GENOFFICE_VSDX_PROGID}"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_VSDX_PROGID}"
+!macroend
+
 ; Windows' "Default apps" page picks an app by its registered capabilities and
 ; records the ProgId the app declared for the type. Without this entry Windows
 ; only knows the bare IeumOffice.exe application and records
@@ -119,7 +155,7 @@
 ; shows the logo instead of hwp.ico, while a .hwpx chosen from our Open-With
 ; ProgId shows the document icon. Registering capabilities does not change any
 ; default by itself; it makes the user's choice land on the per-type ProgId
-; (whose DefaultIcon is the document icon). The .hwp/.hwpx/.xmind/.epub/.odt ProgIds
+; (whose DefaultIcon is the document icon). The .hwp/.hwpx/.xmind/.epub/.vsdx/.odt ProgIds
 ; are the product-own Open-With ones defined above; the rest are the ProgIds
 ; electron-builder writes for the Windows file associations.
 !define GENOFFICE_CAPABILITIES_KEY "Software\IeumOffice\Capabilities"
@@ -144,6 +180,9 @@
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".hwpx" "${GENOFFICE_HWPX_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".xmind" "${GENOFFICE_MINDMAP_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".epub" "${GENOFFICE_EPUB_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".drawio" "IeumOffice.Diagram"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".dio" "IeumOffice.Diagram"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".vsdx" "${GENOFFICE_VSDX_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".odt" "${GENOFFICE_ODT_PROGID}"
 !macroend
 
@@ -209,10 +248,12 @@
   !insertmacro GenOfficeRegisterShellNew "xlsx" "IeumOffice.ExcelWorkbook"
   !insertmacro GenOfficeRegisterShellNew "pptx" "IeumOffice.PowerPointPresentation"
   !insertmacro GenOfficeRegisterOpenWithOdt
+  !insertmacro GenOfficeRegisterOpenWithOds
   !insertmacro GenOfficeRegisterOpenWithHwp
   !insertmacro GenOfficeRegisterOpenWithHwpx
   !insertmacro GenOfficeRegisterOpenWithMindmap
   !insertmacro GenOfficeRegisterOpenWithEpub
+  !insertmacro GenOfficeRegisterOpenWithVsdx
   !insertmacro GenOfficeRegisterApplicationCapabilities
   !insertmacro UPDATEFILEASSOC
 !macroend
@@ -225,10 +266,12 @@
   !insertmacro GenOfficeUnregisterShellNew "xlsx" "IeumOffice.ExcelWorkbook"
   !insertmacro GenOfficeUnregisterShellNew "pptx" "IeumOffice.PowerPointPresentation"
   !insertmacro GenOfficeUnregisterOpenWithOdt
+  !insertmacro GenOfficeUnregisterOpenWithOds
   !insertmacro GenOfficeUnregisterOpenWithHwp
   !insertmacro GenOfficeUnregisterOpenWithHwpx
   !insertmacro GenOfficeUnregisterOpenWithMindmap
   !insertmacro GenOfficeUnregisterOpenWithEpub
+  !insertmacro GenOfficeUnregisterOpenWithVsdx
   !insertmacro GenOfficeUnregisterApplicationCapabilities
   Pop $0
   !insertmacro UPDATEFILEASSOC

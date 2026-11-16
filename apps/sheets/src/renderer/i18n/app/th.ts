@@ -439,6 +439,7 @@ export const th = {
   appGridlinesHidden: 'ซ่อนเส้นตารางแล้ว',
   appGridlinesShown: 'แสดงเส้นตารางแล้ว',
   appShowingFormulas: 'กำลังแสดงสูตร — สลับอีกครั้งเพื่อแสดงค่า',
+  appShowingFormulasActive: 'กำลังแสดงสูตร',
   appShowingValues: 'กำลังแสดงค่าที่คำนวณแล้ว',
   appTraceNoFormula: 'แกะรอยเซลล์ที่ถูกอ้าง: เซลล์ที่ใช้งานอยู่ไม่มีสูตร',
   appTraceNoRefs: 'แกะรอยเซลล์ที่ถูกอ้าง: สูตรนี้ไม่มีการอ้างอิงเซลล์',
@@ -528,6 +529,9 @@ export const th = {
   appCsvExportNeedsFullLoad: 'การส่งออก CSV ต้องรอให้เวิร์กบุ๊กโหลดเต็มก่อน — รอให้โหลดเสร็จ',
   appCsvExportTooLarge: 'ชีตใหญ่เกินไป ส่งออกเป็น CSV ไม่ได้',
   appCsvExportCanceled: 'ยกเลิกการส่งออก CSV แล้ว',
+  appOdsExported: 'ส่งออก {path} แล้ว',
+  appOdsExportCanceled: 'ยกเลิกการส่งออก ODS แล้ว',
+  appOdsExportFailed: 'ส่งออก ODS ล้มเหลว',
   appCsvExported: 'ส่งออก {path} แล้ว',
   appCsvExportedActiveOnly:
     'ไฟล์ CSV มีได้เพียงชีตเดียว — ส่งออกชีตที่ใช้งานอยู่ “{name}” ไปยัง {path} แล้ว',
@@ -562,6 +566,10 @@ export const th = {
     'สไตล์ชีตของเวิร์กบุ๊กนี้ขาดโครงสร้างพื้นฐาน จึงบันทึกการเปลี่ยนแปลงสไตล์ไม่ได้',
   appSaveErrPackageGuard:
     'การบันทึกจะเปลี่ยนโครงสร้างแพ็กเกจของเวิร์กบุ๊ก — ยกเลิกแล้วเพื่อปกป้องไฟล์',
+  appSaveErrSheetNotFound:
+    'ไม่พบชีตที่การบันทึกนี้อ้างถึงในเวิร์กบุ๊ก — หยุดการบันทึกแล้ว และไฟล์ยังคงเหมือนเดิม',
+  appSaveErrSheetNameReused:
+    'ชีตใหม่ใช้ชื่อเดิมของชีตที่เปลี่ยนชื่อไปแล้ว จึงบันทึกไม่ได้ ตั้งชื่ออื่นให้ชีตใหม่ไว้ก่อน บันทึก แล้วค่อยเปลี่ยนชื่อ ไฟล์ยังคงเหมือนเดิม',
   appSaveErrChartUnsupported:
     'แผนภูมิประเภทนี้ไม่รองรับการแก้ไขดังกล่าว ยกเลิกการบันทึกแล้ว — โปรดเลิกทำการเปลี่ยนแปลงแผนภูมินั้น',
   appSaveErrMoveOverlap:
@@ -665,6 +673,12 @@ export const th = {
   appSaveAs: 'บันทึกเป็น',
   appUndo: 'เลิกทำ',
   appRedo: 'ทำซ้ำ',
+  appQuickAccessCustomize: 'กำหนดแถบเครื่องมือด่วนเอง',
+  appQuickAccessHint: 'กด Alt พร้อมปุ่มตัวเลขเพื่อเรียกใช้ปุ่มในตำแหน่งนั้นโดยนับจากซ้าย',
+  appQuickAccessMoveEarlier: 'ย้ายไปข้างหน้า',
+  appQuickAccessMoveLater: 'ย้ายไปข้างหลัง',
+  appQuickAccessReset: 'คืนค่าเริ่มต้น',
+  appQuickAccessFull: 'แถบเครื่องมือวางปุ่มได้สูงสุด 10 ปุ่ม',
   appUnsavedEditOne: '● การแก้ไข {count} รายการยังไม่บันทึก',
   appUnsavedEditMany: '● การแก้ไข {count} รายการยังไม่บันทึก',
   appSavedState: 'บันทึกแล้ว',
@@ -1125,6 +1139,8 @@ export const th = {
   appRefreshAll: 'รีเฟรชทั้งหมด',
   appWorkbookNoPivot: 'ไม่มี PivotTable ในเวิร์กบุ๊กนี้',
   appRefreshAllTitle: 'รีเฟรช PivotTable ทั้งหมด',
+  appQueriesConnections: 'คิวรีและการเชื่อมต่อ',
+  appQueriesConnectionsTitle: 'แสดงคิวรีและการเชื่อมต่อข้อมูลของเวิร์กบุ๊ก',
   appErrorCheckingDetail: 'สแกนหาค่าผิดพลาดในชีต',
   appErrorsFound: 'พบข้อผิดพลาด {count} รายการ — ที่ {cell}: {value}',
   appCheckingErrors: 'กำลังสแกนหาข้อผิดพลาดทั่วทั้งชีต…',
@@ -1516,4 +1532,8 @@ export const th = {
   appSpellUnavailable: 'การตรวจการสะกดไม่พร้อมใช้งานในหน้าต่างนี้',
   appSpellReplaceAll: 'แทนที่ทั้งหมดด้วย "{suggestion}"',
   appSpellChangedAll: 'แก้ไขแล้ว {count} เซลล์ของ "{word}"',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'เปิด ODS เป็นสำเนา xlsx การบันทึกจะเขียนไฟล์ xlsx',
+  appOdsFormulasDropped: 'เก็บไว้เฉพาะค่าใน {count} สูตร',
 } satisfies Record<keyof typeof zh, string>

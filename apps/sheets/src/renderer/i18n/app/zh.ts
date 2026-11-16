@@ -412,6 +412,7 @@ export const zh = {
   appGridlinesHidden: '网格线已隐藏。',
   appGridlinesShown: '网格线已显示。',
   appShowingFormulas: '正在显示公式——再次切换显示数值。',
+  appShowingFormulasActive: '正在显示公式',
   appShowingValues: '正在显示计算结果。',
   appTraceNoFormula: '追踪引用单元格：活动单元格没有公式。',
   appTraceNoRefs: '追踪引用单元格：该公式没有单元格引用。',
@@ -499,6 +500,9 @@ export const zh = {
   appCsvExportNeedsFullLoad: 'CSV 导出需要工作簿完整加载——请等待加载完成。',
   appCsvExportTooLarge: '工作表太大,无法导出 CSV。',
   appCsvExportCanceled: 'CSV 导出已取消。',
+  appOdsExported: '已导出 {path}。',
+  appOdsExportCanceled: '已取消 ODS 导出。',
+  appOdsExportFailed: 'ODS 导出失败。',
   appCsvExported: '已导出 {path}。',
   appCsvExportedActiveOnly: 'CSV 只包含一张工作表——已导出当前工作表“{name}”到 {path}。',
   appCsvExportFailed: '无法导出 CSV。',
@@ -523,6 +527,9 @@ export const zh = {
     '文件无法替换——看起来被其他程序占用（如在 Excel 中打开，或正被同步/杀毒扫描）。请关闭占用后重新保存。',
   appSaveErrStylesheetLimited: '这个工作簿的样式表缺少基础结构，样式改动无法保存。',
   appSaveErrPackageGuard: '保存会改变工作簿的包结构——已中止以保护文件。',
+  appSaveErrSheetNotFound: '保存内容所指的工作表在工作簿中找不到，已中止保存，原文件保持不变。',
+  appSaveErrSheetNameReused:
+    '新工作表使用了被重命名工作表的原名称，因此无法保存。请先给新工作表换个名称并保存，再改回想要的名称。原文件保持不变。',
   appSaveErrChartUnsupported: '这个图表类型不支持该编辑，保存已中止——请撤销该图表改动。',
   appSaveErrMoveOverlap:
     '有公式、格式范围、图形或表格横跨被移动的行——这次保存已中止，请撤销该移动。',
@@ -628,6 +635,12 @@ export const zh = {
   appSaveAs: '另存为',
   appUndo: '撤销',
   appRedo: '重做',
+  appQuickAccessCustomize: '自定义快速访问工具栏',
+  appQuickAccessHint: '按 Alt 加数字键，可执行从左数相应位置的按钮。',
+  appQuickAccessMoveEarlier: '前移',
+  appQuickAccessMoveLater: '后移',
+  appQuickAccessReset: '恢复默认',
+  appQuickAccessFull: '工具栏最多可放 10 个按钮。',
   appUnsavedEditOne: '● {count} 处未保存的编辑',
   appUnsavedEditMany: '● {count} 处未保存的编辑',
   appSavedState: '已保存',
@@ -1098,6 +1111,8 @@ export const zh = {
   appRefreshAll: '全部刷新',
   appWorkbookNoPivot: '工作簿中没有透视表。',
   appRefreshAllTitle: '刷新全部透视表',
+  appQueriesConnections: '查询和连接',
+  appQueriesConnectionsTitle: '查看工作簿中的查询和数据连接',
   appErrorCheckingDetail: '扫描当前表中的错误值',
   appErrorsFound: '发现 {count} 个错误,已定位 {cell}:{value}',
   appCheckingErrors: '正在扫描整个工作表的错误…',
@@ -1489,4 +1504,8 @@ export const zh = {
   appSpellUnavailable: '此窗口无法使用拼写检查。',
   appSpellReplaceAll: '全部替换为“{suggestion}”',
   appSpellChangedAll: '已更正 {count} 处“{word}”。',
+
+  // ── ODS import ──
+  appOdsImportNotice: '已将 ODS 作为 xlsx 副本打开。保存时将保存为 xlsx 文件。',
+  appOdsFormulasDropped: '有 {count} 个公式仅保留了值。',
 }

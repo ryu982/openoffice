@@ -45,7 +45,7 @@ Di panel AI editor Docs, Sheets, Slides, Hangul, HTML, dan peta pikiran, Anda da
 
 ## Pengembalian dan keamanan
 
-- Panel Docs menyimpan **daftar versi**: satu snapshot per putaran, Anda bisa mundur ke mana pun, dan rollback itu sendiri bisa dibatalkan dengan Ctrl+Z. Snapshot tetap ada setelah dokumen ditutup lalu dibuka kembali.
+- Putaran saat AI mengubah dokumen mendapat kartu **Perubahan pada dokumen: N** di bawah balasannya, dan bagian yang diubah ditandai kuning di dokumen. Tanda itu hanya ada di layar — tidak pernah ikut disimpan, dicetak, atau diekspor — dan hilang saat Anda mengirim permintaan berikutnya atau menekan **Sembunyikan tanda**. **Batalkan perubahan ini** membatalkan seluruh putaran sekaligus. Di Docs, Markdown, HTML, Slides, peta pikiran, dan diagram, membatalkan putaran yang lebih awal juga membatalkan putaran sesudahnya; di Hangul, Sheets, PDF, dan EPUB hanya putaran terakhir yang bisa dibatalkan, dan hanya jika dokumen tidak disunting setelahnya. Jika tidak bisa dibatalkan, gunakan Urungkan milik editor itu sendiri (Ctrl+Z).
 - suntingan AI melewati alur penyuntingan yang sama dengan suntingan manual (bisa di-undo, dan tunduk pada simpan) — tidak ada yang melewati konfirmasi simpan Anda.
 
 ## Menyembunyikan seleksi dari AI

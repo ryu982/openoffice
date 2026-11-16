@@ -30,6 +30,7 @@ export const it = {
   darkView: 'Vista scura',
   toc: 'Sommario',
   tocEmpty: 'Questo libro non ha un indice',
+  sideResize: 'Ridimensiona il riquadro',
   statusChapter: 'Capitolo {n}/{total}',
   prevChapter: 'Capitolo precedente',
   nextChapter: 'Capitolo successivo',

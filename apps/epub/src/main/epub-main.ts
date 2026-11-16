@@ -34,6 +34,7 @@ import {
   RENDERER_SCHEME_PRIVILEGE,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
+  documentsDirOrFallback,
   installContextMenu,
   installNavigationGuard,
   installRendererProtocol,
@@ -46,6 +47,9 @@ import type { SaveDiskState } from '@genoffice/electron-utils'
 import { getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { buildTranslatedEpub, epubTranslationUnits } from '@genoffice/epub-engine'
 import { ResultStore } from '@genoffice/pdf-structure/store'
+import { registerAiJob } from '@genoffice/electron-utils/ai-activity'
+import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
+import { aiFeaturesOn } from '@genoffice/electron-utils/app-choice'
 import { registerEpubAiIpc } from './ai-attachments'
 import { EPUB_ASSET_SCHEME_PRIVILEGE, serveEpubAsset } from './asset-protocol'
 import { atomicWriteFile } from './atomic-write'
@@ -57,6 +61,7 @@ import { checkResultPath, pathKey, samePath } from './result-paths'
 import { saveBook } from './save-pipeline'
 import type { MigrateJobRecords } from './save-pipeline'
 import { createEpubStoreHandlers } from './store-handlers'
+import { AI_OFF_FALLBACK, createScreenAiJobs } from './screen-ai-jobs'
 import type { EpubStoreHandlers } from './store-handlers'
 import { epubAssetBase, defaultResultName } from '../shared/asset-url'
 import { APP_CHANNELS, EPUB_ASSET_SCHEME, EPUB_CHANNELS } from '../shared/ipc'
@@ -440,7 +445,7 @@ async function resolveSaveTarget(
   if (mode === 'save' && current) return current
   const defaultPath = current
     ? join(dirname(current), basename(current))
-    : join(app.getPath('documents'), `book${BOOK_EXTENSION}`)
+    : join(documentsDirOrFallback(app), `book${BOOK_EXTENSION}`)
   const picked = await showSaveDialogWithMemory(dialog, parentOf(contents), {
     title: tm('dlgSaveTitle'),
     defaultPath,
@@ -552,10 +557,22 @@ async function writeTranslated(
   if (typeof request !== 'object' || request === null) {
     return { ok: false, error: 'invalid-request', message: 'request must be an object' }
   }
-  const { kind, lang, chapters: rawChapters, path, docHash } = request as Record<string, unknown>
+  const {
+    kind,
+    lang,
+    mode,
+    chapters: rawChapters,
+    path,
+    docHash,
+  } = request as Record<string, unknown>
   if (kind !== 'translated' && kind !== 'bilingual') {
     return { ok: false, error: 'invalid-request', message: 'bad kind' }
   }
+  // left out it is a translation, as before; 'easy' builds the easy explanation's book
+  if (mode !== undefined && mode !== 'translate' && mode !== 'easy') {
+    return { ok: false, error: 'invalid-request', message: 'bad mode' }
+  }
+  const easy = mode === 'easy'
   if (typeof lang !== 'string' || !LANGUAGE_TAG.test(lang) || lang.length > 128) {
     return { ok: false, error: 'invalid-request', message: 'bad language' }
   }
@@ -574,12 +591,15 @@ async function writeTranslated(
   }
   const bytes = session.bytes
   try {
-    const stored = await store().readTranslation(docHash, lang)
+    const stored = easy
+      ? await store().readTranslation(docHash, lang, 'easy')
+      : await store().readTranslation(docHash, lang)
     const built = await buildTranslatedEpub(bytes, {
       kind,
       lang,
       ...(chapters ? { chapters } : {}),
       results: stored?.blocks ?? new Map(),
+      ...(easy ? { mode: 'easy' as const } : {}),
     })
     if (!built.ok)
       return { ok: false, error: 'refused', message: `${built.reason}: ${built.detail}` }
@@ -598,6 +618,15 @@ async function writeTranslated(
 
 let ipcRegistered = false
 let storeHandlers: EpubStoreHandlers | null = null
+
+/** the screens' book translations on the shell's list of running AI work */
+const screenAiJobs = createScreenAiJobs({
+  aiOn: aiFeaturesOn,
+  // the shell's refusal of a screen's AI run while AI is turned off (Settings)
+  refusal: (senderId) => aiRunRefusal({ senderId, provider: '', model: '' }) ?? AI_OFF_FALLBACK,
+  register: registerAiJob,
+  stopChannel: EPUB_CHANNELS.aiJobStop,
+})
 
 function registerEpubIpc(): void {
   if (ipcRegistered) return
@@ -816,11 +845,13 @@ function registerEpubIpc(): void {
     store,
     knows: (owner, docHash) => knownHashesByWc.get(owner)?.has(docHash) === true,
   }))
-  ipcMain.handle(EPUB_CHANNELS.storeTranslations, (e, docHash: unknown) =>
-    handlers.translations(e.sender.id, docHash),
+  ipcMain.handle(EPUB_CHANNELS.storeTranslations, (e, docHash: unknown, mode: unknown) =>
+    handlers.translations(e.sender.id, docHash, mode),
   )
-  ipcMain.handle(EPUB_CHANNELS.storeTranslation, (e, docHash: unknown, lang: unknown) =>
-    handlers.translation(e.sender.id, docHash, lang),
+  ipcMain.handle(
+    EPUB_CHANNELS.storeTranslation,
+    (e, docHash: unknown, lang: unknown, mode: unknown) =>
+      handlers.translation(e.sender.id, docHash, lang, mode),
   )
   ipcMain.handle(EPUB_CHANNELS.storeUnfinishedJobs, (e, docHash: unknown) =>
     handlers.unfinishedJobs(e.sender.id, docHash),
@@ -828,6 +859,12 @@ function registerEpubIpc(): void {
   ipcMain.handle(EPUB_CHANNELS.storeWrite, (e, request: unknown) =>
     handlers.write(e.sender.id, request),
   )
+
+  // a book translation begins and ends (the screen runs it; refused while AI is off)
+  ipcMain.handle(EPUB_CHANNELS.aiJobBegin, (e, jobId: unknown) =>
+    screenAiJobs.begin(e.sender, jobId),
+  )
+  ipcMain.on(EPUB_CHANNELS.aiJobEnd, (e, jobId: unknown) => screenAiJobs.end(e.sender.id, jobId))
 
   // the AI panel's attachments
   registerEpubAiIpc()

@@ -30,6 +30,7 @@ export const th = {
   darkView: 'มุมมองสีเข้ม',
   toc: 'สารบัญ',
   tocEmpty: 'หนังสือเล่มนี้ไม่มีสารบัญ',
+  sideResize: 'ปรับความกว้างของแผง',
   statusChapter: 'บทที่ {n}/{total}',
   prevChapter: 'บทก่อนหน้า',
   nextChapter: 'บทถัดไป',

@@ -36,10 +36,6 @@ export const cs = {
   aiRetry: 'Zkusit znovu',
   aiCopyReplyTitle: 'Kopírovat odpověď',
   aiRegenerateTitle: 'Vygenerovat znovu',
-  aiTurnsTitle: 'Vrátit kolo AI zpět',
-  aiRollback: 'Vrátit zpět',
-  aiRollbackIncomplete:
-    'Část tohoto kola se nepodařilo vrátit zpět: historie zpět u mapy už nesahá tak daleko.',
   aiUnknownError: 'Požadavek na AI se nezdařil, zkuste to znovu',
   aiTimeoutError: 'Odpověď AI vypršela',
   aiCreditsExhausted: 'Došly kredity — dobijte je u svého poskytovatele AI',

@@ -55,6 +55,7 @@ Fai clic destro ovunque nel corpo del testo — il menu si adatta all'elemento s
 - **Appunti**: taglia / copia / incolla / **incolla come testo semplice**.
 - **Carattere, paragrafo**: cambia famiglia e dimensione, grassetto/corsivo/sottolineato, allineamento/rientro/interlinea senza passare dalla barra multifunzione.
 - **Sinonimi**: elenca i sinonimi della parola selezionata; fai clic su uno per sostituirla.
+- **Spiega con parole semplici** (IA): invia la selezione al pannello IA perché la spieghi con parole semplici nella lingua dell’interfaccia, e la esegue subito. Senza selezione è disattivato, e il testo nascosto all’IA non viene inviato.
 - **Traduci** (IA): traduce la selezione nella lingua di destinazione (inglese, cinese semplificato, giapponese, coreano, francese, tedesco, spagnolo, ...) tramite il pannello IA.
 - **Nuovo commento**: allega un commento alla selezione.
 - **Ortografia** (su una parola scritta male): sostituzioni suggerite, ignora tutto, aggiungi al dizionario, imposta la lingua di correzione.
@@ -79,7 +80,7 @@ Fai clic destro ovunque nel corpo del testo — il menu si adatta all'elemento s
 ## IA
 
 - Pulsante IA nella barra multifunzione e pannello laterale: riscrittura, espansione, traduzione, sintesi, inserimento di tabelle preimpostate, più istruzioni libere.
-- Ogni intervento dell'IA crea prima uno snapshot; puoi tornare indietro dall'elenco delle versioni e il ripristino stesso è annullabile.
+- I punti modificati dall'IA sono segnati in giallo. **Annulla queste modifiche**, nella scheda sotto la risposta, annulla quell'intervento per intero (tornano indietro anche gli interventi successivi), e il ripristino stesso è annullabile.
 
 ## Salvataggio ed esportazione
 
@@ -89,4 +90,4 @@ Fai clic destro ovunque nel corpo del testo — il menu si adatta all'elemento s
 
 ## Stampa
 
-ctrl+P tramite la finestra di dialogo di sistema, con pagine WYSIWYG.
+ctrl+P apre la finestra di stampa. Scegli stampante, copie, fronte-retro e intervallo (selezione compresa); in **Disposizione delle pagine** trovi più pagine per foglio, opuscolo, manifesto, etichette, facciate pari o dispari e scala di grigi (vedi [Operazioni sui file](help://file-ops)).

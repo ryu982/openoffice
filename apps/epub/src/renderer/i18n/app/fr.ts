@@ -30,6 +30,7 @@ export const fr = {
   darkView: 'Lecture sombre',
   toc: 'Sommaire',
   tocEmpty: 'Ce livre n’a pas de table des matières',
+  sideResize: 'Redimensionner le volet',
   statusChapter: 'Chapitre {n}/{total}',
   prevChapter: 'Chapitre précédent',
   nextChapter: 'Chapitre suivant',

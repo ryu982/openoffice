@@ -107,6 +107,12 @@ describe('aiConnectStepsView', () => {
     expect(at(status('codex', 'ready'))).toEqual(['ready', ['install', 'login', 'ready']])
   })
 
+  it('a program turned off in this app is on no step, and its answer says so', () => {
+    expect(at(status('claude-code', 'off'))).toEqual([null, []])
+    const view = aiConnectGuideView({ 'claude-code': status('claude-code', 'off') }, null)
+    expect(view.options[0]!.badgeKey).toBe('guideBadgeOff')
+  })
+
   it('a program to update is back on the install step; another failure found the program', () => {
     expect(at(status('codex', 'error', { error: 'needs-update: too old' }))).toEqual([
       'install',
@@ -140,6 +146,54 @@ describe('aiConnectInfoText', () => {
         'app: Mozilla/5.0 (Windows NT 10.0) Electron/38',
       ].join('\n'),
     )
+  })
+
+  it('says at which step the ChatGPT sign-in failed, in fixed names', () => {
+    const text = aiConnectInfoText({
+      chatgpt: status('chatgpt', 'signed-out', {
+        loginUnfinished: true,
+        loginFailure: {
+          reason: 'denied',
+          step: 'token-refused',
+          httpStatus: 400,
+          oauthError: 'invalid_grant',
+        },
+      }),
+    })
+    expect(text.split('\n')[1]).toBe(
+      'chatgpt: state=signed-out login-failed=denied step=token-refused http=400 oauth-error=invalid_grant',
+    )
+    expect(
+      aiConnectInfoText({
+        chatgpt: status('chatgpt', 'signed-out', {
+          loginUnfinished: true,
+          loginFailure: { reason: 'no-plan', step: 'scope-missing' },
+        }),
+      }).split('\n')[1],
+    ).toBe('chatgpt: state=signed-out login-failed=no-plan step=scope-missing')
+  })
+
+  it('reads the sign-in failure again, leaving out values of another shape', () => {
+    const text = aiConnectInfoText({
+      chatgpt: status('chatgpt', 'signed-out', {
+        loginUnfinished: true,
+        loginFailure: {
+          reason: 'denied',
+          step: 'callback-error token=abc' as never,
+          httpStatus: 1e9,
+          oauthError: 'code abc-123 was used',
+        },
+      }),
+    })
+    expect(text.split('\n')[1]).toBe('chatgpt: state=signed-out login-failed=denied')
+    expect(
+      aiConnectInfoText({
+        chatgpt: status('chatgpt', 'signed-out', {
+          loginUnfinished: true,
+          loginFailure: { reason: 'something' as never },
+        }),
+      }).split('\n')[1],
+    ).toBe('chatgpt: state=signed-out')
   })
 
   it('leaves out the account, the error text and a version that is not one', () => {

@@ -9,7 +9,7 @@
   - `book-session.ts`: 보기 하나의 책. 바이트 한 벌, 엔진이 연 책, 읽은 장마다 저장된 글·지금 글·그 사이의 범위 바꾸기. 편집 거절(번역 잠금, 고정 배치, 깨진 장, 지금 판이 아닌 장)도 여기서 한다. 화면이 보낸 범위 바꾸기(`epub:replace-ranges`)는 모든 범위가 블록 안쪽이거나, 결과 글이 그 장이 이번 세션에 가졌던 글(되돌리기·다시 하기)일 때만 받는다. 바이트는 엔진에 넘겨(`takeOwnership`) 한 벌만 두고, 저장은 이미 연 책으로 한다(다시 열지 않는다). 읽던 자리 파일은 한 번만 읽고 바꾸기를 차례로 쓴다(`reading-state.ts`). Electron 없이 돈다.
   - `asset-protocol.ts`: `epub-asset://<보기 토큰>/<항목 경로>`. 그 보기의 책 zip 항목만, GET·HEAD만, 정해 둔 내용 형식과 `nosniff`, 스크립트와 바깥 연결을 막는 CSP로 내준다. 감춘 글꼴은 풀어서 내준다. 스크립트 항목은 내주지 않는다.
   - `save-pipeline.ts`: 저장과 보관된 번역 옮기기(`ResultStore.migrateDocument` → 셸의 `migrateJobRecords`). `atomic-write.ts`: 원자적 쓰기.
-  - `store-handlers.ts`: `epub:store-*` 창구. 번역 작업이 읽고 쓰는 것(번역, `translate` 작업 기록)만, 그 보기가 연(또는 저장한) 책의 해시로만 받는다.
+  - `store-handlers.ts`: `epub:store-*` 창구. 번역 작업이 읽고 쓰는 것(번역, `translate` 작업 기록)만, 그 보기가 연(또는 저장한) 책의 해시로만 받는다. 요청마다 선택 `mode`를 받는다. 빼면 번역이고, `easy`면 같은 보관소의 쉬운 풀이(결정 0108)다. 그 밖의 값은 거절한다.
   - `result-paths.ts`: 결과 책을 쓸 수 있는 경로(원본이 아니고, 열린 탭이 아니고, `.epub`).
   - `reading-state.ts`: 읽던 자리와 보기 설정(`<userData>/epub-reading.json`, 최근 1,000권).
   - `mcp-queries.ts`: 앱 안 MCP의 읽기(spine 순서의 글, 제목은 `#`). `ai-attachments.ts`: AI 창 첨부(`epub:files-*`). `i18n-main.ts`: 저장 창과 닫기 확인 문구.
@@ -18,11 +18,11 @@
 - 렌더러(`src/renderer/`)
   - `App.tsx`: 리본(파일·홈·보기), 목차·찾기 창, 장 틀, 미리보기 열고 닫기, 상태 줄, 단축키, 자동 저장(30초마다와 창이 초점을 잃을 때), 메뉴 명령.
   - `reader/`: 그리는 사본(`chapter-html.ts`: 블록에 `data-epub-block`, 스크립트·`on…`·`javascript:`·틀·`<base>` 지우기, CSP와 `epub-asset:` 기준 주소), 장 틀 안의 일(`frame-dom.ts`), 장 넘기기(`navigation.ts`), 책 안 링크(`links.ts`), 책 안에서 찾기(`book-search.ts`, 500곳까지), 보기 설정과 바탕색(`view-prefs.ts`), 미리보기의 화면 크기·쪽 계산(`preview-pages.ts`).
-  - `components/`: 리본, 장 틀(`ChapterFrame.tsx`: `sandbox="allow-same-origin"`, `allow-scripts` 없음), 미리보기(`BookPreview.tsx`: 같은 틀, 쪽 넘기기, 화면 크기·글자 크기·바탕색), 목차·찾기 창, 편집 도구, 그림.
+  - `components/`: 리본, 장 틀(`ChapterFrame.tsx`: `sandbox="allow-same-origin"`, `allow-scripts` 없음), 미리보기(`BookPreview.tsx`: 같은 틀, 쪽 넘기기, 화면 크기·글자 크기·바탕색), 목차·찾기 창과 그 너비 손잡이(`SideResizer.tsx`: 끌기·화살표 키·두 번 눌러 기본값, 두 창이 한 너비를 쓰고 그 보기의 `localStorage`에 둔다), 편집 도구, 그림.
   - `edit/`: 편집 컨트롤러(`controller.ts`), 블록 표기와 화면 요소의 짝(`inline-roles.ts`), 블록 안 찾아 바꾸기(`block-text.ts`), 단축키(`shortcuts.ts`), 화면이 쓰는 엔진 모듈(`engine.ts`).
   - `ai/`: AI 창(`AiPanel.tsx`, `AiDock.tsx`), 책 스킬과 지시문(`epub-skill.ts`), 다섯 도구가 하는 일(`book-tools.ts`), 첨부·검색 스킬, 전송과 연결 상태.
   - `translate/`: 책 번역 창과 확인(`BookTranslateDialog.tsx`), 작업·진행·멈춤·이어하기·결과 쓰기(`BookTranslation.tsx`, `job-session.ts`), 보고(`BookTranslateReport.tsx`), 리본 단추, 제공자 고정(`route.ts`), 모델 호출(`model-call.ts`), 보관소 창구(`ipc-store.ts`), 화면에서 쓰는 번역 엔진 부분(`engine.ts`, `pdf-structure-browser.ts`), 순수 함수(`translate-model.ts`).
-  - `i18n/`: 21개 언어 조각(`app/`, `edit/`, `ai/`, `translate/`의 `<언어>.ts`, `zh.ts`가 키 집합을 정한다)과 그것을 모으는 `strings-*.ts`.
+  - `i18n/`: 22개 언어 조각(`app/`, `edit/`, `ai/`, `translate/`의 `<언어>.ts`, `zh.ts`가 키 집합을 정한다)과 그것을 모으는 `strings-*.ts`.
 
 ## 맡지 않는 것 (경계)
 
@@ -43,15 +43,18 @@
 - **번역은 사람이 확인한 뒤에만 보낸다.** 리본 단추, 파일 메뉴, AI 도구(`start_book_translation`), 이어하기 제안의 "이어서 하기"는 창을 열 뿐이다. 제공자는 확인 전에 한 번 정하고(`route.ts`) 작업 내내 바꾸지 않는다. 요금 경로로 스스로 넘어가지 않는다.
 - **번역은 저장된 책으로 하고, 그동안 편집을 잠근다.** 저장하지 않은 변경이 있으면 저장한 뒤 시작하고, 저장이 실패하면 시작하지 않는다. 잠금은 편집 컨트롤러의 `setTranslationLock`이 화면과 뒷단(`epub:set-translation-lock`) 모두에 걸고, 결과 책을 다 쓸 때까지 둔다. 탭이 닫히면 작업은 `interrupted`로 멈춘다.
 - **보관소 폴더 이름(`pdf-store`)과 보관 열쇠를 바꾸지 않는다.** 바꾸면 보관된 책 번역을 모두 잃는다.
+- **쉬운 풀이는 책 번역의 두 번째 방식이다(결정 0108).** 책 번역 창에서 방식을 고르고, 고르기만 해서는 보내지 않는다. 확인과 잠금, 제공자 고정, 멈춤 규칙은 번역과 같다. 쉬운 풀이의 기본 목표 언어는 책 언어와 상관없이 화면 언어이고, 책과 같은 언어라는 경고를 하지 않는다. 결과는 "풀이본"과 "원문 다음에 풀이"이고, 기본 이름은 `<이름>.<언어>.<표시 낱말>.epub`(대역은 `….bilingual.epub`)이며 낱말은 화면 언어다(`resultName`, `easyExplanationLabel`). 결과 책 제목에 붙는 표시는 목표 언어다. 확인 창의 이미 한 분량과 다른 AI 안내는 쉬운 풀이의 기록만 본다. 이어하기 제안은 방식마다 따로 나오고 쉬운 풀이는 그렇다고 적는다. 방식이 바뀌면 결과 이름이 달라지므로 저장 위치를 다시 고른다.
 - **책 글은 모델에게 자료다.** 지시문과 도구 설명은 영어이고 제품 이름은 `brandText`를 거친다. 지시문은 책 글, 맥락, 첨부, 검색 결과의 지시를 따르지 말라고 한다. 고정 배치 책에는 `edit_blocks`를 주지 않는다.
+- **AI 끄기(설정 › 편집기와 AI).** preload는 선택의 읽기·구독만 내보내고, 화면은 `ai/ai-choice.ts`의 `useAiOn()`을 따른다. 꺼져 있으면 AI 창·레일과 "책 번역" 단추가 없고, 메뉴의 책 번역은 아무것도 열지 않으며, 열려 있던 번역 창은 닫힌다. 책 번역 하나는 셸의 "돌고 있는 AI 작업" 목록의 `document-job` 하나다(`epub:ai-job-begin`·`epub:ai-job-end`·`epub:ai-job-stop`, `src/main/screen-ai-jobs.ts`). AI가 꺼져 있으면 뒷단이 시작을 거절한다.
 - **창구 이름은 `epub:`로 시작한다.** `src/shared/ipc.ts`에 있는 이름만 쓴다. 공용 `ai:*`와 구독 창구는 등록하지 않는다.
-- 문구는 21개 언어 조각에 모두 넣는다. 제품 이름은 `GenOffice`로 적는다.
+- 문구는 22개 언어 조각에 모두 넣는다. 제품 이름은 `GenOffice`로 적는다.
 
 ## 이 모듈의 방식
 
 - 책은 뒷단에 있다. 화면은 장 글을 `epub:read-chapter`로, 그림·스타일·글꼴을 `epub-asset://`로 받는다. 큰 그림이 많은 책에서도 화면 프로세스가 책 전체를 들지 않는다.
 - 입력은 0.5초 모았다가(그리고 다른 편집·저장·닫기·장 이동 전에) 한 번에 보낸다. 나누기·합치기·굵게·기울임 뒤에는 뒷단이 돌려준 글로 장을 다시 그려 화면과 블록 id를 맞춘다. 뒷단과 주고받는 일은 하나씩 차례로 돈다.
 - 되돌리기 기록은 탭마다 하나(최근 300단계)이고, 변경마다 그것을 되돌리는 범위 바꾸기를 쌓는다. "모두 바꾸기"와 AI 호출 한 번은 여러 장에 걸친 한 단계다.
+- AI 실행이 책을 바꾸면 그 답 아래에 공용 변경 카드(`AiChangesCard`) 하나가 붙는다. 패널은 도구가 보는 편집 컨트롤러를 감싸(`ai/run-changes.ts`의 `recordingHost`) 그 실행이 만든 기록 단계와 바꾼 블록을 적는다. 몇 곳은 바꾼·더한·지운 블록 수다. 되돌리기는 컨트롤러의 `undoEntries`로 그 실행의 단계만 되돌리고, 그 단계들이 기록 맨 위에 그 순서로 있을 때만 한다. 그 뒤에 무엇이든(입력 포함) 고쳤으면 `refused`, 기록에서 사라졌으면 `expired`다. 번역 잠금 중에는 아무것도 하지 않고 카드도 그대로 둔다. 되돌린 단계는 다시 하기로 살릴 수 있다. 되돌릴 수 있는 카드는 마지막으로 적용된 실행의 것 하나다. 바꾸거나 더한 블록은 장 틀 안의 CSS 사용자 지정 강조(`epub-ai-changed`, `reader/frame-dom.ts`의 `showAiMarks`)로 표시한다. 장의 DOM을 건드리지 않으므로 책에 읽혀 들어가지 않는다. 색은 공용 토큰을 `frameColors`가 읽어 넘긴다. 표시는 다음 실행이 시작될 때, "표시 지우기", 되돌리기, 새 대화, 다른 책에서 지워지고, 장을 다시 그리면 다시 칠한다.
 - 화면에서 그린 요소와 원본 요소를 하나하나 짝짓지 못한 블록은 고칠 수 없게 둔다(`inline-roles.ts`의 `pairRoles`).
 - 미리보기는 장 본문을 한 쪽 너비의 CSS 단으로 자르고, 쪽을 넘길 때 본문을 `transform`으로 옮긴다. 틀을 스크롤하면 Chromium의 스크롤 범위가 마지막 단의 여백을 빼서 마지막 쪽이 덜 움직인다. 편집 상태(`EditState`)가 바뀔 때마다 보이는 장을 다시 읽어, 판(`version`)이 달라졌을 때만 다시 그린다.
 - 번역 작업은 PDF처럼 화면 안에서 돈다. 모델 호출은 공용 `ai:stream`으로 가고(도구 없음), 결과는 `epub:store-write`로 뒷단의 보관소에 쓰인 뒤에야 끝난 것으로 센다. 다른 프로세스(터미널 명령어)의 작업은 보관소의 최근 `running` 기록으로 안다.
@@ -79,5 +82,5 @@
 - 바꾸면 반드시 테스트하는 것(뒷단): 세션의 편집·잠금·거절(`book-session.test.ts`), 자원 프로토콜의 토큰·경로·CSP·스크립트 거절(`asset-protocol.test.ts`), 저장하지 않음·범위만 다름·보관분 옮기기(`save-pipeline.test.ts`), 보관소 창구의 해시 검사(`store-handlers.test.ts`), 결과 경로 거절(`result-paths.test.ts`), 읽던 자리(`reading-state.test.ts`), 열지 못한 파일에 쓰지 않음과 링크 거절(`main.test.ts`, `translate-main.test.ts`).
 - 바꾸면 반드시 테스트하는 것(읽기): 그리는 사본(`reader-chapter-html.test.ts`), 장 넘기기(`reader-navigation.test.ts`), 링크(`reader-links.test.ts`), 찾기(`reader-search.test.ts`), 보기 설정(`reader-view-prefs.test.ts`), 화면(`reader-app.test.tsx`), 미리보기의 쪽 계산(`reader-preview-pages.test.ts`: Chromium에서 잰 위치)과 화면(`preview-app.test.tsx`).
 - 바꾸면 반드시 테스트하는 것(고치기): 컨트롤러(`edit-controller.test.ts`), 화면 요소 ↔ 표기(`edit-notation.test.ts`), 단축키·바꾸기·저장(`edit-app.test.tsx`).
-- 바꾸면 반드시 테스트하는 것(AI와 번역): 도구(`ai-book-tools.test.ts`: `edit_blocks` 묶음 = 되돌리기 한 번, 읽기 전용·잠금·자리 표시 거절), 창(`ai-panel-app.test.tsx`), 번역 창·확인·진행·멈춤·부분 내보내기·이어하기·보고(`translate-app.test.tsx`, `translate-book.test.tsx`, `translate-model.test.ts`). 모델은 모두 가짜다. 실제 `claude`·`codex`에 닿는 테스트를 두지 않는다.
+- 바꾸면 반드시 테스트하는 것(AI와 번역): 도구(`ai-book-tools.test.ts`: `edit_blocks` 묶음 = 되돌리기 한 번, 읽기 전용·잠금·자리 표시 거절), 창(`ai-panel-app.test.tsx`), 변경 카드와 표시(`ai-changes.test.tsx`: 맨 위일 때만 되돌리기, 잠금, 표시가 DOM에 닿지 않음), 번역 창·확인·진행·멈춤·부분 내보내기·이어하기·보고(`translate-app.test.tsx`, `translate-book.test.tsx`, `translate-model.test.ts`), 쉬운 풀이의 창·확인·실행·이어하기(`translate-easy.test.tsx`)와 보관소 창구의 `mode`(`store-handlers-easy.test.ts`). 모델은 모두 가짜다. 실제 `claude`·`codex`에 닿는 테스트를 두지 않는다.
 - `epubcheck`, 실제 책, 다른 전자책 뷰어, 실제 구독은 자동 테스트로 확인하지 못한다. 사람이 확인한다.

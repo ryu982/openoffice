@@ -6,6 +6,8 @@ L'editor PDF ha cinque schede nella barra multifunzione: **Home / Annota / Modif
 
 - Barra laterale sinistra: ** miniature** (fai clic per saltare, con l'intervallo visibile evidenziato) oppure **struttura** (segnalibri, quando presenti).
 - Zoom: il controllo del rapporto in basso a destra; ctrl+rotellina cambia lo zoom a scatti.
+- Zoom all’apertura: **All’apertura**, nella scheda Visualizza, sceglie la vista iniziale di un PDF appena aperto: adatta alla larghezza, adatta alla pagina oppure uno zoom dal 50% al 200%. Un PDF di cui hai cambiato lo zoom si riapre con quello zoom.
+- Spostare la vista: attiva lo **Strumento Mano** (schede Home e Visualizza) e trascina per spostare la pagina in ogni direzione. Finché è attivo, il trascinamento non seleziona testo e un semplice clic apre comunque i link. Trascinare tenendo premuto il tasto centrale (rotellina) sposta la vista anche senza lo strumento. Esc o un altro strumento lo disattiva. Senza testo selezionato, H lo attiva o lo disattiva.
 - Rotazione: per singola pagina o per tutte dal menu Pagine; le rotazioni vengono riscritte al salvataggio.
 - Ricerca: ctrl+F a testo completo con tutte le occorrenze evidenziate.
 - PDF cifrati: una richiesta della password (in una piccola finestra separata) li apre; la password viene usata solo per questa sessione. Puoi modificare e salvare un documento così; il salvataggio mantiene la password. **Annota → Proteggi** imposta, cambia o rimuove la password e ciò che i lettori possono fare.
@@ -18,7 +20,7 @@ Prova su un qualsiasi paragrafo:
 
 ![La barra di annotazione dopo aver selezionato il testo](img/pdf-highlight.png)
 
-2. Scegli **evidenziazione** (il campione giallo apre una tavolozza di colori), **sottolineatura** o **barratura**; **Chiedi all'IA** invia la selezione insieme alla tua domanda al pannello IA.
+2. Scegli uno dei tre colori di **evidenziazione**, oppure **sottolineatura**, **ondulato** o **barratura**. Per cambiare un colore di evidenziazione, fai clic destro su di esso e scegline uno nuovo. Dopo una sottolineatura, un'ondulata o una barratura, sulla barra si apre una fila di colori: fai clic su un altro colore per cambiarlo, e il segno successivo userà anch'esso quel colore. **Chiedi all'IA** invia la selezione insieme alla tua domanda al pannello IA.
 3. Per annullare un'annotazione, riseleziona con il trascinamento lo stesso passaggio e fai clic sul pulsante già attivo sulla barra (un interruttore in stile Word), oppure selezionalo e premi Canc.
 
 Per sapere cosa aspettarti:
@@ -69,6 +71,7 @@ Sei strumenti: **inchiostro, rettangolo, ellisse, freccia, nota**, più il **riq
 ## Operazioni sulle pagine (Pagine)
 
 - **Ruota / elimina / riordina**: trascina le miniature per riordinarle; l'eliminazione chiede conferma.
+- **Più pagine insieme**: fai clic sulle miniature tenendo premuto Ctrl o Maiusc per selezionare più pagine. Canc le elimina; Ctrl+C, Ctrl+X e Ctrl+V le copiano, le tagliano e le incollano. Le pagine copiate si possono incollare anche in un’altra scheda PDF, e l’incolla viene salvato subito nel file. Se le miniature sono chiuse, il pulsante sul bordo sinistro dell’area delle pagine le riapre.
 - **Importa pagine**: porta pagine da un altro PDF nel documento. **Inserisci pagina vuota** aggiunge una pagina vuota.
 - **Sostituisci pagine** scambia un intervallo con pagine provenienti da altrove; **Ritaglia pagine** ritaglia i bordi, con l'opzione di applicarlo a tutte le pagine.
 - **Dimensioni pagina** ridimensiona ogni pagina a un unico formato carta; **Inverti ordine** capovolge il documento da fine a inizio.
@@ -80,7 +83,9 @@ Sei strumenti: **inchiostro, rettangolo, ellisse, freccia, nota**, più il **riq
 ## Esportazione e stampa
 
 - **Esporta come Word… / PowerPoint… / Excel…** nel menu File, oppure le stesse tre da **Converti PDF** nella barra multifunzione — tutto in locale, senza caricamenti. Il .pptx esce con una diapositiva per pagina e il .xlsx con un foglio di lavoro per pagina. Ognuno chiede dove salvare.
-- **Stampa**: ordine e rotazioni correnti tramite la finestra di sistema; sono supportati gli intervalli di pagine.
+- **PDF in HWP**, in **Converti PDF** sulla barra multifunzione, trasforma il PDF in un documento HWP in una nuova scheda HWP. Scegli **Importa** (가져오기) nella finestra di importazione PDF mostrata dalla scheda; il documento viene creato in quella scheda e il primo salvataggio chiede dove mettere il file .hwp o .hwpx. Il PDF resta com'era e la conversione avviene su questo PC. Se il testo entra come paragrafi che scorrono tra le pagine o come caselle di testo fisse si sceglie nelle opzioni (환경 설정) della scheda HWP, alla voce importazione PDF.
+- La stessa conversione si avvia anche da una scheda HWP. Scegli un PDF con **File** ▸ **Importa PDF…**: si apre una nuova scheda HWP con la stessa finestra di importazione PDF. Il documento della scheda in cui è stato usato il menu resta com'era.
+- **Stampa**: ordine e rotazioni correnti tramite la finestra di sistema. Puoi stampare un intervallo di pagine o le pagine scelte nelle miniature, e scegliere in **Disposizione delle pagine** più pagine per foglio, opuscolo, scala di grigi e altro.
 
 ## Salvataggio
 
@@ -127,6 +132,9 @@ Premi **E** o **T**, oppure i chip di spiegazione e traduzione nella casella **C
 - **Traduci questa pagina** (o **Traduci il resto** se una parte è già fatta) invia la pagina con un solo clic quando usi un abbonamento; accanto al pulsante compare il nome dell’IA a cui va. Su una connessione a consumo, il primo clic in una scheda chiede prima «addebiterà questo servizio · Traduci / Annulla».
 - Fai doppio clic su un paragrafo tradotto per modificarlo. I paragrafi modificati sono conservati come testo semplice e usati così come sono nei file PDF, Markdown ed EPUB tradotti. **Traduci di nuovo** su un paragrafo invia solo quel paragrafo e chiede conferma se lo avevi modificato.
 - Passando il mouse su un paragrafo tradotto, il suo punto nella pagina originale viene contornato. Larghezza e dimensione del testo della colonna sono regolabili. **Traduci tutte le pagine…** apre la finestra **Traduci documento**, il cui formato **Solo conservare (nessun file)** tiene la traduzione senza scrivere file.
+- I paragrafi tradotti da ora in poi sono collegati frase per frase. Passando il mouse su una frase tradotta, quella frase viene evidenziata nella pagina originale; passandolo su una frase originale, si illumina la sua traduzione. Dove la frase non si trova nella pagina, e per i paragrafi tradotti in precedenza o modificati da te, il collegamento resta per paragrafo.
+- La barra sopra la colonna passa da **Traduzione** a **Spiegazione semplice**. La spiegazione semplice riscrive il testo con parole di tutti i giorni e frasi brevi, per bambini, anziani o chi sta imparando la lingua; fatti, numeri e nomi restano com’erano. La scelta viene ricordata e cambiare non invia nulla. Mentre è mostrata la spiegazione, i pulsanti di pagina e di paragrafo e la modifica agiscono su di essa.
+- Con la spiegazione semplice, **Spiega tutte le pagine in modo semplice…** apre la finestra **Traduci documento** con la modalità **Spiegazione semplice**. Una spiegazione è più lunga dell’originale, quindi non può diventare un PDF tradotto; si scrive in Markdown o EPUB. Con **Originale e poi spiegazione** attivo, ogni paragrafo originale è seguito dalla sua spiegazione; disattivato, il file contiene solo la spiegazione. La lingua all’inizio è quella dell’interfaccia e può essere anche quella del documento.
 
 ## Evidenziazione IA
 

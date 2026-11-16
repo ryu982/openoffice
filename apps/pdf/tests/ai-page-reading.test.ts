@@ -740,3 +740,61 @@ ${extra}`)
     expect(q(m.el, '[data-resume-kind]')).toBeNull()
   })
 })
+
+describe('AI page reading while AI is turned off', () => {
+  const stopped: JobStatus = {
+    kind: 'ai-read',
+    state: 'stopped',
+    last_error: 'rate-limit',
+    outputs: [],
+    progress: { done: 2, total: 4 },
+  }
+
+  it('shows nothing, opens nothing, and still carries stored results on save', async () => {
+    const m = await mount({
+      channels: fakeChannels({ unfinished: [stopped] }),
+      props: { hidden: true },
+    })
+    expect(q(m.el, '[data-resume-kind]')).toBeNull()
+    let answer: ReturnType<AiPageReadingHandle['requestOpen']> | undefined
+    await act(async () => {
+      answer = m.handle.current!.requestOpen(null)
+    })
+    await settle()
+    expect(answer).toEqual({ unavailable: true })
+    expect(m.el.innerHTML).toBe('')
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+    // stored AI results stay with the file (nothing is deleted while AI is off)
+    await act(async () => {
+      await m.handle.current!.afterSave()
+    })
+    expect(m.channels.store.migrate).toHaveBeenCalledTimes(1)
+  })
+
+  it('turning AI on brings the resume offer back', async () => {
+    const channels = fakeChannels({ unfinished: [stopped] })
+    const m = await mount({ channels, props: { hidden: true } })
+    expect(q(m.el, '[data-resume-kind]')).toBeNull()
+    const session = m.session
+    await act(async () =>
+      root!.render(
+        createElement(AiPageReading, {
+          filePath: PATH,
+          password: undefined,
+          pageCount: 5,
+          lang: 'en',
+          t,
+          api: channels.api,
+          session,
+          openPageRenderer: m.openPageRenderer,
+          onNotice: vi.fn(),
+          hidden: false,
+          ref: m.handle,
+        }),
+      ),
+    )
+    await settle()
+    expect(q(m.el, '[data-resume-kind="ai-read"]')).not.toBeNull()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+})

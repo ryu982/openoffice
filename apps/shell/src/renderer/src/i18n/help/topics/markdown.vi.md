@@ -37,6 +37,7 @@ Trình đơn Tệp, tất cả đều cục bộ và đều hỏi lưu kết qu�
 
 - **Xuất dưới dạng Word…** và **Xuất dưới dạng PDF…** ghi ra tệp .docx hoặc .pdf thật.
 - **Xuất dưới dạng ODT…** ghi một tệp .odt (văn bản OpenDocument) qua cùng phép chuyển đổi với xuất Word; nếu có gì thay đổi hoặc bị bỏ trong quá trình đó, bạn sẽ thấy danh sách và xác nhận trước.
+- **Xuất dưới dạng tài liệu HWP…** ghi một tài liệu HWP (.hwp hoặc .hwpx) bằng cùng phép chuyển đổi; tiêu đề, danh sách và bảng được đưa vào tài liệu HWP đúng dạng của chúng, và bảng dài sẽ tiếp tục ở trang sau. Nếu có phần không chuyển được, bạn sẽ thấy danh sách và xác nhận trước.
 - **Xuất dưới dạng hình ảnh…** ghi một tệp PNG cho mỗi trang vào thư mục bạn chọn.
 - **Chuyển đổi và mở trong Docs** chuyển sang .docx rồi mở trong thẻ Docs tích hợp ngay trong ứng dụng này — đây không phải chuyển giao cho thứ gì trên đám mây, và bản đã chuyển đổi nằm trong một thư mục bộ nhớ đệm được dọn dẹp sau khoảng một tuần.
 

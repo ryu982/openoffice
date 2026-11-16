@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const vi = {
+  appLegacyDocImported:
+    'Đã mở tệp .{ext} dưới dạng bản sao .docx đã chuyển đổi. Tệp gốc giữ nguyên; khi lưu sẽ ghi ra một tệp .docx mới.',
   appScTitle: 'Phím tắt bàn phím',
   appScFilter: 'Tìm kiếm phím tắt',
   appScNone: 'Không có phím tắt phù hợp',
@@ -53,6 +55,7 @@ export const vi = {
   appVerticalTextNotice:
     'Tài liệu này chứa văn bản dọc (tạm thời hiển thị ngang; không ảnh hưởng khi lưu)',
   appNewDocCreated: 'Đã tạo tài liệu trống. Mô tả nội dung cần tạo trong ngăn AI ở bên trái.',
+  appNewDocCreatedNoAi: 'Đã tạo tài liệu trống.',
   appNewFailed: 'Tạo tài liệu thất bại: {error}',
   appSaveFailed: 'Lưu thất bại: {error}',
   appAutoSavedAt: 'Đã tự động lưu ({time})',
@@ -93,6 +96,9 @@ export const vi = {
   appPrintRangeAll: 'Tất cả các trang',
   appPrintRangeCurrent: 'Trang hiện tại',
   appPrintRangeCustom: 'Phạm vi tùy chỉnh',
+  appPrintRangeSelection: 'Vùng chọn',
+  appPrintSelectionPreparing: 'Đang chia trang vùng chọn…',
+  appPrintSelectionFailed: 'Không thể chia trang vùng chọn: {error}',
   appPrintRangeHint: 'ví dụ: 1,3,5-8',
   appPrintPageCount: '{n} trang',
   appPrintNoPages: 'Không có trang nào để in',
@@ -348,6 +354,9 @@ export const vi = {
   appAiBadgeTip: 'Sử dụng AI',
   appTranslate: 'Dịch',
   appTranslateTo: 'Dịch sang {lang}',
+  appEasyWords: 'Giải thích bằng lời dễ hiểu',
+  appEasyWordsPrompt:
+    'Hãy giải thích đoạn văn bản đang chọn bằng tiếng Việt để cả những người cần văn bản dễ đọc (trẻ em, người cao tuổi, người đang học tiếng Việt) cũng hiểu được. Dùng từ ngữ hằng ngày và câu ngắn, giữ nguyên mọi sự kiện, con số và điều kiện. Không sửa đổi tài liệu: "{text}"',
   redactMenuLabel: 'Ẩn phần đã chọn khỏi AI',
   redactDialogDesc:
     'Văn bản vẫn còn trong tài liệu và tệp; mô hình chỉ thấy placeholder bên dưới. Đặt tên để mô hình biết nó đại diện cho điều gì.',
@@ -378,6 +387,7 @@ export const vi = {
   appLangHindi: 'Tiếng Hindi',
   appLangTraditionalChinese: 'Tiếng Trung (Phồn thể)',
   appLangVietnamese: 'Tiếng Việt',
+  appLangTurkish: 'tiếng Thổ Nhĩ Kỳ',
   appWrapTextMenu: 'Ngắt dòng văn bản',
   appViewImage: 'Xem hình ảnh',
   appSaveImageAs: 'Lưu hình ảnh thành…',
@@ -579,4 +589,10 @@ export const vi = {
   appMergeSourceLoaded: 'Đã tải {name} ({n} bản ghi)',
   appMergeWritten: 'Đã ghi {n} tài liệu',
   appMergeNothingToWrite: 'Không có gì để ghi',
+  appExportingHwp: 'Đang xuất tài liệu HWP…',
+  appExportedHwp: 'Đã xuất tài liệu HWP: {path}',
+  appExportHwpFailed: 'Xuất HWP thất bại: {error}',
+  appExportHwpCanceled: 'Đã hủy xuất HWP',
+  appExportHwpReadback:
+    'Không thể ghi chính xác tài liệu này dưới dạng .hwp. Hãy thử lưu dưới dạng .hwpx.',
 } satisfies Record<keyof typeof zh, string>

@@ -442,6 +442,7 @@ export const ar = {
   appGridlinesHidden: 'أُخفيت خطوط الشبكة.',
   appGridlinesShown: 'أُظهرت خطوط الشبكة.',
   appShowingFormulas: 'عرض الصيغ — بدّل مرة أخرى لعرض القيم.',
+  appShowingFormulasActive: 'عرض الصيغ',
   appShowingValues: 'عرض القيم المحسوبة.',
   appTraceNoFormula: 'تتبع السابقات: لا توجد صيغة في الخلية النشطة.',
   appTraceNoRefs: 'تتبع السابقات: لا تحتوي هذه الصيغة على مراجع خلايا.',
@@ -530,6 +531,9 @@ export const ar = {
   appCsvExportNeedsFullLoad: 'يتطلب تصدير CSV مصنفًا محمّلاً بالكامل — انتظر حتى ينتهي التحميل.',
   appCsvExportTooLarge: 'الورقة كبيرة جدًا ولا يمكن تصديرها بتنسيق CSV.',
   appCsvExportCanceled: 'أُلغي تصدير CSV.',
+  appOdsExported: 'تم التصدير: {path}.',
+  appOdsExportCanceled: 'أُلغي تصدير ODS.',
+  appOdsExportFailed: 'فشل تصدير ODS.',
   appCsvExported: 'تم التصدير: {path}.',
   appCsvExportedActiveOnly:
     'ملفات CSV تحتوي على ورقة واحدة فقط — تم تصدير الورقة النشطة «{name}» إلى {path}.',
@@ -562,6 +566,10 @@ export const ar = {
   appSaveErrStylesheetLimited:
     'تفتقر ورقة أنماط هذا المصنف إلى البنية الأساسية، فلا يمكن حفظ تغييرات الأنماط.',
   appSaveErrPackageGuard: 'سيغيّر الحفظ بنية حزمة المصنف — أُوقف لحماية الملف.',
+  appSaveErrSheetNotFound:
+    'لم يُعثر في المصنف على ورقة يشير إليها هذا الحفظ — أُوقف الحفظ وبقي الملف كما كان.',
+  appSaveErrSheetNameReused:
+    'تستخدم ورقة جديدة الاسم القديم لورقة أُعيدت تسميتها، لذا لا يمكن الحفظ. أعطِ الورقة الجديدة اسمًا آخر مؤقتًا واحفظ، ثم أعد تسميتها. بقي الملف كما كان.',
   appSaveErrChartUnsupported:
     'نوع المخطط هذا لا يدعم هذا التحرير، وأُوقف الحفظ — تراجع عن تغيير المخطط.',
   appSaveErrMoveOverlap:
@@ -666,6 +674,12 @@ export const ar = {
   appSaveAs: 'حفظ باسم',
   appUndo: 'تراجع',
   appRedo: 'إعادة',
+  appQuickAccessCustomize: 'تخصيص شريط أدوات الوصول السريع',
+  appQuickAccessHint: 'اضغط Alt مع رقم لتشغيل الزر الموجود في ذلك الموضع بالعدّ من بداية الشريط.',
+  appQuickAccessMoveEarlier: 'نقل إلى الأمام',
+  appQuickAccessMoveLater: 'نقل إلى الخلف',
+  appQuickAccessReset: 'استعادة الإعدادات الافتراضية',
+  appQuickAccessFull: 'يتسع الشريط لعشرة أزرار كحد أقصى.',
   appUnsavedEditOne: '● {count} تعديل غير محفوظ',
   appUnsavedEditMany: '● {count} تعديلات غير محفوظة',
   appSavedState: 'تم الحفظ',
@@ -1126,6 +1140,8 @@ export const ar = {
   appRefreshAll: 'تحديث الكل',
   appWorkbookNoPivot: 'لا توجد جداول محورية في هذا المصنف.',
   appRefreshAllTitle: 'تحديث كل الجداول المحورية',
+  appQueriesConnections: 'الاستعلامات والاتصالات',
+  appQueriesConnectionsTitle: 'عرض استعلامات المصنف واتصالات البيانات',
   appErrorCheckingDetail: 'فحص الورقة بحثًا عن قيم الخطأ',
   appErrorsFound: '{count} من الأخطاء — في {cell}: {value}',
   appCheckingErrors: 'جارٍ فحص الورقة بالكامل بحثًا عن أخطاء…',
@@ -1517,4 +1533,8 @@ export const ar = {
   appSpellUnavailable: 'التدقيق الإملائي غير متاح في هذه النافذة.',
   appSpellReplaceAll: 'استبدال الكل بـ «{suggestion}»',
   appSpellChangedAll: 'تم تصحيح {count} خلية تحتوي على «{word}».',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'تم فتح ملف ODS كنسخة xlsx. سيؤدي الحفظ إلى حفظ ملف xlsx.',
+  appOdsFormulasDropped: 'تم الاحتفاظ بقيم {count} من الصيغ فقط دون صيغها.',
 } satisfies Record<keyof typeof zh, string>

@@ -17,6 +17,8 @@ export const en = {
   cardErrNeedsUpdatePath: 'The file this app runs:',
   cardErrNeedsUpdateWindows:
     'Updating {provider} inside WSL (Ubuntu) or in another folder does not change this file. Run {command} in Windows PowerShell.',
+  claudeDesktopNote:
+    'The Claude desktop app is not Claude Code, which this app runs. Claude Code is a separate program used in a terminal, so installing or updating the desktop app does not change it.',
   cardErrTimeout: 'The {provider} program did not answer in time. Check again in a moment.',
   cardErrFailed: 'Something went wrong while checking {provider}. Check again.',
   actionInstall: 'Install',
@@ -52,6 +54,8 @@ export const en = {
   errSignedOut: 'The {provider} sign-in has expired. Sign in again to continue.',
   errRateLimit: 'The {provider} subscription limit has been used up.',
   errRateLimitReset: 'The {provider} subscription limit has been used up. It resets at {time}.',
+  errChatGptAppLimit:
+    'This app has used up the ChatGPT usage it can draw on. The limit may be your whole plan’s or one set for this app. Check Settings → Usage in ChatGPT.',
   errUnsafeTools:
     'The {provider} program started with its own tools turned on, so the run was stopped for safety.',
   errMeteredNotAccepted:
@@ -60,7 +64,8 @@ export const en = {
   errHeadlessLimit: 'The hourly limit for automatic requests has been reached.',
   errHeadlessLimitReset:
     'The hourly limit for automatic requests has been reached. Requests are possible again at {time}.',
-  connectFreeHint: 'No subscription? You can connect a free AI in Settings in about a minute.',
+  connectFreeHint:
+    'Without a subscription, you can connect a free AI in Settings in about a minute.',
   actionConnectFree: 'Connect a free AI',
   errFreeLimit:
     "Today's free allowance is used up. Try again tomorrow, or choose another AI in Settings.",
@@ -113,7 +118,7 @@ export const en = {
   stepLogin: 'Sign in',
   stepReady: 'Connected',
   installReturnNote:
-    'When the install has finished in that window, come back here. The app checks again by itself.',
+    'That window may show nothing for a few minutes while it downloads. Leave it open. When the install has finished, come back here. The app checks again by itself.',
   loginHowNote:
     'A browser opens when you press it. Sign in with your {vendor} account and press Allow; the connection finishes by itself.',
   signingInStalledNote:
@@ -151,6 +156,16 @@ export const en = {
     'A ChatGPT sign-in page opens in your browser. Sign in and allow this app to use your ChatGPT plan; the connection finishes by itself.',
   chatgptLoginUnfinishedNote:
     'The sign-in did not finish. Press it again to start over. The connection needs you to allow use of your ChatGPT plan.',
+  chatgptLoginNoPlanNote:
+    'You signed in to ChatGPT, but this app was not allowed to use your plan. Press it again and allow plan use on the consent page. If you did allow it, OpenAI may not offer this for your account (for example one managed by a company or school) or your plan. You can connect with the Codex program instead.',
+  chatgptLoginDeniedNote:
+    'You signed in in the browser, but OpenAI did not accept this connection, or its answer could not be checked. Make sure the date and time on this PC are right, then press it again to start over.',
+  chatgptLoginNetworkNote:
+    'The sign-in could not finish: OpenAI could not be reached, or no browser opened. Check the internet connection (including a company network, VPN or proxy), then press it again.',
+  chatgptLoginWorkspacePolicyNote:
+    'This ChatGPT account belongs to a workspace run by a company or school, and OpenAI does not let apps use a workspace’s ChatGPT plan. The workspace admin has no setting to allow it, so signing in again will not help. Sign in with a personal ChatGPT account (Go, Plus, or Pro), or connect through the Codex card instead.',
+  chatgptLoginNotAllowedNote:
+    'This app was not allowed to use your ChatGPT plan, or the browser came back from the sign-in with a failure. Press it again, sign in, and allow it on the consent page.',
   chatgptSigningInNote:
     'Sign in with your ChatGPT account in the browser that opened, and allow this app to use your plan. The connection finishes by itself.',
   chatgptPlanNote:
@@ -160,4 +175,18 @@ export const en = {
   browserPageDoneBody: 'You can close this tab and go back to the app.',
   browserPageFailedTitle: 'The connection was not made',
   browserPageFailedBody: 'Go back to the app and try again.',
+  cardOff: 'Off in this app',
+  offNote:
+    'This app neither runs the {provider} program nor checks on it. The {provider} sign-in on this PC, and its use in a terminal, stay as they are.',
+  offElsewhereNote: 'You can turn it back on in Settings → AI.',
+  offSwitchNote:
+    '"Don\'t use in this app" keeps the {provider} sign-in on this PC and stops only this app. Sign out applies to the whole PC.',
+  actionTurnOff: "Don't use in this app",
+  actionTurnOn: 'Use again',
+  connectOffTitle: '{provider} is turned off in this app',
+  connectOffBody:
+    'Press "Use again" on the {provider} card in Settings → AI, or choose another AI.',
+  errOffInApp:
+    '{provider} is turned off in this app, so nothing was run. You can turn it back on in Settings → AI.',
+  guideBadgeOff: 'Off',
 } satisfies Record<keyof typeof zh, string>

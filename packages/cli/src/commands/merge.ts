@@ -39,6 +39,8 @@ import { CliError, EXIT, type CommandResult } from '../result'
 
 // keys may be in any script (Korean, Japanese, ...); ASCII-only \w left them unfilled and unreported
 const PLACEHOLDER = /\{\{\s*([\p{L}\p{M}\p{N}_.-]+)\s*\}\}/gu
+/** One Unicode form for Map keys so NFD template placeholders match NFC --data keys. */
+const formKey = (key: string): string => key.normalize('NFC')
 const FORMATS = ['docx', 'pptx', 'xlsx'] as const
 type Format = (typeof FORMATS)[number]
 
@@ -207,7 +209,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function flatten(obj: Record<string, unknown>, prefix: string, out: Values, ignored: string[]) {
   for (const [k, v] of Object.entries(obj)) {
-    const key = prefix ? `${prefix}.${k}` : k
+    const key = formKey(prefix ? `${prefix}.${k}` : k)
     if (isRecord(v)) flatten(v, key, out, ignored)
     else if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) {
       if (out.has(key)) {
@@ -245,14 +247,18 @@ function textOf(v: Scalar): string {
 }
 
 function hits(text: string): Array<Pick<Hit, 'placeholder' | 'key'>> {
-  return [...text.matchAll(PLACEHOLDER)].map((m) => ({ placeholder: m[0], key: m[1]! }))
+  return [...text.matchAll(PLACEHOLDER)].map((m) => ({
+    placeholder: m[0],
+    key: formKey(m[1]!),
+  }))
 }
 
 /** every placeholder with a value swapped for it in one pass, the rest left as written */
 function substitute(text: string, values: Values): string {
-  return text.replace(PLACEHOLDER, (m, key: string) =>
-    values.has(key) ? textOf(values.get(key)!) : m,
-  )
+  return text.replace(PLACEHOLDER, (m, key: string) => {
+    const k = formKey(key)
+    return values.has(k) ? textOf(values.get(k)!) : m
+  })
 }
 
 const locKey = (location: Hit['location']): string => JSON.stringify(location)
@@ -264,7 +270,9 @@ const occurrences = (text: string, part: string): number => text.split(part).len
  * that arrived inside a value is output, not a leftover. The rescan only tells
  * which provided placeholders are still at their spot: where the text is not
  * the expected substitution, the occurrences beyond the expected text's own
- * are placeholders the run-level replace could not match (split over runs).
+ * are placeholders the replace could not reach — a marker the flat per-
+ * paragraph match cannot span (interrupted by a line break or an inline
+ * object, or crossing a block boundary), still reported as split_placeholder.
  */
 function describe(merged: Merged, values: Values) {
   const leftover = new Map<string, number>()
@@ -433,12 +441,12 @@ function substituteHtml(html: string, values: Values): string {
 
 /**
  * Word splits a placeholder over several runs whenever the formatting changes
- * inside it; findReplace matches within one run, so what it misses is rescanned
- * and reported as split_placeholder. findReplace reaches neither table cells
- * nor a line break (a hardBreak only comes in through HTML), so a table with a
- * provided placeholder and a paragraph whose value spans lines are round-tripped
- * through replace_blocks on their restricted HTML; the rest is one findReplace
- * pass.
+ * inside it; findReplace matches across those runs within one paragraph, and
+ * what it still cannot reach is rescanned and reported as split_placeholder.
+ * findReplace reaches neither table cells nor a line break (a hardBreak only
+ * comes in through HTML), so a table with a provided placeholder and a
+ * paragraph whose value spans lines are round-tripped through replace_blocks
+ * on their restricted HTML; the rest is one findReplace pass.
  */
 async function mergeDocx(path: string, values: Values, output: string): Promise<Merged> {
   const source = readInput(path)

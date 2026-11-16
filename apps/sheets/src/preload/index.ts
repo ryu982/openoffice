@@ -1,6 +1,7 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import {
@@ -11,6 +12,8 @@ import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-ch
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
 import { splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import { createPrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
+import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 
 import type { AiChatResponse, AiSettings, AiStreamChunk } from '@genoffice/ai-provider'
 import { SUBSCRIPTION_IPC_CHANNELS } from '@genoffice/ai-provider/browser'
@@ -46,6 +49,7 @@ import type {
   WorkbookRangeResult,
   WorkbookRecalcRequest,
   WorkbookRecalcResult,
+  WorkbookQueriesResult,
   WorkbookRichRun,
   WorkbookSaveRequest,
   WorkbookSaveResult,
@@ -64,9 +68,11 @@ import {
   MAX_PDF_TEMPLATE_CHARS,
   MAX_SAVE_EDITS,
   MAX_SAVE_EDITS_TOTAL,
+  MAX_SAVE_STRUCTURAL_OPS,
   SAVE_EDITS_CHUNK_JSON_MAX,
 } from '../shared/ipc-channels'
 import {
+  SUBSCRIPTION_USAGE_CHANNEL,
   isSubscriptionProviderId,
   subscriptionLaunchResultOf,
   subscriptionStatusMapOf,
@@ -131,6 +137,11 @@ const aiSubscription: SubscriptionApi = {
       handler(subscriptionStatusMapOf(statuses))
     ipcRenderer.on(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
     return () => ipcRenderer.removeListener(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
+  },
+  onUsage(handler) {
+    const listener = (_event: unknown, usage: unknown) => handler(Array.isArray(usage) ? usage : [])
+    ipcRenderer.on(SUBSCRIPTION_USAGE_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(SUBSCRIPTION_USAGE_CHANNEL, listener)
   },
 }
 
@@ -317,6 +328,24 @@ const desktopApi: DesktopApi = {
     )
     return parsePivotDefinitionResult(result)
   },
+  async readWorkbookQueries(request) {
+    if (!isRecord(request) || !isUuid(request.sessionId)) {
+      throw new Error('Invalid queries request.')
+    }
+    const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.readWorkbookQueries, {
+      sessionId: request.sessionId,
+    })
+    // structural check; the main process zod-validates the full shape
+    if (!Array.isArray(result) || result.length > 1_000) {
+      throw new Error('Invalid queries response.')
+    }
+    for (const query of result) {
+      if (!isRecord(query) || typeof query.name !== 'string' || typeof query.kind !== 'string') {
+        throw new Error('Invalid queries response.')
+      }
+    }
+    return result as WorkbookQueriesResult
+  },
   async saveWorkbookEdits(request) {
     const validatedRequest = parseSaveRequest(request)
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.saveWorkbook, validatedRequest)
@@ -430,6 +459,7 @@ const desktopApi: DesktopApi = {
     }
     return result as { ok: true } | { ok: false; error?: string }
   },
+  printLayout: createPrintLayoutBridge(ipcRenderer, 'sheets'),
   async listPrinters() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.listPrinters)
     if (!Array.isArray(result)) throw new Error('Invalid printer list.')
@@ -467,6 +497,53 @@ const desktopApi: DesktopApi = {
     }
     return result as
       { canceled: true; saveAsXlsxInstead?: boolean } | { canceled: false; path: string }
+  },
+  async exportOds(request) {
+    if (
+      !isRecord(request) ||
+      typeof request.sessionId !== 'string' ||
+      !isUuid(request.sessionId) ||
+      (request.targetPath !== undefined &&
+        (typeof request.targetPath !== 'string' || request.targetPath.length === 0)) ||
+      (request.workbook !== undefined && !isRecord(request.workbook))
+    ) {
+      throw new Error('Invalid ODS export request.')
+    }
+    const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.exportOds, request)
+    if (!isRecord(result) || typeof result.canceled !== 'boolean') {
+      throw new Error('Invalid ODS export response.')
+    }
+    if (result.canceled === false) {
+      if (
+        typeof result.path !== 'string' ||
+        typeof result.sheets !== 'number' ||
+        typeof result.cells !== 'number' ||
+        typeof result.formulasDropped !== 'number' ||
+        !isOdsDroppedCounts(result.dropped)
+      ) {
+        throw new Error('Invalid ODS export response.')
+      }
+      return result as {
+        canceled: false
+        path: string
+        sheets: number
+        cells: number
+        formulasDropped: number
+        dropped: {
+          charts: number
+          images: number
+          conditionalFormats: number
+          validations: number
+          pivots: number
+          comments: number
+          macros: number
+          shapes: number
+          slicers: number
+          sparklines: number
+        }
+      }
+    }
+    return result as { canceled: true }
   },
   async confirmCsvSave() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.csvSaveConfirm)
@@ -529,6 +606,7 @@ const desktopApi: DesktopApi = {
         action === 'print' ||
         action === 'export-pdf' ||
         action === 'export-csv' ||
+        action === 'export-ods' ||
         action === 'undo' ||
         action === 'redo'
       )
@@ -832,6 +910,8 @@ contextBridge.exposeInMainWorld('desktopApi', desktopApi)
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
 contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for this editor's AI: list and call approved tools (the shell checks each)
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
@@ -860,6 +940,12 @@ contextBridge.exposeInMainWorld('projectApi', projectApi)
 contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 // The shell's split panes: which pane this view is, and focus requests for it
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
+// Settings' AI switch: the screen only reads it and hears changes (hides its AI parts)
+const appChoice = appChoiceBridge()
+contextBridge.exposeInMainWorld(APP_CHOICE_BRIDGE_KEY, {
+  get: appChoice.get,
+  onChange: appChoice.onChange,
+})
 
 // Off by default. e2e drivers launch the BUILT app with GENOFFICE_DEBUG_HOOKS=1
 // so the renderer exposes window.__genofficeDebug (see App.tsx) — the dev-only
@@ -887,6 +973,8 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     definedNames,
     readOnly,
     needsSaveAs,
+    odsConverted,
+    formulasDropped,
     csvPath,
     emptyCsv,
     restoredFromRecovery,
@@ -906,6 +994,8 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     !Array.isArray(definedNames) ||
     typeof readOnly !== 'boolean' ||
     (needsSaveAs !== undefined && typeof needsSaveAs !== 'boolean') ||
+    (odsConverted !== undefined && odsConverted !== true) ||
+    (formulasDropped !== undefined && !isNonnegativeInteger(formulasDropped)) ||
     (csvPath !== undefined && (typeof csvPath !== 'string' || csvPath.length === 0)) ||
     (emptyCsv !== undefined && typeof emptyCsv !== 'boolean') ||
     (restoredFromRecovery !== undefined && typeof restoredFromRecovery !== 'boolean')
@@ -1212,6 +1302,8 @@ function parseWorkbookFile(input: unknown): WorkbookFile {
     definedNames: parsedDefinedNames,
     readOnly,
     ...(needsSaveAs === undefined ? {} : { needsSaveAs }),
+    ...(odsConverted === true ? { odsConverted } : {}),
+    ...(formulasDropped === undefined ? {} : { formulasDropped }),
     ...(csvPath === undefined ? {} : { csvPath }),
     ...(emptyCsv === undefined ? {} : { emptyCsv }),
     ...(restoredFromRecovery === undefined ? {} : { restoredFromRecovery }),
@@ -2129,7 +2221,7 @@ function parseSaveRequest(input: WorkbookSaveRequest): WorkbookSaveRequest {
   if (input.editsTransferId !== undefined && input.edits.length > 0)
     invalid('cell edits: inline edits mixed with a transfer')
   cappedArray('bulk constant fills', input.bulkConstantFills ?? [], 1_000)
-  cappedArray('structural operations', input.structuralOps, 1_000)
+  cappedArray('structural operations', input.structuralOps, MAX_SAVE_STRUCTURAL_OPS)
   cappedArray('chart edits', input.chartEdits, 100)
   cappedArray('visual edits', input.visualEdits, 100)
   cappedArray('visual additions', input.visualAdditions, 100)
@@ -2734,6 +2826,7 @@ function isPdfExportRequest(request: unknown): boolean {
     (request.firstPage !== undefined && !isPdfPageVariant(request.firstPage)) ||
     (request.evenPages !== undefined && !isPdfPageVariant(request.evenPages)) ||
     (request.outPath !== undefined && !isBoundedString(request.outPath, 4096)) ||
+    (request.saveAsPath !== undefined && !isBoundedString(request.saveAsPath, 4096)) ||
     // '' = the system default printer
     (request.deviceName !== undefined &&
       (typeof request.deviceName !== 'string' || request.deviceName.length > 255)) ||
@@ -3026,6 +3119,18 @@ function parseSaveResult(input: unknown): WorkbookSaveResult {
         throw new Error('Invalid workbook save response.')
       }
       return { canceled: true, csvSaveAsPath: input.csvSaveAsPath }
+    }
+    if (input.pdfSaveAsPath !== undefined) {
+      if (typeof input.pdfSaveAsPath !== 'string' || input.pdfSaveAsPath.length === 0) {
+        throw new Error('Invalid workbook save response.')
+      }
+      return { canceled: true, pdfSaveAsPath: input.pdfSaveAsPath }
+    }
+    if (input.odsSaveAsPath !== undefined) {
+      if (typeof input.odsSaveAsPath !== 'string' || input.odsSaveAsPath.length === 0) {
+        throw new Error('Invalid workbook save response.')
+      }
+      return { canceled: true, odsSaveAsPath: input.odsSaveAsPath }
     }
     return { canceled: true }
   }
@@ -4030,6 +4135,23 @@ function isUuid(input: unknown): input is string {
   return (
     typeof input === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input)
+  )
+}
+
+/** The dropped-feature counts of an ODS export; every field must be a count. */
+function isOdsDroppedCounts(input: unknown): boolean {
+  if (!isRecord(input)) return false
+  return (
+    isNonnegativeInteger(input.charts) &&
+    isNonnegativeInteger(input.images) &&
+    isNonnegativeInteger(input.conditionalFormats) &&
+    isNonnegativeInteger(input.validations) &&
+    isNonnegativeInteger(input.pivots) &&
+    isNonnegativeInteger(input.comments) &&
+    isNonnegativeInteger(input.macros) &&
+    isNonnegativeInteger(input.shapes) &&
+    isNonnegativeInteger(input.slicers) &&
+    isNonnegativeInteger(input.sparklines)
   )
 }
 

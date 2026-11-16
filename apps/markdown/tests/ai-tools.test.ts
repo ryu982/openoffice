@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { buildExtensions } from '../src/renderer/editor/extensions'
-import { buildDocContext, executeTool, markDocSeen } from '../src/renderer/ai/tools'
+import { AGENT_TOOLS, buildDocContext, executeTool, markDocSeen } from '../src/renderer/ai/tools'
 import { deriveAutoFileName } from '../src/renderer/App'
 
 // Undestroyed views leave DOMObserver flush timers that fire after jsdom teardown
@@ -380,6 +380,50 @@ describe('insert_image', () => {
     expect(result.isError).toBeUndefined()
     expect(result.mutated).toBe(true)
     expect(editor.getMarkdown()).toContain('![chart](assets/pic.png)')
+  })
+})
+
+describe('generate_image', () => {
+  it('passes a model the user named to the channel, and offers it as an optional input', async () => {
+    let received: unknown = null
+    ;(window as unknown as { markdownApi: unknown }).markdownApi = {
+      aiGenerateImage: async (op: unknown) => {
+        received = op
+        return { error: 'stop here' }
+      },
+    }
+    const editor = createEditor('# A')
+    const result = await executeTool(
+      editor,
+      call('generate_image', { prompt: 'a lighthouse', model: 'gpt-image-2' }),
+    )
+    expect(result.isError).toBe(true)
+    expect(received).toEqual({ prompt: 'a lighthouse', model: 'gpt-image-2' })
+    const tool = AGENT_TOOLS.find((tool) => tool.name === 'generate_image')!
+    expect(tool.inputSchema.properties).toHaveProperty('model')
+    expect(tool.inputSchema.required).toEqual(['prompt'])
+  })
+
+  it("passes the image tool's note on to the model with the inserted picture", async () => {
+    ;(window as unknown as { markdownApi: unknown }).markdownApi = {
+      aiGenerateImage: async () => ({
+        url: 'https://example.com/gen.png',
+        note: 'Codex picks the image model on this route',
+      }),
+      fetchImage: async () => ({
+        base64:
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        mime: 'image/png',
+      }),
+      saveImage: async () => 'assets/gen.png',
+    }
+    const editor = createEditor('# A')
+    const result = await executeTool(
+      editor,
+      call('generate_image', { prompt: 'a lighthouse', model: 'gpt-image-2' }),
+    )
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toContain('\nNote: Codex picks the image model on this route')
   })
 })
 

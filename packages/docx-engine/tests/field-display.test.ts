@@ -83,6 +83,7 @@ describe('field paragraph display model', () => {
       level: 1,
       anchor: '_Toc1',
       leader: 'dot',
+      rightTabTwips: 9350,
     })
   })
 
@@ -214,6 +215,48 @@ describe('field paragraph display model', () => {
     // the leading run already resolves the CJK face: no duplicate
     expect(doc.blocks[0].fieldDisplay?.eaFontFamily).toBeUndefined()
     expect(del.blocks[0].fieldDisplay?.eaFontFamily).toBeUndefined()
+  })
+
+  it('records the page number face when it differs from the title face (Word probe 2026-11-07)', async () => {
+    const entry = (rPr: string, pageRPr = '') =>
+      '<w:p><w:pPr><w:pStyle w:val="TOC1"/><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="9214"/></w:tabs></w:pPr>' +
+      '<w:hyperlink w:anchor="_Toc1">' +
+      `<w:r>${rPr}<w:t>Article 1 : Objet</w:t></w:r>` +
+      '<w:r><w:tab/></w:r>' +
+      '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+      '<w:r><w:instrText xml:space="preserve"> PAGEREF _Toc1 \\h </w:instrText></w:r>' +
+      '<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+      `<w:r>${pageRPr}<w:t>5</w:t></w:r>` +
+      '<w:r><w:fldChar w:fldCharType="end"/></w:r>' +
+      '</w:hyperlink></w:p>'
+    const cg = '<w:rPr><w:rFonts w:ascii="Century Gothic" w:hAnsi="Century Gothic"/></w:rPr>'
+    const stylesXml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults>' +
+      '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
+      '<w:style w:type="paragraph" w:styleId="TOC1"><w:name w:val="toc 1"/><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/></w:rPr></w:style>' +
+      '</w:styles>'
+    const doc = await parseDocx(
+      await buildDocx({
+        stylesXml,
+        bodyXml:
+          entry(cg) +
+          entry(cg, cg) +
+          entry(cg, '<w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/></w:rPr>') +
+          entry(''),
+      }),
+    )
+    // the page run inherits the document face (Calibri) behind a Century Gothic title
+    expect(doc.blocks[0].fieldDisplay).toMatchObject({
+      fontFamily: 'Century Gothic',
+      pageFontFamily: 'Calibri',
+    })
+    // same face on both runs: nothing to union
+    expect(doc.blocks[1].fieldDisplay?.pageFontFamily).toBeUndefined()
+    expect(doc.blocks[2].fieldDisplay?.pageFontFamily).toBe('Georgia')
+    // a style-only title face has no run face to differ from
+    expect(doc.blocks[3].fieldDisplay?.pageFontFamily).toBeUndefined()
   })
 
   it('TOC bold respects off/none/case variants (onOff parity)', async () => {
@@ -525,6 +568,109 @@ describe('field paragraph display model', () => {
       right: '1',
     })
     expect(doc.blocks[0].fieldDisplay?.num).toBeUndefined()
+  })
+
+  // Korean Word names the built-in TOC styles by opaque ids ("10" = toc 1) and
+  // lays entries out with a left stop for the article number, a dot-leader right
+  // stop and an exact 20pt line; the TOC title clears both stops
+  const KO_TOC_STYLES =
+    '<w:style w:type="paragraph" w:styleId="10"><w:name w:val="toc 1"/><w:pPr>' +
+    '<w:tabs><w:tab w:val="left" w:pos="1400"/><w:tab w:val="right" w:leader="dot" w:pos="8494"/></w:tabs>' +
+    '<w:spacing w:line="400" w:lineRule="exact"/></w:pPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="20"><w:name w:val="toc 2"/><w:pPr>' +
+    '<w:tabs><w:tab w:val="left" w:pos="1400"/><w:tab w:val="right" w:leader="dot" w:pos="8494"/></w:tabs>' +
+    '<w:spacing w:line="400" w:lineRule="exact"/><w:ind w:left="400"/></w:pPr></w:style>'
+  const koEntry = (style: string, num: string, title: string, page: string) =>
+    `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:hyperlink w:anchor="_Toc9">` +
+    `<w:r><w:t>${num}</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>${title}</w:t></w:r><w:r><w:tab/></w:r>` +
+    '<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
+    '<w:r><w:instrText xml:space="preserve"> PAGEREF _Toc9 \\h </w:instrText></w:r>' +
+    `<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>${page}</w:t></w:r>` +
+    '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:hyperlink></w:p>'
+  const CLEARS =
+    '<w:tabs><w:tab w:val="clear" w:pos="1400"/><w:tab w:val="clear" w:pos="8494"/></w:tabs>'
+
+  it('a toc-N style under an opaque id lays the entry out with its left stop and exact line', async () => {
+    const doc = await parseDocx(
+      await buildDocx({
+        extraStylesXml: KO_TOC_STYLES,
+        bodyXml:
+          koEntry('10', '제 1 조', '본건 사업의 개요', '2') +
+          koEntry('20', '제 1 항', '용어의 정의', '3'),
+      }),
+    )
+    // the spaced article number sits in the num cell because the style has a
+    // left stop for it; level 2 measures the cell from its own left indent
+    expect(doc.blocks[0].fieldDisplay).toMatchObject({
+      kind: 'tocLine',
+      level: 1,
+      num: '제 1 조',
+      left: '본건 사업의 개요',
+      right: '2',
+      numTabTwips: 1400,
+      leader: 'dot',
+      rightTabTwips: 8494,
+      lineRule: 'exact',
+      lineRawTwips: 400,
+    })
+    expect(doc.blocks[1].fieldDisplay).toMatchObject({
+      level: 2,
+      num: '제 1 항',
+      numTabTwips: 1000,
+      lineRule: 'exact',
+      lineRawTwips: 400,
+    })
+  })
+
+  it('a style auto multiple is not copied onto the entry (it cascades from the style CSS)', async () => {
+    const styles =
+      '<w:style w:type="paragraph" w:styleId="TOC1"><w:name w:val="toc 1"/><w:pPr>' +
+      '<w:spacing w:line="360" w:lineRule="auto"/></w:pPr></w:style>'
+    const doc = await parseDocx(
+      await buildDocx({ extraStylesXml: styles, bodyXml: koEntry('TOC1', '1.', 'Title', '4') }),
+    )
+    expect(doc.blocks[0].fieldDisplay?.lineRule).toBeUndefined()
+  })
+
+  it('a TOC-styled title or spacer without a tab run is a plain line, not a leader entry', async () => {
+    const doc = await parseDocx(
+      await buildDocx({
+        extraStylesXml: KO_TOC_STYLES,
+        bodyXml:
+          `<w:p><w:pPr><w:pStyle w:val="10"/>${CLEARS}<w:jc w:val="center"/></w:pPr>` +
+          '<w:r><w:t>목 차</w:t></w:r></w:p>' +
+          `<w:p><w:pPr><w:pStyle w:val="10"/>${CLEARS}</w:pPr></w:p>` +
+          koEntry('10', '제 1 조', 'Title', '2'),
+      }),
+    )
+    expect(doc.blocks[0].type).toBe('passthrough')
+    expect(doc.blocks[0].fieldDisplay).toMatchObject({
+      kind: 'text',
+      left: '목 차',
+      align: 'center',
+    })
+    expect(doc.blocks[1].fieldDisplay).toMatchObject({ kind: 'text', emptyLine: true })
+    expect(doc.blocks[2].fieldDisplay?.kind).toBe('tocLine')
+  })
+
+  it('direct w:tab clears drop the style stops: no leader or number cell where none is', async () => {
+    const doc = await parseDocx(
+      await buildDocx({
+        extraStylesXml: KO_TOC_STYLES,
+        bodyXml: `<w:p><w:pPr><w:pStyle w:val="10"/>${CLEARS}</w:pPr><w:hyperlink w:anchor="_Toc9">
+          <w:r><w:t>제 1 조</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>Title</w:t></w:r><w:r><w:tab/></w:r>
+          <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+          <w:r><w:instrText xml:space="preserve"> PAGEREF _Toc9 \\h </w:instrText></w:r>
+          <w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>2</w:t></w:r>
+          <w:r><w:fldChar w:fldCharType="end"/></w:r></w:hyperlink></w:p>`,
+      }),
+    )
+    const fd = doc.blocks[0].fieldDisplay
+    expect(fd?.kind).toBe('tocLine')
+    expect(fd?.leader).toBe('none')
+    expect(fd?.rightTabTwips).toBeUndefined()
+    expect(fd?.num).toBeUndefined()
+    expect(fd?.left).toBe('제 1 조 Title')
   })
 
   it('entry font size comes from visible result runs, not field-machinery runs', async () => {
@@ -1197,7 +1343,7 @@ describe('TOC entries without TOC styles (PAGEREF behind a right tab)', () => {
     expect(reparsed.blocks[2].type).toBe('passthrough')
   })
 
-  // #2331: a TOC whose entry style is not named "toc N" ("Contents 1", a localized
+  // genoffice#2331: a TOC whose entry style is not named "toc N" ("Contents 1", a localized
   // name) and whose right dot-leader stop lives only in that style
   const CUSTOM_TOC_STYLES =
     '<w:style w:type="paragraph" w:styleId="Mokcha1"><w:name w:val="Contents 1"/>' +
@@ -1216,7 +1362,7 @@ describe('TOC entries without TOC styles (PAGEREF behind a right tab)', () => {
     customEntry(2, '4') +
     '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
 
-  it('an entry whose right tab stop comes only from a custom style is still a toc line (#2331)', async () => {
+  it('an entry whose right tab stop comes only from a custom style is still a toc line (genoffice#2331)', async () => {
     const doc = await parseDocx(
       await buildDocx({ bodyXml: CUSTOM_TOC, extraStylesXml: CUSTOM_TOC_STYLES }),
     )

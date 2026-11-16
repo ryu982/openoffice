@@ -122,6 +122,8 @@ function renderPanel(options: {
   setComposer?: (text: string) => void
   onTaken?: () => void
   onHandedRun?: (info: { preview: boolean }) => void
+  hasContent?: () => boolean | Promise<boolean>
+  attach?: (paths: string[]) => Promise<boolean>
 }): { current: () => Harness; rerender: (busy: boolean) => void } {
   let latest: Harness | null = null
   let busy = options.busy ?? false
@@ -141,6 +143,8 @@ function renderPanel(options: {
       setComposer: options.setComposer,
       onTaken: options.onTaken,
       onHandedRun: options.onHandedRun,
+      hasContent: options.hasContent,
+      attach: options.attach,
       bridge: options.bridge,
     })
     latest = { templates, cards }
@@ -238,6 +242,201 @@ describe('a chip whose skill has a template (spec 5.7, called by the person)', (
   })
 })
 
+describe('a template skill called in a document that has content', () => {
+  const letter = chip('app:letter', 'Letter', { template: true })
+  const call = async (panel: ReturnType<typeof renderPanel>) => {
+    let taken: unknown
+    await act(async () => {
+      taken = await panel.current().templates.onTemplateSkill({
+        skill: letter,
+        chips: [letter, chip('app:tone', 'Tone')],
+        text: 'make the minutes',
+      })
+    })
+    return taken
+  }
+
+  it('opens nothing yet and asks where to run', async () => {
+    const { bridge } = templateBridge()
+    const setComposer = vi.fn()
+    const panel = renderPanel({ editor: 'docs', bridge, setComposer, hasContent: () => true })
+    expect(await call(panel)).toBe(true)
+    expect(bridge.openTemplate).not.toHaveBeenCalled()
+    expect(setComposer).toHaveBeenCalledWith('')
+    expect(text()).toContain('지금 문서에 내용이 있습니다')
+    expect(button('지금 문서에서 하기')).toBeTruthy()
+    expect(button('양식으로 새 문서 열기(지금 문서 붙임)')).toBeTruthy()
+  })
+
+  it('opens the copy at once in an empty document, as before', async () => {
+    const { bridge } = templateBridge()
+    const panel = renderPanel({ editor: 'docs', bridge, hasContent: () => false })
+    await call(panel)
+    expect(bridge.openTemplate).toHaveBeenCalledWith(
+      expect.not.objectContaining({ withCurrent: true }),
+    )
+    expect(text()).not.toContain('지금 문서에 내용이 있습니다')
+  })
+
+  it('runs the request here with every chip’s skill and tells the model so', async () => {
+    const { bridge } = templateBridge()
+    const send = vi.fn((_text: string, _use: SkillUse): boolean => true)
+    const panel = renderPanel({ editor: 'docs', bridge, send, hasContent: () => true })
+    await call(panel)
+    act(() => button('지금 문서에서 하기')!.click())
+    await flush()
+    expect(bridge.openTemplate).not.toHaveBeenCalled()
+    expect(send).toHaveBeenCalledTimes(1)
+    const [sentText, use] = send.mock.calls[0]!
+    expect(sentText).toBe('make the minutes')
+    expect(use.chips.map((c) => c.id)).toEqual(['app:letter', 'app:tone'])
+    expect(use.text).toContain('body of app:letter')
+    expect(use.text).toContain('body of app:tone')
+    expect(use.text).toContain('apply the skill to this document')
+    expect(text()).not.toContain('지금 문서에 내용이 있습니다')
+  })
+
+  it('keeps the choice when the send gate holds the request', async () => {
+    const { bridge } = templateBridge()
+    const send = vi.fn((): boolean => false)
+    const panel = renderPanel({ editor: 'docs', bridge, send, hasContent: () => true })
+    await call(panel)
+    act(() => button('지금 문서에서 하기')!.click())
+    await flush()
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(button('지금 문서에서 하기')?.disabled).toBe(false)
+  })
+
+  it('opens the copy with this document along', async () => {
+    const { bridge } = templateBridge({
+      openTemplate: vi.fn(async (): Promise<unknown> => ({
+        ok: true,
+        tabId: 't9',
+        attached: true,
+      })),
+    })
+    const panel = renderPanel({ editor: 'docs', bridge, hasContent: () => true })
+    await call(panel)
+    act(() => button('양식으로 새 문서 열기(지금 문서 붙임)')!.click())
+    await flush()
+    expect(bridge.openTemplate).toHaveBeenCalledWith({
+      skillId: 'app:letter',
+      text: 'make the minutes',
+      chips: [
+        { id: 'app:letter', source: 'app', title: 'Letter' },
+        { id: 'app:tone', source: 'app', title: 'Tone' },
+      ],
+      withCurrent: true,
+    })
+    expect(text()).toContain('새 탭에서 양식으로 작업합니다')
+    expect(text()).not.toContain('첨부를 받지 않아')
+  })
+
+  it('says so when the template’s editor takes no attachments', async () => {
+    const { bridge } = templateBridge({
+      openTemplate: vi.fn(async (): Promise<unknown> => ({
+        ok: true,
+        tabId: 't9',
+        attached: false,
+      })),
+    })
+    const panel = renderPanel({ editor: 'docs', bridge, hasContent: () => true })
+    await call(panel)
+    act(() => button('양식으로 새 문서 열기(지금 문서 붙임)')!.click())
+    await flush()
+    expect(text()).toContain('첨부를 받지 않아 지금 문서를 붙이지 않았습니다')
+  })
+
+  it('asks for a save first for a document that is not saved, and can open without it', async () => {
+    const openTemplate = vi.fn(async (input: unknown): Promise<unknown> =>
+      (input as { withCurrent?: boolean }).withCurrent
+        ? { ok: false, reason: 'unsaved' }
+        : { ok: true, tabId: 't9' },
+    )
+    const { bridge } = templateBridge({ openTemplate })
+    const panel = renderPanel({ editor: 'docs', bridge, hasContent: () => true })
+    await call(panel)
+    act(() => button('양식으로 새 문서 열기(지금 문서 붙임)')!.click())
+    await flush()
+    expect(text()).toContain('지금 문서를 먼저 저장해야 합니다')
+    expect(text()).not.toContain('양식을 새 탭에 열지 못했습니다')
+    act(() => button('붙이지 않고 열기')!.click())
+    await flush()
+    expect(openTemplate).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ withCurrent: true }),
+    )
+    expect(text()).toContain('새 탭에서 양식으로 작업합니다')
+  })
+
+  it('never asks in the home ask panel, which has no document', async () => {
+    const { bridge } = templateBridge()
+    const panel = renderPanel({ editor: null, bridge, hasContent: () => true })
+    await call(panel)
+    expect(bridge.openTemplate).toHaveBeenCalled()
+  })
+})
+
+describe('a template copy that brought the asking document', () => {
+  const handoff = {
+    id: 'h1',
+    mode: 'skill',
+    target: 'docs',
+    text: 'make the minutes',
+    chips: [{ id: 'app:letter', source: 'app', title: 'Letter' }],
+    attach: ['C:/docs/notes.docx'],
+  }
+
+  it('attaches it through the panel, then sends once it is in the composer', async () => {
+    const order: string[] = []
+    const { bridge } = templateBridge({ takeHandoff: vi.fn(async (): Promise<unknown> => handoff) })
+    const attach = vi.fn(async (paths: string[]) => {
+      order.push(`attach:${paths.join(',')}`)
+      return true
+    })
+    const send = vi.fn((_text: string, _use: SkillUse): boolean => {
+      order.push('send')
+      return true
+    })
+    renderPanel({ editor: 'docs', bridge, attach, send })
+    await flush()
+    expect(order).toEqual(['attach:C:/docs/notes.docx', 'send'])
+    const [, use] = send.mock.calls[0]!
+    expect(use.text).toContain('body of app:letter')
+    expect(use.text).toContain('earlier document is attached')
+  })
+
+  it('sends a request without chips together with the app note, which is not the person text', async () => {
+    const noted = {
+      id: 'h9',
+      mode: 'skill',
+      target: 'hwp',
+      text: 'tidy it up',
+      chips: [],
+      note: 'The file is already in this document.',
+    }
+    const { bridge } = templateBridge({ takeHandoff: vi.fn(async (): Promise<unknown> => noted) })
+    const send = vi.fn((_text: string, _use: SkillUse): boolean => true)
+    renderPanel({ editor: 'hwp', bridge, send })
+    await flush()
+    expect(send).toHaveBeenCalledTimes(1)
+    const [text, use] = send.mock.calls[0]!
+    expect(text).toBe('tidy it up')
+    expect(use.chips).toEqual([])
+    expect(use.text).toBe('\n\nThe file is already in this document.')
+  })
+
+  it('sends nothing without it and leaves the request in the composer', async () => {
+    const { bridge } = templateBridge({ takeHandoff: vi.fn(async (): Promise<unknown> => handoff) })
+    const send = vi.fn()
+    const setComposer = vi.fn()
+    renderPanel({ editor: 'docs', bridge, attach: async () => false, send, setComposer })
+    await flush()
+    expect(send).not.toHaveBeenCalled()
+    expect(setComposer).toHaveBeenCalledWith('make the minutes')
+    expect(text()).toContain('넘겨받은 문서를 붙이지 못해 요청을 보내지 않았습니다')
+  })
+})
+
 describe('a template skill the model used on its own (spec 5.7)', () => {
   const used = (template: string | undefined): UserSkillText => ({
     id: 'app:letter',
@@ -265,8 +464,8 @@ describe('a template skill the model used on its own (spec 5.7)', () => {
     expect(bridge.openTemplate).toHaveBeenCalledWith({
       skillId: 'app:letter',
       text: 'write the letter for the trip',
-      // the chip shows the skill by its name
-      chips: [{ id: 'app:letter', source: 'app', title: 'letter' }],
+      // the chip shows the skill as lists do: by the title its file carries
+      chips: [{ id: 'app:letter', source: 'app', title: 'Letter' }],
     })
     expect(text()).toContain('새 탭에서 양식으로 작업합니다')
   })
@@ -372,6 +571,58 @@ describe('the tab a request was handed to', () => {
     renderPanel({ editor: null, bridge })
     await flush()
     expect(bridge.takeHandoff).not.toHaveBeenCalled()
+  })
+
+  describe('a handed-over skill that expects MCP servers (user MCP spec 8)', () => {
+    const handedWithMcp = () =>
+      templateBridge({
+        takeHandoff: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'h1',
+            mode: 'skill',
+            target: 'docs',
+            text: 'go',
+            chips: [{ id: 'app:notes', source: 'app', title: 'Notes' }],
+          })
+          .mockResolvedValue(null),
+        aiRead: vi.fn(async (id: string): Promise<unknown> => ({
+          ok: true,
+          skill: { id, title: 'Notes', body: 'b', files: [], mcpServers: ['notion', 'gone'] },
+        })),
+      })
+    const sentText = (send: ReturnType<typeof vi.fn>) =>
+      (send.mock.calls[0] as unknown as [string, SkillUse])[1].text
+
+    it('names only the servers this window cannot use now', async () => {
+      // the window's MCP bridge lists notion as connected; gone is not registered
+      vi.stubGlobal('aiOfficeMcpTools', {
+        list: vi.fn(async () => [{ name: 'notion', status: 'connected', tools: [] }]),
+        call: vi.fn(async () => ({ content: [] })),
+        cancel: vi.fn(),
+        onChanged: vi.fn(() => () => {}),
+        retry: vi.fn(async () => {}),
+        openSettings: vi.fn(async () => {}),
+      })
+      const { bridge } = handedWithMcp()
+      const send = vi.fn((): boolean => true)
+      renderPanel({ editor: 'docs', bridge, send })
+      await flush()
+      expect(send).toHaveBeenCalledTimes(1)
+      const text = sentText(send)
+      expect(text).not.toContain('MCP server notion')
+      expect(text).toContain('MCP server gone')
+    })
+
+    it('counts no server usable without an MCP bridge', async () => {
+      const { bridge } = handedWithMcp()
+      const send = vi.fn((): boolean => true)
+      renderPanel({ editor: 'docs', bridge, send })
+      await flush()
+      const text = sentText(send)
+      expect(text).toContain('MCP server notion')
+      expect(text).toContain('MCP server gone')
+    })
   })
 })
 
@@ -510,8 +761,10 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
     expect(button('이 탭을 양식으로 저장')).toBeDefined()
     expect(button('원래 문서 그대로 저장')).toBeDefined()
     expect(button('취소')).toBeDefined()
-    // the pending card's fields came along (the name is the first field)
-    const name = host.querySelector<HTMLInputElement>('input[type="text"]')!
+    // the pending card's fields came along
+    const title = host.querySelector<HTMLInputElement>('input[data-field="title"]')!
+    const name = host.querySelector<HTMLInputElement>('input[data-field="name"]')!
+    expect(title.value).toBe('Family letter')
     expect(name.value).toBe('family-letter')
   })
 
@@ -572,10 +825,10 @@ describe('the template preview tab (spec 5.6 steps 2-4, 9.11)', () => {
         template: { bytes: new Uint8Array([7]), fileName: 'letter.docx' },
       }),
     )
-    // the preview tab is told the saved skill's name
+    // the preview tab is told what the saved skill is called
     expect(bridge.finishPreview).toHaveBeenCalledWith('p1', 'saved', {
       skillId: 'app:letter',
-      title: 'family-letter',
+      title: 'Family letter',
     })
   })
 

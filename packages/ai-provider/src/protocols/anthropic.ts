@@ -20,8 +20,47 @@ import {
 
 export const ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
 
-function anthropicMessages(messages: AgentMessage[]): unknown[] {
-  return messages.map((m) => {
+const EPHEMERAL_CACHE = { type: 'ephemeral' }
+
+/**
+ * Prompt caching on the Messages API is opt-in per content block; without the
+ * markers every turn of a long tool loop re-bills the whole conversation at
+ * the uncached input price (measured on a multi-day editing session: a ~0
+ * cache-hit rate). Markers go only to the official API, which implements them;
+ * a user-hosted or relayed Messages endpoint may reject fields it does not
+ * know.
+ */
+function supportsPromptCache(baseUrl: string): boolean {
+  // a stored official URL arrives normalized with a trailing slash
+  const base = baseUrl.replace(/\/+$/, '')
+  return base === ANTHROPIC_BASE_URL
+}
+
+/** The provider-wire message shape produced by anthropicMessages */
+interface WireMessage {
+  role: string
+  content: string | Array<Record<string, unknown>>
+}
+
+/**
+ * Cache breakpoint on the final content block (plain-string user text is
+ * upgraded to a text block). cache_control annotations are not part of prefix
+ * identity, so the marker moving forward each turn still hits the entry the
+ * previous turn wrote.
+ */
+function markCacheBreakpoint(msg: WireMessage): void {
+  if (typeof msg.content === 'string') {
+    // an empty text block would be rejected; an empty message cannot anchor a cache entry anyway
+    if (!msg.content) return
+    msg.content = [{ type: 'text', text: msg.content, cache_control: EPHEMERAL_CACHE }]
+    return
+  }
+  const last = msg.content.at(-1)
+  if (last) last['cache_control'] = EPHEMERAL_CACHE
+}
+
+function anthropicMessages(messages: AgentMessage[], cache = false): unknown[] {
+  const wire = messages.map((m) => {
     if (m.role === 'user') {
       // Keep plain-text content as a string; only upgrade to a content block array when images are present
       if (!m.images?.length) return { role: 'user', content: m.text }
@@ -58,6 +97,13 @@ function anthropicMessages(messages: AgentMessage[]): unknown[] {
       })),
     }
   })
+  if (cache) {
+    // Last two messages, so the hit-lookup from this turn's marker always has
+    // the previous turn's entry within its walk-back window even when a turn
+    // appended many blocks (parallel tool results).
+    for (const msg of wire.slice(-2)) markCacheBreakpoint(msg as WireMessage)
+  }
+  return wire
 }
 
 /** Emits a complete (non-streamed) Anthropic message delivered as a plain JSON body. */
@@ -123,13 +169,15 @@ function mergeAnthropicUsage(target: AiTokenUsage, usage: AnthropicUsage | undef
   if (!usage) return
   // input_tokens excludes the cached prefix; the billed input is all three together
   const fresh = usageCount(usage.input_tokens)
-  const cached =
-    (usageCount(usage.cache_read_input_tokens) ?? 0) +
-    (usageCount(usage.cache_creation_input_tokens) ?? 0)
+  const read = usageCount(usage.cache_read_input_tokens)
+  const written = usageCount(usage.cache_creation_input_tokens)
+  const cached = (read ?? 0) + (written ?? 0)
   const input = fresh === undefined ? (cached > 0 ? cached : undefined) : fresh + cached
   const output = usageCount(usage.output_tokens)
   if (input !== undefined) target.inputTokens = input
   if (output !== undefined) target.outputTokens = output
+  if (read !== undefined) target.cacheReadTokens = read
+  if (written !== undefined) target.cacheWriteTokens = written
 }
 
 export async function streamAnthropic(
@@ -140,9 +188,13 @@ export async function streamAnthropic(
   maxTokens: number,
   cb: StreamCallbacks,
   baseUrl = ANTHROPIC_BASE_URL,
+  /** request fields the route adds, such as the effort (`output_config`) */
+  bodyExtras?: Record<string, unknown>,
 ): Promise<void> {
   const wd = createStreamWatchdog(cb.signal)
-  return wd.guard(() => anthropicTurn(config, system, messages, tools, maxTokens, cb, baseUrl, wd))
+  return wd.guard(() =>
+    anthropicTurn(config, system, messages, tools, maxTokens, cb, baseUrl, wd, bodyExtras),
+  )
 }
 
 async function anthropicTurn(
@@ -154,11 +206,13 @@ async function anthropicTurn(
   cb: StreamCallbacks,
   baseUrl: string,
   wd: StreamWatchdog,
+  bodyExtras?: Record<string, unknown>,
 ): Promise<void> {
   const onBytes = () => {
     wd.touch()
     cb.onActivity?.()
   }
+  const cache = supportsPromptCache(baseUrl)
   let response: Response
   try {
     response = await aiFetch(endpointUrl(baseUrl, 'v1/messages'), {
@@ -177,8 +231,12 @@ async function anthropicTurn(
       body: JSON.stringify({
         model: config.model,
         max_tokens: maxTokens,
-        system,
-        messages: anthropicMessages(messages),
+        // the system block's marker also covers the tool definitions ahead of it in the cache prefix
+        system:
+          cache && system
+            ? [{ type: 'text', text: system, cache_control: EPHEMERAL_CACHE }]
+            : system,
+        messages: anthropicMessages(messages, cache),
         ...(tools.length > 0
           ? {
               tools: tools.map((t) => ({
@@ -188,6 +246,7 @@ async function anthropicTurn(
               })),
             }
           : {}),
+        ...bodyExtras,
         stream: true,
       }),
     })
@@ -329,6 +388,7 @@ export async function chatAnthropic(
   system: string,
   user: string,
   baseUrl = ANTHROPIC_BASE_URL,
+  bodyExtras?: Record<string, unknown>,
 ): Promise<AiChatResponse> {
   const response = await aiFetch(endpointUrl(baseUrl, 'v1/messages'), {
     method: 'POST',
@@ -346,6 +406,7 @@ export async function chatAnthropic(
       max_tokens: 8192,
       system,
       messages: [{ role: 'user', content: user }],
+      ...bodyExtras,
     }),
   })
   wd.touch()

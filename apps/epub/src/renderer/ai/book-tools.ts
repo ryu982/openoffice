@@ -17,7 +17,14 @@ import type { BlockKind, ChapterBlock, NotationContext, OpenChapter } from '@gen
 import { isLang, LANGS, type Lang } from '@genoffice/i18n'
 import { findInText } from '@genoffice/ui'
 import type { EpubBookSummary, EpubChapterResult, EpubReadOnlyReason } from '../../shared/ipc'
-import type { EditGroup, EditGroupsOutcome, FailedEdit, OkEdit } from '../edit/controller'
+import type {
+  EditGroup,
+  EditGroupsOutcome,
+  FailedEdit,
+  OkEdit,
+  UndoEntriesOutcome,
+} from '../edit/controller'
+import type { BookMarks } from './run-changes'
 import { blockReadingText } from '../edit/block-text'
 import { normalizeQuery } from '../reader/book-search'
 import {
@@ -41,6 +48,8 @@ export interface BookAiEditor {
     groups: readonly EditGroup[],
     options?: { atomic?: boolean },
   ): Promise<EditGroupsOutcome>
+  /** takes back an AI run's history entries while they are the top of the history (the changes card) */
+  undoEntries?(ids: readonly number[]): Promise<UndoEntriesOutcome>
 }
 
 /** What is on screen now, for the per-turn context. */
@@ -82,6 +91,8 @@ export interface BookAiHost {
   view(): BookAiView | null
   /** opens the book-translation window (the translating screen); absent where there is none */
   startBookTranslation?: StartBookTranslation | null
+  /** marks the blocks the last AI run changed in the reader (null takes the marks off); screen only */
+  showChangeMarks?: ((marks: BookMarks | null) => void) | null
 }
 
 /** How much one call reads or finds; both can be tuned. */

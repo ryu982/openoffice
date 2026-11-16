@@ -39,6 +39,7 @@ const COMPOSING = 'ProseMirror-composing'
 export const ScriptFonts = Extension.create({
   name: 'scriptFonts',
   addProseMirrorPlugins() {
+    const editor = this.editor
     return [
       new Plugin<DecorationSet>({
         key,
@@ -49,7 +50,16 @@ export const ScriptFonts = Extension.create({
           // on long files; only the top-level blocks the transaction touched are
           // rescanned, the rest of the set is mapped through the change.
           apply(tr, old) {
+            // an explicit rebuild: the compositionend refresh below
+            if (tr.getMeta(key))
+              return DecorationSet.create(tr.doc, decorationsIn(tr.doc, 0, tr.doc.content.size))
             if (!tr.docChanged) return old
+            // The pinyin an IME keeps in the DOM splits the East Asian run in
+            // two, so rebuilding the decorations rewrites the text node the
+            // composition runs in. Chrome drops the selection with the node —
+            // the composition is cancelled and the caret lands past the next
+            // bracket. Keep the mapped set until the composition commits.
+            if (editor?.view?.composing) return old.map(tr.mapping, tr.doc)
             const touched = touchedTopLevelBlocks(tr)
             if (!touched)
               return DecorationSet.create(tr.doc, decorationsIn(tr.doc, 0, tr.doc.content.size))
@@ -72,8 +82,16 @@ export const ScriptFonts = Extension.create({
               view.dom.classList.add(COMPOSING)
               return false
             },
+            // A Japanese or Korean IME (and a raw-pinyin Enter commit) already
+            // has the final text in the DOM before compositionend, so ProseMirror
+            // dispatches nothing and the mapped set stays: text appended at the
+            // end of a run would keep the Latin face until the next non-IME
+            // edit. Rebuild once the composition is over.
             compositionend: (view) => {
               view.dom.classList.remove(COMPOSING)
+              window.setTimeout(() => {
+                if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, true))
+              })
               return false
             },
           },

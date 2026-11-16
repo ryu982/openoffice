@@ -15,6 +15,7 @@ export type {
 } from './types'
 export { composeSkills } from './skill'
 export { attachedImageNote } from './attached-images'
+export { undoDoubledEscapes, undoDoubledEscapesInList } from './doubled-escapes'
 export { createKnowledgeBaseSkill, formatKbSize } from './knowledge-base-skill'
 export type { KnowledgeBaseDeps, KbFileInfo, KbSearchHit, KbReadPage } from './knowledge-base-skill'
 export {
@@ -41,6 +42,7 @@ export {
   windowOutboundBridge,
 } from './outbound-guard'
 export type { OutboundBridgeLike } from './outbound-guard'
+export * from './user-mcp'
 export type {
   DriveBridgeLike,
   DriveCallResult,
@@ -104,13 +106,16 @@ export {
   missingRequiredFields,
   runtimePreamble,
   sanitizeAgentPayload,
+  walkArgumentFields,
 } from './loop'
 export type {
   AgentLoopEvents,
   AgentLoopOptions,
   AgentRunResult,
+  AgentRunStop,
   CompactionOptions,
   ToolExecutedEvent,
+  ToolInputFault,
 } from './loop'
 export { createIpcTransport, IPC_STREAM_SILENCE_TIMEOUT_MS } from './electron-transport'
 export {
@@ -133,3 +138,33 @@ export type {
   IpcSubscriptionUsage,
   IpcTransportOptions,
 } from './electron-transport'
+export { composeWithGuards } from './drive-skill'
+export {
+  MCP_CALL_STOPPED,
+  MCP_PERMISSION_DENIED,
+  USER_MCP_SKILL_ID,
+  createMcpPermissionStore,
+  createMcpWindowState,
+  createUserMcpSkill,
+  hasMcpToolsBridge,
+  mcpServersOf,
+  windowMcpState,
+  windowMcpToolsBridge,
+  windowMcpUsableServers,
+} from './user-mcp-skill'
+export type {
+  McpFailReason,
+  McpPermissionAnswer,
+  McpPermissionRequest,
+  McpPermissionStore,
+  McpReviewSubject,
+  McpServerStatus,
+  McpServerView,
+  McpToolPermission,
+  McpToolView,
+  McpToolsBridgeLike,
+  McpWindowState,
+  UserMcpSkill,
+} from './user-mcp-skill'
+export * from './skill-mcp-refs'
+export * from './skill-editors'

@@ -55,6 +55,7 @@ test.describe('MCP headless generation', () => {
       join(userDataDir, 'app-settings.json'),
       JSON.stringify({
         onboardingSeen: true,
+        editorPickSeen: true,
         mcpEnabled: true,
         mcpPort: port,
         mcpBackground: true,

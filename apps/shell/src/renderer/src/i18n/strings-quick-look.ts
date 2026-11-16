@@ -20,6 +20,7 @@ import { he } from './quick-look/he'
 import { hi } from './quick-look/hi'
 import { zhTW } from './quick-look/zh-TW'
 import { vi } from './quick-look/vi'
+import { tr } from './quick-look/tr'
 
 /**
  * Quick Look preview modal and standalone Explorer preview window strings.
@@ -47,6 +48,7 @@ export const quickLookStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type QuickLookStringKey = keyof typeof zh

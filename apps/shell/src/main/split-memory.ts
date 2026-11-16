@@ -117,3 +117,34 @@ export function clearSplitMemory(options: SplitMemoryOptions): void {
   const writeSetting = options.writeSetting ?? writeAppSetting
   writeSetting(resolveSettingsPath(options), SPLIT_MEMORY_SETTING_KEY, undefined)
 }
+
+/**
+ * Drop documents from the memory: their editor is turned off and the person
+ * declined to restore them, so the next launch does not ask again. A memory
+ * left with one document keeps it alone (it reopens without a split); one
+ * left with none is cleared. `same` compares two paths (case rules of the OS).
+ */
+export function forgetSplitMemoryPaths(
+  paths: readonly string[],
+  options: SplitMemoryOptions & { same?: (a: string, b: string) => boolean },
+): void {
+  if (paths.length === 0) return
+  const memory = readSplitMemory(options)
+  if (!memory) return
+  const same = options.same ?? ((a: string, b: string) => a === b)
+  const gone = (path: string | undefined): boolean =>
+    path !== undefined && paths.some((dropped) => same(dropped, path))
+  if (!gone(memory.a) && !gone(memory.b)) return
+  const kept = [memory.a, memory.b].filter(
+    (path): path is string => path !== undefined && !gone(path),
+  )
+  if (kept.length === 0) {
+    clearSplitMemory(options)
+    return
+  }
+  const writeSetting = options.writeSetting ?? writeAppSetting
+  const next: SplitMemory = { ...memory, a: kept[0] }
+  delete next.b
+  if (kept.length > 1) next.b = kept[1]
+  writeSetting(resolveSettingsPath(options), SPLIT_MEMORY_SETTING_KEY, next)
+}

@@ -24,6 +24,8 @@ export interface AppMenuLabels extends ContextMenuLabels {
   help: string
   about: string
   checkUpdates: string
+  /** the app-wide Settings window (macOS app menu, the ☰ popup) */
+  settings: string
   version: string
 }
 
@@ -48,11 +50,12 @@ const EN: Labels = {
   help: 'Help',
   about: 'About GenOffice',
   checkUpdates: 'Check for Updates…',
+  settings: 'Settings…',
   version: 'Version',
 }
 
 // Shared table, same rationale as context-menu.ts: one copy instead of
-// 15 keys × 20 languages per app dictionary.
+// 15 keys × every UI language in each app dictionary.
 const LABELS: Record<string, Labels> = {
   zh: {
     window: '窗口',
@@ -73,6 +76,7 @@ const LABELS: Record<string, Labels> = {
     help: '帮助',
     about: '关于 GenOffice',
     checkUpdates: '检查更新…',
+    settings: '设置…',
     version: '版本',
   },
   en: EN,
@@ -95,6 +99,7 @@ const LABELS: Record<string, Labels> = {
     help: 'ヘルプ',
     about: 'GenOffice について',
     checkUpdates: '更新を確認…',
+    settings: '設定…',
     version: 'バージョン',
   },
   ko: {
@@ -116,6 +121,7 @@ const LABELS: Record<string, Labels> = {
     help: '도움말',
     about: 'GenOffice 정보',
     checkUpdates: '업데이트 확인…',
+    settings: '설정…',
     version: '버전',
   },
   fr: {
@@ -137,6 +143,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Aide',
     about: 'À propos de GenOffice',
     checkUpdates: 'Rechercher les mises à jour…',
+    settings: 'Paramètres…',
     version: 'Version',
   },
   de: {
@@ -158,6 +165,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Hilfe',
     about: 'Über GenOffice',
     checkUpdates: 'Nach Updates suchen…',
+    settings: 'Einstellungen…',
     version: 'Version',
   },
   es: {
@@ -179,6 +187,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Ayuda',
     about: 'Acerca de GenOffice',
     checkUpdates: 'Buscar actualizaciones…',
+    settings: 'Configuración…',
     version: 'Versión',
   },
   th: {
@@ -200,6 +209,7 @@ const LABELS: Record<string, Labels> = {
     help: 'วิธีใช้',
     about: 'เกี่ยวกับ GenOffice',
     checkUpdates: 'ตรวจหาการอัปเดต…',
+    settings: 'การตั้งค่า…',
     version: 'เวอร์ชัน',
   },
   id: {
@@ -221,6 +231,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Bantuan',
     about: 'Tentang GenOffice',
     checkUpdates: 'Periksa Pembaruan…',
+    settings: 'Pengaturan…',
     version: 'Versi',
   },
   ru: {
@@ -242,6 +253,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Справка',
     about: 'О GenOffice',
     checkUpdates: 'Проверить обновления…',
+    settings: 'Настройки…',
     version: 'Версия',
   },
   ar: {
@@ -263,6 +275,7 @@ const LABELS: Record<string, Labels> = {
     help: 'تعليمات',
     about: 'حول GenOffice',
     checkUpdates: 'التحقق من التحديثات…',
+    settings: 'الإعدادات…',
     version: 'الإصدار',
   },
   pt: {
@@ -284,6 +297,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Ajuda',
     about: 'Sobre o GenOffice',
     checkUpdates: 'Procurar atualizações…',
+    settings: 'Configurações…',
     version: 'Versão',
   },
   it: {
@@ -305,6 +319,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Aiuto',
     about: 'Informazioni su GenOffice',
     checkUpdates: 'Controlla aggiornamenti…',
+    settings: 'Impostazioni…',
     version: 'Versione',
   },
   pl: {
@@ -326,6 +341,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Pomoc',
     about: 'O programie GenOffice',
     checkUpdates: 'Sprawdź aktualizacje…',
+    settings: 'Ustawienia…',
     version: 'Wersja',
   },
   cs: {
@@ -347,6 +363,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Nápověda',
     about: 'O aplikaci GenOffice',
     checkUpdates: 'Zkontrolovat aktualizace…',
+    settings: 'Nastavení…',
     version: 'Verze',
   },
   nl: {
@@ -368,6 +385,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Help',
     about: 'Over GenOffice',
     checkUpdates: 'Controleren op updates…',
+    settings: 'Instellingen…',
     version: 'Versie',
   },
   ms: {
@@ -389,6 +407,7 @@ const LABELS: Record<string, Labels> = {
     help: 'Bantuan',
     about: 'Perihal GenOffice',
     checkUpdates: 'Semak Kemas Kini…',
+    settings: 'Tetapan…',
     version: 'Versi',
   },
   he: {
@@ -410,6 +429,7 @@ const LABELS: Record<string, Labels> = {
     help: 'עזרה',
     about: 'אודות GenOffice',
     checkUpdates: 'בדוק עדכונים…',
+    settings: 'הגדרות…',
     version: 'גרסה',
   },
   hi: {
@@ -431,6 +451,7 @@ const LABELS: Record<string, Labels> = {
     help: 'सहायता',
     about: 'GenOffice के बारे में',
     checkUpdates: 'अपडेट जांचें…',
+    settings: 'सेटिंग्स…',
     version: 'संस्करण',
   },
   vi: {
@@ -452,7 +473,30 @@ const LABELS: Record<string, Labels> = {
     help: 'Trợ giúp',
     about: 'Giới thiệu GenOffice',
     checkUpdates: 'Kiểm tra bản cập nhật…',
+    settings: 'Cài đặt…',
     version: 'Phiên bản',
+  },
+  tr: {
+    window: 'Pencere',
+    minimize: 'Simge durumuna küçült',
+    closeWindow: 'Pencereyi kapat',
+    edit: 'Düzenle',
+    undo: 'Geri al',
+    redo: 'Yinele',
+    delete: 'Sil',
+    view: 'Görünüm',
+    reload: 'Yeniden yükle',
+    forceReload: 'Zorla yeniden yükle',
+    toggleDevTools: 'Geliştirici araçlarını aç/kapat',
+    actualSize: 'Gerçek boyut',
+    zoomIn: 'Yakınlaştır',
+    zoomOut: 'Uzaklaştır',
+    fullscreen: 'Tam ekran',
+    help: 'Yardım',
+    about: 'GenOffice hakkında',
+    checkUpdates: 'Güncellemeleri denetle…',
+    settings: 'Ayarlar…',
+    version: 'Sürüm',
   },
   'zh-TW': {
     window: '視窗',
@@ -473,6 +517,7 @@ const LABELS: Record<string, Labels> = {
     help: '說明',
     about: '關於 GenOffice',
     checkUpdates: '檢查更新…',
+    settings: '設定…',
     version: '版本',
   },
 }
@@ -649,12 +694,81 @@ export function helpCheckUpdatesItems(
   return platform === 'darwin' ? [checkUpdatesMenuItem(labels)] : []
 }
 
-/** The tab bar's ☰ popup: the window's menus, then Check for Updates… on its own. */
+/** Opening the app-wide Settings lives in the shell (Home owns the window), like
+ * the update check; read at click time, a no-op until registered. */
+let openSettingsInvoker: (() => void) | null = null
+
+export function setOpenSettingsInvoker(invoke: (() => void) | null): void {
+  openSettingsInvoker = invoke
+}
+
+/** The platform's settings chord: ⌘, on macOS, Ctrl+, elsewhere. */
+export const SETTINGS_ACCELERATOR = 'CmdOrCtrl+,'
+
+/**
+ * How Settings… carries the settings chord: `register` binds it (the macOS app
+ * menu), `show` only prints it beside the label while the shell takes the key
+ * itself (the ☰ popup, whose accelerators are never registered), `none` leaves
+ * the chord to the page — the Word tab, where ⌘, / Ctrl+, is subscript.
+ */
+export type SettingsShortcut = 'register' | 'show' | 'none'
+
+export function settingsMenuItem(
+  labels: AppMenuLabels,
+  shortcut: SettingsShortcut = 'register',
+): MenuItemConstructorOptions {
+  return {
+    label: labels.settings,
+    ...(shortcut === 'none' ? {} : { accelerator: SETTINGS_ACCELERATOR }),
+    ...(shortcut === 'show' ? { registerAccelerator: false } : {}),
+    click: () => openSettingsInvoker?.(),
+  }
+}
+
+/**
+ * The macOS application menu. The bare `appMenu` role has no Settings and no
+ * update check, and that is where Mac users look for both, so every tab's menu
+ * builds this one instead. `extraItems` (the Word tab's own preferences) sit
+ * right after Settings….
+ */
+export function macAppMenuTemplate(
+  labels: AppMenuLabels,
+  options: { settingsShortcut?: SettingsShortcut; extraItems?: MenuItemConstructorOptions[] } = {},
+): MenuItemConstructorOptions {
+  return {
+    role: 'appMenu',
+    submenu: [
+      aboutMenuItem(labels),
+      checkUpdatesMenuItem(labels),
+      { type: 'separator' },
+      settingsMenuItem(labels, options.settingsShortcut ?? 'register'),
+      ...(options.extraItems ?? []),
+      { type: 'separator' },
+      { role: 'services' },
+      { type: 'separator' },
+      { role: 'hide' },
+      { role: 'hideOthers' },
+      { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' },
+    ],
+  }
+}
+
+/** The tab bar's ☰ popup: the window's menus, then Settings… and Check for
+ * Updates… on their own. The popup's accelerators never register, so the
+ * settings chord is only shown; the shell's key handler takes it. */
 export function appMenuPopupTemplate(
   menus: MenuItemConstructorOptions[],
   labels: AppMenuLabels,
+  settingsShortcut: SettingsShortcut = 'show',
 ): MenuItemConstructorOptions[] {
-  return [...menus, { type: 'separator' }, checkUpdatesMenuItem(labels)]
+  return [
+    ...menus,
+    { type: 'separator' },
+    settingsMenuItem(labels, settingsShortcut === 'register' ? 'show' : settingsShortcut),
+    checkUpdatesMenuItem(labels),
+  ]
 }
 
 /** Help menu with Check for Updates… (macOS) + About; extra app-specific items

@@ -3,9 +3,12 @@
  * panels (the send gate, the connect prompt, the first-connection notice, the
  * blocked-run notice, the shared run-error wording), with the map's own skill.
  *
- * Every run is one AI turn and gets one undo point (`MapTurn`): the list under
- * the chat takes a turn back, the sheets it added included. Each edit the AI
- * makes is also an ordinary step of the map's history, so Ctrl+Z works on it.
+ * Every run is one AI turn and gets one undo point (`MapTurn`): the card under
+ * the run's last reply (`AiChangesCard`) takes the turn back, the sheets it
+ * added included, and the later turns with it. The topics the last run added
+ * or changed are marked on the map until the next run, "clear marks", a
+ * revert or a new chat. Each edit the AI makes is also an ordinary step of
+ * the map's history, so Ctrl+Z works on it.
  *
  * A run can be started from outside with `request` (text plus files to
  * attach). It takes the same way as the send button: the files land in the
@@ -13,7 +16,11 @@
  * holds or refuses the request, both stay in the composer.
  */
 import {
+  aiPanelWidthAtPointer,
+  AiPanelSideButton,
   AiBlockedNotice,
+  AiChangesCard,
+  type AiChangesState,
   AiComposer,
   AiConnectPrompt,
   AiFirstConnectionNotice,
@@ -26,7 +33,7 @@ import {
   AI_QUEUE_LABELS,
   AiSubscriptionUsageLine,
   aiSubscriptionText,
-  AiTypingIndicator,
+  AiReplyProgress,
   AiUsageChip,
   addTokenUsage,
   type AiTokenUsageView,
@@ -37,6 +44,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -76,10 +86,17 @@ import {
   type ProjectChatOpened,
   type ProjectMemoryLine,
   type ProjectRunPrepared,
+  useSubscriptionUsageUpdates,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
-import { AgentLoop, composeWithDrive } from '@genoffice/agent-core'
+import {
+  AgentLoop,
+  composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
+} from '@genoffice/agent-core'
 import type { AgentImage, IpcStreamError } from '@genoffice/agent-core'
 import type {
   AddFolderResult,
@@ -109,6 +126,7 @@ import { createElectronTransport } from './transport'
 import { blockedRunFor, mergeSubscriptionUsage, type BlockedRun } from './connection'
 import { useSubscriptionConnection } from './subscription-client'
 import { blankNewMapSheet, type MapAiHost, MapTurn, revertTurn } from './map-tools'
+import { addRun, revertChain, revertsLater, type RunChange, settleRuns } from './run-changes'
 import sendEnterOn from './assets/send-enter-on.png'
 import sendEnterOff from './assets/send-enter-off.png'
 import sendStop from './assets/send-stop.png'
@@ -166,7 +184,6 @@ const MAX_IMAGES_PER_MESSAGE = 20
 const PANEL_WIDTH_KEY = 'mindmap-ai-panel-width'
 const PANEL_WIDTH_DEFAULT = 360
 const PANEL_WIDTH_MIN = 280
-const MAX_TURNS_KEPT = 20
 const TOOL_OUTPUT_MAX_CHARS = 2000
 
 /** The AI part of the preload bridge. A preload from an older build may lack any of it. */
@@ -270,6 +287,8 @@ interface ChatEntry {
   memory?: ProjectMemoryLine[]
   /** a project chat's reply whose tools another editor ran: shown as one line */
   otherEditorTools?: { editor: ProjectEditor; fileRef?: string; count: number }
+  /** the last reply of a run that changed the map: the id of its card's run */
+  changes?: number
 }
 
 /** A project chat's message as this panel shows it */
@@ -295,13 +314,6 @@ function chatEntryOf(entry: ProjectChatEntry & { skillProposals?: string[] }): C
     ...(entry.otherEditorTools ? { otherEditorTools: entry.otherEditorTools } : {}),
     memory: entry.memory,
   }
-}
-
-/** One AI turn that changed the map, kept as its undo point. */
-interface TurnPoint {
-  turn: MapTurn
-  label: string
-  time: string
 }
 
 /** composer chips (removable) and the read-only echo on a sent message share one renderer */
@@ -454,6 +466,12 @@ export function AiPanel({
   sendGateRef.current = sendGate
   /** rate-limit windows the subscription program reported (latest per window) */
   const [subscriptionUsage, setSubscriptionUsage] = useState<AiSubscriptionUsage[]>([])
+  // usage a picture request reported reaches every window (the chat stream only its own)
+  useSubscriptionUsageUpdates(
+    () => window.mindmapApi?.subscription,
+    setSubscriptionUsage,
+    mergeSubscriptionUsage,
+  )
   /** the last turn's input was cut to fit a limit; shown until dismissed */
   const [inputTruncated, setInputTruncated] = useState(false)
   /** structured cause of the last failed stream */
@@ -472,9 +490,13 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    editor: 'mindmap',
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -500,6 +522,14 @@ export function AiPanel({
     cards: skillCards,
     busy,
     send: (text, use) => send(text, undefined, use),
+    // a template skill called in a map with content asks where to run
+    hasContent: () => host.session() !== null && blankNewMapSheet(host) === null,
+    // a template copy that brought the asking document: it goes in as an attachment
+    attach: async (paths) => {
+      const added = (await aiApi().addAttachmentPaths?.(paths)) ?? null
+      mergeAttachments(added)
+      return (added?.accepted.length ?? 0) > 0
+    },
     onTaken: onSkillHandoff,
     // a template copy's request: the map goes into the project once it ends well
     onHandedRun: ({ preview }) => {
@@ -545,10 +575,16 @@ export function AiPanel({
   const busyRef = useRef(busy)
   busyRef.current = busy
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
-  /** the turns that changed the map, oldest first: each one can be taken back */
-  const [turns, setTurns] = useState<TurnPoint[]>([])
-  const [rollbackNote, setRollbackNote] = useState(false)
+  /** the runs that changed the map, oldest first: each one's card can take it back */
+  const [turns, setTurns] = useState<RunChange<MapTurn>[]>([])
   const [reverting, setReverting] = useState(false)
+  /** the run whose changes are marked on the map, while they are */
+  const [marked, setMarked] = useState<number | null>(null)
+  /** the sheets whose topics carry marks */
+  const markedSheetsRef = useRef(new Set<string>())
+  const turnSeqRef = useRef(0)
+  /** the run in flight once it changed the map: its card goes under its last reply */
+  const runChangeRef = useRef<number | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottomRef = useRef(true)
@@ -823,6 +859,26 @@ export function AiPanel({
       })
   }
 
+  /** Marks the topics a run added or changed, on every sheet it touched; the sheets it left lose theirs. */
+  const showMarks = (runId: number, turn: MapTurn): void => {
+    const host = hostRef.current
+    for (const key of markedSheetsRef.current) {
+      if (!turn.topics.has(key)) host.controllerOf(key)?.setAiMarks([])
+    }
+    markedSheetsRef.current = new Set(turn.topics.keys())
+    for (const [key, ids] of turn.topics) host.controllerOf(key)?.setAiMarks(ids)
+    setMarked(runId)
+  }
+  const showMarksRef = useRef(showMarks)
+  showMarksRef.current = showMarks
+
+  /** Takes the marks off the map. */
+  const clearMarks = (): void => {
+    for (const key of markedSheetsRef.current) hostRef.current.controllerOf(key)?.setAiMarks([])
+    markedSheetsRef.current = new Set()
+    setMarked(null)
+  }
+
   // The loop is built once; every value that changes goes through a ref
   const transportRef = useRef<ReturnType<typeof createElectronTransport> | null>(null)
   if (!transportRef.current) {
@@ -861,10 +917,13 @@ export function AiPanel({
         createFilesSkill(availableAttachments),
         // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
         ...panelUserSkills({
+          editor: 'mindmap',
           lang: () => langRef.current,
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -884,20 +943,23 @@ export function AiPanel({
           patchLast((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },
         onToolExecuted: ({ call, execution, snapshotBefore }) => {
           if (snapshotBefore !== undefined) {
-            const label = runInstructionRef.current.slice(0, 40)
-            const time = new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            const id = ++turnSeqRef.current
+            runChangeRef.current = id
             setTurns((prev) =>
-              [...prev, { turn: snapshotBefore, label, time }].slice(-MAX_TURNS_KEPT),
+              addRun(prev, { id, point: snapshotBefore, state: 'applied', count: 0 }),
             )
+          }
+          const runId = runChangeRef.current
+          if (execution.mutated && runId !== null && turnRef.current) {
+            const count = turnRef.current.topicCount
+            setTurns((prev) => prev.map((run) => (run.id === runId ? { ...run, count } : run)))
+            showMarksRef.current(runId, turnRef.current)
           }
           const activity: ToolActivity = {
             name: call.name,
@@ -929,10 +991,13 @@ export function AiPanel({
           const final = truncated
             ? [base, tGlobal('aiTruncatedNote')].filter(Boolean).join('\n\n')
             : base
+          const changes = runChangeRef.current
+          runChangeRef.current = null
           patchLast((last) => ({
             streaming: false,
             text: final || (last.tools?.length ? last.text : tGlobal('aiNoReply')),
             tools: last.tools?.filter((tl) => !tl.running),
+            ...(changes !== null ? { changes } : {}),
           }))
           persistMessage('assistant', final, runToolsRef.current)
           void projectChatRef.current.finishSend()
@@ -948,6 +1013,8 @@ export function AiPanel({
           if (blocked) msgQueueRef.current.hold()
           // once a tool ran the message was delivered; a later turn failing is not a send failure
           const undelivered = runToolsRef.current.length === 0
+          const changes = runChangeRef.current
+          runChangeRef.current = null
           setChat((prev) => {
             const next = [...prev]
             for (let i = undelivered ? next.length - 1 : -1; i >= 0; i--) {
@@ -965,6 +1032,7 @@ export function AiPanel({
                 text: error,
                 isError: true,
                 ...(blocked ? { blocked } : {}),
+                ...(changes !== null ? { changes } : {}),
                 tools: last.tools?.filter((tl) => !tl.running),
               }
             }
@@ -1052,6 +1120,8 @@ export function AiPanel({
           )
         }
         if (applied && !loopRef.current?.busy) {
+          // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+          windowMcpState()?.newConversation()
           loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
           const seen = new Set(sentAttachmentsRef.current.map((a) => a.path))
           for (const a of msgs.flatMap((m) => restoredAtts(m) ?? [])) {
@@ -1130,7 +1200,9 @@ export function AiPanel({
     }
     lastStreamErrorRef.current = null
     setInputTruncated(false)
-    setRollbackNote(false)
+    // a new run: the last one's marks come off the map
+    clearMarks()
+    runChangeRef.current = null
     // the message takes the composer's attachments: echoed on the bubble, pictures to the model, files via the skill
     const sentAtts = attachmentsOverride ?? attachmentsRef.current
     if (sentAtts.length > 0) {
@@ -1294,9 +1366,14 @@ export function AiPanel({
     sendGate.reset()
     stop()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setBusy(false)
     busyRef.current = false
     setChat([])
+    // the cards go with the chat, and the marks with them
+    clearMarks()
+    setTurns([])
     skills.resetConversation()
     skillCards.reset()
     skillTemplates.reset()
@@ -1317,6 +1394,8 @@ export function AiPanel({
     // a conversation on screen gives way; an empty panel keeps what its composer holds
     if (busy || chat.length > 0) resetConversation()
     else loopRef.current?.reset()
+    // another chat opens: no MCP choices of the one before (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setProjectNotices([])
     setProjectProblem(null)
     setConsolidated(null)
@@ -1642,21 +1721,40 @@ export function AiPanel({
     window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
   }
 
-  /** Takes back the turn at `index` and every later one, newest first. */
-  const rollback = (index: number): void => {
+  /** Takes back the run `id` and every later one still applied, newest first. */
+  const revert = (id: number): void => {
     if (busy || reverting) return
-    const undone = turns.slice(index).reverse()
+    const chain = revertChain(turns, id)
+    if (chain.length === 0) return
     setReverting(true)
+    if (marked !== null && chain.some((run) => run.id === marked)) clearMarks()
     void (async () => {
-      let complete = true
-      for (const point of undone) {
-        complete = (await revertTurn(hostRef.current, point.turn)) && complete
+      const outcomes = new Map<number, AiChangesState>()
+      for (const run of chain) {
+        const complete = await revertTurn(hostRef.current, run.point).catch(() => false)
+        outcomes.set(run.id, complete ? 'reverted' : 'partial')
       }
       if (!mountedRef.current) return
-      setTurns((prev) => prev.slice(0, index))
-      setRollbackNote(!complete)
+      setTurns((prev) => settleRuns(prev, outcomes))
       setReverting(false)
     })()
+  }
+
+  /** The card under the last reply of a run that changed the map. */
+  const changesCard = (id: number): ReactElement | null => {
+    const run = turns.find((each) => each.id === id)
+    if (!run) return null
+    return (
+      <AiChangesCard
+        lang={lang}
+        state={run.state}
+        count={run.count > 0 ? run.count : undefined}
+        canRevert={!busy && !reverting}
+        revertsLater={revertsLater(turns, id)}
+        onRevert={() => revert(id)}
+        onClearMarks={marked === id ? clearMarks : undefined}
+      />
+    )
   }
 
   // The display width follows the window (at most 60% of it); a wider window brings the chosen width back
@@ -1669,7 +1767,7 @@ export function AiPanel({
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   useEffect(() => () => resizeCleanupRef.current?.(), [])
 
-  /** Dragging the panel's inner edge (its left one: the panel sits at the right of the window). */
+  /** Dragging the panel's inner edge: the one facing the map, on whichever side the panel sits. */
   const startResize = (e: ReactPointerEvent<HTMLDivElement>): void => {
     e.preventDefault()
     const resizer = e.currentTarget
@@ -1677,7 +1775,7 @@ export function AiPanel({
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
     const onMove = (ev: PointerEvent): void => {
-      const w = clampPanelWidth(window.innerWidth - ev.clientX)
+      const w = clampPanelWidth(aiPanelWidthAtPointer(ev.clientX))
       preferredWidthRef.current = w
       setPanelWidth(w)
     }
@@ -1737,6 +1835,10 @@ export function AiPanel({
         </span>
         <div className="ai-panel-header-actions">
           {projectChatMenu}
+          <AiPanelSideButton
+            lang={lang}
+            onMove={(side) => window.mindmapApi.setAiPanelPrefs({ side })}
+          />
           {chat.length > 0 && (
             <button
               type="button"
@@ -1814,7 +1916,14 @@ export function AiPanel({
           }
           const hasTools = (entry.tools?.length ?? 0) > 0
           const projectLinesOfReply = projectReplyLines(entry)
-          if (!entry.text && !entry.streaming && !hasTools && !projectLinesOfReply) return null
+          if (
+            !entry.text &&
+            !entry.streaming &&
+            !hasTools &&
+            !projectLinesOfReply &&
+            entry.changes === undefined
+          )
+            return null
           const isLast = i === chat.length - 1
           const nextEntry = chat[i + 1]
           const turnEnded = nextEntry ? nextEntry.role === 'user' : !busy
@@ -1824,11 +1933,7 @@ export function AiPanel({
               key={i}
               className={`ai-msg ai-msg-assistant${entry.isError ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
-              {!entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator label={hasTools ? t('aiWorking') : t('aiThinking')} />
-                </span>
-              ) : entry.blocked ? (
+              {entry.blocked ? (
                 <AiBlockedNotice
                   kind={entry.blocked.kind}
                   provider={entry.blocked.provider}
@@ -1851,11 +1956,13 @@ export function AiPanel({
               {projectLinesOfReply}
               <SkillUsedNotes tools={entry.tools} />
               {entry.skillProposals?.map((key) => skillCards.render(key))}
+              {entry.changes !== undefined && changesCard(entry.changes)}
               {entry.usage && (
                 <div className="ai-message-usage">
                   <AiUsageChip usage={entry.usage} lang={lang} />
                 </div>
               )}
+              <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   <button
@@ -1884,34 +1991,9 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
       </div>
-
-      {(turns.length > 0 || rollbackNote) && (
-        <div className="ai-versions" data-ai-turns={turns.length}>
-          <div className="ai-versions-title">
-            <IconClock />
-            {t('aiTurnsTitle')}
-          </div>
-          {rollbackNote && <div className="ai-versions-note">{t('aiRollbackIncomplete')}</div>}
-          {turns.map((point, i) => (
-            <div key={i} className="ai-version-row">
-              <span className="ai-version-label" data-tip={point.label}>
-                <span className="ai-version-time">{point.time}</span>
-                {point.label}
-              </span>
-              <button
-                type="button"
-                className="ai-version-rollback"
-                data-action="ai-turn-undo"
-                disabled={busy || reverting}
-                onClick={() => rollback(i)}
-              >
-                {t('aiRollback')}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {(sendGate.connectChoice || sendGate.noticeDue) && (
         <div className="ai-composer">
@@ -2021,6 +2103,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
             </>
           }
         />
@@ -2175,15 +2258,6 @@ function IconCollapse(): ReactElement {
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M5.5 2.5v11" />
       <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" />
-    </Svg>
-  )
-}
-
-function IconClock(): ReactElement {
-  return (
-    <Svg size={12}>
-      <circle cx="8" cy="8" r="6" />
-      <path d="M8 4.8V8l2.2 1.6" />
     </Svg>
   )
 }

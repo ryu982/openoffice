@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const ja = {
+  appLegacyDocImported:
+    '.{ext} ファイルを .docx のコピーに変換して開きました。元のファイルはそのままで、保存すると新しい .docx ファイルになります。',
   appScTitle: 'キーボードショートカット',
   appScFilter: 'ショートカットを検索',
   appScNone: '一致するショートカットがありません',
@@ -54,6 +56,7 @@ export const ja = {
   appFontsMissing: '文書のフォントが未インストールです: {names}（代替フォントで表示）',
   appVerticalTextNotice: '縦書きテキストを含む文書です（現在は横書きで表示。保存には影響しません）',
   appNewDocCreated: '空白の文書を作成しました。左側の AI パネルで生成したい内容を記述できます',
+  appNewDocCreatedNoAi: '空白の文書を作成しました',
   appNewFailed: '新規作成に失敗しました: {error}',
   appSaveFailed: '保存に失敗しました: {error}',
   appAutoSavedAt: '自動保存しました ({time})',
@@ -100,6 +103,9 @@ export const ja = {
   appPrintRangeAll: 'すべてのページ',
   appPrintRangeCurrent: '現在のページ',
   appPrintRangeCustom: 'ユーザー設定の範囲',
+  appPrintRangeSelection: '選択範囲',
+  appPrintSelectionPreparing: '選択範囲をページに割り付けています…',
+  appPrintSelectionFailed: '選択範囲を準備できませんでした: {error}',
   appPrintRangeHint: '例:1,3,5-8',
   appPrintPageCount: '全 {n} ページ',
   appPrintNoPages: '印刷できるページがありません',
@@ -370,6 +376,9 @@ export const ja = {
   appAiBadgeTip: 'AI を使用します',
   appTranslate: '翻訳',
   appTranslateTo: '{lang}に翻訳',
+  appEasyWords: 'やさしい言葉で説明',
+  appEasyWordsPrompt:
+    '選択したテキストを、やさしい文章が必要な人(子ども、お年寄り、日本語を学んでいる人)にもわかるように、日本語でかみくだいて説明してください。身近な言葉と短い文を使い、事実・数字・条件はすべて残してください。ドキュメントは変更しないでください：「{text}」',
   redactMenuLabel: '選択範囲をAIから隠す',
   redactDialogDesc:
     '文章はドキュメントとファイルに残り、AI には下のマーカーしか見えません。名前をつけると、何を表すかAIが理解できます。',
@@ -400,6 +409,7 @@ export const ja = {
   appLangHindi: 'ヒンディー語',
   appLangTraditionalChinese: '繁体字中国語',
   appLangVietnamese: 'ベトナム語',
+  appLangTurkish: 'トルコ語',
   appWrapTextMenu: '文字列の折り返し',
   appViewImage: '画像を表示',
   appSaveImageAs: '名前を付けて画像を保存…',
@@ -607,4 +617,10 @@ export const ja = {
   appMergeSourceLoaded: '{name}（{n} 件）を読み込みました',
   appMergeWritten: '{n} 個のドキュメントを書き出しました',
   appMergeNothingToWrite: '書き出すものがありません',
+  appExportingHwp: 'HWP 文書をエクスポートしています…',
+  appExportedHwp: 'HWP 文書をエクスポートしました: {path}',
+  appExportHwpFailed: 'HWP 文書のエクスポートに失敗しました: {error}',
+  appExportHwpCanceled: 'HWP 文書のエクスポートをキャンセルしました',
+  appExportHwpReadback:
+    'この文書は .hwp として正確に書き出せませんでした。.hwpx で保存してみてください。',
 } satisfies Record<keyof typeof zh, string>

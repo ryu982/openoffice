@@ -20,6 +20,7 @@ import { he } from './ai/he'
 import { hi } from './ai/hi'
 import { zhTW } from './ai/zh-TW'
 import { vi } from './ai/vi'
+import { tr } from './ai/tr'
 
 /** User-visible strings: the AI pane of the EPUB editor */
 export const aiStrings = defineStrings({
@@ -44,4 +45,5 @@ export const aiStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

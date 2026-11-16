@@ -29,8 +29,8 @@
  * standalone window (`startMindmapStandalone`) uses the same code.
  */
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import { basename, dirname, extname, join } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
 import {
@@ -58,11 +58,18 @@ import { getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
 import { openXmind } from '@genoffice/xmind-engine'
 import { registerMindmapAiIpc } from './ai-attachments'
 import { registerMindmapImageIpc } from './ai-image'
+import { registerLinkPreviewIpc } from './link-preview'
 import { atomicWriteFile } from './atomic-write'
-import { registerMindmapExportIpc } from './export-main'
+import { grantSaveAsExport, registerMindmapExportIpc } from './export-main'
 import { registerMindmapHandoffIpc } from './handoff-main'
 import { queueMindmapSeedFor, registerMindmapSeedIpc } from './seed-main'
 import { tm } from './i18n-main'
+import {
+  saveAsDefaultPath,
+  saveAsFilters,
+  saveAsTarget,
+  type MapSaveAsKind,
+} from './save-as-formats'
 import {
   resolveViewOpen,
   setViewOpenDecision,
@@ -95,6 +102,12 @@ export { DONT_SAVE_HOLD_MS as MINDMAP_DONT_SAVE_HOLD_MS } from './recovery-main'
 
 /** The one extension a map is saved with. */
 const MAP_EXTENSION = '.xmind'
+/** FreeMind and Freeplane maps: imported into a new map, never written. */
+const FREEMIND_RE = /\.mm$/i
+/** The files this editor opens: its own maps and the ones it imports. */
+const MAP_FILE_RE = /\.(xmind|mm)$/i
+/** The largest `.mm` read for an import; a FreeMind map is plain XML. */
+const MAX_FREEMIND_BYTES = 32 * 1024 * 1024
 
 interface RuntimePaths {
   preloadPath: string
@@ -137,6 +150,8 @@ const savePathByWc = new Map<number, string>()
  * written for a view in here, to any path. A view for a new map is never in.
  */
 const unopenedByWc = new Map<number, 'pending' | 'failed'>()
+/** Views whose map was imported from a `.mm`: that file, never written, and its name */
+const importByWc = new Map<number, { path: string; title: string }>()
 
 /** Whether anything may be written for this view. */
 function mayWrite(wcId: number): boolean {
@@ -475,21 +490,33 @@ function fileNameBase(name: string | undefined): string {
     .trim()
 }
 
-function withMapExtension(path: string): string {
-  return extname(path).toLowerCase() === MAP_EXTENSION ? path : `${path}${MAP_EXTENSION}`
+/** An imported map's first save: an `.xmind` of the same name beside its `.mm`. */
+function importSaveAsDefault(wcId: number): string | undefined {
+  const imported = importByWc.get(wcId)
+  if (!imported) return undefined
+  const name = fileNameBase(imported.title) || tm('untitledFile')
+  return join(dirname(imported.path), `${name}${MAP_EXTENSION}`)
 }
 
+/**
+ * Where a save goes, and as what. Save As lists the export types after .xmind
+ * (`save-as-formats.ts`); picking one of them is no save of the map.
+ */
 async function resolveSaveTarget(
   e: Electron.IpcMainInvokeEvent,
   mode: SaveMode,
   defaultName?: string,
-): Promise<string | 'canceled'> {
+): Promise<{ path: string; kind: MapSaveAsKind } | 'canceled'> {
   const current = savePathByWc.get(e.sender.id)
-  if (mode === 'save' && current) return current
+  if (mode === 'save' && current) return { path: current, kind: 'xmind' }
+  const offerExports = mode === 'saveAs'
   const win =
     BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
-  // a restored map whose file is gone is offered that file's old place
-  const restoredPath = current ? undefined : viewSaveAsDefault(e.sender.id)
+  // a restored map whose file is gone is offered that file's old place, an
+  // imported map the place of the .mm it came from
+  const restoredPath = current
+    ? undefined
+    : (viewSaveAsDefault(e.sender.id) ?? importSaveAsDefault(e.sender.id))
   const defaultPath = current
     ? join(dirname(current), basename(current))
     : (restoredPath ??
@@ -500,11 +527,11 @@ async function resolveSaveTarget(
       ))
   const picked = await showSaveDialogWithMemory(dialog, win, {
     title: tm('dlgSaveTitle'),
-    defaultPath,
-    filters: [{ name: tm('filterMindmap'), extensions: [MAP_EXTENSION.slice(1)] }],
+    defaultPath: saveAsDefaultPath(defaultPath, offerExports),
+    filters: saveAsFilters(offerExports, tm),
   })
   if (picked.canceled || !picked.filePath) return 'canceled'
-  return withMapExtension(picked.filePath)
+  return saveAsTarget(picked.filePath, offerExports)
 }
 
 /** The window a question about this view sits over. */
@@ -570,6 +597,7 @@ function registerMindmapIpc(): void {
     if (typeof path !== 'string' || !allowedByWc.get(wcId)?.has(path)) {
       throw new Error('mindmap: path not granted to this view')
     }
+    if (FREEMIND_RE.test(path)) return importFreeMind(wcId, path)
     // A recovery copy left for this file is settled before any of the map is loaded.
     const restored = await resolveViewOpen(wcId, path, parentWindowOf(e.sender))
     let bytes: Uint8Array | null
@@ -620,8 +648,9 @@ function registerMindmapIpc(): void {
     const wcId = e.sender.id
     const waiter = saveWaiters.get(wcId)
     saveWaiters.delete(wcId)
+    // only a written map is a save: a cancel or a Save As copy is not
     const done = (result: SaveMindmapResult): SaveMindmapResult => {
-      waiter?.(result.ok && !('canceled' in result))
+      waiter?.(result.ok && 'path' in result)
       return result
     }
     if (!mayWrite(wcId)) {
@@ -663,10 +692,19 @@ function registerMindmapIpc(): void {
         typeof defaultName === 'string' ? defaultName : undefined,
       )
       if (target === 'canceled') return done({ ok: true, canceled: true })
+      if (target.kind !== 'xmind') {
+        // Save As › an export type: a copy, written by the export channel to
+        // exactly this path. The map keeps its file, state and recovery copy.
+        grantSaveAsExport(wcId, { kind: target.kind, path: target.path })
+        return done({ ok: true, export: { format: target.kind, path: target.path } })
+      }
       const previousPath = savePathByWc.get(wcId)
-      await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
-      await adoptWrittenPath(e.sender, target, previousPath)
-      return done({ ok: true, path: target })
+      await atomicWriteFile(
+        target.path,
+        Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+      )
+      await adoptWrittenPath(e.sender, target.path, previousPath)
+      return done({ ok: true, path: target.path })
     } catch (err) {
       return done({ ok: false, error: err instanceof Error ? err.message : String(err) })
     }
@@ -770,6 +808,8 @@ function registerMindmapIpc(): void {
     filePathOf: (wcId) => savePathByWc.get(wcId) ?? null,
     pastedImageDir: join(app.getPath('temp'), 'genoffice-pasted'),
   })
+  // a link's picture and title, read only when the person asks for them in the link dialog
+  registerLinkPreviewIpc()
   registerMindmapExportIpc({ filePathOf: (wcId) => savePathByWc.get(wcId) })
   registerMindmapHandoffIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })
   registerMindmapSeedIpc({ opensFile: (wcId) => openPathByWc.has(wcId) })
@@ -777,6 +817,27 @@ function registerMindmapIpc(): void {
   // Language channel shared with other modules; removeHandler tolerates duplicate registration
   ipcMain.removeHandler(APP_CHANNELS.getLanguage)
   ipcMain.handle(APP_CHANNELS.getLanguage, () => getUiLang())
+}
+
+/**
+ * A `.mm` for the renderer to import: its bytes, read and never written. The
+ * map it becomes is untitled, so it may be saved, and only where the person
+ * picks; a file too large or not there opens nothing.
+ */
+async function importFreeMind(wcId: number, path: string): Promise<OpenFileResult> {
+  let bytes: Uint8Array
+  try {
+    if ((await stat(path)).size > MAX_FREEMIND_BYTES) throw new Error('too large')
+    bytes = new Uint8Array(await readFile(path))
+  } catch {
+    refuseWrites(wcId)
+    return { status: 'unreadable' }
+  }
+  unopenedByWc.delete(wcId)
+  savePathByWc.delete(wcId)
+  const title = basename(path).replace(FREEMIND_RE, '')
+  importByWc.set(wcId, { path, title })
+  return { status: 'import', importer: 'freemind', bytes, title }
 }
 
 /** The view's file did not open: it has no save target and gets none. */
@@ -811,8 +872,10 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     allowedByWc.delete(wcId)
     savePathByWc.delete(wcId)
     unopenedByWc.delete(wcId)
+    importByWc.delete(wcId)
     dirtyByWc.delete(wcId)
     docDiskStates.delete(wcId)
+    grantSaveAsExport(wcId, null)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveWaiters.get(wcId)?.(false)
@@ -864,7 +927,7 @@ export function startMindmapStandalone(): void {
       height: 850,
       webPreferences: { preload: runtime.preloadPath, ...VIEW_PREFERENCES },
     })
-    const argPath = process.argv.slice(1).find((a) => /\.xmind$/i.test(a) && existsSync(a))
+    const argPath = process.argv.slice(1).find((a) => MAP_FILE_RE.test(a) && existsSync(a))
     grantAndTrack(win.webContents, argPath)
     void win.loadURL(mindmapRendererUrl())
   })

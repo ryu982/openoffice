@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { editorExtensions } from '../src/renderer/editor/extensions'
-import { executeTool } from '../src/renderer/ai/tools'
+import { AGENT_TOOLS, executeTool } from '../src/renderer/ai/tools'
+import { createDocsSkill } from '../src/renderer/ai/docs-skill'
 
 const editors = new Set<Editor>()
 afterEach(() => {
@@ -29,6 +30,10 @@ function createEditor(): Editor {
 }
 
 const NUM_IDS = { bullet: null, ordered: null }
+
+// a 1x1 PNG, so the picture passes the format sniff
+const PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
 type DesktopStub = { desktop?: unknown }
 
@@ -114,5 +119,76 @@ describe('generate_image', () => {
       { prompt: 'a watercolor fox', aspectRatio: '16:9' },
     )
     expect(received).toEqual({ prompt: 'a watercolor fox', aspectRatio: '16:9' })
+  })
+
+  it('passes a model the user named through to the channel', async () => {
+    let received: unknown = null
+    await runWithDesktop(
+      {
+        aiGenerateImage: (op: unknown) => {
+          received = op
+          return Promise.resolve({ error: 'stop here' })
+        },
+      },
+      { prompt: 'a watercolor fox', model: 'gpt-image-2' },
+    )
+    expect(received).toEqual({ prompt: 'a watercolor fox', model: 'gpt-image-2' })
+  })
+
+  it("passes the image tool's note on to the model with the inserted picture", async () => {
+    // jsdom never decodes images: stand in for <img> with a fixed size
+    const RealImage = globalThis.Image
+    class FakeImage {
+      naturalWidth = 4
+      naturalHeight = 2
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(_v: string) {
+        queueMicrotask(() => this.onload?.())
+      }
+    }
+    globalThis.Image = FakeImage as unknown as typeof Image
+    try {
+      const { exec } = await runWithDesktop(
+        {
+          aiGenerateImage: () =>
+            Promise.resolve({
+              url: 'file:///generated/a.png',
+              note: 'Codex picks the image model on this route',
+            }),
+          fetchImage: () => Promise.resolve({ base64: PNG, mime: 'image/png' }),
+        },
+        { prompt: 'a watercolor fox', model: 'gpt-image-2' },
+      )
+      expect(exec.isError).toBeFalsy()
+      expect(exec.output).toContain('\nNote: Codex picks the image model on this route')
+    } finally {
+      globalThis.Image = RealImage
+    }
+  })
+
+  it('offers model as an optional input', () => {
+    const tool = AGENT_TOOLS.find((t) => t.name === 'generate_image')!
+    expect(tool.inputSchema.properties).toHaveProperty('model')
+    expect(tool.inputSchema.required).toEqual(['prompt'])
+  })
+})
+
+describe('generate_image while no image route exists', () => {
+  it('is hidden, and the note tells the model the ChatGPT plan path', () => {
+    const skill = createDocsSkill(
+      () => createEditor(),
+      () => NUM_IDS,
+      undefined,
+      undefined,
+      undefined,
+      () => false,
+    )
+    expect(skill.tools.map((t) => t.name)).not.toContain('generate_image')
+    expect(skill.systemPrompt).toContain('generate_image is currently unavailable')
+    expect(skill.systemPrompt).toContain(
+      'Codex program signed in with the same ChatGPT account (Settings > AI > Codex)',
+    )
+    expect(skill.systemPrompt).toContain('OpenAI does not allow it')
   })
 })

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { TFunc } from './locale'
 import { McpServerSection } from './McpServerSection'
 import { DriveSettingsCard } from './DriveSettingsCard'
+import { McpServersCard } from './mcp/McpServersCard'
 import {
   SHARED_AGENT_ID,
   type AgentId,
@@ -60,9 +61,12 @@ const api = () => window.aiOfficeIntegrations
 export function IntegrationsPane({
   t,
   onStatus,
+  mcpServers = true,
 }: {
   t: TFunc
   onStatus?: (s: IntegrationsStatus) => void
+  /** the person's own MCP servers (an AI feature): left out while AI is off */
+  mcpServers?: boolean
 }) {
   const [status, setStatus] = useState<IntegrationsStatus | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
@@ -207,6 +211,8 @@ export function IntegrationsPane({
       <h3 className="set-pane-title">{t('setSecIntegrations')}</h3>
 
       <DriveSettingsCard />
+
+      {mcpServers && <McpServersCard />}
 
       <section className="set-intg-hero">
         <div className="set-intg-hero-title">{t('intgHeroTitle')}</div>
@@ -400,6 +406,9 @@ export function IntegrationsPane({
           <span className="set-intg-step-no">2</span>
           {t('intgMcpPartTitle')}
         </h4>
+        <div className="set-field-desc set-intg-who" data-testid="intg-mcp-who">
+          {t('intgMcpPartWho')}
+        </div>
         <div className="set-field-desc set-intg-lead">{t('intgMcpPartDesc')}</div>
 
         <div className="set-intg-mcp">

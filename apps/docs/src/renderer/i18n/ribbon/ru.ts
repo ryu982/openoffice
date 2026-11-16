@@ -696,6 +696,7 @@ export const ru = {
   ribbonLangHindi: 'хинди',
   ribbonLangTraditionalChinese: 'китайский (традиционный)',
   ribbonLangVietnamese: 'вьетнамский',
+  ribbonLangTurkish: 'турецкий',
   ribbonGroupLanguage: 'Язык',
   ribbonNewComment: 'Создать примечание',
   ribbonNewCommentTip: 'Добавить примечание к выделенному фрагменту',
@@ -809,6 +810,8 @@ export const ru = {
   ribbonOutlineView: 'Структура',
   ribbonOutlineViewTip:
     'Режим структуры: показывать только иерархию заголовков; заголовки можно редактировать',
+  ribbonStoryView: 'История',
+  ribbonStoryViewTip: 'История: писать без форматирования документа',
   ribbonReadMode: 'Режим чтения',
   ribbonReadModeTip:
     'Режим чтения: скрыть ленту для сосредоточенного чтения, для выхода нажмите Esc',
@@ -947,10 +950,21 @@ export const ru = {
   ribbonMailingsOutput: 'Результат слияния',
   ribbonMailingsOutputPerRecord: 'По одному документу на запись',
   ribbonMailingsOutputSingle: 'Один документ для всех записей',
+  ribbonMailingsOutputLabels: 'Лист наклеек',
+  ribbonMailingsOutputEnvelopes: 'Конверты',
+  ribbonMailingsStock5160: 'Avery 5160 (3 × 10)',
+  ribbonMailingsStockCustom: 'Своя сетка',
+  ribbonMailingsLabelColumns: 'Столбцы',
+  ribbonMailingsLabelRows: 'Строки',
+  ribbonMailingsEnvelopeSize: 'Размер конверта',
   ribbonMailingsNamePattern: 'Имя файла',
   ribbonMailingsNamePatternPh: 'Пусто: используется первое поле',
   ribbonMailingsFinish: 'Закончить и выполнить слияние',
   ribbonMailingsMerged: 'Объединено документов: {n}',
   ribbonMailingsMergeFailed: 'Слияние не удалось',
   ribbonMailingsClose: 'Закрыть',
+  ribbonMailingsEnvelopeNote:
+    'Конверты печатают этот документ как есть на конвертной бумаге; блок адреса остаётся у верхнего левого поля (мастер конвертов Word центрирует адрес получателя).',
+  ribbonMailingsLabelsDroppedHint:
+    'Лист наклеек содержит только абзацы: {n} блоков шаблона (таблицы, рисунки) будут пропущены.',
 } satisfies Record<keyof typeof zh, string>

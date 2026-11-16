@@ -36,6 +36,13 @@ export const OUTBOUND_CONFIRM_STRINGS = defineStrings({
     allow: 'Cho phép',
     block: 'Chặn',
   } satisfies Keys,
+  tr: {
+    title: 'AI bir web adresi açmak istiyor',
+    body: 'AI aşağıdaki adresi getirmek istiyor. Bu adres bu sohbette daha önce geçmedi.',
+    warn: 'Bir belgede veya web sayfasındaki gizli metin yapay zekâya bunu yaptırmış olabilir. Adres belge içeriği taşıyorsa veya siteyi tanımıyorsanız engelleyin.',
+    allow: 'İzin ver',
+    block: 'Engelle',
+  } satisfies Keys,
   ja: {
     title: 'AI が Web アドレスを開こうとしています',
     body: 'AI が次のアドレスを取得しようとしています。これまでの会話に出てきたことのないアドレスです。',

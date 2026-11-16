@@ -25,7 +25,10 @@
   "dependencies": {
     "@genoffice/ai-provider": "*",
     "@genoffice/ai-search": "*",
+    "@genoffice/doc2docx": "*",
     "@genoffice/docx-engine": "*",
+    "@genoffice/docx2hwp": "*",
+    "@genoffice/drawio-model": "*",
     "@genoffice/file-parse": "*",
     "@genoffice/odt-engine": "*",
     "@genoffice/pdf2docx": "*",
@@ -34,6 +37,7 @@
     "@genoffice/pptx-ops": "*",
     "@genoffice/pptx-render": "*",
     "@genoffice/xlsx-gateway": "*",
+    "@genoffice/xmind-engine": "*",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@tiptap/core": "3.31.0",
     "jsdom": "^28.0.0",

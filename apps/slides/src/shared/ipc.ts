@@ -1,4 +1,6 @@
 import type { AiPanelPrefs, FontFamilyInfo } from '@genoffice/ui'
+import type { PrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
+import type { SlidesAiFonts } from '@genoffice/ui/slides-ai-fonts'
 /**
  * slides main-process <-> renderer IPC contract (Phase 3: open/save/edit, AI not included yet).
  *
@@ -96,6 +98,8 @@ export interface OpenResult {
   size: { cx: number; cy: number }
   /** Theme body default font (fallback shown in the font box when the selection has no text element) */
   defaultFont?: string
+  /** the untitled deck was converted from a legacy .ppt: the tab says so once */
+  importedFrom?: string
 }
 
 // ---- Chat attachments (local files fed to the agent via tools; structure copied from apps/docs) ----
@@ -1188,6 +1192,12 @@ export interface ExportImagesOp {
   format?: 'png' | 'jpg'
   /** base64 per page image (without the data: prefix), in page order */
   pngsBase64: string[]
+  /**
+   * Save As › PNG: the name the Save As dialog returned (`deck.png`). The main
+   * process accepts it once for this tab and writes `deck.png` for one page or
+   * `deck-01.png`, `deck-02.png`, … beside it; `dir` and `baseName` are unused.
+   */
+  saveAsTarget?: string
 }
 
 export interface ExportImagesResult {
@@ -1411,6 +1421,8 @@ export interface SlidesApi {
   /** Single-page generation: a JSON slide spec (LLM output) built directly into a one-slide pptx temp file; the marker goes into a landGeneratedPages pageMarkers slot */
   localGeneratePage: (op: {
     specJson: string
+    /** Settings › General fonts for runs the spec leaves without a font (only when they apply to this deck) */
+    defaultFonts?: { title: string; body: string }
   }) => Promise<{ ok: boolean; marker?: string; error?: string; imageFailures?: string[] }>
   editText: (op: EditTextOp) => Promise<RenderSlide | null>
   /** Change font/size on selected elements wholesale (elements without text ignored; returns null if all ignored) */
@@ -1688,6 +1700,8 @@ export interface SlidesApi {
   applyTxn: (op: ApplyTxnOp) => Promise<ApplyTxnResult | null>
   /** Roll the deck back to an AI rollback point; returns the restored full RenderSlide array, null when the id is unknown */
   aiSnapshotRestore: (id: number) => Promise<RenderSlide[] | null>
+  /** The given AI rollback points that are still kept (the ring drops the oldest) */
+  aiSnapshotAlive: (ids: number[]) => Promise<number[]>
   /** Undo/redo (main-process snapshot history): returns the restored full RenderSlide array, null when nothing to undo */
   undo: () => Promise<RenderSlide[] | null>
   redo: () => Promise<RenderSlide[] | null>
@@ -1732,6 +1746,8 @@ export interface SlidesApi {
   exportPdf: (op: ExportPdfOp) => Promise<ExportPdfResult>
   /** Print (system dialog; cancel counts as ok=false without an error) */
   printSlides: (op: PrintSlidesOp) => Promise<{ ok: boolean; error?: string }>
+  /** Advanced print (decision 0141): the print op is the job, arranged by the shared layout */
+  printLayout: PrintLayoutBridge<PrintSlidesOp>
   /** Save the deck in place. auto marks the AutoSave timer's own pass: while a
    *  sibling split-view copy moved the disk past this one, an auto save defers
    *  silently (`reason: 'external-modified'`) where a user's save asks first. */
@@ -1742,9 +1758,18 @@ export interface SlidesApi {
     reason?: 'external-modified'
     slides?: RenderSlide[]
   }>
-  saveAs: (
-    defaultName: string,
-  ) => Promise<{ ok: boolean; path?: string; error?: string; slides?: RenderSlide[] }>
+  /**
+   * Save As. Picking a copy format (PDF, PNG per slide) writes nothing and
+   * returns `ok: false` with `exportAs` and the picked `path`: the renderer
+   * runs that export, and the deck keeps its path and unsaved state.
+   */
+  saveAs: (defaultName: string) => Promise<{
+    ok: boolean
+    path?: string
+    error?: string
+    slides?: RenderSlide[]
+    exportAs?: 'pdf' | 'png'
+  }>
   /**
    * Project folders (spec 6): an untitled deck whose handed-over run ended well
    * is saved into its panel's project. The main process picks the folder and a
@@ -1845,7 +1870,12 @@ export interface SlidesApi {
     aspectRatio?: string
     imageSize?: string
     transparentBackground?: boolean
-  }) => Promise<{ url?: string; error?: string }>
+  }) => Promise<{
+    url?: string
+    error?: string
+    /** the shared tool's remark for the model (e.g. Codex picked the image model) */
+    note?: string
+  }>
   /** Media analysis: image/audio/video content understanding, returns analysis text */
   analyzeMedia: (op: {
     mediaUrls: string[]
@@ -1881,6 +1911,10 @@ export interface SlidesApi {
   }>
   /** The design template remembered for this window's document, on this PC only; null when there is none */
   getTemplateSelection: () => Promise<TemplateSelection | null>
+  /** The fonts AI generation uses when the request names none (Settings › General); `lang` picks the default before a choice is stored */
+  getAiDefaultFonts?: (lang: string) => Promise<SlidesAiFonts>
+  /** Open Settings › General at the AI slide fonts (the shell answers; a standalone app does not) */
+  openFontSettings?: () => Promise<void>
   /** Remember a selection for this window's document (null forgets it; malformed input is ignored). Answers with what is stored afterwards */
   setTemplateSelection: (
     selection: TemplateSelectionInput | null,

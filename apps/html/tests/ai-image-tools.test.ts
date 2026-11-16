@@ -171,6 +171,40 @@ describe('generate_image', () => {
     expect(doc.text.indexOf('<img')).toBeGreaterThan(doc.text.indexOf('<h1'))
   })
 
+  it('passes a model the user named to the channel', async () => {
+    const doc = fakeAccess(DOC)
+    const core = createHtmlSkillCore(doc.access)
+    core.buildContext()
+    bridge.aiGenerateImage.mockResolvedValue({ error: 'stop here' })
+    await core.executeTool(
+      call('generate_image', { prompt: 'a chart mascot', model: 'gpt-image-2' }),
+    )
+    expect(bridge.aiGenerateImage).toHaveBeenCalledWith({
+      prompt: 'a chart mascot',
+      model: 'gpt-image-2',
+    })
+    const tool = AGENT_TOOLS.find((tl) => tl.name === 'generate_image')!
+    expect(tool.inputSchema.properties).toHaveProperty('model')
+    expect(tool.inputSchema.required).toEqual(['prompt'])
+  })
+
+  it("passes the image tool's note on to the model with the inserted picture", async () => {
+    const doc = fakeAccess(DOC)
+    const core = createHtmlSkillCore(doc.access)
+    core.buildContext()
+    bridge.aiGenerateImage.mockResolvedValue({
+      url: 'https://cdn.example/gen.png',
+      note: 'Codex picks the image model on this route',
+    })
+    bridge.fetchImage.mockResolvedValue({ base64: PNG_BASE64, mime: 'image/png' })
+    bridge.saveImage.mockResolvedValue('assets/gen.png')
+    const r = await core.executeTool(
+      call('generate_image', { prompt: 'a chart mascot', model: 'gpt-image-2' }),
+    )
+    expect(r.mutated).toBe(true)
+    expect(r.output).toContain('\nNote: Codex picks the image model on this route')
+  })
+
   it('inlines a data URL when the document is unsaved and hot-links when the download fails', async () => {
     const unsaved = fakeAccess(DOC)
     const core = createHtmlSkillCore(unsaved.access)
@@ -237,6 +271,7 @@ describe('generate_image gating', () => {
     expect(off.tools.map((tl) => tl.name)).not.toContain('generate_image')
     expect(off.tools.map((tl) => tl.name)).toContain('image_search')
     expect(off.systemPrompt).toContain('generate_image is currently unavailable')
+    expect(off.systemPrompt).toContain('Codex program signed in with the same ChatGPT account')
     expect(off.systemPrompt).toBe(`PROMPT${IMAGE_GEN_OFF_NOTE}`)
 
     const on = createHtmlSkill(access, 'PROMPT', () => true)

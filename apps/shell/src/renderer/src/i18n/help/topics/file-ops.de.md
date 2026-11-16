@@ -26,6 +26,8 @@ Regeln: Die Dateiendung bleibt automatisch erhalten; unzulässige Zeichen, Punkt
 ## Speichern und Speichern unter
 
 - **⌘S / ctrl+S** speichert die aktuelle Datei; bei einer Datei ohne Namen werden zuerst Ort und Name abgefragt.
+- In den meisten Editoren bietet die Dateitypliste im Dialog „Speichern unter“ auch die Exportformate an (PDF, Bilder, andere Dokumentformate). Wählt man eines davon, wird nur eine Kopie geschrieben; das geöffnete Dokument und sein Tab bleiben bei der ursprünglichen Datei. Bilder mehrerer Seiten werden auf `Name-01.png`, `Name-02.png` … aufgeteilt.
+- **Docs**: Die Liste „Speichern unter“ bietet auch .hwp und .hwpx an (Datei ▸ Als HWP-Dokument exportieren… tut dasselbe). Lässt sich etwas nicht übernehmen, etwa Kommentare, Formeln oder Textfelder, erfahren Sie es, bevor die Datei geschrieben wird.
 - **Speichern unter** schreibt eine neue Datei und lässt das Original unberührt; weitere Änderungen gelten dann der neuen Datei.
 - Jedes Speichern erfolgt atomar (temporäre Datei plus Umbenennung); ein Abbruch mitten im Schreiben kann die Datei nicht beschädigen.
 - AutoSpeichern folgt dem Schalter des jeweiligen Editors; ein neues Dokument ohne eigene Datei beginnt erst nach dem ersten Speichern (siehe [Schnellstart](help://getting-started)).
@@ -44,7 +46,17 @@ Regeln: Die Dateiendung bleibt automatisch erhalten; unzulässige Zeichen, Punkt
 
 ## Drucken
 
-Datei ▸ Drucken in jedem Editor (⌘P/ctrl+P) öffnet den Systemdialog; PDFs werden mit der aktuellen Seitenreihenfolge und den aktuellen Drehungen gedruckt.
+Datei ▸ Drucken (⌘P/ctrl+P) öffnet in jedem Editor ein Druckfenster. Docs, PDF, Sheets, Slides und Markdown haben den Bereich **Seitenanordnung** in ihrem gewohnten Druckfenster, HWP in der Druckvorschau, HTML, Mindmap und Diagramm in einem neuen kleinen Druckfenster. Wenn Sie unter Seitenanordnung nichts auswählen, wird genauso gedruckt wie bisher.
+
+- **Anordnung**: Wählen Sie Eine Seite pro Blatt, Mehrere Seiten pro Blatt (2, 4, 6, 9 oder 16), Broschüre (links oder rechts binden), Plakat (Blätter nebeneinander und untereinander, Überlappung, Schnittlinien) oder Etiketten (eine Seite pro Etikett oder gleiche Seite auf jedem Etikett, Start-Etikett, gängiges A4-Format oder eigene Maße).
+- **Nur ungerade Blattseiten, nur gerade Blattseiten, umgekehrte Reihenfolge**: Gezählt werden die Seiten, die nach der Anordnung tatsächlich aus dem Drucker kommen. Nützlich bei Druckern ohne Duplexfunktion: erst die Vorderseiten drucken, das Papier wenden, dann die Rückseiten drucken.
+- **Auf Papiergröße verkleinern**: Nur Seiten, die größer als das gewählte Papier sind, werden verkleinert; kleinere werden nicht vergrößert. Sheets und Markdown verwenden ihre bisherigen Felder für Papier und Skalierung.
+- **Graustufen und Bildauflösung**: Beim Drucken mit Optionen der Seitenanordnung wird jede Seite in ein Bild umgewandelt und so an den Drucker geschickt. Die Auflösung wählen Sie aus Automatisch, 150, 300 oder 600 dpi.
+- **Nur Auswahl**: Docs und Markdown drucken nur den markierten Text, neu ab der ersten Seite umbrochen; Slides druckt die ausgewählten Folien, PDF die ausgewählten Seiten. Sheets druckt wie bisher den markierten Bereich.
+- **Anordnungsskizze und Ergebnisvorschau**: Die Skizze zeigt sofort, wo jede Seitenzahl auf dem Papier landet, und **Ergebnis anzeigen** zeigt das tatsächlich erzeugte Ergebnis. Mit **Angeordnetes Ergebnis als PDF speichern** drucken Sie dieselbe Anordnung auf einem anderen PC oder in einer Druckerei.
+- **Druckfenster des Systems**: Wählen Sie für eine Broschüre beidseitigen Druck mit Wenden an der kurzen Kante. Seitenbereich und Seiten pro Blatt lassen Sie im Systemfenster unverändert.
+
+PDFs werden mit der aktuellen Seitenreihenfolge und den aktuellen Drehungen gedruckt.
 
 ## Wo Dateien ohne Namen liegen
 

@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const nl = {
+  appLegacyPptImported:
+    'Het .ppt-bestand is geopend als geconverteerde .pptx-kopie. Het origineel blijft ongewijzigd; opslaan schrijft een nieuw .pptx-bestand. Sprekersnotities en animaties worden niet overgenomen.',
   redactMenuLabel: 'Selectie verbergen voor de AI',
   redactDialogDesc:
     'De selectie blijft in het document en het bestand; het model ziet alleen de placeholder. Geef hem een naam.',
@@ -182,6 +184,9 @@ export const nl = {
   appPrintLandscape: 'Liggend',
   appPrintFrame: "Kader om dia's",
   appPrintHidden: "Verborgen dia's afdrukken",
+  appPrintRangeSelected: "Geselecteerde dia's",
+  appPrintLayoutBlocked:
+    "Hand-outs en notitiepagina's worden met één pagina per vel afgedrukt. Kies Dia's op volledige pagina om pagina's te schikken.",
   appPrintPageCount: "{n} pagina's",
   appPrintNoPages: "Geen dia's om af te drukken",
   appPrintRendering: 'Voorbeeld genereren…',
@@ -192,6 +197,7 @@ export const nl = {
   appCtxSendToBack: 'Naar achtergrond',
   appCtxBringForward: 'Naar voren',
   appCtxSendBackward: 'Naar achteren',
+  appCtxRotate: 'Draaien',
   appCtxRotateLeft90: '90° naar links draaien',
   appCtxRotateRight90: '90° naar rechts draaien',
   appCtxFlipH: 'Horizontaal spiegelen',

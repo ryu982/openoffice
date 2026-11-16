@@ -37,6 +37,7 @@ Menu Bestand, alles lokaal en alles vraagt waar het resultaat heen moet:
 
 - **Exporteren als Word…** en **Exporteren als PDF…** schrijven een echte .docx of .pdf.
 - **Exporteren als ODT…** schrijft een .odt (OpenDocument-tekst) via dezelfde omzetting als de Word-export; verandert er onderweg iets of valt er iets weg, dan ziet u de lijst en bevestigt u eerst.
+- **Exporteren als HWP-document…** schrijft via dezelfde conversie een HWP-document (.hwp of .hwpx); koppen, lijsten en tabellen komen als zodanig in het HWP-document, en een lange tabel loopt door op de volgende pagina. Kan iets niet worden overgenomen, dan zie je eerst de lijst en bevestig je.
 - **Exporteren als afbeeldingen…** schrijft één PNG per pagina naar een map die u kiest.
 - **Converteren en openen in Docs** zet om naar .docx en opent het in het ingebouwde Docs-tabblad hier in de app — het is geen overdracht naar iets in de cloud, en de omgezette kopie staat in een cachemap die na ongeveer een week wordt opgeschoond.
 

@@ -25,13 +25,31 @@ export const USER_SKILLS_CHANNELS = {
   importFolder: 'skills:import-folder',
   importZip: 'skills:import-zip',
   importGitHub: 'skills:import-github',
+  /** pasted SKILL.md text */
+  importText: 'skills:import-text',
+  /** the settings screen takes the next skill file dropped on any window, previewed */
+  takeDropped: 'skills:take-dropped',
+  /** a previewed import's skill, opened to read before installing: its SKILL.md and text file list */
+  readImport: 'skills:read-import',
+  /** one text file of a previewed import's skill */
+  readImportFile: 'skills:read-import-file',
   cancelImport: 'skills:cancel-import',
   install: 'skills:install',
   checkUpdate: 'skills:check-update',
   applyUpdate: 'skills:apply-update',
   cancelUpdate: 'skills:cancel-update',
+  /** the earlier versions kept of an own skill, newest first */
+  versions: 'skills:versions',
+  /** what going back to a kept version would change */
+  compareVersion: 'skills:compare-version',
+  /** put a kept version back (the current one is kept first) */
+  restoreVersion: 'skills:restore-version',
+  /** take one kept version away for good */
+  removeVersion: 'skills:remove-version',
   exportInfo: 'skills:export-info',
   exportZip: 'skills:export-zip',
+  /** several own skills as one zip, a folder per skill */
+  exportBundle: 'skills:export-bundle',
   openFolder: 'skills:open-folder',
   aiRead: 'skills:ai-read',
   aiReadFile: 'skills:ai-read-file',
@@ -54,6 +72,8 @@ export const USER_SKILLS_CHANNELS = {
   previewEnded: 'skills:preview-ended',
   /** main → every window: the list or a state changed; read the list again */
   changed: 'skills:changed',
+  /** main → every window: a dropped skill file waits for the settings screen to take it */
+  dropped: 'skills:dropped',
 } as const
 
 /** Stored source values (spec 10.1); never renamed */
@@ -62,6 +82,12 @@ export type UserSkillSourceValue = 'builtin' | 'app' | 'user' | 'plugin' | 'code
 export type UserSkillInvokeValue = 'auto' | 'manual'
 
 export type UserSkillUnreadable = 'no-frontmatter' | 'bad-name' | 'too-large' | 'unreadable'
+
+/**
+ * Where a skill is used, as it crosses: every editor, or editor ids
+ * (`@genoffice/agent-core/skill-editors`). Each end keeps the ids it knows.
+ */
+export type UserSkillEditorsValue = 'all' | string[]
 
 /** One skill as the screens see it (no folder paths) */
 export interface UserSkillView {
@@ -78,11 +104,15 @@ export interface UserSkillView {
   /** a builtin the person hid; it is off */
   hidden: boolean
   hasScripts: boolean
+  /** MCP servers the skill refers to (body and front matter `allowed-tools`, spec 8) */
+  mcpServers: string[]
   /** the template path inside the skill folder (`assets/...`), when the skill names one */
   template: string | undefined
   templateExists: boolean
   /** a builtin only the agent window uses */
   agentOnly: boolean
+  /** the editors the skill is used in (the person's choice, else its file); absent: every editor */
+  editors?: string[] | undefined
   unreadable: UserSkillUnreadable | undefined
   files: number
   bytes: number
@@ -115,6 +145,8 @@ export interface UserSkillContent {
   /** SKILL.md after the front matter */
   body: string
   template: string | undefined
+  /** `metadata.ieum-editors` as the file says it (known ids); absent: every editor */
+  editors?: string[] | undefined
   /** every file in the folder, `/` between parts */
   files: Array<{ rel: string; size: number }>
 }
@@ -141,6 +173,12 @@ export type UserSkillsFailReason =
   | 'name-taken'
   /** copy to mine: the name is taken; ask, then call again with `overwrite` */
   | 'exists'
+  /**
+   * A save under a name an enabled skill of another source has; `problem` names
+   * the sources (`builtin`, `user`, `codex`, `plugin:<plugin>`, joined by `,`).
+   * Ask, then call again with `turnOffSameName`.
+   */
+  | 'same-name-on'
   /** a hidden builtin cannot be turned on before it is shown again */
   | 'hidden'
   /** the template is not a document the app's editors open, or cannot be read */
@@ -151,6 +189,8 @@ export type UserSkillsFailReason =
   | 'not-allowed'
   /** a template preview's original may withhold something: it is not saved as it is */
   | 'redacted'
+  /** the asking document was never saved or has unsaved changes: it is not attached */
+  | 'unsaved'
   | 'invalid'
   | 'cancelled'
   /** another import or update is running for this window */
@@ -162,6 +202,8 @@ export type UserSkillsFailReason =
   | 'network'
   | 'unsafe'
   | 'no-skills'
+  /** pasted text whose front matter is opened and never closed */
+  | 'unclosed-frontmatter'
   | 'needs-choice'
   | 'not-installable'
   | 'invalid-source'
@@ -176,11 +218,16 @@ export type UserSkillsResult<T extends object = object> = ({ ok: true } & T) | U
 /** Settings editor: a new skill (no `id`) or an edit of one of the app's own skills */
 export interface UserSkillSaveInput {
   id?: string | undefined
+  /** `metadata.ieum-title`, in any language; empty takes the key out */
   title: string
   /** a new skill without one gets a name made from the title */
   name?: string | undefined
   description: string
   body: string
+  /** written to `metadata.ieum-editors`; absent keeps what the file has */
+  editors?: UserSkillEditorsValue | undefined
+  /** the person agreed: enabled skills of other sources with this name are turned off */
+  turnOffSameName?: boolean | undefined
 }
 
 /**
@@ -197,6 +244,7 @@ export interface UserSkillTemplateInput {
 
 /** A skill card's save (spec 5.6) */
 export interface UserSkillCardSaveInput {
+  /** `metadata.ieum-title`, in any language; empty takes the key out */
   title: string
   name: string
   description: string
@@ -207,6 +255,26 @@ export interface UserSkillCardSaveInput {
   targetId?: string | undefined
   /** replace an own skill of the same name when copying another source's skill */
   overwrite?: boolean | undefined
+  /** written to `metadata.ieum-editors`; absent keeps what the file has */
+  editors?: UserSkillEditorsValue | undefined
+  /** the person agreed: enabled skills of other sources with this name are turned off */
+  turnOffSameName?: boolean | undefined
+}
+
+/**
+ * The message key of a preview warning rule; the same values as the core's
+ * rule table (`SKILL_WARNING_RULES`), which the shell's service hands over
+ */
+export type UserSkillWarningKey =
+  'warnIgnoreInstructions' | 'warnHideFromUser' | 'warnRemoteInstructions' | 'warnParentPath'
+
+/** One line a preview points at */
+export interface UserSkillWarningView {
+  messageKey: UserSkillWarningKey
+  /** the file inside the skill folder, `/` between parts */
+  file: string
+  line: number
+  excerpt: string
 }
 
 /** One found skill of an import preview (spec 5.2) */
@@ -223,7 +291,12 @@ export interface UserSkillImportCandidateView {
   urls: string[]
   urlCount: number
   license: string | undefined
+  /** the first few lines the preview points at */
+  warnings: UserSkillWarningView[]
+  warningCount: number
   collision: boolean
+  /** its SKILL.md has nothing after the front matter (absent from an older main process) */
+  emptyBody?: boolean | undefined
   problem: UserSkillUnreadable | 'duplicate' | undefined
 }
 
@@ -233,12 +306,59 @@ export interface UserSkillImportPreview {
   origin:
     | { kind: 'folder' }
     | { kind: 'zip' }
+    | { kind: 'skill-file' }
+    | { kind: 'text' }
     | { kind: 'github'; repo: string; ref: string; commit: string; path: string }
   candidates: UserSkillImportCandidateView[]
   rootLicense: string | undefined
 }
 
+/** Most characters of one file an import preview shows; past it the text is cut and the screen says so */
+export const USER_SKILL_PREVIEW_TEXT_MAX_CHARS = 20_000
+
+/** Text an import preview shows, cut at the display limit */
+export interface UserSkillImportText {
+  text: string
+  /** the file goes on past what is shown */
+  truncated: boolean
+}
+
+/** What an import preview shows when the person opens a found skill to read it */
+export interface UserSkillImportContent {
+  /** SKILL.md after the front matter */
+  body: UserSkillImportText
+  /** the folder's other text files the preview can open, `/` between parts */
+  files: Array<{ rel: string; size: number }>
+}
+
 export type UserSkillCollisionChoice = 'replace' | 'skip'
+
+/** Why an earlier version was kept: what was about to take its place */
+export type UserSkillVersionReason = 'edit' | 'replace' | 'update' | 'restore'
+
+/** One kept earlier version of an own skill */
+export interface UserSkillVersionView {
+  /** names the version in the calls about it */
+  id: string
+  /** when it was kept (ISO 8601, UTC) */
+  at: string
+  reason: UserSkillVersionReason
+  /** the size it takes on disk */
+  bytes: number
+}
+
+/** What going back to a kept version would change in the skill as it is now */
+export interface UserSkillVersionDiff {
+  /** the kept version holds exactly what the skill holds now */
+  same: boolean
+  /**
+   * SKILL.md line by line: `added` lines come back, `removed` lines go away,
+   * `gap` stands for unchanged lines left out (its text is how many)
+   */
+  skillMd: Array<{ kind: 'same' | 'added' | 'removed' | 'gap'; text: string }>
+  /** the other files that differ, as going back would change them */
+  files: Array<{ rel: string; change: 'added' | 'removed' | 'modified' }>
+}
 
 export interface UserSkillInstallRequest {
   token: string
@@ -272,6 +392,8 @@ export interface UserSkillAiRead {
   /** the template path when the skill names one and the file is there */
   template: string | undefined
   hasScripts: boolean
+  /** MCP servers the skill refers to (body and front matter `allowed-tools`, spec 8) */
+  mcpServers: string[]
 }
 
 /** Open a template skill's copy in a new tab and hand the request over (spec 5.7) */
@@ -282,6 +404,12 @@ export interface UserSkillTemplateOpenInput {
   text: string
   /** every chip the request carried; the receiving panel reads their skills */
   chips: HandoffSkillChip[]
+  /**
+   * Bring the asking tab's document along as an attachment of the new tab.
+   * Refused with `unsaved` when that document was never saved or has unsaved
+   * changes (docs/security.md "저장하지 않은 파일은 읽지 않는다").
+   */
+  withCurrent?: boolean | undefined
 }
 
 /** Open the current document's copy in a template preview tab (spec 5.6) */
@@ -336,16 +464,34 @@ export function invokeOf(value: unknown): UserSkillInvokeValue | undefined {
   return value === 'auto' || value === 'manual' ? value : undefined
 }
 
-/** A state change: on/off and when it is used; nothing else */
-export function statePatchOf(
-  value: unknown,
-): { enabled?: boolean; invoke?: UserSkillInvokeValue } | undefined {
+/** A where-used value: `'all'` or a short list of short ids; `null` when malformed */
+export function editorsValueOf(value: unknown): UserSkillEditorsValue | undefined | null {
+  if (value === undefined) return undefined
+  if (value === 'all') return 'all'
+  if (!Array.isArray(value) || value.length > 32) return null
+  if (!value.every((id) => typeof id === 'string' && id.length <= 32)) return null
+  return [...(value as string[])]
+}
+
+/** What a state change may set: on/off, when it is used, and where (skills the person cannot edit) */
+export interface UserSkillStatePatch {
+  enabled?: boolean
+  invoke?: UserSkillInvokeValue
+  editors?: UserSkillEditorsValue
+}
+
+/** A state change: on/off, when it is used and where; nothing else */
+export function statePatchOf(value: unknown): UserSkillStatePatch | undefined {
   if (!isRecord(value)) return undefined
-  const patch: { enabled?: boolean; invoke?: UserSkillInvokeValue } = {}
+  const patch: UserSkillStatePatch = {}
   if (typeof value.enabled === 'boolean') patch.enabled = value.enabled
   const invoke = invokeOf(value.invoke)
   if (invoke) patch.invoke = invoke
-  return patch.enabled === undefined && patch.invoke === undefined ? undefined : patch
+  const editors = editorsValueOf(value.editors)
+  if (editors) patch.editors = editors
+  return patch.enabled === undefined && patch.invoke === undefined && patch.editors === undefined
+    ? undefined
+    : patch
 }
 
 /** Longest SKILL.md body the app writes (well under the folder limit) */
@@ -361,7 +507,17 @@ export function saveInputOf(value: unknown): UserSkillSaveInput | undefined {
   if (value.id !== undefined && !id) return undefined
   const name = value.name === undefined ? undefined : text(value.name, 512)
   if (value.name !== undefined && name === undefined) return undefined
-  return { id, title, name, description, body }
+  const editors = editorsValueOf(value.editors)
+  if (editors === null) return undefined
+  return {
+    id,
+    title,
+    name,
+    description,
+    body,
+    ...(editors ? { editors } : {}),
+    ...(value.turnOffSameName === true ? { turnOffSameName: true } : {}),
+  }
 }
 
 /** Largest template a card may hand over (the folder limit) */
@@ -392,6 +548,8 @@ export function cardSaveInputOf(value: unknown): UserSkillCardSaveInput | undefi
   if (template === null) return undefined
   const targetId = value.targetId === undefined ? undefined : skillIdOf(value.targetId)
   if (value.targetId !== undefined && !targetId) return undefined
+  const editors = editorsValueOf(value.editors)
+  if (editors === null) return undefined
   return {
     title,
     name,
@@ -401,7 +559,33 @@ export function cardSaveInputOf(value: unknown): UserSkillCardSaveInput | undefi
     template,
     targetId,
     overwrite: value.overwrite === true,
+    ...(editors ? { editors } : {}),
+    ...(value.turnOffSameName === true ? { turnOffSameName: true } : {}),
   }
+}
+
+/** Longest pasted SKILL.md text a window may send (the core refuses over 2 MiB) */
+export const USER_SKILL_PASTE_MAX_CHARS = 2_000_000
+
+export function importTextOf(value: unknown): string | undefined {
+  return text(value, USER_SKILL_PASTE_MAX_CHARS)
+}
+
+/** Most skills one bundle export takes */
+export const USER_SKILL_BUNDLE_MAX = 500
+
+/** Skill identifiers for a bundle export: one or more, each once */
+export function skillIdListOf(value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || value.length === 0 || value.length > USER_SKILL_BUNDLE_MAX) {
+    return undefined
+  }
+  const ids: string[] = []
+  for (const item of value) {
+    const id = skillIdOf(item)
+    if (!id) return undefined
+    if (!ids.includes(id)) ids.push(id)
+  }
+  return ids
 }
 
 export function installRequestOf(value: unknown): UserSkillInstallRequest | undefined {
@@ -458,7 +642,12 @@ export function templateOpenInputOf(value: unknown): UserSkillTemplateOpenInput 
   const request = text(value.text, USER_SKILL_HANDOFF_TEXT_MAX)
   const chips = chipsOf(value.chips)
   if (!skillId || request === undefined || !chips) return undefined
-  return { skillId, text: request, chips }
+  return {
+    skillId,
+    text: request,
+    chips,
+    ...(value.withCurrent === true ? { withCurrent: true } : {}),
+  }
 }
 
 /** Largest plain-data proposal or draft a preview carries */

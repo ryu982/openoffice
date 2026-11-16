@@ -20,6 +20,7 @@ import { he } from './bilingual/he'
 import { hi } from './bilingual/hi'
 import { zhTW } from './bilingual/zh-TW'
 import { vi } from './bilingual/vi'
+import { tr } from './bilingual/tr'
 
 /** Copy for the side-by-side translation view (reading assistant) */
 export const bilingualStrings = defineStrings({
@@ -44,4 +45,5 @@ export const bilingualStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

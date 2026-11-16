@@ -7,7 +7,8 @@ export type ToInspector =
   | { type: 'gx:select'; sid: number | null }
   /** the rest of a multiple selection, after gx:select named its first element (a reload forgets it) */
   | { type: 'gx:selectExtra'; sids: number[] }
-  | { type: 'gx:highlight'; sids: number[] }
+  /** boxes over the elements the AI's last changes touched, in the app's mark colours */
+  | { type: 'gx:highlight'; sids: number[]; fill?: string; line?: string }
   | { type: 'gx:clearHighlight' }
   | { type: 'gx:setMode'; mode: InspectorMode }
   | { type: 'gx:beginTextEdit'; sid: number }

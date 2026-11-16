@@ -20,6 +20,7 @@ import { he } from './strings-ai-subscription/he'
 import { hi } from './strings-ai-subscription/hi'
 import { zhTW } from './strings-ai-subscription/zh-TW'
 import { vi } from './strings-ai-subscription/vi'
+import { tr } from './strings-ai-subscription/tr'
 
 /**
  * Every string of the subscription-connection parts (connect card, not-connected
@@ -49,6 +50,7 @@ export const AI_SUBSCRIPTION_STRINGS = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type AiSubscriptionStringKey = keyof typeof zh

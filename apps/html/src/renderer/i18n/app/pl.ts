@@ -46,6 +46,10 @@ export const pl = {
   saveFailedStatus: 'Zapis nie powiódł się',
   exportFailed: 'Eksport nie powiódł się',
   printFailed: 'Drukowanie nie powiodło się: {error}',
+  printRangeEmpty: 'Ten dokument ma {count} stron. Wpisz numery stron z tego zakresu.',
+  printPagesFailed: 'Nie udało się policzyć stron do wydruku: {error}',
+  printLayoutSaved: 'Zapisano rozmieszczony wynik jako PDF.',
+  printLayoutSaveFailed: 'Nie udało się zapisać pliku PDF: {error}',
   exportHtmlSkipped: 'Wyeksportowano, ale nie udało się osadzić {count} zasobów (np. {first})',
   viewPreview: 'Podgląd',
   viewSplit: 'Podzielony',
@@ -79,7 +83,8 @@ export const pl = {
   slideThumbs: 'Slajdy',
   slideThumbGo: 'Przejdź do slajdu {n}',
   previewNeedsSave: 'Względne obrazy i style pojawią się w podglądzie po zapisaniu pliku',
-  inspectHint: 'Kliknij element w podglądzie, aby go zaznaczyć; dwukrotne kliknięcie edytuje tekst',
+  inspectHint:
+    'Kliknij element w podglądzie, aby go zaznaczyć; dwukrotne kliknięcie edytuje tekst; Shift+kliknięcie lub przeciąganie z {alt} zaznacza kilka',
   nodeDynamic:
     'Ten element został utworzony przez skrypt strony i nie istnieje w źródle; edytuj przez źródło lub AI',
   nodeDynamicShort: 'wygenerowany skryptem',

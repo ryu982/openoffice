@@ -123,6 +123,7 @@ describe('the strings', () => {
     'zh',
     'en',
     'vi',
+    'tr',
     'ja',
     'ko',
     'fr',
@@ -152,7 +153,7 @@ describe('the strings', () => {
   const valueIn = (locale: string, key: string) =>
     block(locale).match(new RegExp(`\\n {4}${key}: '([^']*)'`))?.[1]
 
-  it('are in all 21 locales and translated', () => {
+  it('are in all 22 locales and translated', () => {
     for (const key of KEYS) {
       const english = valueIn('en', key)
       for (const locale of LOCALES) {

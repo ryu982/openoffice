@@ -26,6 +26,8 @@ Regels: de extensie blijft automatisch behouden; ongeldige tekens, afsluitende p
 ## Opslaan en Opslaan als
 
 - **⌘S / ctrl+S** slaat het huidige bestand op; een naamloos bestand vraagt eerst om locatie en naam.
+- In de meeste editors biedt de lijst met bestandstypen in het venster Opslaan als ook de exportformaten (PDF, afbeeldingen, andere documentformaten). Kies je er een, dan wordt alleen een kopie geschreven; het geopende document en zijn tabblad blijven bij het oorspronkelijke bestand. Afbeeldingen van meerdere pagina’s worden verdeeld over `naam-01.png`, `naam-02.png`, ….
+- **Docs**: de lijst Opslaan als biedt ook .hwp en .hwpx (Bestand ▸ Exporteren als HWP-document… doet hetzelfde). Als iets niet kan worden overgenomen, zoals opmerkingen, vergelijkingen of tekstvakken, hoort u dat voordat het bestand wordt geschreven.
 - **Opslaan als…** schrijft een nieuw bestand en laat het origineel ongemoeid; latere bewerkingen gaan naar het nieuwe bestand.
 - Elk opslaan is atomair (tijdelijk bestand + hernoemen); tussentijds afsluiten kan het bestand niet beschadigen.
 - Automatisch opslaan volgt de schakelaar van elke editor; een nieuw document zonder eigen bestand begint pas na de eerste keer opslaan (zie [Snel starten](help://getting-started)).
@@ -44,7 +46,17 @@ Regels: de extensie blijft automatisch behouden; ongeldige tekens, afsluitende p
 
 ## Afdrukken
 
-Bestand ▸ Afdrukken… in elke editor (⌘P/ctrl+P) opent het systeemvenster voor afdrukken; pdf's worden afgedrukt met de huidige paginavolgorde en draaiingen.
+Bestand ▸ Afdrukken (⌘P/ctrl+P) opent in elke editor een afdrukvenster. Docs, PDF, Sheets, Slides en Markdown hebben het onderdeel **Pagina-indeling** in hun gewone afdrukvenster, HWP in het afdrukvoorbeeld, en HTML, mindmap en diagram in een nieuw klein afdrukvenster. Kies je niets onder Pagina-indeling, dan wordt er afgedrukt zoals vroeger.
+
+- **Indeling**: kies Eén pagina per vel, Meerdere pagina's per vel (2, 4, 6, 9 of 16), Boekje (links of rechts binden), Affiche (vellen in de breedte en hoogte, overlapping, snijlijnen) of Etiketten (één pagina per etiket of dezelfde pagina op elk etiket, beginetiket, een gangbaar A4-formaat of eigen maten).
+- **Alleen oneven zijden, alleen even zijden, omgekeerde volgorde**: de zijden worden geteld na het indelen, op wat werkelijk uit de printer komt. Handig bij een printer zonder dubbelzijdig afdrukken: druk de voorkanten af, draai het papier om en druk de achterkanten af.
+- **Verkleinen tot papierformaat**: alleen pagina's die groter zijn dan het gekozen papier worden verkleind; kleinere worden niet vergroot. Sheets en Markdown gebruiken hun eigen velden voor papier en schaal.
+- **Grijstinten en beeldresolutie**: bij afdrukken met opties uit Pagina-indeling wordt elke pagina eerst een afbeelding en zo naar de printer gestuurd. Kies de resolutie uit Automatisch, 150, 300 of 600 dpi.
+- **Alleen selectie**: Docs en Markdown drukken alleen de geselecteerde tekst af, opnieuw verdeeld vanaf de eerste pagina; Slides drukt de geselecteerde dia's af en PDF de geselecteerde pagina's. Sheets drukt zoals vroeger het geselecteerde bereik af.
+- **Indelingsschets en resultaat bekijken**: de schets laat meteen zien waar elk paginanummer op het papier komt, en **Resultaat bekijken** toont wat er echt is gemaakt. Met **Ingedeeld resultaat opslaan als pdf** druk je dezelfde indeling af op een andere pc of bij een drukkerij.
+- **Afdrukvenster van het systeem**: kies voor een boekje dubbelzijdig afdrukken met omslaan over de korte kant. Laat het paginabereik en het aantal pagina's per vel in het systeemvenster zoals ze zijn.
+
+Pdf's worden afgedrukt met de huidige paginavolgorde en draaiingen.
 
 ## Waar naamloze bestanden staan
 

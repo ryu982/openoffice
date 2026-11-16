@@ -18,7 +18,10 @@ import type {
   CodexModelCatalog,
 } from '@genoffice/ai-provider/browser'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
+import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
+import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 import {
   PROJECT_FOLDER_BRIDGE_KEY,
   projectFolderBridge,
@@ -43,6 +46,8 @@ import type {
   HwpDefaultFormat,
 } from '../shared/home-api'
 import { HOME_CHANNELS } from '../shared/home-api'
+import { createInbox } from './inbox'
+import { normalizeSlidesAiFonts } from '@genoffice/ui/slides-ai-fonts'
 import { RECOVERY_LIST_CHANNELS } from '../shared/recovery-list-api'
 import type {
   RecoveryListApi,
@@ -58,6 +63,8 @@ import type {
 import { RESULT_STORE_CHANNELS } from '../shared/result-store-api'
 import { DRIVE_CHANNELS } from '../shared/drive-api'
 import type { DriveApi, DriveUiState } from '../shared/drive-api'
+import { MCP_SERVERS_CHANNELS, MCP_SERVERS_SETTINGS_KEY } from '../shared/mcp-servers-api'
+import type { McpServersApi, McpServersSettingsView } from '../shared/mcp-servers-api'
 import type { ResultStoreApi } from '../shared/result-store-api'
 import type { TabsApi, TabSummary } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
@@ -75,12 +82,29 @@ import {
   type QuickLookSettings,
 } from '../shared/quick-look-home'
 import type { QuickLookPayload } from '../shared/quick-look-api'
+import {
+  HOME_KINDS_CHANNELS,
+  normalizeHomeKinds,
+  type HomeKindsApi,
+  type HomeKindsSettings,
+} from '../shared/home-kinds'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SHELL_SUBSCRIPTION_CHANNELS,
   subscriptionLaunchResultOf,
+  subscriptionOffResultOf,
   subscriptionStatusMapOf,
 } from '../shared/subscription-api'
+
+// listened to from the start: Home subscribes only once it has mounted, and a
+// request sent before that (a skill file dropped right after launch) must
+// still open Settings
+const openSettingsInbox = createInbox<{ section: string; field?: string }>()
+ipcRenderer.on(
+  HOME_CHANNELS.openSettings,
+  (_event: IpcRendererEvent, target: { section: string; field?: string }) =>
+    openSettingsInbox.push(target),
+)
 
 const UI_LANGUAGES: readonly UiLanguage[] = [
   'zh',
@@ -104,6 +128,7 @@ const UI_LANGUAGES: readonly UiLanguage[] = [
   'hi',
   'zh-TW',
   'vi',
+  'tr',
 ]
 
 function isUiLanguage(value: unknown): value is UiLanguage {
@@ -268,6 +293,9 @@ const homeApi: HomeApi = {
   async newMindmap(opts) {
     await ipcRenderer.invoke(HOME_CHANNELS.newMindmap, opts)
   },
+  async newDiagram(opts) {
+    await ipcRenderer.invoke(HOME_CHANNELS.newDiagram, opts)
+  },
   async newHwp(opts) {
     await ipcRenderer.invoke(HOME_CHANNELS.newHwp, opts)
   },
@@ -370,9 +398,7 @@ const homeApi: HomeApi = {
     await ipcRenderer.invoke(HOME_CHANNELS.setAutoUpdateCheck, on)
   },
   onOpenSettings(handler) {
-    const listener = (_event: IpcRendererEvent, target: { section: string }) => handler(target)
-    ipcRenderer.on(HOME_CHANNELS.openSettings, listener)
-    return () => ipcRenderer.removeListener(HOME_CHANNELS.openSettings, listener)
+    return openSettingsInbox.subscribe(handler)
   },
   async getAppVersion() {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getAppVersion)
@@ -528,6 +554,17 @@ const homeApi: HomeApi = {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.setHwpDefaultFormat, format)
     return (result === 'hwpx' ? 'hwpx' : 'hwp') satisfies HwpDefaultFormat
   },
+  async getSlidesAiFonts() {
+    return normalizeSlidesAiFonts(await ipcRenderer.invoke(HOME_CHANNELS.getSlidesAiFonts), '')
+  },
+  async setSlidesAiFonts(fonts) {
+    return normalizeSlidesAiFonts(
+      await ipcRenderer.invoke(HOME_CHANNELS.setSlidesAiFonts, fonts),
+      '',
+    )
+  },
+  // the app-wide handler the docs module registers (the editors' font pickers use it too)
+  fontFamilyInfo: (families) => ipcRenderer.invoke('app:font-family-info', families),
   onThemeChanged(handler) {
     const listener = (_event: Electron.IpcRendererEvent, theme: unknown) => {
       if (theme === 'light' || theme === 'dark' || theme === 'system') handler(theme)
@@ -607,6 +644,13 @@ const homeApi: HomeApi = {
     return raw.ok === true
       ? { ok: true }
       : { ok: false, error: typeof raw.error === 'string' ? raw.error : 'Connection failed' }
+  },
+  async aiToolCapabilities() {
+    const raw: unknown = await ipcRenderer.invoke('ai:tool-capabilities')
+    const image = (raw as { imageGeneration?: { available?: unknown } } | null)?.imageGeneration
+    return typeof image?.available === 'boolean'
+      ? { imageGeneration: { available: image.available } }
+      : null
   },
   getAiMediaProviders() {
     return AI_MEDIA_PROVIDERS
@@ -718,11 +762,65 @@ const driveApi: DriveApi = {
 }
 contextBridge.exposeInMainWorld('aiOfficeDrive', driveApi)
 
+// The person's MCP servers in Settings → Integrations (user MCP spec 4). Only
+// this window gets these calls, and main answers them for this window only;
+// secrets go in and never come back (a screen sees "saved" and the last four
+// characters). The AI windows' own bridge is `aiOfficeMcpTools`, not this.
+const mcpServersApi: McpServersApi = {
+  list: () => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.list),
+  onChanged(listener) {
+    const handler = (_event: IpcRendererEvent, view: McpServersSettingsView) => listener(view)
+    ipcRenderer.on(MCP_SERVERS_CHANNELS.changed, handler)
+    return () => {
+      ipcRenderer.removeListener(MCP_SERVERS_CHANNELS.changed, handler)
+    }
+  },
+  onOpenServer(listener) {
+    const handler = (_event: IpcRendererEvent, id: unknown) => {
+      if (typeof id === 'string') listener(id)
+    }
+    ipcRenderer.on(MCP_SERVERS_CHANNELS.openServer, handler)
+    return () => {
+      ipcRenderer.removeListener(MCP_SERVERS_CHANNELS.openServer, handler)
+    }
+  },
+  parsePaste: (text) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.parsePaste, text),
+  add: (input) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.add, input),
+  edit: (id, patch) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.edit, id, patch),
+  remove: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.remove, id),
+  test: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.test, id),
+  signIn: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.signIn, id),
+  async cancelSignIn(id) {
+    await ipcRenderer.invoke(MCP_SERVERS_CHANNELS.cancelSignIn, id)
+  },
+  approveTool: (id, tool) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveTool, id, tool),
+  approveInstructions: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveInstructions, id),
+  approveLaunch: (id, planFingerprint) =>
+    ipcRenderer.invoke(MCP_SERVERS_CHANNELS.approveLaunch, id, planFingerprint),
+  setToolPermission: (id, tool, permission) =>
+    ipcRenderer.invoke(MCP_SERVERS_CHANNELS.setToolPermission, id, tool, permission),
+  setKeepResultsInside: (id, on) =>
+    ipcRenderer.invoke(MCP_SERVERS_CHANNELS.setKeepResultsInside, id, on === true),
+  setEnabled: (id, on) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.setEnabled, id, on === true),
+  markToolsSeen: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.markToolsSeen, id),
+  plannedLaunch: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.plannedLaunch, id),
+  answerRuntimeDownload: (id, download) =>
+    ipcRenderer.invoke(MCP_SERVERS_CHANNELS.answerRuntimeDownload, id, download === true),
+  retry: (id) => ipcRenderer.invoke(MCP_SERVERS_CHANNELS.retry, id),
+}
+contextBridge.exposeInMainWorld(MCP_SERVERS_SETTINGS_KEY, mcpServersApi)
+
 // the person's skills: settings → skills, the home AI question's `/` list,
 // skill reads and cards (the main process checks every request again)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // project folders (decision 0088): the home ask and the home project screen
 contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
+// the home AI question's outbound guard: the internet-tools switch and the address
+// question (decision 0062); without it the guard in the renderer blocks nothing
+contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for the home AI question: list and call approved tools
+// (the main process checks each). The home window gets no Drive bridge.
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 
 // Subscription channels are registered once for the whole app by the docs main.
 // Until that handler exists an invoke rejects; the renderer reads that as
@@ -774,6 +872,11 @@ const subscriptionApi: SubscriptionApi = {
     })
     const raw = (result ?? {}) as { ok?: unknown; statuses?: unknown }
     return { ok: raw.ok === true, statuses: subscriptionStatusMapOf(raw.statuses) }
+  },
+  async setSubscriptionOff(provider, off) {
+    return subscriptionOffResultOf(
+      await ipcRenderer.invoke(SUBSCRIPTION_IPC_CHANNELS.off, { provider, off }),
+    )
   },
   async codexImageAvailable() {
     return (await ipcRenderer.invoke(SUBSCRIPTION_IPC_CHANNELS.codexImage)) === true
@@ -952,6 +1055,26 @@ const quickLookHomeApi: QuickLookHomeApi = {
   },
 }
 contextBridge.exposeInMainWorld('aiOfficeQuickLookHome', quickLookHomeApi)
+
+// Which new-document entries home lists (Settings → General)
+const homeKindsApi: HomeKindsApi = {
+  async get() {
+    return normalizeHomeKinds(await ipcRenderer.invoke(HOME_KINDS_CHANNELS.get))
+  },
+  async set(settings: HomeKindsSettings) {
+    return normalizeHomeKinds(await ipcRenderer.invoke(HOME_KINDS_CHANNELS.set, settings))
+  },
+  onChanged(handler) {
+    const listener = (_event: IpcRendererEvent, raw: unknown) => handler(normalizeHomeKinds(raw))
+    ipcRenderer.on(HOME_KINDS_CHANNELS.changed, listener)
+    return () => ipcRenderer.removeListener(HOME_KINDS_CHANNELS.changed, listener)
+  },
+}
+contextBridge.exposeInMainWorld('aiOfficeHomeKinds', homeKindsApi)
+
+// Which editors are on and whether AI is on; the running AI job count and "stop all"
+// (EditorChoiceApi in ../shared/editor-choice)
+contextBridge.exposeInMainWorld(APP_CHOICE_BRIDGE_KEY, appChoiceBridge())
 
 // Home's launch recovery list (crash recovery spec 6): the rows the main
 // process asks about at launch, and the user's choices back

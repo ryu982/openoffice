@@ -505,6 +505,7 @@ describe('AiPanel under the subscription contract', () => {
     const request = withoutHandler.requests[0]!
     expect(request.tools.map((tool) => tool.name)).not.toContain('generate_image')
     expect(request.system).toContain('generate_image is currently unavailable')
+    expect(request.system).toContain('Codex program signed in with the same ChatGPT account')
   })
 
   it('names the product, not the upstream project, in the system prompt', async () => {

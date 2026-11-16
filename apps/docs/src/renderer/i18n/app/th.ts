@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const th = {
+  appLegacyDocImported:
+    'เปิดไฟล์ .{ext} เป็นสำเนา .docx ที่แปลงแล้ว ไฟล์ต้นฉบับไม่เปลี่ยนแปลง การบันทึกจะเขียนเป็นไฟล์ .docx ใหม่',
   appScTitle: 'แป้นพิมพ์ลัด',
   appScFilter: 'ค้นหาแป้นพิมพ์ลัด',
   appScNone: 'ไม่พบแป้นพิมพ์ลัดที่ตรงกัน',
@@ -52,6 +54,7 @@ export const th = {
   appFontsMissing: 'ไม่มีแบบอักษรของเอกสาร: {names} (แสดงด้วยแบบอักษรทดแทน)',
   appVerticalTextNotice: 'เอกสารนี้มีข้อความแนวตั้ง (แสดงเป็นแนวนอนชั่วคราว ไม่มีผลต่อการบันทึก)',
   appNewDocCreated: 'สร้างเอกสารเปล่าแล้ว อธิบายเนื้อหาที่ต้องการสร้างได้ในแผง AI ทางซ้าย',
+  appNewDocCreatedNoAi: 'สร้างเอกสารเปล่าแล้ว',
   appNewFailed: 'สร้างเอกสารไม่สำเร็จ: {error}',
   appSaveFailed: 'บันทึกไม่สำเร็จ: {error}',
   appAutoSavedAt: 'บันทึกอัตโนมัติแล้ว ({time})',
@@ -93,6 +96,9 @@ export const th = {
   appPrintRangeAll: 'ทุกหน้า',
   appPrintRangeCurrent: 'หน้าปัจจุบัน',
   appPrintRangeCustom: 'ช่วงที่กำหนดเอง',
+  appPrintRangeSelection: 'ส่วนที่เลือก',
+  appPrintSelectionPreparing: 'กำลังจัดหน้าส่วนที่เลือก…',
+  appPrintSelectionFailed: 'จัดหน้าส่วนที่เลือกไม่ได้: {error}',
   appPrintRangeHint: 'เช่น 1,3,5-8',
   appPrintPageCount: 'ทั้งหมด {n} หน้า',
   appPrintNoPages: 'ไม่มีหน้าที่จะพิมพ์',
@@ -348,6 +354,9 @@ export const th = {
   appAiBadgeTip: 'ใช้ AI',
   appTranslate: 'แปล',
   appTranslateTo: 'แปลเป็น{lang}',
+  appEasyWords: 'อธิบายด้วยคำง่าย ๆ',
+  appEasyWordsPrompt:
+    'อธิบายข้อความที่เลือกเป็นภาษาไทยให้คนที่ต้องการข้อความอ่านง่าย (เด็ก ผู้สูงอายุ และผู้ที่กำลังเรียนภาษาไทย) เข้าใจได้ ใช้คำที่ใช้ในชีวิตประจำวันและประโยคสั้น ๆ คงข้อเท็จจริง ตัวเลข และเงื่อนไขไว้ทั้งหมด และอย่าแก้ไขเอกสาร: "{text}"',
   redactMenuLabel: 'ซ่อนส่วนที่เลือกจาก AI',
   redactDialogDesc:
     'ข้อความยังอยู่ในเอกสารและไฟล์ แต่ AI จะเห็นเพียงตัวแทนด้านล่าง ตั้งชื่อเพื่อให้ AI รู้ว่าแทนอะไร',
@@ -378,6 +387,7 @@ export const th = {
   appLangHindi: 'ภาษาฮินดี',
   appLangTraditionalChinese: 'ภาษาจีนตัวเต็ม',
   appLangVietnamese: 'ภาษาเวียดนาม',
+  appLangTurkish: 'ตุรกี',
   appWrapTextMenu: 'ตัดข้อความ',
   appViewImage: 'ดูรูปภาพ',
   appSaveImageAs: 'บันทึกรูปภาพเป็น…',
@@ -576,4 +586,9 @@ export const th = {
   appMergeSourceLoaded: 'โหลด {name} แล้ว ({n} ระเบียน)',
   appMergeWritten: 'เขียนเอกสารแล้ว {n} ฉบับ',
   appMergeNothingToWrite: 'ไม่มีเอกสารให้เขียน',
+  appExportingHwp: 'กำลังส่งออกเอกสาร HWP…',
+  appExportedHwp: 'ส่งออกเอกสาร HWP แล้ว: {path}',
+  appExportHwpFailed: 'ส่งออก HWP ไม่สำเร็จ: {error}',
+  appExportHwpCanceled: 'ยกเลิกการส่งออก HWP แล้ว',
+  appExportHwpReadback: 'ไม่สามารถเขียนเอกสารนี้เป็น .hwp ได้อย่างถูกต้อง ลองบันทึกเป็น .hwpx',
 } satisfies Record<keyof typeof zh, string>

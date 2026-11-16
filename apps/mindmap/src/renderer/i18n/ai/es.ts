@@ -37,10 +37,6 @@ export const es = {
   aiRetry: 'Reintentar',
   aiCopyReplyTitle: 'Copiar respuesta',
   aiRegenerateTitle: 'Regenerar',
-  aiTurnsTitle: 'Deshacer un turno de la IA',
-  aiRollback: 'Revertir',
-  aiRollbackIncomplete:
-    'Parte de ese turno no se pudo deshacer: el historial de deshacer del mapa ya no llega tan atrás.',
   aiUnknownError: 'La solicitud de IA falló, reinténtalo',
   aiTimeoutError: 'La respuesta de IA agotó el tiempo',
   aiCreditsExhausted: 'Sin créditos — recarga con tu proveedor de IA',

@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const nl = {
+  appLegacyDocImported:
+    'Het .{ext}-bestand is geopend als geconverteerde .docx-kopie. Het origineel blijft ongewijzigd; opslaan schrijft een nieuw .docx-bestand.',
   appScTitle: 'Sneltoetsen',
   appScFilter: 'Sneltoets zoeken',
   appScNone: 'Geen overeenkomende sneltoetsen',
@@ -55,6 +57,7 @@ export const nl = {
     'Dit document bevat verticale tekst (voorlopig horizontaal weergegeven; opslaan wordt niet beïnvloed)',
   appNewDocCreated:
     'Leeg document gemaakt. Beschrijf in het AI-paneel links wat er gegenereerd moet worden.',
+  appNewDocCreatedNoAi: 'Leeg document gemaakt.',
   appNewFailed: 'Document maken mislukt: {error}',
   appSaveFailed: 'Opslaan mislukt: {error}',
   appAutoSavedAt: 'Automatisch opgeslagen ({time})',
@@ -97,6 +100,9 @@ export const nl = {
   appPrintRangeAll: "Alle pagina's",
   appPrintRangeCurrent: 'Huidige pagina',
   appPrintRangeCustom: 'Aangepast bereik',
+  appPrintRangeSelection: 'Selectie',
+  appPrintSelectionPreparing: 'Selectie wordt over pagina’s verdeeld…',
+  appPrintSelectionFailed: 'Kan de selectie niet over pagina’s verdelen: {error}',
   appPrintRangeHint: 'bijv. 1,3,5-8',
   appPrintPageCount: "{n} pagina's",
   appPrintNoPages: "Geen pagina's om af te drukken",
@@ -360,6 +366,9 @@ export const nl = {
   appAiBadgeTip: 'Gebruikt AI',
   appTranslate: 'Vertalen',
   appTranslateTo: 'Vertalen naar {lang}',
+  appEasyWords: 'Uitleggen in eenvoudige woorden',
+  appEasyWordsPrompt:
+    'Leg de geselecteerde tekst in het Nederlands uit, zodat ook mensen die eenvoudige taal nodig hebben hem begrijpen (kinderen, ouderen, mensen die Nederlands leren). Gebruik alledaagse woorden en korte zinnen, en laat alle feiten, getallen en voorwaarden staan. Wijzig het document niet: "{text}"',
   redactMenuLabel: 'Selectie verbergen voor de AI',
   redactDialogDesc:
     'De woorden blijven in het document en het bestand; het model ziet alleen de placeholder. Geef hem een naam.',
@@ -390,6 +399,7 @@ export const nl = {
   appLangHindi: 'Hindi',
   appLangTraditionalChinese: 'Traditioneel Chinees',
   appLangVietnamese: 'Vietnamees',
+  appLangTurkish: 'Turks',
   appWrapTextMenu: 'Tekstterugloop',
   appViewImage: 'Afbeelding bekijken',
   appSaveImageAs: 'Afbeelding opslaan als…',
@@ -593,4 +603,10 @@ export const nl = {
   appMergeSourceLoaded: '{name} geladen ({n} records)',
   appMergeWritten: '{n} documenten geschreven',
   appMergeNothingToWrite: 'Er is niets te schrijven',
+  appExportingHwp: 'HWP-document exporteren…',
+  appExportedHwp: 'HWP-document geëxporteerd: {path}',
+  appExportHwpFailed: 'HWP-export mislukt: {error}',
+  appExportHwpCanceled: 'HWP-export geannuleerd',
+  appExportHwpReadback:
+    'Dit document kon niet exact als .hwp worden geschreven. Sla het op als .hwpx.',
 } satisfies Record<keyof typeof zh, string>

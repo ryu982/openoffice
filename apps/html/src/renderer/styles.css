@@ -4,7 +4,6 @@
   --accent-soft: rgba(35, 36, 37, 0.1);
   /* document surface: a page without its own background is white in every browser, so the theme never repaints it */
   --preview-page-bg: #ffffff;
-  --hx-ai-changed: rgb(255 213 79 / 40%);
   --hx-ai-anchor-bg: rgb(80 128 220 / 14%);
   --hx-ai-anchor-line: #5080dc;
   --hx-on-accent: #ffffff;
@@ -37,7 +36,6 @@
 }
 
 [data-theme='dark'] {
-  --hx-ai-changed: rgb(255 213 79 / 28%);
   --hx-ai-anchor-bg: rgb(96 148 240 / 22%);
   --hx-ai-anchor-line: #6a9aec;
   --hx-on-accent: #ffffff;
@@ -74,7 +72,6 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --hx-ai-changed: rgb(255 213 79 / 28%);
     --hx-ai-anchor-bg: rgb(96 148 240 / 22%);
     --hx-ai-anchor-line: #6a9aec;
     --hx-on-accent: #ffffff;
@@ -384,12 +381,6 @@ html.genoffice-popover-open .ribbon-tabs {
   min-height: 0;
 }
 
-/* ---- AI change highlight in the source pane ---- */
-
-.cm-ai-changed {
-  background: var(--hx-ai-changed);
-}
-
 /* ---- workspace ---- */
 
 .workspace {
@@ -577,7 +568,7 @@ html.genoffice-popover-open .ribbon-tabs {
 .redact-dialog-btn {
   padding: 6px 14px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -1468,82 +1459,6 @@ html.genoffice-popover-open .ribbon-tabs {
   transform: scale(0.98);
 }
 
-/* Version snapshots footer (same as docs) */
-.ai-versions {
-  border-top: 1px solid var(--border);
-  padding: 8px 14px 10px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.ai-versions-title {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-dim);
-  margin-bottom: 4px;
-}
-
-.ai-version-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  padding: 4px 8px;
-  margin: 0 -8px;
-  border-radius: 6px;
-}
-
-.ai-version-row:hover {
-  background: var(--hover);
-}
-
-.ai-version-label {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  color: var(--text);
-  min-width: 0;
-}
-
-.ai-version-label > :last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ai-version-time {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.ai-version-rollback {
-  flex-shrink: 0;
-  border: none;
-  background: none;
-  color: var(--word-blue);
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.ai-version-rollback:hover {
-  background: var(--active-bg);
-}
-
-.ai-version-rollback:disabled {
-  color: var(--text-dim);
-  cursor: default;
-  background: none;
-}
-
 /* blank-document intent picker: a compact card row above the composer */
 .ai-intent-bar {
   padding: 0 2px 10px;
@@ -1832,7 +1747,7 @@ html.genoffice-popover-open .ribbon-tabs {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-16);
   background: var(--color-bg-page);
-  box-shadow: 0 6px 30px var(--hx-shadow-soft);
+  box-shadow: 0 1px 3px var(--hx-shadow-soft);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -1951,14 +1866,6 @@ html.genoffice-popover-open .ribbon-tabs {
 }
 
 /* ---- main layout: AI dock (left) + editor ---- */
-
-/* ---- transient AI-change highlight ---- */
-
-.doc-editor .ai-changed {
-  background: var(--hx-ai-changed);
-  border-radius: 2px;
-  transition: background 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 /* ---- selection scope chip in the AI composer header ---- */
 
@@ -2386,7 +2293,10 @@ html.genoffice-popover-open .ribbon-tabs {
 }
 
 .crumbs-empty {
+  display: block;
   font-family: inherit;
+  line-height: 22px;
+  text-overflow: ellipsis;
 }
 
 .crumb-wrap {
@@ -3571,10 +3481,8 @@ html.genoffice-popover-open .ribbon-tabs {
 }
 
 .hx-panel-section {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 

@@ -97,7 +97,7 @@ export async function createWikiNote(
     .split(/[\\/]/)
     .filter((segment) => segment !== '' && segment !== '.')
     .map(sanitizeSegment)
-  if (segments.some(isReservedSegment)) return null
+  if (segments.length === 0 || segments.some(isReservedSegment)) return null
   const base = segments[segments.length - 1]!
   // resolution's own candidate rule, mirrored exactly: an extension is the
   // file as written, a bare stem stands for `<stem>.md`

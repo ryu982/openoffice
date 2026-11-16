@@ -42,6 +42,7 @@ Nhấp chuột phải ở bất kỳ đâu trong nội dung — menu đi theo th
 - **Bảng tạm**: cắt / sao chép / dán / **dán văn bản thuần**.
 - **Phông chữ, đoạn văn**: đổi họ phông và cỡ, in đậm/nghiêng/gạch chân, căn chỉnh/thụt lề/rãnh dòng mà không cần vào dải ruy-bâng.
 - **Từ đồng nghĩa**: liệt kê các từ đồng nghĩa của từ đã chọn; nhấp vào một từ để thay thế.
+- **Giải thích bằng lời dễ hiểu** (AI): gửi phần đã chọn tới bảng AI để giải thích bằng lời dễ hiểu theo ngôn ngữ giao diện, và chạy ngay. Khi không chọn gì thì mục này tắt, và phần văn bản đã ẩn khỏi AI không được gửi.
 - **Dịch** (AI): dịch phần đã chọn sang ngôn ngữ đích (tiếng Anh, Trung giản thể, Nhật, Hàn, Pháp, Đức, Tây Ban Nha, ...) qua bảng AI.
 - **Bình luận mới**: gắn một bình luận vào phần đã chọn.
 - **Chính tả** (trên một từ sai): các gợi ý thay thế, bỏ qua tất cả, thêm vào từ điển, đặt ngôn ngữ soát lỗi.
@@ -66,7 +67,7 @@ Nhấp chuột phải ở bất kỳ đâu trong nội dung — menu đi theo th
 ## AI
 
 - Nút AI trên dải ruy-bâng và bảng bên: viết lại, mở rộng, dịch, tóm tắt, các mẫu chèn bảng, cùng các chỉ dẫn tự do.
-- Mỗi lượt AI đều chụp ảnh trước; có thể quay lui từ danh sách phiên bản, và bản thân thao tác quay lui cũng có thể hoàn tác.
+- Những chỗ AI đã sửa được đánh dấu màu vàng. **Hoàn tác các thay đổi này** trên thẻ dưới câu trả lời lấy lại trọn lượt đó (các lượt sau nó cũng được lấy lại), và bản thân thao tác quay lui cũng có thể hoàn tác.
 
 ## Lưu và xuất
 
@@ -76,4 +77,4 @@ Nhấp chuột phải ở bất kỳ đâu trong nội dung — menu đi theo th
 
 ## In
 
-ctrl+P qua hộp thoại của hệ thống, trang WYSIWYG.
+ctrl+P mở cửa sổ in. Chọn máy in, số bản, in hai mặt và phạm vi (kể cả vùng đã chọn); trong **Bố cục trang** có thể chọn nhiều trang mỗi tờ, tập sách nhỏ, áp phích, nhãn, mặt lẻ hoặc chẵn và thang xám (xem [Thao tác tập tin](help://file-ops)).

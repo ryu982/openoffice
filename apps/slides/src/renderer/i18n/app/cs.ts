@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const cs = {
+  appLegacyPptImported:
+    'Soubor .ppt byl otevřen jako převedená kopie .pptx. Původní soubor zůstává beze změny; uložením vznikne nový soubor .pptx. Poznámky řečníka a animace se nepřenášejí.',
   redactMenuLabel: 'Skrýt výběr před AI',
   redactDialogDesc:
     'Vybraný obsah zůstane v dokumentu i v souboru; model uvidí jen zástupný symbol. Pojmenujte ho, aby věděl, co zastupuje.',
@@ -172,6 +174,9 @@ export const cs = {
   appPrintLandscape: 'Na šířku',
   appPrintFrame: 'Orámovat snímky',
   appPrintHidden: 'Tisknout skryté snímky',
+  appPrintRangeSelected: 'Vybrané snímky',
+  appPrintLayoutBlocked:
+    'Podklady a stránky poznámek se tisknou po jedné stránce na list. Chcete-li stránky uspořádat, zvolte Snímky na celou stránku.',
   appPrintPageCount: '{n} stránek',
   appPrintNoPages: 'Žádné snímky k tisku',
   appPrintRendering: 'Generuje se náhled…',
@@ -181,6 +186,7 @@ export const cs = {
   appCtxSendToBack: 'Přenést do pozadí',
   appCtxBringForward: 'Přenést blíž',
   appCtxSendBackward: 'Přenést dál',
+  appCtxRotate: 'Otočit',
   appCtxRotateLeft90: 'Otočit vlevo o 90°',
   appCtxRotateRight90: 'Otočit vpravo o 90°',
   appCtxFlipH: 'Překlopit vodorovně',

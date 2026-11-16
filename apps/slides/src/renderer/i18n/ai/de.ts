@@ -92,8 +92,6 @@ export const de = {
   aiStopGeneration: 'Generierung stoppen',
   aiStop: 'Stopp',
   aiSend: 'Senden',
-  aiSnapshotsTitle: 'Versionsschnappschüsse',
-  aiRollback: 'Zurücksetzen',
   aiStarterPolishTitle: 'Titel und Text dieser Folie verbessern',
   aiStarterTighten: 'Aufzählungspunkte dieser Folie prägnanter formulieren',
   aiStarterProofread: 'Die gesamte Präsentation auf Tippfehler prüfen und korrigieren',
@@ -246,6 +244,11 @@ export const de = {
   aiTplFontsNotice:
     'Die Schriftarten der Vorlage sind in dieser App enthalten. Andere Programme wie PowerPoint zeigen möglicherweise eine andere Schriftart an.',
   aiTplOpenFonts: 'Schriftartenordner öffnen',
+  aiTplFontsAuto: 'Schriftarten: KI wählt',
+  aiTplFontsOne: 'Schriftarten: {font}',
+  aiTplFontsTwo: 'Schriftarten: Titel {title}, Text {body}',
+  aiTplFontsTemplate: 'Schriftarten: die der gewählten Vorlage',
+  aiTplFontsChange: 'Ändern',
   aiTplDesc_coral:
     'Creme und Lachsorange auf fast schwarzem Grund, mit übergroßen, schmalen Überschriften.',
   aiTplDesc_blue_professional:

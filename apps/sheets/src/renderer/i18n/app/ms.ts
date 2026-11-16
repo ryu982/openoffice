@@ -462,6 +462,7 @@ export const ms = {
   appGridlinesHidden: 'Garis grid disembunyikan.',
   appGridlinesShown: 'Garis grid ditunjukkan.',
   appShowingFormulas: 'Memaparkan formula — togol sekali lagi untuk nilai.',
+  appShowingFormulasActive: 'Memaparkan formula',
   appShowingValues: 'Memaparkan nilai terkira.',
   appTraceNoFormula: 'Surih Presedens: sel aktif tiada formula.',
   appTraceNoRefs: 'Surih Presedens: formula ini tiada rujukan sel.',
@@ -555,6 +556,9 @@ export const ms = {
     'Eksport CSV memerlukan buku kerja dimuatkan sepenuhnya — tunggu pemuatan selesai.',
   appCsvExportTooLarge: 'Helaian terlalu besar untuk dieksport sebagai CSV.',
   appCsvExportCanceled: 'Eksport CSV dibatalkan.',
+  appOdsExported: '{path} dieksport.',
+  appOdsExportCanceled: 'Eksport ODS dibatalkan.',
+  appOdsExportFailed: 'Eksport ODS gagal.',
   appCsvExported: '{path} dieksport.',
   appCsvExportedActiveOnly:
     'Fail CSV hanya mengandungi satu helaian — helaian aktif “{name}” dieksport ke {path}.',
@@ -591,6 +595,10 @@ export const ms = {
     'Helaian gaya buku kerja ini kekurangan struktur asas; perubahan gaya tidak boleh disimpan.',
   appSaveErrPackageGuard:
     'Menyimpan akan mengubah struktur pakej buku kerja — dihentikan untuk melindungi fail.',
+  appSaveErrSheetNotFound:
+    'Helaian yang dirujuk oleh simpanan ini tidak ditemui dalam buku kerja — simpanan dihentikan dan fail kekal seperti asal.',
+  appSaveErrSheetNameReused:
+    'Helaian baharu menggunakan nama lama helaian yang telah dinamakan semula, jadi ia tidak boleh disimpan. Beri helaian baharu nama lain buat sementara, simpan, kemudian namakan semula. Fail kekal seperti asal.',
   appSaveErrChartUnsupported:
     'Jenis carta ini tidak menyokong suntingan itu; penyimpanan dihentikan — buat asal perubahan carta tersebut.',
   appSaveErrMoveOverlap:
@@ -699,6 +707,13 @@ export const ms = {
   appSaveAs: 'Simpan Sebagai',
   appUndo: 'Buat Asal',
   appRedo: 'Buat Semula',
+  appQuickAccessCustomize: 'Sesuaikan Bar Alat Capaian Pantas',
+  appQuickAccessHint:
+    'Tekan Alt dan nombor untuk menjalankan butang pada kedudukan itu, dikira dari kiri.',
+  appQuickAccessMoveEarlier: 'Alih ke depan',
+  appQuickAccessMoveLater: 'Alih ke belakang',
+  appQuickAccessReset: 'Tetapkan semula kepada lalai',
+  appQuickAccessFull: 'Bar alat memuatkan paling banyak 10 butang.',
   appUnsavedEditOne: '● {count} suntingan belum disimpan',
   appUnsavedEditMany: '● {count} suntingan belum disimpan',
   appSavedState: 'Disimpan',
@@ -1161,6 +1176,8 @@ export const ms = {
   appRefreshAll: 'Segar Semula Semua',
   appWorkbookNoPivot: 'Tiada Jadual Pangsi dalam buku kerja ini.',
   appRefreshAllTitle: 'Segar semula semua Jadual Pangsi',
+  appQueriesConnections: 'Pertanyaan & Sambungan',
+  appQueriesConnectionsTitle: 'Senaraikan pertanyaan dan sambungan data buku kerja',
   appErrorCheckingDetail: 'Imbas nilai ralat dalam helaian',
   appErrorsFound: '{count} ralat — di {cell}: {value}',
   appCheckingErrors: 'Mengimbas ralat di seluruh helaian…',
@@ -1558,4 +1575,8 @@ export const ms = {
   appSpellUnavailable: 'Semakan ejaan tidak tersedia dalam tetingkap ini.',
   appSpellReplaceAll: 'Ganti semua dengan "{suggestion}"',
   appSpellChangedAll: '{count} sel dengan "{word}" telah dibetulkan.',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'ODS dibuka sebagai salinan xlsx. Menyimpan akan menulis fail xlsx.',
+  appOdsFormulasDropped: 'Pada {count} formula, hanya nilainya dikekalkan.',
 } satisfies Record<keyof typeof zh, string>

@@ -23,8 +23,9 @@ describe('split-pane wiring', () => {
     expect(app.match(/useSplitPaneFocusPing\(\)/g)).toHaveLength(1)
     expect(app).toContain('useSplitPaneRole()')
     expect(app).toContain('effectiveAiPanelOpen(!aiCollapsed, paneRole)')
-    expect(app).toContain(
-      'onAiRailClick(paneRole, !aiCollapsed, (open) => setAiCollapsed(!open), requestFocus)',
+    // the call may wrap over lines (the dock sits inside the AI-on check)
+    expect(app).toMatch(
+      /onAiRailClick\(\s*paneRole,\s*!aiCollapsed,\s*\(open\) => setAiCollapsed\(!open\),\s*requestFocus,?\s*\)/,
     )
     expect(app).toContain("className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${")
     expect(app).toContain("!aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''")

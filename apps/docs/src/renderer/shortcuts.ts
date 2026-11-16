@@ -27,6 +27,8 @@ export interface ShortcutDef {
   keys: string
   /** Windows/Linux chord when it differs from a notation rewrite of `keys` */
   win?: string
+  /** runs an AI action: not listed while AI is off (Settings › Editors and AI) */
+  ai?: true
 }
 
 export const SHORTCUT_GROUPS: readonly { id: ShortcutGroupId; labelKey: StringKey }[] = [
@@ -167,7 +169,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   // ---- Review & tools ----
   { id: 'track-changes', group: 'review', labelKey: 'ribbonTrackChanges', keys: '⇧⌘E' },
   { id: 'word-count', group: 'review', labelKey: 'appWordCountTitle', keys: '⇧⌘G' },
-  { id: 'proofread', group: 'review', labelKey: 'appScProofread', keys: 'F7' },
+  { id: 'proofread', group: 'review', labelKey: 'appScProofread', keys: 'F7', ai: true },
   { id: 'update-fields', group: 'review', labelKey: 'appUpdateField', keys: 'F9' },
   { id: 'toggle-field-codes', group: 'review', labelKey: 'appToggleFieldCodes', keys: '⌥F9' },
 

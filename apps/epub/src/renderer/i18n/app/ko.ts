@@ -30,6 +30,7 @@ export const ko = {
   darkView: '어두운 보기',
   toc: '목차',
   tocEmpty: '이 책에는 목차가 없습니다',
+  sideResize: '창 너비 조절',
   statusChapter: '장 {n}/{total}',
   prevChapter: '이전 장',
   nextChapter: '다음 장',

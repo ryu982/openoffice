@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { htmlDir, htmlLang, type Lang, type Params } from '@genoffice/i18n'
 import {
   pickerSkillsOf,
+  projectPanelText,
   skillChipOf,
   skillPickerText,
   useSkillPickerInput,
@@ -33,6 +34,7 @@ import {
 import { agentText, type AgentStringKey } from '../i18n/strings-agent'
 import { agentWebText, type AgentWebStringKey } from '../i18n/strings-agent-web'
 import { agentSkillsText } from '../i18n/strings-agent-skills'
+import { agentMcpText } from '../i18n/strings-agent-mcp'
 import {
   agentProjectSkillsText,
   type AgentProjectSkillsStringKey,
@@ -47,6 +49,7 @@ import {
 import {
   agentPermissionChoices,
   agentSessionAllowLabel,
+  agentUserMcpTool,
   agentWebPermissionLabel,
   codexNetworkWarningShown,
 } from './agent-web'
@@ -62,6 +65,7 @@ import {
   type AgentLogEntry,
   type AgentLogState,
 } from './agent-log'
+import { agentStartErrorView, runErrorKey } from './start-error'
 
 const PROVIDER_LABEL: Record<AgentProvider, AgentStringKey> = {
   'claude-code': 'providerClaude',
@@ -81,9 +85,10 @@ const CONNECTION_NOTE: Partial<Record<AgentConnection, AgentStringKey>> = {
   unavailable: 'connUnavailable',
   'metered-accepted': 'connMetered',
   blocked: 'providerBlocked',
+  off: 'connOff',
 }
 const ACTION_LABEL: Record<
-  Exclude<AgentActionView['kind'], 'web-search' | 'web-fetch'>,
+  Exclude<AgentActionView['kind'], 'web-search' | 'web-fetch' | 'mcp-tool'>,
   AgentStringKey
 > = {
   read: 'actRead',
@@ -108,25 +113,6 @@ const STATUS_LABEL: Record<'running' | 'done' | 'failed' | 'denied', AgentString
   failed: 'toolFailed',
   denied: 'toolDenied',
 }
-const START_ERROR: Record<string, AgentStringKey> = {
-  'bad-folder': 'errBadFolder',
-  'not-connected': 'errNotConnected',
-  'not-accepted': 'errNotAccepted',
-  'provider-blocked': 'providerBlocked',
-}
-const RUN_ERROR: Record<string, AgentStringKey> = {
-  'unsafe-tools': 'errUnsafeTools',
-  'sandbox-unavailable': 'errSandboxUnavailable',
-  'rate-limit': 'errRateLimit',
-  'signed-out': 'errSignedOut',
-  'metered-not-accepted': 'errMetered',
-  'needs-update': 'errNeedsUpdate',
-  'not-installed': 'errNotInstalled',
-}
-
-function runErrorKey(kind: string | undefined): AgentStringKey {
-  return (kind && RUN_ERROR[kind]) || 'errGeneric'
-}
 
 /** The app's own tools that only read (`read_sheet`, `open_documents`, …), as either program names them */
 const APP_READ_TOOL = /(?:^|[:_])(?:read_[a-z]+|open_documents)$/
@@ -136,6 +122,10 @@ const APP_SKILL_TOOL = /(?:^|[:_])propose_skill(?:_install)?$/
 function actionLabel(lang: Lang, action: AgentActionView): string {
   if (action.kind === 'web-search' || action.kind === 'web-fetch') {
     return agentWebText(lang, WEB_ACTION_LABEL[action.kind])
+  }
+  // a tool of the person's MCP server, through the app's relay (user MCP spec 9)
+  if (action.kind === 'mcp-tool' || agentUserMcpTool(action)) {
+    return agentMcpText(lang, 'actMcpTool')
   }
   if (action.kind === 'app-tool' && APP_SKILL_TOOL.test(action.tool)) {
     return agentSkillsText(lang, 'actProposeSkill')
@@ -150,7 +140,7 @@ function actionLabel(lang: Lang, action: AgentActionView): string {
 
 function actionDetail(action: AgentActionView): string {
   if (action.kind === 'command') return action.command ?? ''
-  if (action.kind === 'web-search' || action.kind === 'web-fetch') {
+  if (action.kind === 'web-search' || action.kind === 'web-fetch' || action.kind === 'mcp-tool') {
     return action.target ?? action.tool
   }
   if (action.paths.length > 0) return action.paths.join(', ')
@@ -162,7 +152,7 @@ export function AgentWindow() {
   const [init, setInit] = useState<AgentInit | null>(null)
   const [prefs, setPrefs] = useState<AgentPrefs | null>(null)
   const [folder, setFolder] = useState('')
-  const [startError, setStartError] = useState<AgentStringKey | null>(null)
+  const [startError, setStartError] = useState<ReturnType<typeof agentStartErrorView> | null>(null)
   const [starting, setStarting] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [log, setLog] = useState<AgentLogState>(EMPTY_AGENT_LOG)
@@ -171,6 +161,10 @@ export function AgentWindow() {
   const [projectPrefs, setProjectPrefs] = useState<AgentProjectPrefs | null>(null)
   /** the chosen folder's own skills and whether they are on (decision 0064) */
   const [projectSkills, setProjectSkills] = useState<AgentProjectSkillsView | null>(null)
+  /** the session's MCP servers that keep received content inside, which this window cannot keep */
+  const [mcpKeepInside, setMcpKeepInside] = useState<string[]>([])
+  /** the session's instructions carry only the start of a long CLAUDE.md / AGENTS.md */
+  const [instructionsTruncated, setInstructionsTruncated] = useState(false)
   const folderRef = useRef('')
   const sessionRef = useRef<string | null>(null)
   const logEnd = useRef<HTMLDivElement | null>(null)
@@ -260,6 +254,12 @@ export function AgentWindow() {
     textareaRef: inputRef,
   })
 
+  // a program turned off or on in Settings while the window is open shows as such at once
+  useEffect(
+    () => api.onStatusesChanged(() => void api.getInit().then((value) => setInit(value))),
+    [api],
+  )
+
   // the connection check may still be running when the window opens; ask again until it settles
   const checking = init ? Object.values(init.connections).includes('checking') : false
   useEffect(() => {
@@ -335,12 +335,21 @@ export function AgentWindow() {
     const result = await api.start({ provider: prefs.provider, mode: prefs.mode, folder })
     setStarting(false)
     if (!result.ok) {
-      setStartError(START_ERROR[result.reason] ?? runErrorKey(result.kind))
+      setStartError(agentStartErrorView(result.failure))
+      // the main process refuses a program turned off since the window last looked as not
+      // connected: look again, so the choice and the message say it is off in this app
+      if (result.failure.reason === 'not-connected') {
+        const fresh = await api.getInit()
+        setInit(fresh)
+        if (fresh.connections[prefs.provider] === 'off') setStartError({ key: 'errOffInApp' })
+      }
       return
     }
     sessionRef.current = result.sessionId
     setSessionId(result.sessionId)
     setSessionSkills(result.skills ?? [])
+    setMcpKeepInside(result.mcpKeepInside ?? [])
+    setInstructionsTruncated((result.instructionsTruncated ?? []).length > 0)
     setChips([])
     setChipNotice(null)
     setCards({})
@@ -407,6 +416,8 @@ export function AgentWindow() {
     sessionRef.current = null
     setSessionId(null)
     setSessionSkills([])
+    setMcpKeepInside([])
+    setInstructionsTruncated(false)
     setChips([])
     setChipNotice(null)
     setLog(EMPTY_AGENT_LOG)
@@ -536,6 +547,14 @@ export function AgentWindow() {
           <div className="agent-system">
             {t('startedLine', { program: t(PROVIDER_LABEL[prefs.provider]), folder })}
           </div>
+          {instructionsTruncated ? (
+            <div className="agent-system">{projectPanelText(lang, 'instructionsTruncated')}</div>
+          ) : null}
+          {mcpKeepInside.map((server) => (
+            <div key={`keep-${server}`} className="agent-notice" role="alert">
+              {agentMcpText(lang, 'mcpKeepInsideWarning', { server })}
+            </div>
+          ))}
           <div className="agent-log">{log.entries.map(renderEntry)}</div>
           {log.pending.map((request) => (
             <div key={request.id} className="agent-perm" role="alertdialog">
@@ -547,9 +566,14 @@ export function AgentWindow() {
                     ? t('permWrite')
                     : request.action.kind === 'read'
                       ? t('permRead')
-                      : agentWebPermissionLabel(request.action)
-                        ? tw(agentWebPermissionLabel(request.action)!)
-                        : t('permOther', { tool: request.action.tool })}
+                      : request.action.kind === 'mcp-tool'
+                        ? agentMcpText(lang, 'permMcpTool', {
+                            server: request.action.server ?? '',
+                            tool: agentUserMcpTool(request.action)?.tool ?? request.action.tool,
+                          })
+                        : agentWebPermissionLabel(request.action)
+                          ? tw(agentWebPermissionLabel(request.action)!)
+                          : t('permOther', { tool: request.action.tool })}
               </span>
               <pre className="agent-perm-detail">{actionDetail(request.action)}</pre>
               {request.action.reason ? (
@@ -575,7 +599,9 @@ export function AgentWindow() {
                       type="button"
                       onClick={() => answer(request.id, true, 'session')}
                     >
-                      {tw(agentSessionAllowLabel(request.action))}
+                      {request.action.kind === 'mcp-tool'
+                        ? agentMcpText(lang, 'permAllowToolSession')
+                        : tw(agentSessionAllowLabel(request.action))}
                     </button>
                   ) : (
                     <button
@@ -844,7 +870,8 @@ export function AgentWindow() {
 
         {startError ? (
           <div className="agent-error" role="alert">
-            {t(startError)}
+            {t(startError.key)}
+            {startError.code ? <div>{t('errCode', { code: startError.code })}</div> : null}
           </div>
         ) : null}
       </div>

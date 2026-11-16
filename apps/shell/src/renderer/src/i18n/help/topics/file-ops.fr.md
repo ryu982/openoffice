@@ -26,6 +26,8 @@ Règles : l’extension est conservée automatiquement ; les caractères interdi
 ## Enregistrer et Enregistrer sous
 
 - **⌘S / ctrl+S** enregistre le fichier courant ; un fichier sans titre demande d’abord l’emplacement et le nom.
+- Dans la plupart des éditeurs, la liste des types de fichier de la boîte Enregistrer sous propose aussi les formats d’exportation (PDF, images, autres formats de document). En choisir un n’écrit qu’une copie ; le document ouvert et son onglet restent sur le fichier d’origine. Les images de plusieurs pages sont réparties en `nom-01.png`, `nom-02.png`, ….
+- **Docs** : la liste Enregistrer sous propose aussi .hwp et .hwpx (Fichier ▸ Exporter en document HWP… fait de même). Si un élément ne peut pas être repris, comme des commentaires, des équations ou des zones de texte, vous en êtes averti avant l’écriture du fichier.
 - **Enregistrer sous** écrit un nouveau fichier et laisse l’original intact ; les modifications suivantes ciblent le nouveau fichier.
 - Chaque enregistrement est atomique (fichier temporaire puis renommage) ; quitter en cours d’écriture ne peut pas corrompre le fichier.
 - L’enregistrement automatique suit le commutateur de chaque éditeur ; un nouveau document sans fichier ne commence qu’après sa première sauvegarde (voir [Démarrage rapide](help://getting-started)).
@@ -44,7 +46,17 @@ Règles : l’extension est conservée automatiquement ; les caractères interdi
 
 ## Impression
 
-Fichier ▸ Imprimer dans chaque éditeur (⌘P/ctrl+P) ouvre la boîte de dialogue d’impression du système ; les PDF s’impriment avec l’ordre de pages et les rotations courants.
+Fichier ▸ Imprimer (⌘P/ctrl+P) ouvre une fenêtre d’impression dans chaque éditeur. Docs, PDF, Sheets, Slides et Markdown ont une section **Mise en page** dans leur fenêtre d’impression habituelle, HWP dans l’aperçu avant impression, et HTML, carte mentale et diagramme dans une nouvelle petite fenêtre d’impression. Si vous ne choisissez rien dans Mise en page, l’impression se fait comme avant.
+
+- **Disposition** : choisissez Une page par feuille, Plusieurs pages par feuille (2, 4, 6, 9 ou 16), Livret (reliure à gauche ou à droite), Affiche (feuilles en largeur et en hauteur, chevauchement, lignes de coupe) ou Étiquettes (une page par étiquette ou même page sur chaque étiquette, étiquette de départ, format A4 courant ou dimensions personnalisées).
+- **Faces impaires seulement, faces paires seulement, ordre inverse** : les faces sont comptées après la disposition, sur ce qui sort réellement de l’imprimante. Utile avec une imprimante sans recto verso : imprimez les rectos, retournez le papier, puis imprimez les versos.
+- **Réduire pour tenir sur le papier** : seules les pages plus grandes que le papier choisi sont réduites ; les plus petites ne sont pas agrandies. Sheets et Markdown utilisent leurs propres réglages de papier et d’échelle.
+- **Niveaux de gris et résolution des images** : quand vous imprimez avec des options de Mise en page, chaque page est convertie en image avant d’être envoyée à l’imprimante. Choisissez la résolution parmi Automatique, 150, 300 ou 600 dpi.
+- **Sélection seulement** : Docs et Markdown impriment uniquement le texte sélectionné, remis en page à partir de la première page ; Slides imprime les diapositives sélectionnées et PDF les pages sélectionnées. Sheets imprime la plage sélectionnée comme avant.
+- **Schéma de disposition et aperçu du résultat** : le schéma montre tout de suite où chaque numéro de page tombe sur la feuille, et **Aperçu du résultat** montre ce qui a réellement été produit. **Enregistrer le résultat disposé en PDF** permet d’imprimer la même disposition sur un autre PC ou chez un imprimeur.
+- **Fenêtre d’impression du système** : pour un livret, choisissez le recto verso avec retournement sur le bord court. Laissez la plage de pages et le nombre de pages par feuille tels quels dans la fenêtre du système.
+
+Les PDF s’impriment avec l’ordre de pages et les rotations courants.
 
 ## Où vivent les fichiers sans titre
 

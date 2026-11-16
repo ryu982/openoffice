@@ -6,6 +6,8 @@ Trình soạn thảo PDF có năm thẻ ruy-bâng: **Trang chủ / Chú thích /
 
 - Thanh bên trái: **hình thu nhỏ** (nhấp để nhảy, vùng đang hiện được đánh dấu) hoặc **mục lục** (bookmark, nếu có).
 - Thu phóng: bộ điều khiển tỉ lệ ở góc dưới bên phải; ctrl+lăn chuột thay đổi từng bậc.
+- Mức thu phóng khi mở: mục **Khi mở** trên tab Xem chọn chế độ xem ban đầu của PDF mới mở: vừa chiều rộng, vừa trang, hoặc mức thu phóng từ 50% đến 200%. PDF nào bạn đã tự đổi mức thu phóng sẽ mở lại theo mức đó.
+- Di chuyển khung nhìn: bật **Công cụ bàn tay** (tab Trang chủ và Xem) rồi kéo để di chuyển trang theo mọi hướng. Khi bật, kéo sẽ không chọn chữ và nhấp thường vào liên kết vẫn mở liên kết. Kéo trong khi giữ nút giữa (con lăn) sẽ di chuyển khung nhìn mà không cần công cụ. Nhấn Esc hoặc chọn công cụ khác để tắt. Khi không chọn chữ nào, nhấn H để bật hoặc tắt.
 - Xoay: theo từng trang hoặc tất cả các trang từ menu Trang; góc xoay được ghi lại khi lưu.
 - Tìm kiếm: ctrl+F tìm trong toàn văn, tô sáng mọi kết quả.
 - PDF có mã hóa: một lời nhắc mật khẩu (một cửa sổ nhỏ riêng) mở tệp; mật khẩu chỉ dùng cho phiên làm việc này. Bạn có thể sửa và lưu tài liệu như vậy; khi lưu, mật khẩu vẫn được giữ. **Chú thích → Bảo vệ** đặt, đổi hoặc gỡ mật khẩu và những việc người đọc được phép làm.
@@ -18,7 +20,7 @@ Hãy thử trên bất kỳ đoạn nào:
 
 ![Thanh chú thích sau khi chọn văn bản](img/pdf-highlight.png)
 
-2. Chọn **Tô sáng** (ô vuông vàng mở bảng màu), **Gạch chân** hoặc **Gạch ngang**; **Hỏi AI** gửi phần đã chọn kèm câu hỏi của bạn tới bảng AI.
+2. Chọn một trong ba màu **Tô sáng**, hoặc **Gạch chân**, **Gạch sóng**, **Gạch ngang**. Để đổi một màu tô sáng, nhấp chuột phải vào màu đó rồi chọn màu mới. Sau khi gạch chân, gạch sóng hoặc gạch ngang, thanh sẽ mở một hàng màu: nhấp màu khác để đổi, và lần sau cũng dùng màu đó. **Hỏi AI** gửi phần đã chọn kèm câu hỏi của bạn tới bảng AI.
 3. Để bỏ một dấu đánh, hãy kéo chọn lại đoạn văn đó rồi nhấp nút đang bật trên thanh (một nút bật/tắt kiểu Word), hoặc chọn rồi nhấn Delete.
 
 Lưu ý:
@@ -69,6 +71,7 @@ Sáu công cụ: **Vẽ, Hình chữ nhật, Hình elip, Mũi tên, Ghi chú**, 
 ## Thao tác trang (Trang)
 
 - **Xoay / xóa / sắp xếp lại**: kéo hình thu nhỏ để đổi thứ tự; xóa sẽ hỏi xác nhận.
+- **Nhiều trang cùng lúc**: giữ Ctrl hoặc Shift và bấm vào hình thu nhỏ để chọn nhiều trang. Delete xóa các trang đó; Ctrl+C, Ctrl+X và Ctrl+V sao chép, cắt và dán. Trang đã sao chép cũng dán được vào tab PDF khác, và thao tác dán được lưu vào tệp ngay. Nếu đã đóng hình thu nhỏ, nút ở mép trái vùng trang sẽ mở lại.
 - **Nhập trang**: kéo các trang từ một tệp PDF khác vào tài liệu. **Chèn trang trắng** thêm một trang trắng.
 - **Thay thế trang** thay cả một đoạn bằng các trang từ nơi khác; **Cắt xén trang** cắt bỏ phần thừa, với tùy chọn áp dụng cho tất cả các trang.
 - **Kích thước trang** đưa mọi trang về cùng một khổ giấy; **Đảo thứ tự** lật ngược tài liệu từ cuối về đầu.
@@ -80,7 +83,9 @@ Sáu công cụ: **Vẽ, Hình chữ nhật, Hình elip, Mũi tên, Ghi chú**, 
 ## Xuất và in
 
 - **Xuất dưới dạng Word… / PowerPoint… / Excel…** trong menu Tệp, hoặc lấy đúng ba mục đó từ **Chuyển đổi PDF** trên dải ruy-bâng — tất cả đều tại máy, không tải lên. Tệp .pptx ra một slide mỗi trang và tệp .xlsx ra một bảng tính mỗi trang. Mỗi mục đều hỏi lưu ở đâu.
-- **In**: qua hộp thoại hệ thống, theo thứ tự trang và góc xoay hiện tại; có thể chọn phạm vi trang.
+- **PDF sang HWP** trong **Chuyển đổi PDF** trên ruy-băng chuyển PDF thành tài liệu HWP trong một thẻ HWP mới. Chọn **Nhập** (가져오기) trong cửa sổ nhập PDF mà thẻ hiện ra; tài liệu được tạo trong thẻ đó, và lần lưu đầu tiên sẽ hỏi nơi lưu tệp .hwp hoặc .hwpx. Tệp PDF gốc được giữ nguyên, và việc chuyển đổi chạy trên máy này. Nhập nội dung thành đoạn văn chảy theo trang hay thành hộp văn bản cố định được chọn trong tùy chọn (환경 설정) của thẻ HWP, mục nhập PDF.
+- Cũng có thể bắt đầu việc chuyển đổi này từ một thẻ HWP. Chọn một tệp PDF bằng **Tệp** ▸ **Nhập PDF…**, một thẻ HWP mới sẽ mở ra cùng cửa sổ nhập PDF như trên. Tài liệu của thẻ nơi bạn dùng trình đơn được giữ nguyên.
+- **In**: qua hộp thoại hệ thống, theo thứ tự trang và góc xoay hiện tại. Có thể in một phạm vi trang hoặc các trang đã chọn trong hình thu nhỏ, và chọn trong **Bố cục trang** nhiều trang mỗi tờ, tập sách nhỏ, thang xám và hơn thế.
 
 ## Lưu
 
@@ -127,6 +132,9 @@ Nhấn **E** hoặc **T**, hoặc các nút giải thích và dịch trong ô **
 - **Dịch trang này** (hoặc **Dịch phần còn lại** khi đã dịch một phần) gửi trang đó chỉ với một lần nhấn khi bạn dùng gói đăng ký; cạnh nút có ghi tên AI nhận. Với kết nối tính phí theo mức dùng, lần nhấn đầu tiên trong mỗi thẻ sẽ hỏi trước "sẽ tính phí cho việc này · Dịch / Hủy".
 - Bấm đúp vào một đoạn đã dịch để sửa. Đoạn đã sửa được lưu dưới dạng chữ không định dạng và được dùng nguyên như vậy trong các tệp PDF, Markdown và EPUB đã dịch. **Dịch lại** ở một đoạn chỉ gửi đoạn đó, và hỏi trước nếu bạn đã sửa nó.
 - Rê chuột lên một đoạn đã dịch, vị trí của nó trên trang gốc sẽ được viền khung. Có thể chỉnh độ rộng và cỡ chữ của cột. **Dịch tất cả các trang…** mở cửa sổ **Dịch tài liệu**; định dạng **Chỉ lưu trữ (không tạo tệp)** ở đó giữ bản dịch mà không ghi tệp.
+- Các đoạn mới dịch được nối theo từng câu. Di chuột lên một câu dịch sẽ tô câu đó trên trang gốc, và di lên một câu gốc sẽ làm sáng câu dịch tương ứng. Ở chỗ không tìm được vị trí câu trên trang, cũng như các đoạn đã dịch trước đây hoặc do bạn tự sửa, liên kết vẫn theo từng đoạn.
+- Thanh phía trên cột chuyển giữa **Bản dịch** và **Giải thích dễ hiểu**. Phần giải thích dễ hiểu viết lại văn bản bằng từ ngữ thường ngày và câu ngắn, cho trẻ em, người lớn tuổi hoặc người đang học ngôn ngữ đó; dữ kiện, con số và tên riêng được giữ nguyên. Lựa chọn được ghi nhớ, và việc chuyển đổi không gửi gì cả. Khi đang hiện phần giải thích, các nút trang, nút đoạn và việc chỉnh sửa áp dụng cho phần giải thích.
+- Ở chế độ giải thích dễ hiểu, **Giải thích mọi trang cho dễ hiểu…** mở cửa sổ **Dịch tài liệu** với kiểu **Giải thích dễ hiểu**. Phần giải thích dài hơn bản gốc nên không thể thành PDF bản dịch; nó được ghi thành Markdown hoặc EPUB. Khi bật **Bản gốc rồi đến giải thích**, sau mỗi đoạn gốc là phần giải thích của đoạn đó; khi tắt, tệp chỉ có phần giải thích. Ngôn ngữ ban đầu là ngôn ngữ giao diện và có thể trùng với ngôn ngữ của tài liệu.
 
 ## Tô sáng bằng AI
 

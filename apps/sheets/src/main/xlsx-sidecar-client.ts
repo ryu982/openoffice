@@ -1,6 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createInterface, type Interface } from 'node:readline'
 
+import type { ExternalLinksUpdateResult } from '../shared/desktop-api'
+
 const PROTOCOL_VERSION = 1
 const REQUEST_TIMEOUT_MS = 30_000
 // Archive commands stream whole workbooks; large files need more headroom.
@@ -37,6 +39,38 @@ interface SidecarResponse {
   }
 }
 
+/// The `convert_workbook` answer: how much of the source reached the new .xlsx.
+export interface WorkbookConversionResult {
+  readonly sheets: number
+  readonly cells: number
+  /// formulas the converter could not translate; those cells kept their value
+  readonly formulasDropped: number
+}
+
+/// What one ODS export could not carry. The writer reports every kind; a
+/// count of 0 means none of that kind was in the workbook.
+export interface OdsDroppedCounts {
+  readonly charts: number
+  readonly images: number
+  readonly conditionalFormats: number
+  readonly validations: number
+  readonly pivots: number
+  readonly comments: number
+  readonly macros: number
+  readonly shapes: number
+  readonly slicers: number
+  readonly sparklines: number
+}
+
+/// The `convert_to_ods` answer: the new package's size and what it left out.
+export interface OdsConversionResult {
+  readonly sheets: number
+  readonly cells: number
+  /// formulas the writer could not translate; those cells kept their value
+  readonly formulasDropped: number
+  readonly dropped: OdsDroppedCounts
+}
+
 export class XlsxSidecarClient {
   private process: ChildProcessWithoutNullStreams | null = null
   private lines: Interface | null = null
@@ -64,13 +98,21 @@ export class XlsxSidecarClient {
     for (const listener of this.exitListeners) listener()
   }
 
-  async open(path: string, locale = 'zh', shortDateFormat?: string): Promise<unknown> {
-    return this.request({
-      command: 'open',
-      path,
-      locale,
-      ...(shortDateFormat === undefined ? {} : { shortDateFormat }),
-    })
+  async open(
+    path: string,
+    locale = 'zh',
+    shortDateFormat?: string,
+    options?: { readonly timeoutMs?: number },
+  ): Promise<unknown> {
+    return this.request(
+      {
+        command: 'open',
+        path,
+        locale,
+        ...(shortDateFormat === undefined ? {} : { shortDateFormat }),
+      },
+      options?.timeoutMs,
+    )
   }
 
   async readRange(input: {
@@ -124,8 +166,60 @@ export class XlsxSidecarClient {
     return this.request({ command: 'read_media', ...input })
   }
 
-  async convertWorkbook(input: { path: string; targetPath: string }): Promise<unknown> {
-    return this.request({ command: 'convert_workbook', ...input }, ARCHIVE_TIMEOUT_MS)
+  /// Converts a legacy container (.xls) or an .ods into a fresh .xlsx. The
+  /// answer names what was carried over; an older sidecar may not report the
+  /// fields, so each falls back to 0 and the copy still opens.
+  async convertWorkbook(input: {
+    path: string
+    targetPath: string
+  }): Promise<WorkbookConversionResult> {
+    const result =
+      (await this.request<{
+        readonly sheets?: unknown
+        readonly cells?: unknown
+        readonly formulasDropped?: unknown
+      }>({ command: 'convert_workbook', ...input }, ARCHIVE_TIMEOUT_MS)) ?? {}
+    return {
+      sheets: typeof result.sheets === 'number' ? result.sheets : 0,
+      cells: typeof result.cells === 'number' ? result.cells : 0,
+      // an older sidecar does not report formulas it could not translate
+      formulasDropped: typeof result.formulasDropped === 'number' ? result.formulasDropped : 0,
+    }
+  }
+
+  /**
+   * Writes a complete new ODS package from an .xlsx. The writer translates
+   * formulas, styles and page setup itself and reports what it could not carry;
+   * an older sidecar may omit the fields, so each falls back to 0.
+   */
+  async convertToOds(input: { path: string; targetPath: string }): Promise<OdsConversionResult> {
+    const result =
+      (await this.request<{
+        readonly sheets?: unknown
+        readonly cells?: unknown
+        readonly formulasDropped?: unknown
+        readonly dropped?: unknown
+      }>({ command: 'convert_to_ods', ...input }, ARCHIVE_TIMEOUT_MS)) ?? {}
+    const dropped = (result.dropped ?? {}) as Record<string, unknown>
+    const count = (value: unknown): number => (typeof value === 'number' ? value : 0)
+    return {
+      sheets: count(result.sheets),
+      cells: count(result.cells),
+      formulasDropped: count(result.formulasDropped),
+      dropped: {
+        charts: count(dropped.charts),
+        images: count(dropped.images),
+        conditionalFormats: count(dropped.conditionalFormats),
+        validations: count(dropped.validations),
+        pivots: count(dropped.pivots),
+        comments: count(dropped.comments),
+        // absent from a sidecar built before these were counted
+        macros: count(dropped.macros),
+        shapes: count(dropped.shapes),
+        slicers: count(dropped.slicers),
+        sparklines: count(dropped.sparklines),
+      },
+    }
   }
 
   async archiveManifest(path: string): Promise<unknown> {
@@ -160,7 +254,11 @@ export class XlsxSidecarClient {
 
   /** IronCalc-backed recalculation: load the file, apply the pending edits,
    * evaluate, and return the requested cells' computed values. Fail-soft —
-   * callers keep cached values when this errors. */
+   * callers keep cached values when this errors. `reportStale` also returns
+   * the formula cells whose cached `<v>` disagrees with the engine (and the
+   * array spill cells it cannot refresh); the answer then carries
+   * `auditSkipped` instead when the engine had to decline the audit, e.g. on
+   * a `date1904` workbook. */
   async recalcCells(input: {
     readonly path: string
     readonly edits: readonly {
@@ -178,8 +276,27 @@ export class XlsxSidecarClient {
         readonly endColumn: number
       }
     }[]
+    readonly reportStale?: boolean
   }): Promise<unknown> {
     return this.request({ command: 'recalc_cells', ...input }, ARCHIVE_TIMEOUT_MS)
+  }
+
+  /** External links (genoffice#2109): list the workbook's `[n]` links with
+   * their resolved sources and, for each external-formula cell, the freshly
+   * computed value when the source is reachable — the stored formula keeps
+   * its indexed spelling, so the caller updates only the cached `<v>`. Cell
+   * `row`/`column` are 0-based in the report (IronCalc, which computes the
+   * values, addresses the same cells 1-based). */
+  async updateExternalLinks(input: { readonly path: string }): Promise<ExternalLinksUpdateResult> {
+    return this.request<ExternalLinksUpdateResult>(
+      { command: 'update_external_links', ...input },
+      ARCHIVE_TIMEOUT_MS,
+    )
+  }
+
+  /** The link list only: no source is opened, nothing is evaluated. */
+  async readExternalLinks(input: { readonly path: string }): Promise<unknown> {
+    return this.request({ command: 'read_external_links', ...input }, ARCHIVE_TIMEOUT_MS)
   }
 
   /**
@@ -229,10 +346,10 @@ export class XlsxSidecarClient {
     )
   }
 
-  private request(
+  private request<T = unknown>(
     command: Readonly<Record<string, unknown>>,
     timeoutMs: number = REQUEST_TIMEOUT_MS,
-  ): Promise<unknown> {
+  ): Promise<T> {
     const child = this.ensureStarted()
     const requestId = crypto.randomUUID()
     const payload = JSON.stringify({
@@ -254,7 +371,9 @@ export class XlsxSidecarClient {
         reject(new Error('XLSX sidecar request timed out.'))
       }, timeoutMs)
       this.pending.set(requestId, {
-        resolve,
+        // the queue erases T: the reply arrives as unknown and typed callers
+        // assert through the request<T> return type
+        resolve: resolve as (value: unknown) => void,
         reject,
         timeout,
         command: String(commandName),

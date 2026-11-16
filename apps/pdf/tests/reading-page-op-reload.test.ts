@@ -372,13 +372,19 @@ describe('the stored results follow a page operation and the next save', () => {
     const start = app.indexOf('<AiPageReading')
     const reading = app.slice(start, app.indexOf('/>', app.indexOf('languageName=', start)))
     expect(reading.includes('revision={docReloadRev}')).toBe(true)
+    // reloadWritten (the Undo step of a change written in place) reloads through loadDoc
     const migratesFirst = (block: string) => {
       const at = block.indexOf('afterPageOperation()')
-      return at > -1 && at < block.indexOf('loadDoc(')
+      const reloads = [block.indexOf('loadDoc('), block.indexOf('reloadWritten(')].filter(
+        (i) => i > -1,
+      )
+      return at > -1 && reloads.length > 0 && at < Math.min(...reloads)
     }
     const rewrite = app.slice(app.indexOf('const rewriteInPlace'), app.indexOf('const baseName'))
     expect(migratesFirst(rewrite)).toBe(true)
     const insert = app.slice(app.indexOf('const insertPdf'), app.indexOf('const insertBlankPage'))
     expect(migratesFirst(insert)).toBe(true)
+    const paste = app.slice(app.indexOf('const pastePages'), app.indexOf('const insertBlankPage'))
+    expect(migratesFirst(paste)).toBe(true)
   })
 })

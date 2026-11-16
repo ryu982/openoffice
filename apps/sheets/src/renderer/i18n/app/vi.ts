@@ -456,6 +456,7 @@ export const vi = {
   appGridlinesHidden: 'Đã ẩn đường lưới.',
   appGridlinesShown: 'Đã hiển thị đường lưới.',
   appShowingFormulas: 'Đang hiển thị công thức — chuyển đổi lại để hiển thị giá trị.',
+  appShowingFormulasActive: 'Đang hiển thị công thức',
   appShowingValues: 'Đang hiển thị giá trị đã tính toán.',
   appTraceNoFormula: 'Dò ô tiền nhiệm: ô hiện hoạt không có công thức.',
   appTraceNoRefs: 'Dò ô tiền nhiệm: công thức này không có tham chiếu ô nào.',
@@ -547,6 +548,9 @@ export const vi = {
   appCsvExportNeedsFullLoad: 'Xuất CSV cần sổ làm việc được tải đầy đủ — vui lòng đợi tải xong.',
   appCsvExportTooLarge: 'Trang tính quá lớn để xuất dưới dạng CSV.',
   appCsvExportCanceled: 'Đã hủy xuất CSV.',
+  appOdsExported: 'Đã xuất {path}.',
+  appOdsExportCanceled: 'Đã hủy xuất ODS.',
+  appOdsExportFailed: 'Xuất ODS thất bại.',
   appCsvExported: 'Đã xuất {path}.',
   appCsvExportedActiveOnly:
     'CSV chỉ chứa một trang tính đơn — đã xuất trang tính hiện hoạt "{name}" ra {path}.',
@@ -582,6 +586,10 @@ export const vi = {
     'Bảng kiểu (stylesheet) của sổ làm việc này thiếu cấu trúc cơ bản, nên các thay đổi kiểu dáng không thể lưu được.',
   appSaveErrPackageGuard:
     'Việc lưu sẽ làm thay đổi cấu trúc gói của sổ làm việc — đã hủy để bảo vệ tệp.',
+  appSaveErrSheetNotFound:
+    'Không tìm thấy trang tính mà lần lưu này tham chiếu trong sổ làm việc — đã dừng lưu và tệp vẫn giữ nguyên.',
+  appSaveErrSheetNameReused:
+    'Một trang tính mới đang dùng tên cũ của trang tính đã đổi tên, nên không thể lưu. Hãy tạm đặt tên khác cho trang tính mới, lưu, rồi đổi tên lại. Tệp vẫn giữ nguyên.',
   appSaveErrChartUnsupported:
     'Loại biểu đồ này không hỗ trợ chỉnh sửa đó; đã hủy lưu — hãy hoàn tác thay đổi biểu đồ.',
   appSaveErrMoveOverlap:
@@ -691,6 +699,12 @@ export const vi = {
   appSaveAs: 'Lưu dưới dạng',
   appUndo: 'Hoàn tác',
   appRedo: 'Làm lại',
+  appQuickAccessCustomize: 'Tùy chỉnh Thanh công cụ Truy nhập Nhanh',
+  appQuickAccessHint: 'Nhấn Alt và một phím số để chạy nút ở vị trí đó, tính từ bên trái.',
+  appQuickAccessMoveEarlier: 'Chuyển lên trước',
+  appQuickAccessMoveLater: 'Chuyển ra sau',
+  appQuickAccessReset: 'Đặt lại về mặc định',
+  appQuickAccessFull: 'Thanh công cụ chứa tối đa 10 nút.',
   appUnsavedEditOne: '● {count} chỉnh sửa chưa lưu',
   appUnsavedEditMany: '● {count} chỉnh sửa chưa lưu',
   appSavedState: 'Đã lưu',
@@ -1152,6 +1166,8 @@ export const vi = {
   appRefreshAll: 'Làm mới tất cả',
   appWorkbookNoPivot: 'Không có bảng PivotTable nào trong sổ làm việc này.',
   appRefreshAllTitle: 'Làm mới mọi bảng PivotTable',
+  appQueriesConnections: 'Truy vấn & Kết nối',
+  appQueriesConnectionsTitle: 'Liệt kê các truy vấn và kết nối dữ liệu của sổ làm việc',
   appErrorCheckingDetail: 'Quét trang tính để tìm các giá trị lỗi',
   appErrorsFound: '{count} lỗi — tại {cell}: {value}',
   appCheckingErrors: 'Đang quét toàn bộ trang tính để tìm lỗi…',
@@ -1546,4 +1562,8 @@ export const vi = {
   appSpellUnavailable: 'Kiểm tra chính tả không khả dụng trong cửa sổ này.',
   appSpellReplaceAll: 'Thay tất cả bằng "{suggestion}"',
   appSpellChangedAll: 'Đã sửa {count} ô chứa "{word}".',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'Đã mở ODS dưới dạng bản sao xlsx. Khi lưu sẽ ghi tệp xlsx.',
+  appOdsFormulasDropped: 'Chỉ giữ lại giá trị của {count} công thức.',
 } satisfies Record<keyof typeof zh, string>

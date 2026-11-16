@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const pl = {
+  appLegacyPptImported:
+    'Plik .ppt otwarto jako przekonwertowaną kopię .pptx. Oryginał pozostaje bez zmian; zapis tworzy nowy plik .pptx. Notatki prelegenta i animacje nie są przenoszone.',
   redactMenuLabel: 'Ukryj zaznaczenie przed AI',
   redactDialogDesc:
     'Zaznaczona zawartość zostaje w dokumencie i w pliku; model widzi tylko symbol. Nadaj mu nazwę, by wiedział, co oznacza.',
@@ -178,6 +180,9 @@ export const pl = {
   appPrintLandscape: 'Pozioma',
   appPrintFrame: 'Obramowanie slajdów',
   appPrintHidden: 'Drukuj ukryte slajdy',
+  appPrintRangeSelected: 'Zaznaczone slajdy',
+  appPrintLayoutBlocked:
+    'Materiały informacyjne i strony notatek drukują się po jednej stronie na arkusz. Aby rozmieścić strony, wybierz Slajdy na całej stronie.',
   appPrintPageCount: 'Stron: {n}',
   appPrintNoPages: 'Brak slajdów do wydrukowania',
   appPrintRendering: 'Generowanie podglądu…',
@@ -188,6 +193,7 @@ export const pl = {
   appCtxSendToBack: 'Przesuń na spód',
   appCtxBringForward: 'Przesuń do przodu',
   appCtxSendBackward: 'Przesuń do tyłu',
+  appCtxRotate: 'Obróć',
   appCtxRotateLeft90: 'Obróć o 90° w lewo',
   appCtxRotateRight90: 'Obróć o 90° w prawo',
   appCtxFlipH: 'Przerzuć w poziomie',

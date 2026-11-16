@@ -214,4 +214,14 @@ export const CROP_EDGE_LABELS: Record<Lang, Record<CropEdge, string>> = {
     sw: '左下邊緣',
     w: '左邊緣',
   },
+  tr: {
+    nw: 'Kuzeybatı kenarı',
+    n: 'Kuzey kenarı',
+    ne: 'Kuzeydoğu kenarı',
+    e: 'Doğu kenarı',
+    se: 'Güneydoğu kenarı',
+    s: 'Güney kenarı',
+    sw: 'Güneybatı kenarı',
+    w: 'Batı kenarı',
+  },
 }

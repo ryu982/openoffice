@@ -17,7 +17,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, readdir, rm, stat, unlink } from 'node:fs/promises'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_OPEN_BYTES,
   localFileName,
@@ -176,11 +176,16 @@ export class DriveFiles {
     return undefined
   }
 
-  /** a path inside the cache folder (anything else is never touched) */
+  /**
+   * a path inside the cache folder (anything else is never touched). Only a
+   * whole `..` step leads out, so `..x` is inside; on Windows another drive or
+   * share comes back from `relative` as an absolute path.
+   */
   inCache(path: unknown): path is string {
     if (typeof path !== 'string' || !path) return false
     const rel = relative(resolve(this.deps.cacheDir), resolve(path))
-    return Boolean(rel) && !rel.startsWith('..') && !rel.includes(`..${sep}`)
+    const up = rel === '..' || rel.startsWith(`..${sep}`) || (sep === '\\' && rel.startsWith('../'))
+    return Boolean(rel) && !up && !isAbsolute(rel)
   }
 
   private async saveIndex(): Promise<void> {
@@ -198,14 +203,17 @@ export class DriveFiles {
     }
   }
 
-  /** Copies not opened for a month and holding nothing unsent are removed */
+  /**
+   * Copies not opened for a month and holding nothing unsent are removed. A
+   * copy kept "on this PC only" holds changes Drive never got, so it stays.
+   */
   private async prune(): Promise<void> {
     const cutoff = this.now() - PRUNE_AFTER_MS
     for (const entry of [...this.entries.values()]) {
       const exists = existsSync(entry.localPath)
       const stale = entry.openedAt < cutoff && !this.deps.isOpen(entry.localPath)
       if (exists && !stale) continue
-      if (exists && (await this.localSha(entry)) !== entry.syncedSha && !entry.detached) continue
+      if (exists && (await this.localSha(entry)) !== entry.syncedSha) continue
       this.entries.delete(entry.sourceId)
       await rm(dirname(entry.localPath), { recursive: true, force: true }).catch(() => {})
     }

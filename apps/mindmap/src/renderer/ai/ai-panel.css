@@ -1,8 +1,9 @@
 /*
  * The AI panel of the mind map: the same panel language as the other editors
- * (the rules below are theirs, from the HTML editor), docked at the right of
- * the map. Chrome only: every colour is a token or one of the --mmai-
- * variables defined right here for the light, dark and system-dark themes.
+ * (the rules below are theirs, from the HTML editor), docked beside the map
+ * on the side the user chose. Chrome only: every colour is a token or one of
+ * the --mmai- variables defined right here for the light, dark and system-dark
+ * themes.
  * The map's own colours (--mm-) are document content and are not used here.
  */
 
@@ -813,82 +814,6 @@
   transform: scale(0.98);
 }
 
-/* Version snapshots footer (same as docs) */
-.ai-versions {
-  border-top: 1px solid var(--border);
-  padding: 8px 14px 10px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.ai-versions-title {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-dim);
-  margin-bottom: 4px;
-}
-
-.ai-version-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  padding: 4px 8px;
-  margin: 0 -8px;
-  border-radius: 6px;
-}
-
-.ai-version-row:hover {
-  background: var(--hover);
-}
-
-.ai-version-label {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  color: var(--text);
-  min-width: 0;
-}
-
-.ai-version-label > :last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ai-version-time {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.ai-version-rollback {
-  flex-shrink: 0;
-  border: none;
-  background: none;
-  color: var(--accent);
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.ai-version-rollback:hover {
-  background: var(--active-bg);
-}
-
-.ai-version-rollback:disabled {
-  color: var(--text-dim);
-  cursor: default;
-  background: none;
-}
-
 .ai-attach-btn {
   display: inline-flex;
   align-items: center;
@@ -1057,7 +982,7 @@
 
 .ai-attach-notice {
   margin-bottom: 7px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--mmai-error);
 }
 
@@ -1079,7 +1004,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-16);
   background: var(--color-bg-page);
-  box-shadow: 0 6px 30px var(--mmai-shadow-soft);
+  box-shadow: 0 1px 3px var(--mmai-shadow-soft);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -1191,33 +1116,28 @@
   background: var(--mmai-error-bg);
 }
 
-/* ---- the mind map's own placement: the panel sits at the right end, beside the map ---- */
+/*
+ * ---- the mind map's own placement: a card beside the map, on the side chosen in
+ * Settings → General → "AI sidebar position" (@genoffice/ui/ai-panel-prefs.css) ----
+ *
+ * The dock is the stage's last child so the theme, format and note panels keep
+ * their place at the end side. On the left (the default, and before the shell's
+ * preferences arrive) it goes before the map; on the right the shared rules put
+ * it last and move the resizer and the collapse arrow to match.
+ */
 
 .mm-stage > .ai-dock {
-  --ai-panel-border-left: 1px;
-  --ai-panel-border-right: 0px;
   border-radius: 10px;
+}
+
+html:not([data-ai-panel-side='right']) .mm-stage > .ai-dock {
+  order: -1;
 }
 
 .mm-stage > .ai-dock .copilot,
 .mm-stage > .ai-dock .ai-rail {
   border: 1px solid var(--border);
   border-radius: 10px;
-}
-
-.mm-stage .ai-panel-resizer {
-  left: 0;
-  right: auto;
-}
-
-.mm-stage .ai-panel-collapse svg {
-  transform: scaleX(-1);
-}
-
-.ai-versions-note {
-  padding: 4px 12px 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
 }
 
 /* the AI button at the far end of the toolbar */

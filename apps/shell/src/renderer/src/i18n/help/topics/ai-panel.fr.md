@@ -45,7 +45,7 @@ Dans le panneau IA des éditeurs Docs, Sheets, Slides, Hangul, HTML et carte men
 
 ## Retour arrière et sécurité
 
-- Le panneau de Docs conserve une **liste de versions**: un instantané par tour, revenez à n’importe lequel, et ce retour arrière est lui-même annulable par Ctrl+Z. Les instantanés survivent à la réouverture du document.
+- Un tour au cours duquel l’IA a modifié le document reçoit, sous sa réponse, une carte **Modifications apportées au document : N**, et les endroits modifiés sont marqués en jaune dans le document. Ces marques ne sont qu’à l’écran — elles ne sont jamais enregistrées, imprimées ni exportées — et elles disparaissent quand vous envoyez la demande suivante ou cliquez sur **Masquer les marques**. **Annuler ces modifications** défait tout le tour d’un coup. Dans Docs, Markdown, HTML, Slides, la carte mentale et le diagramme, annuler un tour antérieur annule aussi les tours qui le suivent ; dans Hangul, Sheets, PDF et EPUB, seul le dernier tour peut être annulé, et seulement si le document n’a pas été modifié depuis. Quand l’annulation n’est pas possible, utilisez l’annulation propre à l’éditeur (Ctrl+Z).
 - Les modifications de l’IA passent par le même pipeline d’édition que les modifications manuelles (annulables, soumises à l’enregistrement) — rien ne contourne votre confirmation d’enregistrement.
 
 ## Masquer une sélection à l'IA

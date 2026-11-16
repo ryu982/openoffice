@@ -214,7 +214,7 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
 
   // a document opened from Drive goes out with every AI request of its tab:
   // a free connection, which may train on it, does not get it (decision 0085)
-  setAiRunGuard(({ senderId, provider, model }) => {
+  setAiRunGuard('drive', ({ senderId, provider, model }) => {
     if (!isFreeAi(provider, model)) return null
     const path = deps.documentOf(senderId)
     return path && files.entryFor(path) ? t('freeAiDocRefusal') : null
@@ -432,7 +432,7 @@ export function registerDriveIpc(deps: DriveIpcDeps): DriveService {
       return files.open(entry.sourceId).then((r) => r.ok || deps.openPath(path))
     },
     stop() {
-      setAiRunGuard(null)
+      setAiRunGuard('drive', null)
       files.stop()
       connection.cancelConnect()
     },

@@ -13,15 +13,19 @@ import {
   type UserSkillCardSaveInput,
   type UserSkillCollisionChoice,
   type UserSkillContent,
+  type UserSkillImportContent,
   type UserSkillImportPreview,
-  type UserSkillInvokeValue,
+  type UserSkillImportText,
   type UserSkillNameProblem,
   type UserSkillPreviewEnded,
   type UserSkillPreviewInput,
   type UserSkillPreviewOutcome,
   type UserSkillSaveInput,
+  type UserSkillStatePatch,
   type UserSkillTemplateOpenInput,
   type UserSkillUpdateCheck,
+  type UserSkillVersionDiff,
+  type UserSkillVersionView,
   type UserSkillView,
   type UserSkillsResult,
 } from './user-skills-channels'
@@ -31,16 +35,17 @@ export interface UserSkillsBridge {
   list(): Promise<UserSkillView[]>
   /** a skill's text for the read-only view and the editor */
   read(id: string): Promise<UserSkillsResult<{ skill: UserSkillContent }>>
-  setState(
-    id: string,
-    patch: { enabled?: boolean; invoke?: UserSkillInvokeValue },
-  ): Promise<UserSkillsResult>
+  /** on/off, when it is used, and where (for skills the person cannot edit) */
+  setState(id: string, patch: UserSkillStatePatch): Promise<UserSkillsResult>
   /** hide a builtin (it goes off) */
   hideBuiltin(id: string): Promise<UserSkillsResult>
   /** show hidden builtins again in their initial state; all of them without names */
   unhideBuiltins(names?: string[]): Promise<UserSkillsResult>
-  /** an own skill to the OS trash */
-  remove(id: string): Promise<UserSkillsResult>
+  /**
+   * An own skill to the OS trash. `turnOn` are the off skills of other sources
+   * with the same name that the person chose to turn back on.
+   */
+  remove(id: string, turnOn?: readonly string[]): Promise<UserSkillsResult>
   /** copy a builtin or another program's skill into the app's folder and turn the original off */
   copyToMine(id: string, overwrite?: boolean): Promise<UserSkillsResult<{ id: string }>>
   /** a free name for a new skill made from its title */
@@ -57,6 +62,21 @@ export interface UserSkillsBridge {
   importFolder(): Promise<UserSkillsResult<{ preview: UserSkillImportPreview }>>
   importZip(): Promise<UserSkillsResult<{ preview: UserSkillImportPreview }>>
   importGitHub(address: string): Promise<UserSkillsResult<{ preview: UserSkillImportPreview }>>
+  /** pasted SKILL.md text, previewed as one skill */
+  importText(text: string): Promise<UserSkillsResult<{ preview: UserSkillImportPreview }>>
+  /** the next skill file dropped on a window, previewed; `null` when none waits */
+  takeDropped(): Promise<UserSkillsResult<{ preview: UserSkillImportPreview | null }>>
+  /** a previewed import's skill, opened to read: its SKILL.md body and its text files */
+  readImport(
+    token: string,
+    key: string,
+  ): Promise<UserSkillsResult<{ content: UserSkillImportContent }>>
+  /** one text file of a previewed import's skill */
+  readImportFile(
+    token: string,
+    key: string,
+    rel: string,
+  ): Promise<UserSkillsResult<{ file: UserSkillImportText }>>
   /** drop a previewed import, or stop the one running when no token is given */
   cancelImport(token?: string): Promise<void>
   install(
@@ -68,9 +88,22 @@ export interface UserSkillsBridge {
   applyUpdate(token: string): Promise<UserSkillsResult<{ id: string }>>
   cancelUpdate(token: string): Promise<void>
   /** before the save dialog: the zip name and whether a template goes in */
+  /** the earlier versions kept of an own skill, newest first */
+  versions(id: string): Promise<UserSkillsResult<{ versions: UserSkillVersionView[] }>>
+  /** what going back to a kept version would change in the skill as it is now */
+  compareVersion(
+    id: string,
+    versionId: string,
+  ): Promise<UserSkillsResult<{ diff: UserSkillVersionDiff }>>
+  /** put a kept version back; the skill as it is now is kept first */
+  restoreVersion(id: string, versionId: string): Promise<UserSkillsResult<{ id: string }>>
+  /** take one kept version away for good */
+  removeVersion(id: string, versionId: string): Promise<UserSkillsResult>
   exportInfo(id: string): Promise<UserSkillsResult<{ fileName: string; includesTemplate: boolean }>>
   /** asks where to save, then writes the zip */
   exportZip(id: string): Promise<UserSkillsResult<{ path: string }>>
+  /** asks where to save, then writes one zip with a folder per skill */
+  exportBundle(ids: string[], suggestedName?: string): Promise<UserSkillsResult<{ path: string }>>
   openFolder(id: string): Promise<UserSkillsResult>
   /** `use_skill`: an enabled skill's body and text files */
   aiRead(id: string): Promise<UserSkillsResult<{ skill: UserSkillAiRead }>>
@@ -82,7 +115,9 @@ export interface UserSkillsBridge {
   agentNotice(): Promise<boolean>
   markAgentNoticeSeen(): Promise<void>
   /** a template skill's copy in a new tab, with the request handed over (spec 5.7) */
-  openTemplate(input: UserSkillTemplateOpenInput): Promise<UserSkillsResult<{ tabId: string }>>
+  openTemplate(
+    input: UserSkillTemplateOpenInput,
+  ): Promise<UserSkillsResult<{ tabId: string; attached: boolean }>>
   /** the current document's copy in a template preview tab (spec 5.6) */
   openPreview(
     input: UserSkillPreviewInput,
@@ -105,6 +140,8 @@ export interface UserSkillsBridge {
   onPreviewEnded(listener: (ended: UserSkillPreviewEnded) => void): () => void
   /** the list or a state changed somewhere */
   onChanged(listener: () => void): () => void
+  /** a skill file was dropped on a window and waits for `takeDropped` */
+  onDropped(listener: () => void): () => void
 }
 
 const unavailable = { ok: false as const, reason: 'failed' as const }
@@ -127,7 +164,7 @@ export function userSkillsBridge(): UserSkillsBridge {
     setState: (id, patch) => result(C.setState, String(id), patch),
     hideBuiltin: (id) => result(C.hideBuiltin, String(id)),
     unhideBuiltins: (names) => result(C.unhideBuiltins, names),
-    remove: (id) => result(C.remove, String(id)),
+    remove: (id, turnOn) => result(C.remove, String(id), turnOn ? [...turnOn].map(String) : []),
     copyToMine: (id, overwrite) => result(C.copyToMine, String(id), overwrite === true),
     suggestName: async (title) => {
       const name: unknown = await ipcRenderer.invoke(C.suggestName, String(title)).catch(() => '')
@@ -152,6 +189,11 @@ export function userSkillsBridge(): UserSkillsBridge {
     importFolder: () => result(C.importFolder),
     importZip: () => result(C.importZip),
     importGitHub: (address) => result(C.importGitHub, String(address)),
+    importText: (text) => result(C.importText, String(text)),
+    takeDropped: () => result(C.takeDropped),
+    readImport: (token, key) => result(C.readImport, String(token), String(key)),
+    readImportFile: (token, key, rel) =>
+      result(C.readImportFile, String(token), String(key), String(rel)),
     cancelImport: async (token) => {
       await ipcRenderer.invoke(C.cancelImport, token).catch(() => undefined)
     },
@@ -169,8 +211,18 @@ export function userSkillsBridge(): UserSkillsBridge {
     cancelUpdate: async (token) => {
       await ipcRenderer.invoke(C.cancelUpdate, String(token)).catch(() => undefined)
     },
+    versions: (id) => result(C.versions, String(id)),
+    compareVersion: (id, versionId) => result(C.compareVersion, String(id), String(versionId)),
+    restoreVersion: (id, versionId) => result(C.restoreVersion, String(id), String(versionId)),
+    removeVersion: (id, versionId) => result(C.removeVersion, String(id), String(versionId)),
     exportInfo: (id) => result(C.exportInfo, String(id)),
     exportZip: (id) => result(C.exportZip, String(id)),
+    exportBundle: (ids, suggestedName) =>
+      result(
+        C.exportBundle,
+        ids.map(String),
+        typeof suggestedName === 'string' ? suggestedName : undefined,
+      ),
     openFolder: (id) => result(C.openFolder, String(id)),
     aiRead: (id) => result(C.aiRead, String(id)),
     aiReadFile: (id, rel) => result(C.aiReadFile, String(id), String(rel)),
@@ -212,6 +264,13 @@ export function userSkillsBridge(): UserSkillsBridge {
       ipcRenderer.on(C.changed, handler)
       return () => {
         ipcRenderer.removeListener(C.changed, handler)
+      }
+    },
+    onDropped(listener) {
+      const handler = () => listener()
+      ipcRenderer.on(C.dropped, handler)
+      return () => {
+        ipcRenderer.removeListener(C.dropped, handler)
       }
     },
   }

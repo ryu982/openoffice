@@ -77,13 +77,49 @@ export function normalizePrintRatio(ratio: number): number {
   return Math.min(Math.max(ratio, MIN_PRINT_RATIO), MAX_PRINT_RATIO)
 }
 
+/** One printed page in inches: the @page box of the print document. */
+export interface PrintPageSizeIn {
+  widthIn: number
+  heightIn: number
+}
+
+/**
+ * Page size of a layout: full slides follow the slide ratio at 7.5in high,
+ * handouts and notes are A4 (turned for landscape).
+ */
+export function printPageSizeIn(
+  ratio: number,
+  layout: PrintLayout,
+  orientation?: PrintOrientation,
+): PrintPageSizeIn {
+  if (layout === 'full') {
+    return {
+      widthIn: Math.round(normalizePrintRatio(ratio) * SLIDE_H * 1000) / 1000,
+      heightIn: SLIDE_H,
+    }
+  }
+  return orientation === 'landscape'
+    ? { widthIn: A4_H, heightIn: A4_W }
+    : { widthIn: A4_W, heightIn: A4_H }
+}
+
+/** The print document's pages in points, one entry per printed page. */
+export function printJobPageSizes(
+  slideCount: number,
+  ratio: number,
+  layout: PrintLayout,
+  orientation?: PrintOrientation,
+): Array<{ widthPt: number; heightPt: number }> {
+  const { widthIn, heightIn } = printPageSizeIn(ratio, layout, orientation)
+  const page = { widthPt: widthIn * 72, heightPt: heightIn * 72 }
+  return Array.from({ length: printPageCount(slideCount, layout) }, () => ({ ...page }))
+}
+
 export function buildPrintDocumentHtml(o: PrintDocOptions): string {
   const layout = o.layout
   const isFull = layout === 'full'
   const landscape = !isFull && o.orientation === 'landscape'
-  const slideW = Math.round(normalizePrintRatio(o.ratio) * SLIDE_H * 1000) / 1000
-  const pageW = isFull ? slideW : landscape ? A4_H : A4_W
-  const pageH = isFull ? SLIDE_H : landscape ? A4_W : A4_H
+  const { widthIn: pageW, heightIn: pageH } = printPageSizeIn(o.ratio, layout, o.orientation)
   const perPage =
     layout === 'handout2' ? 2 : layout === 'handout3' ? 3 : layout === 'handout6' ? 6 : 1
   const esc = (x: string) =>

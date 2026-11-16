@@ -18,6 +18,8 @@ export const it = {
   cardErrNeedsUpdatePath: 'File eseguito da questa app:',
   cardErrNeedsUpdateWindows:
     'Aggiornare {provider} dentro WSL (Ubuntu) o in un’altra cartella non modifica questo file. Esegui {command} in Windows PowerShell.',
+  claudeDesktopNote:
+    "L'app desktop di Claude non è Claude Code, che è ciò che questa app esegue. Claude Code è un programma separato che si usa nel terminale, quindi installare o aggiornare l'app desktop non lo modifica.",
   cardErrTimeout:
     'Il programma {provider} non ha risposto in tempo. Verifica di nuovo tra un momento.',
   cardErrFailed:
@@ -57,6 +59,8 @@ export const it = {
   errRateLimit: 'Il limite dell’abbonamento {provider} è stato raggiunto.',
   errRateLimitReset:
     'Il limite dell’abbonamento {provider} è stato raggiunto. Si azzera alle {time}.',
+  errChatGptAppLimit:
+    'Questa app ha esaurito l’utilizzo di ChatGPT a sua disposizione. Può trattarsi del limite dell’intero piano o di un limite impostato per questa app. Controlla in ChatGPT, in Impostazioni → Utilizzo.',
   errUnsafeTools:
     'Il programma {provider} è stato avviato con i propri strumenti attivi, quindi l’esecuzione è stata interrotta per sicurezza.',
   errMeteredNotAccepted:
@@ -121,7 +125,7 @@ export const it = {
   stepLogin: 'Accedi',
   stepReady: 'Connesso',
   installReturnNote:
-    'Quando l’installazione in quella finestra è finita, torna qui. L’app verifica di nuovo da sola.',
+    'Durante il download quella finestra può non mostrare nulla per qualche minuto. Lasciala aperta. Quando l’installazione è finita, torna qui. L’app verifica di nuovo da sola.',
   loginHowNote:
     'Premendo si apre un browser. Accedi con il tuo account {vendor} e premi Consenti: la connessione si completa da sola.',
   signingInStalledNote:
@@ -159,6 +163,16 @@ export const it = {
     'Nel browser si apre una pagina di accesso a ChatGPT. Accedi e consenti a questa app di usare il tuo piano ChatGPT; la connessione si completa da sola.',
   chatgptLoginUnfinishedNote:
     'L’accesso non è terminato. Premi di nuovo per ricominciare. Per collegarti devi consentire l’uso del tuo piano ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Hai effettuato l’accesso a ChatGPT, ma questa app non ha ricevuto il permesso di usare il tuo piano. Premi di nuovo e consenti l’uso del piano nella pagina di autorizzazione. Se l’hai già consentito, forse OpenAI non offre questo uso per il tuo account (per esempio uno gestito da un’azienda o da una scuola) o per il tuo piano. In quel caso puoi collegarti con il programma Codex.',
+  chatgptLoginDeniedNote:
+    'Hai effettuato l’accesso nel browser, ma OpenAI non ha accettato questo collegamento, oppure non è stato possibile verificarne la risposta. Controlla che data e ora di questo PC siano corrette, poi premi di nuovo per ricominciare.',
+  chatgptLoginNetworkNote:
+    'Non è stato possibile completare l’accesso: OpenAI non era raggiungibile oppure non si è aperto alcun browser. Controlla la connessione a Internet (compresi rete aziendale, VPN o proxy), poi premi di nuovo.',
+  chatgptLoginWorkspacePolicyNote:
+    'Questo account ChatGPT appartiene a uno spazio di lavoro gestito da un’azienda o una scuola e OpenAI non consente alle app di usare il piano ChatGPT di uno spazio di lavoro. L’amministratore dello spazio di lavoro non ha un’impostazione per consentire questa app, quindi accedere di nuovo non servirà. Accedi con un account ChatGPT personale (Go, Plus o Pro) oppure collegati dalla scheda Codex.',
+  chatgptLoginNotAllowedNote:
+    'Non hai consentito a questa app di usare il tuo piano ChatGPT, oppure il browser è tornato dall’accesso con un errore. Premi di nuovo, accedi e consenti nella pagina di autorizzazione.',
   chatgptSigningInNote:
     'Accedi con il tuo account ChatGPT nel browser che si è aperto e consenti a questa app di usare il tuo piano. La connessione si completa da sola.',
   chatgptPlanNote:
@@ -168,4 +182,18 @@ export const it = {
   browserPageDoneBody: "Puoi chiudere questa scheda e tornare all'app.",
   browserPageFailedTitle: 'Connessione non riuscita',
   browserPageFailedBody: "Torna all'app e riprova.",
+  cardOff: 'Disattivato in questa app',
+  offNote:
+    'Questa app non avvia il programma {provider} e non ne controlla lo stato. L’accesso di {provider} su questo PC e il suo uso nel terminale restano invariati.',
+  offElsewhereNote: 'Puoi riattivarlo da Impostazioni → IA.',
+  offSwitchNote:
+    '“Non usare in questa app” mantiene l’accesso di {provider} su questo PC e ferma solo questa app. Esci vale per tutto il PC.',
+  actionTurnOff: 'Non usare in questa app',
+  actionTurnOn: 'Usa di nuovo',
+  connectOffTitle: '{provider} è disattivato in questa app',
+  connectOffBody:
+    'Premi “Usa di nuovo” sulla scheda {provider} in Impostazioni → IA, oppure scegli un’altra IA.',
+  errOffInApp:
+    '{provider} è disattivato in questa app, quindi non è stato eseguito nulla. Puoi riattivarlo da Impostazioni → IA.',
+  guideBadgeOff: 'Disattivato',
 } satisfies Record<keyof typeof zh, string>

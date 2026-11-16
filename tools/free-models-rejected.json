@@ -1,15 +1,7 @@
 {
-  "thinkingmachines/inkling:free": {
-    "date": "2026-10-14",
-    "reason": "짧은 확인 403: only available on agentic harnesses"
-  },
   "cohere/north-mini-code:free": {
     "date": "2026-10-15",
     "reason": "요청 B가 모델을 계속 부르며 240초 안에 끝나지 않음"
-  },
-  "poolside/laguna-s-2.1:free": {
-    "date": "2026-10-15",
-    "reason": "요청 A: AI 서비스가 혼잡합니다 (제공 회사의 429)"
   },
   "google/gemma-4-26b-a4b-it:free": {
     "date": "2026-10-15",
@@ -23,12 +15,12 @@
     "date": "2026-10-15",
     "reason": "시험하지 않음: 2.6B로 도구 루프에 너무 작음"
   },
-  "poolside/laguna-xs-2.1:free": {
-    "date": "2026-10-15",
-    "reason": "시험하지 않음: 떨어진 laguna-s의 작은 형제 모델"
-  },
-  "thinkingmachines/inkling-small:free": {
-    "date": "2026-10-15",
+  "thinkingmachines/inkling-2-small:free": {
+    "date": "2026-11-12",
     "reason": "짧은 확인 403: only available on agentic harnesses"
+  },
+  "liquid/lfm-3-1.7b:free": {
+    "date": "2026-11-12",
+    "reason": "앱 시험: 요청을 보낸 뒤 기다린 화면이 나오지 않음(toBeVisible 실패). 1.7B로 도구 루프에 작음"
   }
 }

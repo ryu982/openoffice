@@ -1,4 +1,4 @@
-import type { SkillProposal } from '@genoffice/agent-core'
+import { SKILL_EDITORS, skillEditorsOf, type SkillProposal } from '@genoffice/agent-core'
 import type { SkillCardDraft } from './skill-card-model'
 import { skillDisplayName, type SkillChipRef, type SkillChipView } from './skill-picker-model'
 
@@ -44,7 +44,13 @@ export interface TemplateDocument {
 
 /** The calls of `window.aiOfficeUserSkills` the template flow uses */
 export interface SkillTemplateBridge {
-  openTemplate(input: { skillId: string; text: string; chips: SkillChipRef[] }): Promise<unknown>
+  openTemplate(input: {
+    skillId: string
+    text: string
+    chips: SkillChipRef[]
+    /** the asking tab's saved document goes along as the new tab's attachment */
+    withCurrent?: boolean
+  }): Promise<unknown>
   openPreview(input: {
     bytes: Uint8Array
     fileName: string
@@ -110,19 +116,31 @@ export function chipRefOf(chip: SkillChipRef): SkillChipRef {
 /** The chip of a skill the model used on its own (its identifier starts with the source) */
 export function chipRefForSkill(skill: { id: string; name: string; title: string }): SkillChipRef {
   const source = skill.id.slice(0, Math.max(0, skill.id.indexOf(':'))) || 'app'
-  const title = skillDisplayName(source === 'builtin' ? { name: skill.name } : skill)
+  const title = skillDisplayName({ name: skill.name, title: skill.title, source })
   return { id: skill.id, source, title }
 }
 
-export type TemplateOpenResult = { ok: true; tabId: string } | { ok: false; reason: string }
+export type TemplateOpenResult =
+  | {
+      ok: true
+      tabId: string
+      /** the asking document went along (false: not asked, or the editor takes no attachments) */
+      attached: boolean
+    }
+  | { ok: false; reason: string }
 
 /** An `openTemplate` answer that crossed the preload boundary */
 export function templateOpenResultOf(raw: unknown): TemplateOpenResult {
   if (isRecord(raw) && raw.ok === true && typeof raw.tabId === 'string' && raw.tabId) {
-    return { ok: true, tabId: raw.tabId }
+    return { ok: true, tabId: raw.tabId, attached: raw.attached === true }
   }
   const reason = isRecord(raw) && typeof raw.reason === 'string' ? raw.reason : 'failed'
   return { ok: false, reason }
+}
+
+/** The asking document was never saved or has unsaved changes: it cannot go along */
+export function isUnsavedCurrent(reason: string): boolean {
+  return reason === 'unsaved'
 }
 
 /** The template file is not there (deleted, or the skill went away): nothing is sent */
@@ -195,7 +213,14 @@ export function handedProposalOf(raw: unknown): SkillProposal | null {
     ) {
       return null
     }
-    target = { id: t.id, name: t.name, title: t.title, owned: t.owned === true, source: t.source }
+    target = {
+      id: t.id,
+      name: t.name,
+      title: t.title,
+      owned: t.owned === true,
+      source: t.source,
+      editors: skillEditorsOf(t.editors),
+    }
   }
   return {
     key,
@@ -204,6 +229,7 @@ export function handedProposalOf(raw: unknown): SkillProposal | null {
     description,
     body,
     wantsTemplate: true,
+    editors: skillEditorsOf(raw.editors),
     target,
   }
 }
@@ -217,6 +243,11 @@ export function handedDraftOf(raw: unknown): Partial<SkillCardDraft> | undefined
     if (typeof value === 'string') draft[field] = value
   }
   if (raw.invoke === 'auto' || raw.invoke === 'manual') draft.invoke = raw.invoke
+  if (raw.editors === 'all') draft.editors = 'all'
+  else if (Array.isArray(raw.editors)) {
+    const checked = raw.editors as unknown[]
+    draft.editors = SKILL_EDITORS.filter((id) => checked.includes(id))
+  }
   return draft
 }
 
@@ -239,6 +270,10 @@ export interface HandedRequest {
   text: string
   chips: SkillChipRef[]
   preview?: HandedPreview | undefined
+  /** the asking tab's saved document, attached before the request is sent */
+  attach?: string[] | undefined
+  /** the app's note for the model, sent with the request and not shown in the bubble */
+  note?: string | undefined
 }
 
 /** A taken hand-off as the panel reads it; null for none or a malformed one */
@@ -280,7 +315,17 @@ export function handedRequestOf(raw: unknown, target: TemplateEditor): HandedReq
       }
     }
   }
-  return { id: raw.id, text: raw.text, chips, ...(preview ? { preview } : {}) }
+  const attach = Array.isArray(raw.attach)
+    ? raw.attach.filter((p): p is string => typeof p === 'string' && p.length > 0).slice(0, 20)
+    : []
+  return {
+    id: raw.id,
+    text: raw.text,
+    chips,
+    ...(preview ? { preview } : {}),
+    ...(attach.length > 0 ? { attach } : {}),
+    ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
+  }
 }
 
 /**

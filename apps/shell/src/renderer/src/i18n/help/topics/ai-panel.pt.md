@@ -45,7 +45,7 @@ No painel de IA dos editores Docs, Sheets, Slides, Hangul, HTML e mapa mental, v
 
 ## Reversão e segurança
 
-- O painel do Docs mantém uma **lista de versões**: um instantâneo por volta, pode voltar a qualquer um deles, e a própria reversão pode ser anulada com Ctrl+Z. Os instantâneos sobrevivem a fechar e reabrir o documento.
+- Uma volta em que a IA alterou o documento ganha, abaixo da resposta, um cartão **Alterações feitas no documento: N**, e os lugares alterados ficam marcados em amarelo no documento. As marcas aparecem só na tela — nunca são salvas, impressas nem exportadas — e somem quando você envia o próximo pedido ou clica em **Ocultar marcas**. **Desfazer estas alterações** desfaz a volta inteira de uma só vez. No Docs, Markdown, HTML, Slides, mapa mental e diagrama, desfazer uma volta anterior também desfaz as voltas seguintes; no Hangul, Sheets, PDF e EPUB só é possível desfazer a última volta, e apenas se o documento não tiver sido editado depois dela. Quando não for possível, use o Desfazer do próprio editor (Ctrl+Z).
 - As edições da IA passam pelo mesmo fluxo de edição das manuais (anuláveis e sujeitas a salvamento) — nada contorna a sua confirmação de salvamento.
 
 ## Ocultar uma seleção da IA

@@ -314,9 +314,9 @@ export interface HtmlExportOptions {
   textWidthPx?: number
 }
 
-const SCREEN_ONLY_CLASSES = ['page-dark', 'show-marks', 'workspace-dark']
+const SCREEN_ONLY_CLASSES = ['page-dark', 'show-marks', 'workspace-dark', 'ai-marks']
 
-/** Screen-only ancestor classes (dark page, marks) are lifted during the synchronous walk so every theme exports the same file. */
+/** Screen-only ancestor classes (dark page, formatting and AI marks) are lifted during the synchronous walk so every theme exports the same file. */
 export function buildStandaloneHtml(root: HTMLElement, opts: HtmlExportOptions): string {
   const restore: Array<() => void> = []
   for (let el: HTMLElement | null = root; el; el = el.parentElement) {

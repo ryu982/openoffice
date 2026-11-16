@@ -34,6 +34,7 @@ import { tags } from '@lezer/highlight'
 import type { FindTarget } from '@genoffice/ui'
 import type { TextMode } from '../../shared/text-mode'
 import { buildFindTarget, findHighlight } from './plain-find'
+import { selectedSourceText } from '../print/print-content'
 
 /** Marks the load dispatch so replacing the buffer is not read back as a user edit */
 const Loaded = Annotation.define<boolean>()
@@ -47,6 +48,8 @@ export interface PlainTextEditorHandle {
   canUndo(): boolean
   canRedo(): boolean
   findTarget(): FindTarget | null
+  /** the selected characters, several ranges one per line; '' without a selection */
+  selectedText(): string
 }
 
 interface Props {
@@ -191,6 +194,7 @@ export const PlainTextEditor = forwardRef<PlainTextEditorHandle, Props>(function
     canUndo: () => (viewRef.current ? undoDepth(viewRef.current.state) > 0 : false),
     canRedo: () => (viewRef.current ? redoDepth(viewRef.current.state) > 0 : false),
     findTarget: () => findTargetRef.current,
+    selectedText: () => (viewRef.current ? selectedSourceText(viewRef.current.state) : ''),
   }))
 
   return <div ref={hostRef} className={className} />

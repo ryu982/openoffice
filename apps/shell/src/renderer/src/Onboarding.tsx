@@ -12,13 +12,19 @@ import { FreeAiCards, useAiSettings as useFreeAiSettings } from './FreeAiCards'
 import { FREE_AI_PROVIDER_NAMES } from './free-ai-cards'
 import { useI18n } from './locale'
 import {
-  ONBOARDING_CONNECT_STEP,
-  ONBOARDING_STEPS,
+  leavesPickStep,
   isLastOnboardingStep,
   nextOnboardingStep,
+  onboardingConnectStep,
+  onboardingStepIds,
   previousOnboardingStep,
 } from './onboarding-steps'
 import type { OnboardingStepId } from './onboarding-steps'
+import type { EditorChoiceApi, EditorItemId } from '../../shared/editor-choice'
+import { EditorChoiceList } from './editor-choice/EditorChoiceList'
+import { pickPatch } from './editor-choice/one-time-pick'
+import './editor-choice/globals'
+import { editorPickText } from './i18n/strings-editor-pick'
 import type { SubscriptionConnection } from './subscription-client'
 import { usableSubscriptionProviders } from './subscription-status'
 import './onboarding.css'
@@ -31,6 +37,10 @@ interface OnboardingProps {
   /** a subscription can be used and the first-connection notice was not acknowledged yet */
   noticeDue: boolean
   onNoticeAcknowledge: () => void
+  /** Settings is open above this window: the keyboard is not ours meanwhile */
+  covered?: boolean
+  /** saves the pick step's choice; the shell's bridge unless a test hands in a fake */
+  editorChoice?: Pick<EditorChoiceApi, 'set' | 'markPickSeen'>
 }
 
 /* exact vectors from the design spec:
@@ -38,6 +48,19 @@ interface OnboardingProps {
 function SlideArt({ step }: { step: OnboardingStepId }) {
   if (step === 'welcome') {
     return <img className="onb-art onb-art-logo" src={appIcon} alt="" />
+  }
+  if (step === 'pick') {
+    // four tiles: the editors to choose from
+    return (
+      <span className="onb-art onb-art-badge onb-art-pick" aria-hidden="true">
+        <svg viewBox="0 0 60 60" fill="none" stroke="currentColor" strokeWidth="4">
+          <rect x="8" y="8" width="18" height="18" rx="4" />
+          <rect x="34" y="8" width="18" height="18" rx="4" />
+          <rect x="8" y="34" width="18" height="18" rx="4" />
+          <rect x="34" y="34" width="18" height="18" rx="4" />
+        </svg>
+      </span>
+    )
   }
   if (step === 'connect') {
     // the neutral AI glyph: no vendor mark stands for the connection
@@ -69,14 +92,22 @@ export function Onboarding({
   connection,
   noticeDue,
   onNoticeAcknowledge,
+  covered = false,
+  editorChoice,
 }: OnboardingProps) {
   const { t, lang } = useI18n()
   const [index, setIndex] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  // the pick step's switches: everything on until the person changes them;
+  // saved only when the pick step is passed
+  const [off, setOff] = useState<EditorItemId[]>([])
+  const [aiOn, setAiOn] = useState(true)
   const cardRef = useRef<HTMLDivElement>(null)
-  const isLast = isLastOnboardingStep(index)
-  // the notice waits for the step that is about the connection
-  const noticeOpen = noticeDue && index >= ONBOARDING_CONNECT_STEP
+  const steps = onboardingStepIds(aiOn)
+  const isLast = isLastOnboardingStep(index, aiOn)
+  // the notice waits for the step that is about the connection (none with AI off)
+  const connectStep = onboardingConnectStep(aiOn)
+  const noticeOpen = noticeDue && connectStep >= 0 && index >= connectStep
   const freeSettings = useFreeAiSettings()
   const freeConnected = FREE_AI_PROVIDERS.some(
     (provider) => freeSettings !== null && freeAiConnected(freeSettings, provider),
@@ -90,6 +121,7 @@ export function Onboarding({
 
   const titles: Record<OnboardingStepId, string> = {
     welcome: t('onbTitle1'),
+    pick: editorPickText(lang, 'pickTitle'),
     connect: t('onbConnectTitle'),
     done: t('onbDoneTitle'),
   }
@@ -102,11 +134,39 @@ export function Onboarding({
       .finally(() => setSubmitting(false))
   }
 
+  /**
+   * Move to another step. Passing the pick step forward saves the choice and
+   * marks the picker seen first; a save that fails still moves on (the guide
+   * never traps anyone) but leaves the picker due for the next launch.
+   */
+  const goTo = (target: number) => {
+    if (submitting) return
+    if (!leavesPickStep(index, target, aiOn)) {
+      setIndex(target)
+      return
+    }
+    const api = editorChoice ?? window.aiOfficeEditorChoice
+    setSubmitting(true)
+    void (async () => {
+      try {
+        if (api) {
+          await api.set(pickPatch(off, aiOn))
+          await api.markPickSeen()
+        }
+      } catch (error) {
+        console.warn('editor choice not saved', error)
+      } finally {
+        setSubmitting(false)
+        setIndex(target)
+      }
+    })()
+  }
+
   // never waits for a connection: the connect step is left like any other
   const next = () => {
-    const target = nextOnboardingStep(index)
+    const target = nextOnboardingStep(index, aiOn)
     if (target === null) finish()
-    else setIndex(target)
+    else goTo(target)
   }
 
   // move focus into the dialog on mount so keyboard users start inside it
@@ -130,8 +190,8 @@ export function Onboarding({
   // when a button is focused so the native click doesn't double-fire.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      // the notice above owns the keyboard while it is open
-      if (noticeOpen) return
+      // the notice or the Settings dialog above owns the keyboard while it is open
+      if (noticeOpen || covered) return
       if (event.key === 'Escape') {
         finish()
         return
@@ -166,7 +226,9 @@ export function Onboarding({
       const buttonFocused =
         event.target instanceof HTMLElement && event.target.closest('button') !== null
       if ((event.key === 'Enter' && !buttonFocused) || event.key === 'ArrowRight') next()
-      if (event.key === 'ArrowLeft') setIndex((i) => previousOnboardingStep(i))
+      if (event.key === 'ArrowLeft' && !submitting) {
+        setIndex((i) => previousOnboardingStep(i, aiOn))
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -178,6 +240,22 @@ export function Onboarding({
         <>
           <p className="onb-subtitle">{t('onbWelcomeSubtitle')}</p>
           <p className="onb-body">{t('onbWelcomeBody')}</p>
+        </>
+      )
+    }
+    if (step === 'pick') {
+      return (
+        <>
+          <p className="onb-body onb-body-lead">{editorPickText(lang, 'pickBody')}</p>
+          <div className="onb-pick">
+            <EditorChoiceList
+              off={off}
+              aiFeatures={aiOn}
+              onOffChange={setOff}
+              onAiFeaturesChange={setAiOn}
+              disabled={submitting}
+            />
+          </div>
         </>
       )
     }
@@ -219,6 +297,15 @@ export function Onboarding({
         </>
       )
     }
+    if (!aiOn) {
+      // AI is off: nothing about connecting one
+      return (
+        <>
+          <p className="onb-subtitle">{editorPickText(lang, 'pickDoneAiOff')}</p>
+          <p className="onb-body onb-body-dim">{t('onbBody3')}</p>
+        </>
+      )
+    }
     return (
       <>
         <p className="onb-subtitle" data-connected={connected.length > 0}>
@@ -238,14 +325,14 @@ export function Onboarding({
       className="onb-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={titles[ONBOARDING_STEPS[index]!]}
+      aria-label={titles[steps[index] ?? 'welcome']}
     >
       <div className="onb-card" ref={cardRef} tabIndex={-1}>
         {/* all slides stay mounted, stacked in one grid cell: the card locks to
             the tallest slide's height for the language, so the footer and its
             buttons never move between steps. Inactive slides are inert. */}
         <div className="onb-stage">
-          {ONBOARDING_STEPS.map((step, i) => (
+          {steps.map((step, i) => (
             <div
               className={`onb-slide${i === index ? ' active' : ''}`}
               key={step}
@@ -261,13 +348,14 @@ export function Onboarding({
 
         <div className="onb-footer">
           <div className="onb-dots">
-            {ONBOARDING_STEPS.map((step, i) => (
+            {steps.map((step, i) => (
               <button
                 key={step}
                 className={`onb-dot${i === index ? ' active' : ''}`}
-                aria-label={t('onbStepAria', { n: i + 1, total: ONBOARDING_STEPS.length })}
+                aria-label={t('onbStepAria', { n: i + 1, total: steps.length })}
                 aria-current={i === index}
-                onClick={() => setIndex(i)}
+                disabled={submitting}
+                onClick={() => goTo(i)}
               />
             ))}
           </div>
@@ -279,7 +367,7 @@ export function Onboarding({
               <button
                 className="onb-back"
                 disabled={submitting}
-                onClick={() => setIndex(previousOnboardingStep(index))}
+                onClick={() => setIndex(previousOnboardingStep(index, aiOn))}
               >
                 {t('onbBack')}
               </button>

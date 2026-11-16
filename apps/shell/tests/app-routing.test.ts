@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { TEXT_RE, appForPath, renameStaysInApp } from '../src/main/app-routing'
+import { TEXT_RE, appForPath, documentExtension, renameStaysInApp } from '../src/main/app-routing'
 
 describe('appForPath', () => {
   it('routes the markdown app at every extension it opens', () => {
@@ -35,9 +35,61 @@ describe('appForPath', () => {
     expect(renameStaysInApp('/x/novel.epub', 'novel.zip')).toBe(false)
   })
 
+  it('routes draw.io diagrams, their pictures and a Visio drawing to the diagram app', () => {
+    for (const path of [
+      '/x/flow.drawio',
+      'C:/x/FLOW.DIO',
+      '/x/flow.drawio.svg',
+      '/x/flow.Drawio.PNG',
+      '/x/plan.vsdx',
+    ]) {
+      expect(appForPath(path), path).toBe('diagram')
+    }
+    // a plain picture is no document
+    expect(appForPath('/x/photo.svg')).toBeUndefined()
+    expect(appForPath('/x/photo.png')).toBeUndefined()
+    expect(appForPath('/x/flow.drawio.bak')).toBeUndefined()
+  })
+
+  it('names a draw.io picture by its double extension', () => {
+    expect(documentExtension('/x/flow.drawio.svg')).toBe('drawio.svg')
+    expect(documentExtension('C:\\x\\FLOW.DRAWIO.PNG')).toBe('drawio.png')
+    expect(documentExtension('/x/flow.drawio')).toBe('drawio')
+    expect(documentExtension('/x/photo.svg')).toBe('svg')
+    expect(documentExtension('/x/Report.DOCX')).toBe('docx')
+    expect(documentExtension('/x/noext')).toBe('')
+  })
+
+  it('keeps a diagram in its own form across a rename', () => {
+    expect(renameStaysInApp('/x/flow.drawio', 'flow2.drawio')).toBe(true)
+    expect(renameStaysInApp('/x/flow.drawio.svg', 'flow2.drawio.svg')).toBe(true)
+    // each form holds other bytes: XML, a picture, a Visio drawing
+    expect(renameStaysInApp('/x/flow.drawio', 'flow.drawio.svg')).toBe(false)
+    expect(renameStaysInApp('/x/flow.drawio.png', 'flow.png')).toBe(false)
+    expect(renameStaysInApp('/x/plan.vsdx', 'plan.drawio')).toBe(false)
+  })
+
+  it('routes an XMind map and a FreeMind / Freeplane map to the mind map app, each in its own form', () => {
+    expect(appForPath('/x/plan.xmind')).toBe('mindmap')
+    expect(appForPath('C:/x/PLAN.MM')).toBe('mindmap')
+    expect(appForPath('/x/plan.mmap')).toBeUndefined()
+    expect(renameStaysInApp('/x/plan.mm', 'plan2.mm')).toBe(true)
+    // a .mm is XML and an .xmind a zip: a rename between them leaves a file that does not open
+    expect(renameStaysInApp('/x/plan.mm', 'plan.xmind')).toBe(false)
+    expect(renameStaysInApp('/x/plan.xmind', 'plan.mm')).toBe(false)
+  })
+
   it('opens OpenDocument text in the Word tab', () => {
     expect(appForPath('/x/a.odt')).toBe('docs')
     expect(appForPath('C:/x/REPORT.ODT')).toBe('docs')
+  })
+
+  it('opens an OpenDocument spreadsheet in the spreadsheet tab only', () => {
+    expect(appForPath('/x/a.ods')).toBe('sheets')
+    expect(appForPath('C:/x/BUDGET.ODS')).toBe('sheets')
+    // the spreadsheet form belongs to no other editor, and a backup of one is no document
+    expect(appForPath('/x/a.odp')).toBeUndefined()
+    expect(appForPath('/x/a.ods.bak')).toBeUndefined()
   })
 
   it('has no app for an extension nothing opens', () => {
@@ -102,6 +154,15 @@ describe('renameStaysInApp', () => {
     expect(renameStaysInApp('/x/a.odt', 'b.odt')).toBe(true)
     expect(renameStaysInApp('/x/a.odt', 'b.ODT')).toBe(true)
     expect(renameStaysInApp('/x/a.odt', 'a.pdf')).toBe(false)
+  })
+
+  it('refuses a rename between .ods and another spreadsheet form: same tab, different bytes', () => {
+    expect(renameStaysInApp('/x/a.ods', 'b.ods')).toBe(true)
+    expect(renameStaysInApp('/x/a.ods', 'b.ODS')).toBe(true)
+    expect(renameStaysInApp('/x/a.ods', 'a.xlsx')).toBe(false)
+    expect(renameStaysInApp('/x/a.xlsx', 'a.ods')).toBe(false)
+    expect(renameStaysInApp('/x/a.ods', 'a.csv')).toBe(false)
+    expect(renameStaysInApp('/x/a.csv', 'a.ods')).toBe(false)
   })
 
   it('stays put when the file was never openable to begin with', () => {

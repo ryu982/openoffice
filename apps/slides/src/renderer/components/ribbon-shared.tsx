@@ -317,6 +317,8 @@ export interface Props {
   onZoom: (z: number | ((current: number) => number)) => void
   showThumbs: boolean
   onToggleThumbs: () => void
+  /** AI is turned on in Settings; off, the AI buttons are not drawn */
+  aiOn: boolean
   aiOpen: boolean
   onToggleAi: () => void
   /** Push a preset instruction to the AI panel and expand it (autoRun executes immediately) */
@@ -615,6 +617,7 @@ export interface Props {
 /** Ribbon locals + props handed to the extracted tab components; rebuilt every render. */
 export interface RibbonTabCtx extends Pick<
   Props,
+  | 'aiOn'
   | 'aiOpen'
   | 'brushMode'
   | 'canDistribute'

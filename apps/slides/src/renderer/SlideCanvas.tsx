@@ -45,6 +45,7 @@ import {
   type SpacingIndicator,
 } from './snap'
 import { NodeBody, StaticNode } from './NodeBody'
+import { aiChangedMarkColors } from './canvas-colors'
 import { ZOOM_PREVIEW_EVENT } from './zoom-preview'
 import { useI18n } from './i18n/locale'
 import {
@@ -398,6 +399,8 @@ interface Props {
   ref?: React.Ref<SlideCanvasHandle>
   slide: RenderSlide
   selectedIds: string[]
+  /** Elements the AI panel's last run changed: tinted on this edit canvas only */
+  aiMarkedIds?: readonly string[]
   onSelect: (sourceId: string | null, additive?: boolean) => void
   /** caret = viewport coordinates of the double-click (editor places the caret/selects the word there; defaults to caret at end) */
   onEditText: (sourceId: string, caret?: EditCaret) => void
@@ -838,6 +841,7 @@ function AdjustHandles({
 export function SlideCanvas({
   slide,
   selectedIds,
+  aiMarkedIds,
   onSelect,
   onEditText,
   onTransform,
@@ -1736,6 +1740,14 @@ export function SlideCanvas({
             )
           })()}
       </Layer>
+      {/* What the AI changed: a tint over each element, on its own layer that takes no
+          pointer events. Only this edit canvas draws it; thumbnails, exports, prints and
+          the slide show render from the deck and never see it. */}
+      {aiMarkedIds && aiMarkedIds.length > 0 && (
+        <Layer x={CANVAS_BLEED} y={CANVAS_BLEED} listening={false}>
+          <AiChangedMarks slide={slide} ids={aiMarkedIds} zoom={zoom} />
+        </Layer>
+      )}
       {/* Selection chrome on its own layer: counter-scaling it during a zoom gesture then
           only redraws these few nodes — redrawing the content layer per frame is what
           made the gesture stutter. The Transformer tracks nodes across layers fine.
@@ -1878,6 +1890,46 @@ export function SlideCanvas({
 }
 
 export { computeSnap }
+
+/** The tint over the elements the AI changed: the shared mark colours, padded a little past the box */
+function AiChangedMarks({
+  slide,
+  ids,
+  zoom,
+}: {
+  slide: RenderSlide
+  ids: readonly string[]
+  zoom: number
+}) {
+  const colors = aiChangedMarkColors()
+  const pad = 2 / Math.max(zoom, 0.1)
+  return (
+    <>
+      {slide.nodes
+        .filter((n) => ids.includes(n.sourceId))
+        .map((n) => (
+          <Rect
+            key={n.sourceId}
+            {...boxPivotProps({
+              ...n.box,
+              x: n.box.x - pad,
+              y: n.box.y - pad,
+              w: n.box.w + pad * 2,
+              h: n.box.h + pad * 2,
+            })}
+            width={n.box.w + pad * 2}
+            height={n.box.h + pad * 2}
+            fill={colors.fill}
+            stroke={colors.stroke}
+            strokeWidth={1.5 / Math.max(zoom, 0.1)}
+            cornerRadius={2 / Math.max(zoom, 0.1)}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+        ))}
+    </>
+  )
+}
 
 // ── Connector endpoint handles ─────────────────────────────
 

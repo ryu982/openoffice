@@ -404,6 +404,25 @@ const localizedProtectStrings: Record<string, Partial<typeof protectStrings>> = 
     protectRemove: 'सुरक्षा हटाएँ',
     protectMismatch: 'पासवर्ड मेल नहीं खाते',
   },
+  tr: {
+    protect: 'Koru',
+    protectHint: 'Bu dosyanın kaydedildiği parolayı ayarla, değiştir veya kaldır',
+    protectTitle: 'Belge koruması',
+    protectSetHint:
+      'Sonraki kaydetme bu dosyayı bir parolayla yazar. Okuyucuların belgeyi açmak için buna ihtiyacı olur.',
+    protectChangeHint: 'Sonraki kaydetme dosyayı bu parola ve bu sınırlarla yeniden yazar.',
+    protectPasswordLabel: 'Açma parolası',
+    protectConfirmLabel: 'Parolayı onayla',
+    protectOwnerLabel: 'Sahip parolası (isteğe bağlı)',
+    protectPermsLabel: 'Açıldıktan sonra okuyucular şunları yapabilir:',
+    permPrint: 'Yazdırma',
+    permModify: 'İçeriği düzenleme',
+    permAnnotate: 'Açıklama ekleme ve form doldurma',
+    permCopy: 'Metin ve görselleri kopyalama',
+    protectApply: 'Korumayı uygula',
+    protectRemove: 'Korumayı kaldır',
+    protectMismatch: 'Parolalar eşleşmiyor',
+  },
 }
 
 export const protectStringsFor = (lang: string) => ({

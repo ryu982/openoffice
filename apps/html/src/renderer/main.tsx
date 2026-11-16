@@ -3,6 +3,7 @@ import { htmlDir, htmlLang, type Lang } from '@genoffice/i18n'
 import App from './App'
 import { PresentView } from './PresentView'
 import { LocaleProvider } from './i18n/locale'
+import { AiVisibilityProvider, editorChoiceSource, initialAppChoice } from './ai-visibility'
 import type { UiTheme } from '../shared/ipc'
 import { applyAiPanelPrefs, installScreenTips } from '@genoffice/ui'
 import '@genoffice/ui/tokens.css'
@@ -43,9 +44,17 @@ void (async () => {
   // a present tab/window (opened by Present → New tab) renders only its owner's preview
   const params = new URLSearchParams(location.search)
   const present = params.has('present')
+  const choiceSource = editorChoiceSource()
+  const choice = await initialAppChoice(choiceSource)
   createRoot(document.getElementById('root')!).render(
     <LocaleProvider initial={lang}>
-      {present ? <PresentView title={params.get('title') ?? ''} /> : <App />}
+      {present ? (
+        <PresentView title={params.get('title') ?? ''} />
+      ) : (
+        <AiVisibilityProvider source={choiceSource} initial={choice}>
+          <App />
+        </AiVisibilityProvider>
+      )}
     </LocaleProvider>,
   )
 })()

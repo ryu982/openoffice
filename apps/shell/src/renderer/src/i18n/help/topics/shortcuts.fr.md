@@ -12,10 +12,12 @@ Chaque éditeur a ses propres combinaisons de touches, et seules quelques-unes f
 | Réduire / agrandir le ruban — tous les éditeurs                          | ⌥⌘R   | Ctrl+F1         |
 | Ruban compact — Docs seulement                                           | ⌥⌘K   | Ctrl+Alt+K      |
 | Ouvrir la feuille des raccourcis clavier — Word uniquement               | ⌘/    | Ctrl+/          |
+| Ouvrir les paramètres — tous les onglets sauf Word                       | ⌘,    | Ctrl+,          |
 
 - **F1 ouvre ce manuel**, pas la feuille des raccourcis. Cette touche appartient au menu de l’application : elle fonctionne donc aussi bien depuis Word, Sheets, Slides, PDF ou l’onglet Home.
 - **Le bouton du ruban est `Ctrl+F1`, ou `⌥⌘R` sur macOS.** Appuyer sur `F1` seul ne fait rien — F1 est le manuel, et la touche du ruban ne partage volontairement pas ce code. `Ctrl+F1` est acceptée sur macOS également, mais `⌥⌘R` est la touche qu’utilise Office pour Mac.
 - **La feuille des raccourcis clavier appartient au seul Word** (`⌘/`). Elle reprend exactement la table Word ci-dessous. Aucun autre éditeur n’en possède.
+- **`⌘,` ouvre les paramètres** (`Ctrl+,` sous Windows et Linux), comme dans la plupart des apps Mac. Dans un onglet Word, ce raccourci reste l’indice : ouvrez alors les paramètres depuis le menu de l’application sur un Mac, ou depuis Menu (☰) ▸ Paramètres… sous Windows et Linux.
 
 ![La feuille des raccourcis clavier propre à Word : l’action à gauche, le raccourci à droite, regroupés par Fichier, Édition, Mise en forme du texte, Mise en forme du paragraphe, Insertion, Révision et outils, Affichage](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Le raccourci de filtre d’Excel, Ctrl+Shift+L, ne fait rien sous Windows ni sou
 
 ### Fenêtre
 
-| Action                                                                | macOS       | Windows / Linux |
-| --------------------------------------------------------------------- | ----------- | --------------- |
-| Enregistrer le classeur                                               | ⌘S          | Ctrl+S          |
-| Enregistrer sous                                                      | ⇧⌘S         | Ctrl+Shift+S    |
-| Ouvrir un classeur                                                    | ⌘O          | Ctrl+O          |
-| Imprimer                                                              | ⌘P          | Ctrl+P          |
-| Fermer le classeur (macOS) / Quitter l’application (Windows et Linux) | ⌘W          | Ctrl+Q          |
-| Ouvrir le guide de l’utilisateur                                      | F1          | F1              |
-| Zoom avant                                                            | ⌘=          | Ctrl+=          |
-| Zoom à la molette                                                     | ⌘ + molette | Ctrl + molette  |
-| Afficher ou masquer les formules dans les cellules                    | ⌘`          | Ctrl+`          |
-| Agrandir ou réduire la barre de formule                               | ⌘⇧U         | Ctrl+Shift+U    |
+| Action                                                                             | macOS       | Windows / Linux |
+| ---------------------------------------------------------------------------------- | ----------- | --------------- |
+| Enregistrer le classeur                                                            | ⌘S          | Ctrl+S          |
+| Enregistrer sous                                                                   | ⇧⌘S         | Ctrl+Shift+S    |
+| Ouvrir un classeur                                                                 | ⌘O          | Ctrl+O          |
+| Imprimer                                                                           | ⌘P          | Ctrl+P          |
+| Fermer le classeur (macOS) / Quitter l’application (Windows et Linux)              | ⌘W          | Ctrl+Q          |
+| Ouvrir le guide de l’utilisateur                                                   | F1          | F1              |
+| Zoom avant                                                                         | ⌘=          | Ctrl+=          |
+| Zoom à la molette                                                                  | ⌘ + molette | Ctrl + molette  |
+| Afficher ou masquer les formules dans les cellules                                 | ⌘`          | Ctrl+`          |
+| Agrandir ou réduire la barre de formule                                            | ⌘⇧U         | Ctrl+Shift+U    |
+| Exécuter un bouton de la barre d’outils Accès rapide selon sa position (1er à 10e) |             | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Ces touches s’appliquent lorsque l’onglet HWP/HWPX est au premier plan et qu
 | Rechercher suivant      | ⌃L          | Ctrl+L                       |
 | Rechercher en arrière   | ⌃Q, L       | Ctrl+Q, L                    |
 | Aller à                 | ⌥G          | Alt+G                        |
+| Début du document       | ⌃⇞          | Ctrl+PageUp                  |
+| Fin du document         | ⌃⇟          | Ctrl+PageDown                |
 | Comparer les documents  | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Caractère
@@ -757,3 +762,5 @@ Elles ne s’appliquent que lorsque le curseur se trouve dans une cellule vide d
 | Aller à l’onglet Accueil (hors tableau)       | ⇧⌘H   | Ctrl+Shift+H    |
 
 Une touche écrite `Ctrl+N,T` signifie appuyer sur Ctrl+N, relâcher, puis appuyer sur T. `F5 → S` signifie sélectionner un bloc de cellules avec F5, puis appuyer sur S. `Ctrl+1 … Ctrl+0` désignent les styles un à dix du document ; `Ctrl+Alt+1 … Ctrl+Alt+0` appliquent les mêmes styles. Lorsqu’un bloc de cellules est sélectionné, `Ctrl+Shift+S` (sous macOS `⇧⌘S`) calcule la somme du bloc ; ailleurs, cette touche enregistre sous un nouveau nom.
+
+À la souris, comme dans Hangul, un double-clic sélectionne un mot, un triple-clic le paragraphe entier, et un double-clic maintenu puis glissé étend la sélection mot par mot. Cela fonctionne aussi pendant la modification d’un en-tête, d’un pied de page ou d’une note de bas de page. Copier un bloc de cellules (`Ctrl+C`) copie le texte des cellules et le tableau lui-même : collé dans le corps du texte, il recrée le même tableau. Coller avec le seul curseur dans une cellule d’un autre tableau ouvre la boîte de dialogue Paste Cells : écraser à partir de cette cellule (les cellules qui dépassent du tableau sont abandonnées) ou insérer les cellules au-dessus, en dessous, à gauche ou à droite.

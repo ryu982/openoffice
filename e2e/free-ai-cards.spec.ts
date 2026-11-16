@@ -55,6 +55,9 @@ test('the first-run connect step offers the free connections as the "neither yet
   try {
     const dialog = page.locator('.onb-overlay')
     await expect(dialog).toBeVisible()
+    // welcome → pick (everything on) → connect
+    await page.locator('.onb-next').click()
+    await expect(page.locator('.onb-slide.active')).toHaveAttribute('data-step', 'pick')
     await page.locator('.onb-next').click()
     const step = page.locator('.onb-slide[data-step="connect"]')
     // which AI the user has comes first; the free cards are the answer "neither yet"

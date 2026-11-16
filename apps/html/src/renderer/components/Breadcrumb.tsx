@@ -12,6 +12,9 @@ interface Props {
   onSelect: (sid: number) => void
 }
 
+/** the key that starts a rubber band anywhere in the preview, as its keycap reads */
+export const ALT_KEY = /Mac/i.test(navigator.platform) ? 'Option' : 'Alt'
+
 /** Max id chars shown in a crumb (minified pages carry KB-long ids). Exported for tests. */
 export const MAX_CRUMB_ID_CHARS = 48
 
@@ -29,9 +32,15 @@ export function label(text: string | undefined, tag: string): string {
 /** Ancestor chain of the selected element; clicking a crumb selects that ancestor */
 export function Breadcrumb({ text, map, sid, state, onSelect }: Props): ReactElement | null {
   const { t } = useI18n()
-  if (sid === null) return <div className="crumbs crumbs-empty">{t('inspectHint')}</div>
+  const hint = t('inspectHint', { alt: ALT_KEY })
+  const empty = (
+    <div className="crumbs crumbs-empty" title={hint}>
+      {hint}
+    </div>
+  )
+  if (sid === null) return empty
   const current = map.bySid.get(sid)
-  if (!current) return <div className="crumbs crumbs-empty">{t('inspectHint')}</div>
+  if (!current) return empty
   const chain = [
     ...ancestorsOf(map, sid).filter((e) => !['html', 'head', 'body'].includes(e.tag)),
     current,

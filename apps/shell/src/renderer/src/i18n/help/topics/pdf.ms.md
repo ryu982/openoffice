@@ -6,6 +6,8 @@ Editor PDF mempunyai lima tab pada reben: **Laman Utama / Anotasi / Edit / Halam
 
 - Bar sisi kiri: **lakaran kenit** untuk melompat ke slaid dengan julat yang kelihatan ditanda, atau **kerangka** untuk penanda halaman apabila ia wujud.
 - Zum: kawalan nisbah di penjuru kanan bawah. Gunakan ctrl dan roda tetikus untuk menukar zum secara berperingkat.
+- Zum semasa dibuka: **Semasa dibuka** pada tab Pandangan memilih paparan permulaan PDF yang baru dibuka: muat lebar, muat halaman, atau zum 50% hingga 200%. PDF yang zumnya anda ubah sendiri akan dibuka semula pada zum itu.
+- Mengalihkan paparan: hidupkan **Alat Tangan** (tab Laman Utama dan Pandangan) dan seret untuk mengalihkan halaman ke semua arah. Semasa ia hidup, menyeret tidak memilih teks dan klik biasa masih membuka pautan. Menyeret sambil menekan butang tengah (roda) mengalihkan paparan tanpa alat ini. Esc atau memilih alat lain mematikannya. Apabila tiada teks dipilih, tekan H untuk menghidupkan atau mematikannya.
 - Putaran: setiap halaman atau kesemua halaman melalui menu Halaman, dan putaran itu ditulis semula semasa menyimpan.
 - Carian: ctrl+F untuk mencari teks penuh, dengan semua hasil ditanda.
 - PDF yang disulitkan: prompts pertanyaan kata laluan dalam tetingkap kecil tersendiri, dan kata laluan itu hanya digunakan untuk sesi ini. Dokumen seperti ini boleh disunting dan disimpan; apabila disimpan, kata laluannya kekal. **Anotasi → Lindung** menetapkan, menukar atau membuang kata laluan dan perkara yang dibenarkan kepada pembaca.
@@ -18,7 +20,7 @@ Cuba pada mana-mana perenggan:
 
 ![Bar anotasi selepas memilih teks](img/pdf-highlight.png)
 
-2. 2. Pilih **sorotan** yang contoh kuningnya membuka palet warna, **garisan bawah**, atau **potongan garis**, dan **Tanya AI** menghantar pilihan itu bersama soalan anda ke panel AI.
+2. Pilih salah satu daripada tiga warna **sorotan**, atau **garisan bawah**, **gelombang** atau **potongan garis**. Untuk menukar warna sorotan, klik kanan warna itu dan pilih warna baharu. Selepas garisan bawah, gelombang atau potongan garis, satu baris warna terbuka pada bar: klik warna lain untuk menukarnya, dan tanda seterusnya juga memakai warna itu. **Tanya AI** menghantar pilihan itu bersama soalan anda ke panel AI.
 3. Untuk membatalkan anotasi, pilih semula petikan yang sama dan klik butang yang sedang aktif pada bar tersebut, atau pilih dan tekan Delete.
 
 Butiran yang perlu diketahui:
@@ -71,6 +73,7 @@ Enam alat disediakan: **dakwat, segi empat, elips, anak panah, dan nota**, serta
 ## Operasi halaman (Halaman)
 
 - **Putar, padam, atau susun semula**: seret lakaran kenit untuk menyusun semula, dan pemadaman memerlukan pengesahan.
+- **Beberapa halaman serentak**: klik imej kecil sambil menahan Ctrl atau Shift untuk memilih beberapa halaman. Delete memadamnya; Ctrl+C, Ctrl+X dan Ctrl+V menyalin, memotong dan menampalnya. Halaman yang disalin juga boleh ditampal ke tab PDF lain, dan tampalan disimpan ke fail serta-merta. Jika imej kecil ditutup, butang di tepi kiri kawasan halaman membukanya semula.
 - **Import halaman**: seret halaman daripada PDF lain ke dalam dokumen. **Sisipkan halaman kosong** menambah satu halaman kosong.
 - **Ganti halaman** menukar satu julat dengan halaman dari tempat lain, manakala **Pangkas halaman** memotong tepinya, dengan pilihan untuk menerapkannya kepada semua halaman.
 - **Saiz halaman** menskalakan semula setiap halaman kepada satu saiz kertas yang sama, dan **Terbalikkan susunan** membalikkan dokumen dari hujung ke hujung.
@@ -82,7 +85,9 @@ Enam alat disediakan: **dakwat, segi empat, elips, anak panah, dan nota**, serta
 ## Eksport dan cetakan
 
 - **Eksport sebagai Word… / PowerPoint… / Excel…** dalam menu Fail, atau ketiga-tiganya daripada **Tukar PDF** pada reben — semuanya setempat, tiada muat naik. Fail .pptx keluar dengan satu slaid bagi setiap halaman dan fail .xlsx dengan satu lembar kerja bagi setiap halaman. Setiap satu akan bertanya di mana untuk disimpan.
-- **Cetak** menggunakan susunan halaman dan putaran semasa melalui dialog sistem, dan julat halaman disokong.
+- **PDF kepada HWP** di bawah **Tukar PDF** pada reben menukar PDF kepada dokumen HWP dalam tab HWP baharu. Pilih **Import** (가져오기) dalam tetingkap import PDF yang dipaparkan tab; dokumen dibuat dalam tab itu, dan simpanan pertama bertanya tempat untuk fail .hwp atau .hwpx. PDF asal kekal seperti sedia ada, dan penukaran berjalan pada PC ini. Sama ada teks masuk sebagai perenggan yang mengalir mengikut halaman atau sebagai kotak teks tetap dipilih dalam pilihan (환경 설정) tab HWP, bahagian import PDF.
+- Penukaran yang sama juga boleh dimulakan dari tab HWP. Pilih PDF dengan **Fail** ▸ **Import PDF…**, dan tab HWP baharu dibuka dengan tetingkap import PDF yang sama. Dokumen dalam tab tempat menu digunakan kekal seperti sedia ada.
+- **Cetak** menggunakan susunan halaman dan putaran semasa melalui dialog sistem. Anda boleh mencetak julat halaman atau halaman yang dipilih pada imej kecil, dan memilih dalam **Susun atur halaman** beberapa halaman setiap helai, buku kecil, skala kelabu dan lain-lain.
 
 ## Simpanan
 
@@ -129,6 +134,9 @@ Tekan **E** atau **T**, atau cip terangkan dan terjemah dalam kotak **Tanya AI**
 - **Terjemah halaman ini** (atau **Terjemah bakinya** jika sebahagian sudah siap) menghantar halaman itu dengan sekali tekan semasa anda menggunakan langganan; nama AI penerima tertera di sebelah butang. Pada sambungan yang dicaj mengikut penggunaan, tekanan pertama dalam sesuatu tab bertanya dahulu "akan mengenakan caj untuk ini · Terjemah / Batal".
 - Klik dua kali pada perenggan terjemahan untuk menyuntingnya. Perenggan yang disunting disimpan sebagai teks biasa dan digunakan seadanya dalam fail PDF, Markdown dan EPUB terjemahan. **Terjemah semula** pada sesuatu perenggan hanya menghantar perenggan itu, dan bertanya dahulu jika anda telah menyuntingnya.
 - Apabila tetikus berada di atas perenggan terjemahan, tempatnya pada halaman asal diberi bingkai. Lebar dan saiz huruf lajur boleh diubah. **Terjemah semua halaman…** membuka tetingkap **Terjemah Dokumen**, dan format **Simpan sahaja (tiada fail)** di situ menyimpan terjemahan tanpa menulis fail.
+- Perenggan yang baru diterjemah dipautkan ayat demi ayat. Meletakkan penuding pada ayat terjemahan menyerlahkan ayat itu di halaman sumber, dan meletakkannya pada ayat sumber menerangkan terjemahannya. Di tempat ayat tidak ditemui pada halaman, serta bagi perenggan yang diterjemah sebelum ini atau yang anda sunting sendiri, pautan kekal mengikut perenggan.
+- Bar di atas lajur bertukar antara **Terjemahan** dan **Penerangan mudah**. Penerangan mudah menulis semula teks dengan perkataan harian dan ayat pendek, untuk kanak-kanak, warga emas atau orang yang sedang belajar bahasa itu; fakta, nombor dan nama kekal seperti asal. Pilihan diingat, dan bertukar tidak menghantar apa-apa. Selagi penerangan dipaparkan, butang halaman dan perenggan serta suntingan dikenakan pada penerangan.
+- Dalam penerangan mudah, **Terangkan semua halaman dengan mudah…** membuka tetingkap **Terjemah Dokumen** dengan jenis **Penerangan mudah**. Penerangan lebih panjang daripada asalnya, jadi tidak boleh menjadi PDF terjemahan; ia ditulis sebagai Markdown atau EPUB. Jika **Asal kemudian penerangan** dihidupkan, setiap perenggan asal diikuti penerangannya; jika dimatikan, fail hanya mengandungi penerangan. Bahasanya pada mulanya bahasa antara muka dan boleh sama dengan bahasa dokumen.
 
 ## Serlahan AI
 

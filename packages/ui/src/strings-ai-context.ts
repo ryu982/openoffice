@@ -20,6 +20,7 @@ import { he } from './strings-ai-context/he'
 import { hi } from './strings-ai-context/hi'
 import { zhTW } from './strings-ai-context/zh-TW'
 import { vi } from './strings-ai-context/vi'
+import { tr } from './strings-ai-context/tr'
 
 /**
  * The context-budget wording every editor shares: the confirmation before a
@@ -48,6 +49,7 @@ export const AI_CONTEXT_STRINGS = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type AiContextStringKey = keyof typeof zh

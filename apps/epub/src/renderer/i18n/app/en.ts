@@ -30,6 +30,7 @@ export const en = {
   darkView: 'Dark view',
   toc: 'Contents',
   tocEmpty: 'This book has no table of contents',
+  sideResize: 'Resize pane',
   statusChapter: 'Chapter {n}/{total}',
   prevChapter: 'Previous chapter',
   nextChapter: 'Next chapter',

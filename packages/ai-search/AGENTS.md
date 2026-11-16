@@ -10,12 +10,13 @@ AI가 쓰는 부가 도구(웹 검색, 이미지 검색, 이미지 생성, 미�
 - 이미지 생성·미디어 분석 호출의 취소: 진행 중인 호출을 창(webContents id)별로 기억해 두고, 창이 사라지거나 그 창의 AI 실행이 중단되면 끊는 `withMediaCallSignal`·`abortMediaCalls`(`src/media-call-abort.ts`).
 - 경로 결정: `resolveImageRoute`·`resolveImageAnalysisRoute`·`resolveVideoAnalysisRoute`·`headlessSubscriptionBlocked`(`src/tool-routing.ts`)와 같은 함수로 만든 가용성 보고 `aiToolCapabilities`(`src/tool-capabilities.ts`).
 - 자동 호출 경로의 구독 요청 차례와 사용량 기록: `runHeadlessSubscriptionCall`·`headlessSubscriptionUsage`(`src/headless-ledger.ts`). 명령줄의 PDF 작업(`pdf ai-read`, `pdf translate`)도 모델 호출마다 이 차례를 거친다.
-- Codex 이미지 생성기가 스스로 등록하는 자리 `registerCodexImageGenerator`(`src/codex-image-generator.ts`)와, 그 자리에 들어가는 CLI 생성기 `createCodexImageCliGenerator`(`src/codex-image-cli.ts`, 결정 0076): `codex exec` 한 번으로 내장 `image_gen`을 쓰고, 임시 폴더에 쓰인 이미지 파일을 읽어 돌려준다. 로그인 파일은 읽지 않는다(CLI가 스스로 인증한다).
+- Codex 이미지 생성기가 스스로 등록하는 자리 `registerCodexImageGenerator`(`src/codex-image-generator.ts`)와, 그 자리에 들어가는 생성기 `createCodexImageGenerator`(`src/codex-image-subscription.ts`, 결정 0145). 생성기는 `{ generate(request), models() }`다. 부를 때마다 `ai-settings.json`을 다시 읽어(Codex 실행 파일, 설정의 Codex 모델, 이 앱에서 끈 Codex) `@genoffice/ai-provider`의 `generateCodexImage`를 부른다. `models()`는 Codex의 모델 목록이고, 끈 Codex면 아무것도 띄우지 않고 `null`이다. 만들기와 등록은 아무것도 띄우지 않는다. 로그인 파일과 `~/.codex` 안은 읽지 않는다.
+- 그림 모델 이름 규칙(`src/image-model.ts`): `generate_image`의 `model`을 그 경로가 내주는 모델인지 본다. 경로는 바꾸지 않는다. Codex 경로는 `gpt-image`로 시작하는 이름(그대로 그리고 `CODEX_PICKS_IMAGE_MODEL_NOTE`), Codex 모델 목록, 키 제공자 카탈로그 순으로 보고, 키 경로는 그 제공자의 카탈로그 `imageModels`와 저장한 그림 모델을 본다. 맞지 않으면 쓸 수 있는 모델 이름과 함께 거절한다.
 
 ## 맡지 않는 것 (경계)
 
 - 제공자 선택 규칙, 구독 프로그램의 시작·종료, 연결 상태 확인은 `packages/ai-provider`의 범위다. 이 모듈은 호출자가 넘긴 `statuses`를 읽기만 하고, 상태를 직접 확인하거나 벤더 프로그램을 띄우지 않는다.
-- Codex로 이미지를 "만드는 방법"은 원래 이 모듈의 범위가 아니었지만, 결정 0076으로 CLI 생성기(`codex-image-cli.ts`)를 여기 두었다. 채팅 세션과 분리된 `codex exec` 한 번이며, 채팅의 도구 통제 규칙은 그대로다. 앱이 시작할 때 `apps/docs`의 메인이 등록하고 가용성을 켠다. 무료 요금제에는 이미지 도구가 없으므로 첫 실패에서 그 실행 동안 경로를 숨긴다(요금제 이름으로 미리 추측하지 않는다).
+- Codex로 그림을 "만드는 방법"(app-server 스레드, 안전 조건, 결과 받기)은 `packages/ai-provider`의 `generateCodexImage`가 맡는다(결정 0145). 이 모듈은 그 결과(`image` · `unavailable` · `refused`, 또는 `AiRunError`)를 도구의 답으로 바꾼다. `image`는 생성 그림 저장소의 `file://` 주소, `unavailable`은 `errorCode: 'unavailable'`, `refused`는 `errorCode` 없는 오류다. 무료 요금제(`free-plan`)면 `setCodexImageGenerationAvailable(false)`로 그 프로세스에서 경로를 숨긴다. 앱은 다시 켤 때까지, 명령어는 그 명령 하나 동안이다. 요금제 이름으로 미리 추측하지 않는다. 등록과 가용성 켜기는 `apps/docs`의 메인과 `packages/cli`의 `runCli`가 한다.
 - 받은 이미지를 문서에 넣는 일, 도구를 모델에게 노출할지 정하는 일은 각 에디터(`apps/*/src/renderer/ai`)의 범위다.
 - 명령의 인자·출력 형식·종료 코드는 `packages/cli`의 범위다. 이 모듈의 도구는 `{ url | text | error, errorCode, resetsAt }` 객체를 돌려줄 뿐이다.
 - Electron을 import하지 않는다. 이 코드는 Electron 없이 도는 명령줄 번들에도 들어가므로 `@genoffice/electron-utils`는 패키지 루트가 아니라 `generated-images`·`remote-image`·`safe-remote-url` 하위 경로로만 import한다(루트는 Electron에 묶인 모듈을 다시 내보낸다).
@@ -50,5 +51,6 @@ AI가 쓰는 부가 도구(웹 검색, 이미지 검색, 이미지 생성, 미�
 - 설정 파일 픽스처에는 `providers` 블록을 항상 넣는다(`writeSettings`). 그 블록이 없는 파일은 제공자 도입 이전 파일로 읽혀 모든 구역이 기본값으로 초기화된다.
 - 바꾸면 반드시 테스트하는 것: 화면·자동 호출 × 스위치 켬·끔 × 구독 `ready`·종량 허용·미연결 조합에서 경로와 보고가 같은 답인지, 환경 변수 키가 선택을 바꾸지 못하는지(`tests/search-free-route.test.ts`), 21번째 이후 요청도 거절되지 않는지, 손상된 장부와 쓸 수 없는 장부가 요청을 막지 않는지, 예전 판의 동의가 꺼짐으로 읽히는지, 죽은 프로세스의 잠금, 동시에 들어온 두 요청이 차례로 도는지.
 - `tests/codex-image-absent.test.ts`는 "패키지 진입점만으로는 Codex 이미지 생성기가 등록되지 않는다"를 고정한다. 앱의 등록은 `apps/docs`가 하며, 그 등록을 바꾸면 이 테스트와 가용성 판단을 함께 본다.
-- `tests/codex-image-cli.test.ts`는 가짜 CLI로 `codex exec` 명령 모양(이미지 도구, `workspace-write`, `--skip-git-repo-check`, 크기·품질), 파일 회수(다른 이름 포함), 요금제 실패 문장과 그 뒤의 경로 숨김, 임시 폴더 정리를 확인한다. 실제 유료 계정 호출은 하지 않는다.
+- `tests/codex-image-subscription.test.ts`는 생성기가 부를 때마다 설정을 다시 읽어 `generateCodexImage`·`listCodexModels`에 넘기는 값과, 끈 Codex에서 모델 목록을 묻지 않는 것을 가짜 함수로 본다. `tests/image-routing.test.ts`는 Codex 길의 결과 바꾸기(그림 저장, 무료 요금제의 숨김, 거절, 취소), 참조 그림의 예산과 허용 폴더, 모델 이름 표의 줄마다(Codex 길의 `gpt-image-2` 포함)를 본다. Codex 경로를 타는 시험은 등록한 생성기를 가짜로 둔다. 실제 프로그램은 띄우지 않는다.
+- 그림을 쓸 수 없을 때의 문장(`imageGenerationUnavailableMessage`)에는 늘 `CHATGPT_PLAN_IMAGE_HINT`(ChatGPT 요금제면 같은 계정으로 Codex 프로그램을 연결하라, 바로 연결한 ChatGPT로는 OpenAI가 허용하지 않는다)가 붙는다. 이 문장을 바꾸면 편집기들의 "그림 생성을 쓸 수 없음" 안내와 함께 본다.
 - Windows에서 `tests/media-local-path.test.ts`의 `documentMediaRoots` 한 건은 변경과 무관하게 실패한다(기대값이 `/work`인데 Windows의 `dirname`은 `\work`를 돌려준다).

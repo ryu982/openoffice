@@ -36,10 +36,6 @@ export const hi = {
   aiRetry: 'पुनः प्रयास',
   aiCopyReplyTitle: 'जवाब कॉपी करें',
   aiRegenerateTitle: 'फिर से जनरेट करें',
-  aiTurnsTitle: 'AI की बारी पूर्ववत करें',
-  aiRollback: 'वापस लाएँ',
-  aiRollbackIncomplete:
-    'उस बारी का कुछ हिस्सा पूर्ववत नहीं हो सका: मैप का पूर्ववत इतिहास अब उतना पीछे नहीं जाता।',
   aiUnknownError: 'AI अनुरोध विफल, पुनः प्रयास करें',
   aiTimeoutError: 'AI प्रतिक्रिया समय समाप्त',
   aiCreditsExhausted: 'क्रेडिट समाप्त — अपने AI प्रदाता के पास रिचार्ज करें',

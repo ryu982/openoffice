@@ -52,7 +52,7 @@ Le menu dépend de l’endroit du clic droit:
 ## Génération par IA
 
 - La carte AI Slides de l’accueil: donnez un sujet ou un plan et l’IA construit le diaporama.
-- Sans la clé d’un fournisseur d’images, l’IA ne peut pas générer d’images, et un diaporama utilise à la place des images trouvées par la recherche d’images ; voir [Modèles IA et paramètres](help://ai-models).
+- Sans moyen de créer des images (ni votre forfait ChatGPT via le programme Codex, ni la clé d’un fournisseur d’images), l’IA ne peut pas générer d’images, et un diaporama utilise à la place des images trouvées par la recherche d’images ; voir [Modèles IA et paramètres](help://ai-models).
 - Continuez à ajuster ensuite avec le panneau IA.
 - Clic droit sur une sélection de texte ou un élément image/vidéo/audio ▸ **Masquer la sélection à l'IA** la soustrait aux yeux du modèle (détails au chapitre du panneau IA) ; une diapositive au contenu masqué saute le contrôle automatique par capture.
 

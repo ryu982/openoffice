@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { htmlDir, htmlLang, type Params } from '@genoffice/i18n'
+import { aiVisible, useAppChoice, type AppChoiceSource } from '@genoffice/ui'
 import './globals'
 import {
   AI_TARGET_KINDS,
@@ -12,7 +13,13 @@ import {
 } from '../../../shared/generate-api'
 import { defaultGeneratePrompt } from '../../../shared/generate-default-prompts'
 import { generateText, type GenerateStringKey } from '../i18n/strings-generate'
+import { editorPromptText } from '../i18n/strings-editor-prompt'
 import { formatBytes } from './format'
+import { generateAiView } from './ai-off'
+
+/** whether AI is on, from this window's preload (src/preload/generate.ts); read once, so stable */
+const CHOICE_SOURCE = (window as unknown as { aiOfficeEditorChoice?: AppChoiceSource })
+  .aiOfficeEditorChoice
 
 const KIND_LABEL: Record<AiTargetKind, GenerateStringKey> = {
   slides: 'kindSlides',
@@ -63,6 +70,8 @@ export function GenerateWindow() {
   const api = window.aiOfficeGenerateWindow
   const [state, setState] = useState<GenerateWindowState | null>(null)
   const [text, setText] = useState('')
+  // editor choice spec 8.1: while AI is off the AI "make" is gone; the conversions without AI stay
+  const aiOn = aiVisible(useAppChoice(CHOICE_SOURCE))
 
   useEffect(() => {
     let alive = true
@@ -92,7 +101,14 @@ export function GenerateWindow() {
     return () => window.removeEventListener('keydown', onKey)
   }, [api])
 
-  if (!state) return <div className="gen-boot" />
+  const view = state ? generateAiView(state, aiOn) : null
+  // AI off: the only thing to make is a conversion, so the first one on offer is chosen
+  const pickConversion = view?.pickConversion ?? null
+  useEffect(() => {
+    if (pickConversion) void api.setConvert(pickConversion)
+  }, [api, pickConversion])
+
+  if (!state || !view) return <div className="gen-boot" />
 
   const t = (key: GenerateStringKey, params?: Params) => generateText(state.lang, key, params)
   const listed = state.materials.filter((m) => m.state !== 'excluded')
@@ -100,9 +116,10 @@ export function GenerateWindow() {
   const excluded = state.materials.filter((m) => m.state === 'excluded')
   const busy = state.making
   const converting = state.mode === 'convert'
+  const { canMake } = view
   const make = () => {
     // 8.1: a conversion carries no request text
-    if (state.canMake) void api.make(converting ? '' : text)
+    if (canMake) void api.make(converting ? '' : text)
   }
 
   const saveButton = (m: MaterialView) => {
@@ -145,24 +162,32 @@ export function GenerateWindow() {
 
       <div className="gen-body">
         <section className="gen-section">
-          <div className="gen-label" id="gen-kind-label">
-            {t('kindLabel')}
-          </div>
-          <div className="gen-kinds" role="radiogroup" aria-labelledby="gen-kind-label">
-            {AI_TARGET_KINDS.map((kind) => (
-              <button
-                key={kind}
-                role="radio"
-                aria-checked={!converting && state.kind === kind}
-                data-kind={kind}
-                className={`gen-kind${!converting && state.kind === kind ? ' active' : ''}`}
-                disabled={busy}
-                onClick={() => void api.setKind(kind)}
-              >
-                {t(KIND_LABEL[kind])}
-              </button>
-            ))}
-          </div>
+          {view.showAi ? (
+            <>
+              <div className="gen-label" id="gen-kind-label">
+                {t('kindLabel')}
+              </div>
+              <div className="gen-kinds" role="radiogroup" aria-labelledby="gen-kind-label">
+                {AI_TARGET_KINDS.map((kind) => (
+                  <button
+                    key={kind}
+                    role="radio"
+                    aria-checked={!converting && state.kind === kind}
+                    data-kind={kind}
+                    className={`gen-kind${!converting && state.kind === kind ? ' active' : ''}`}
+                    disabled={busy}
+                    onClick={() => void api.setKind(kind)}
+                  >
+                    {t(KIND_LABEL[kind])}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="gen-hint" data-testid="gen-ai-off">
+              {view.aiOffHint && editorPromptText(state.lang, view.aiOffHint)}
+            </div>
+          )}
           {state.conversions.length > 0 && (
             <div className="gen-convert" data-testid="gen-convert">
               <div className="gen-sublabel" id="gen-convert-label">
@@ -292,7 +317,7 @@ export function GenerateWindow() {
           </div>
         )}
 
-        <section className="gen-section" hidden={converting}>
+        <section className="gen-section" hidden={converting || !view.showAi}>
           <label className="gen-label" htmlFor="gen-request">
             {t('requestLabel')}
           </label>
@@ -311,7 +336,7 @@ export function GenerateWindow() {
           <div className="gen-hint">{t('requestHint')}</div>
         </section>
 
-        {(state.notices.usage || state.notices.longMaterial) && (
+        {view.showAi && (state.notices.usage || state.notices.longMaterial) && (
           <div className="gen-notices" data-testid="gen-notices" role="status">
             {state.notices.usage && (
               <div className="gen-callout" data-notice="usage">
@@ -351,7 +376,7 @@ export function GenerateWindow() {
 
       <footer className="gen-foot">
         <span className="gen-hint gen-foot-hint">
-          {converting ? t('convertHint') : t('makeHint')}
+          {converting ? t('convertHint') : view.showAi ? t('makeHint') : ''}
         </span>
         <div className="gen-actions">
           <button className="gen-btn" onClick={() => void api.cancel()}>
@@ -360,7 +385,7 @@ export function GenerateWindow() {
           <button
             className="gen-btn gen-btn-primary"
             data-testid="gen-make"
-            disabled={!state.canMake}
+            disabled={!canMake}
             onClick={make}
           >
             {busy ? t('making') : t('make')}

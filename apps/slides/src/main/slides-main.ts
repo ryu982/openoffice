@@ -26,8 +26,19 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { cleanupExpiredGeneratedPages } from './generated-page-temp'
 import { buildExportImagePaths } from './export-images'
+import {
+  resolveSlidesSaveAsPick,
+  SaveAsImageTargets,
+  slidesSaveAsFilters,
+  slidesSaveAsSuggestion,
+} from './save-as-formats'
 import { exportSlidesPdf } from './pdf-export'
-import { printSlidesHtml } from './print-window'
+import { printSlidesHtml, slidesPrintHtml, slidesPrintJobPdf } from './print-window'
+import {
+  ensurePrintLayoutIpc,
+  LABEL_SPEC_FILE_NAME,
+  registerPrintLayoutIpc,
+} from '@genoffice/electron-utils/print-arranged'
 import { shutdownSubscriptionChildren } from '@genoffice/ai-provider/subscription'
 import {
   appMenuLabels,
@@ -49,6 +60,7 @@ import {
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
   helpMenuTemplate,
+  macAppMenuTemplate,
   toggleDevToolsItem,
   installRendererProtocol,
   registerRendererScheme,
@@ -75,6 +87,7 @@ import {
 } from '@genoffice/pptx-ops'
 import { matchesElementRef } from '@genoffice/pptx-engine/identity'
 import { buildPagePptx, parsePageSpec } from '@genoffice/pipelines/slides'
+import { fillMissingRunFonts, parseFontRoles } from './ai-default-fonts'
 import { sniffImageMime } from './media-mime'
 import {
   newPasteCascade,
@@ -264,7 +277,6 @@ import type {
 } from '../shared/ipc'
 import { DECK_LINK_PROTOCOLS } from '../shared/run-link'
 import { planSlideDuplicates, planSlideMoves } from '../shared/slide-selection'
-import { buildPrintDocumentHtml } from '../shared/print-html'
 
 import { tm } from './i18n-main'
 import { tiffToPng } from './tiff-decode'
@@ -451,9 +463,13 @@ function trackSlidesWebContents(wc: WebContents): void {
     closeSaveWaiters.get(wc.id)?.(false)
     closeSaveWaiters.delete(wc.id)
     autoSavePrefByWc.delete(wc.id)
+    saveAsImageTargets.forget(wc.id)
     if (windowRefs.activeWebContents === wc) windowRefs.activeWebContents = null
   })
 }
+
+/** Save As › PNG names the dialog returned, accepted once by the image export */
+const saveAsImageTargets = new SaveAsImageTargets()
 
 // ── In-app element clipboard (app-wide, so elements copied in one deck paste into any other open deck; the cascade decides the paste offset) ─
 let elementClipboard: {
@@ -467,6 +483,23 @@ let elementClipboard: {
 let slidesOpenedHook: ((wc: WebContents, path: string) => void) | null = null
 export function setSlidesOpenedHook(fn: ((wc: WebContents, path: string) => void) | null): void {
   slidesOpenedHook = fn
+}
+
+/**
+ * Shell hook: a legacy .ppt picked inside a tab opens as a converted copy in a
+ * new tab of its own (the shell converts it); without the hook the tab
+ * explains that it cannot open the file.
+ */
+let slidesLegacyOpenHook: ((path: string) => void) | null = null
+export function setSlidesLegacyOpenHook(fn: ((path: string) => void) | null): void {
+  slidesLegacyOpenHook = fn
+}
+
+/** a .ppt the shell takes over; true when it did */
+function handOffLegacyPpt(path: string): boolean {
+  if (!slidesLegacyOpenHook || !/\.ppt$/i.test(path)) return false
+  slidesLegacyOpenHook(path)
+  return true
 }
 
 /** Detached editor windows (createSlidesWindow), keyed by webContents id — their titles are owned here */
@@ -1736,6 +1769,7 @@ export function registerSlidesIpc(): void {
     }
     const r = await showOpenDialogWithMemory(dialog, parent, options)
     if (r.canceled || !r.filePaths[0]) return null
+    if (handOffLegacyPpt(r.filePaths[0])) return null
     const prepared = await preparePptxOpen(r.filePaths[0])
     if (prepared === 'rejected') return null
     return openAndBuild(
@@ -1748,6 +1782,7 @@ export function registerSlidesIpc(): void {
 
   ipcMain.handle('slides:open-path', async (e, path: string, fitWidthPx: number) => {
     if (!path || !existsSync(path)) return null
+    if (handOffLegacyPpt(path)) return null
     const prepared = await preparePptxOpen(path)
     if (prepared === 'rejected') return null
     return openAndBuild(e.sender, path, fitWidthPx, prepared === 'plain' ? undefined : prepared)
@@ -2157,13 +2192,16 @@ export function registerSlidesIpc(): void {
     'slides:local-page-generate',
     async (
       _e,
-      op: { specJson: string },
+      op: { specJson: string; defaultFonts?: unknown },
     ): Promise<{ ok: boolean; marker?: string; error?: string; imageFailures?: string[] }> => {
       const parsed = parsePageSpec(String(op?.specJson ?? ''))
       if (!parsed.ok) return { ok: false, error: parsed.error }
+      // the fonts of Settings › General, sent only when they apply to this deck
+      const roles = parseFontRoles(op?.defaultFonts)
+      const spec = roles ? fillMissingRunFonts(parsed.spec, roles) : parsed.spec
       try {
         const started = Date.now()
-        const { bytes, imageFailures } = await buildPagePptx(parsed.spec, {
+        const { bytes, imageFailures } = await buildPagePptx(spec, {
           fontMetrics: getFontMetrics(),
           fetchImage: async (url) => {
             const resp = await fetchRemoteImage(url)
@@ -4821,6 +4859,16 @@ export function registerSlidesIpc(): void {
     return buildAllRenderSlides(session.opened, session.fitWidthPx)
   })
 
+  // Which AI rollback points are still in the ring: the panel tells a point
+  // pushed out by newer runs from one that only cannot be used right now
+  ipcMain.handle('slides:ai-snapshot-alive', (e, ids: unknown) => {
+    const session = sessions.get(e.sender.id)
+    if (!session || !Array.isArray(ids)) return []
+    return ids.filter(
+      (id): id is number => typeof id === 'number' && session.aiSnapshots?.has(id) === true,
+    )
+  })
+
   ipcMain.handle('slides:undo', (e) => {
     const session = sessions.get(e.sender.id)
     // Undo disabled in master view: the masterEdit.slide model cannot roll back with snapshots (v1 trade-off; undoable after exiting)
@@ -4977,20 +5025,33 @@ export function registerSlidesIpc(): void {
     if (!session) return { ok: false, error: 'no file open' }
     const parent = dialogParent()
     const options = {
-      defaultPath: saveAsSuggestion(session.path, defaultName),
-      filters: [{ name: 'PowerPoint', extensions: ['pptx'] }],
+      // with copy formats on offer the suggestion carries no extension: the
+      // file type chosen in the dialog supplies it
+      defaultPath: slidesSaveAsSuggestion(saveAsSuggestion(session.path, defaultName)),
+      // the deck's own type first, then the copies (PDF, one PNG per slide)
+      filters: slidesSaveAsFilters((key) => tm(key)),
     }
     const r = await showSaveDialogWithMemory(dialog, parent, options, getDraftsDir())
     if (r.canceled || !r.filePath) return { ok: false }
+    const pick = resolveSlidesSaveAsPick(r.filePath)
+    // A copy format writes no deck: the renderer runs the existing export to
+    // the picked path, and the session keeps its path, dirty state and
+    // recovery copy. The PNG name is authorized for one image export.
+    if (pick.kind === 'pdf') return { ok: false, exportAs: 'pdf', path: pick.path }
+    if (pick.kind === 'png') {
+      saveAsImageTargets.authorize(e.sender.id, pick.path)
+      return { ok: false, exportAs: 'png', path: pick.path }
+    }
+    const target = pick.path
     try {
       const metaRevAtSave = session.metaRev ?? 0
       const previousPath = session.path
-      await writeDeckFile(session, r.filePath)
-      followTemplateSelection(session, session.path, r.filePath)
-      session.path = r.filePath
-      session.diskState = (await recordDiskState(r.filePath)) ?? undefined
-      await pushRecent(r.filePath)
-      syncAttachedPaths(session, r.filePath)
+      await writeDeckFile(session, target)
+      followTemplateSelection(session, session.path, target)
+      session.path = target
+      session.diskState = (await recordDiskState(target)) ?? undefined
+      await pushRecent(target)
+      syncAttachedPaths(session, target)
       commitSaved(session.opened)
       if ((session.metaRev ?? 0) === metaRevAtSave) session.metaDirty = false
       // after the deck reads as saved: a copy a pass wrote while the steps
@@ -4998,7 +5059,7 @@ export function registerSlidesIpc(): void {
       recoveryCopiesSaved(session, previousPath)
       return {
         ok: true,
-        path: r.filePath,
+        path: target,
         slides: buildAllRenderSlides(session.opened, session.fitWidthPx),
       }
     } catch (err) {
@@ -5021,10 +5082,19 @@ export function registerSlidesIpc(): void {
 
   ipcMain.handle(
     'slides:export-images',
-    async (_e, op: ExportImagesOp): Promise<ExportImagesResult> => {
+    async (e, op: ExportImagesOp): Promise<ExportImagesResult> => {
       try {
         const ext = op.format === 'jpg' ? 'jpg' : 'png'
-        const paths = buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        if (op.saveAsTarget !== undefined && ext !== 'png') {
+          return { ok: false, error: 'Save As images are PNG' }
+        }
+        // Save As › PNG: the one name the person typed becomes one file per
+        // slide beside it, and only a name this tab's Save As dialog returned
+        const paths =
+          op.saveAsTarget !== undefined
+            ? saveAsImageTargets.take(e.sender.id, op.saveAsTarget, op.pngsBase64.length)
+            : buildExportImagePaths(op.dir, op.baseName, op.pngsBase64.length, ext)
+        if (!paths) return { ok: false, error: 'export target was not authorized' }
         for (let i = 0; i < paths.length; i++) {
           await writeFile(paths[i], Buffer.from(op.pngsBase64[i], 'base64'))
         }
@@ -5079,36 +5149,73 @@ export function registerSlidesIpc(): void {
     })
   })
 
+  /** Hidden window the system print dialog prints from (Windows shows it for the dialog). */
+  const createPrintDialogWindow = (sender: WebContents | undefined): BrowserWindow => {
+    const owner = (sender ? hostWindowFor(sender) : undefined) ?? dialogParent()
+    return new BrowserWindow({
+      show: false,
+      ...(owner && !owner.isDestroyed() ? { parent: owner } : {}),
+      ...(process.platform === 'win32'
+        ? {
+            width: 900,
+            height: 700,
+            autoHideMenuBar: true,
+            closable: false,
+            skipTaskbar: true,
+          }
+        : {}),
+      webPreferences: { sandbox: true },
+    })
+  }
+
   ipcMain.handle(
     'slides:print',
     async (e, op: PrintSlidesOp): Promise<{ ok: boolean; error?: string }> => {
       // Page assembly is shared with the renderer's print-preview pane (print-html.ts)
-      const html = buildPrintDocumentHtml({
-        srcs: op.pngsBase64.map((b64) => `data:image/png;base64,${b64}`),
-        ratio: op.widthPx / op.heightPx,
-        layout: op.layout ?? 'full',
-        ...(op.notes ? { notes: op.notes } : {}),
-        ...(op.orientation ? { orientation: op.orientation } : {}),
-        ...(op.frame ? { frame: true } : {}),
-      })
-      const owner = hostWindowFor(e.sender) ?? dialogParent()
-      const win = new BrowserWindow({
-        show: false,
-        ...(owner && !owner.isDestroyed() ? { parent: owner } : {}),
-        ...(process.platform === 'win32'
-          ? {
-              width: 900,
-              height: 700,
-              autoHideMenuBar: true,
-              closable: false,
-              skipTaskbar: true,
-            }
-          : {}),
-        webPreferences: { sandbox: true },
-      })
-      return printSlidesHtml(html, win)
+      const html = slidesPrintHtml(op)
+      return printSlidesHtml(html, createPrintDialogWindow(e.sender))
     },
   )
+
+  // Advanced print (decision 0141): the job PDF is the same print document
+  // printed to PDF; arranging, rasterizing and sending are shared.
+  ensurePrintLayoutIpc({
+    ipcMain,
+    labelSpecPath: () => join(app.getPath('userData'), LABEL_SPEC_FILE_NAME),
+  })
+  registerPrintLayoutIpc<PrintSlidesOp>('slides', {
+    ipcMain,
+    buildJobPdf: (_e, op) =>
+      slidesPrintJobPdf(
+        op,
+        () =>
+          // hidden: without backgroundThrottling off the readiness wait can stall
+          new BrowserWindow({
+            show: false,
+            webPreferences: { sandbox: true, backgroundThrottling: false },
+          }),
+      ),
+    createPrintWindow: (e) => createPrintDialogWindow(webContents.fromId(e.sender.id)),
+    pickSavePath: async (e) => {
+      const session = sessions.get(e.sender.id)
+      const name = session?.path
+        ? basename(session.path).replace(/\.pptx$/i, '')
+        : session
+          ? untitledRecoveryTitle(session)
+          : tm('untitledDeck')
+      const r = await showSaveDialogWithMemory(
+        dialog,
+        dialogParent(),
+        {
+          title: tm('dlgExportPdf'),
+          defaultPath: `${name}.pdf`,
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        },
+        getDraftsDir(),
+      )
+      return r.canceled || !r.filePath ? null : r.filePath
+    },
+  })
 
   ipcMain.handle('slides:recent', () => readRecent())
 
@@ -5474,7 +5581,7 @@ export function buildSlidesMenu(): Menu {
   const isMac = process.platform === 'darwin'
   const labels = appMenuLabels(getUiLang())
   const template: Electron.MenuItemConstructorOptions[] = [
-    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    ...(isMac ? [macAppMenuTemplate(labels)] : []),
     {
       label: tm('menuFile'),
       submenu: [

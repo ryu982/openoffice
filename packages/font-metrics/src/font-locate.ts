@@ -151,8 +151,13 @@ const COLOR_FONT_TABLES = ['sbix', 'COLR', 'CBDT', 'CBLC']
  * from targeted cmap-table reads — CJK collections run 100MB+, so candidate faces
  * are never read whole; only the one winning face is extracted (and cached).
  * Null when nothing covers the text (e.g. emoji, which only color fonts map).
+ * `truetypeOnly` skips CFF faces, so a caller that can only embed glyf faces gets
+ * the first TrueType face that covers the text rather than a CFF one it must drop.
  */
-export function findFontCovering(text: string): Buffer | null {
+export function findFontCovering(
+  text: string,
+  opts: { truetypeOnly?: boolean } = {},
+): Buffer | null {
   const cps = [...new Set([...text.replace(/[\r\n]/g, '')].map((c) => c.codePointAt(0)!))]
   if (cps.length === 0) return null
   const index = getFontIndex()
@@ -177,7 +182,7 @@ export function findFontCovering(text: string): Buffer | null {
       const tables = readTableDir(fd, face.offset)
       if (
         tables &&
-        (tables.has('glyf') || tables.has('CFF ')) &&
+        (tables.has('glyf') || (!opts.truetypeOnly && tables.has('CFF '))) &&
         !COLOR_FONT_TABLES.some((t) => tables.has(t))
       ) {
         const cmap = readTable(fd, tables, 'cmap', 1 << 22)

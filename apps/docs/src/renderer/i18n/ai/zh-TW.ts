@@ -79,7 +79,6 @@ export const zhTW = {
   aiCopied: '已複製',
   aiRegenerateTitle: '重新產生',
   aiSnapshotsTitle: '版本快照',
-  aiRollback: '還原',
   aiScopeSelected: '已選取 {count} 段',
   aiScopeEmptyDoc: '空白文件',
   aiScopeCursor: '在游標處',
@@ -189,4 +188,7 @@ export const zhTW = {
   aiMindMapReset: '重設檢視',
   aiMindMapExpand: '展開分支',
   aiMindMapCollapse: '收合分支',
+  aiMindMapToggleLayout: '切換版面',
+  aiMindMapLayoutTopDown: '切換為由上而下版面',
+  aiMindMapLayoutLeftRight: '切換為左右分欄版面',
 } satisfies Record<keyof typeof zh, string>

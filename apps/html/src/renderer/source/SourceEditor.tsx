@@ -10,7 +10,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { redo, redoDepth, undo, undoDepth } from '@codemirror/commands'
 import { External, buildExtensions } from './cm-setup'
-import { addAiRanges, clearAiRanges } from './cm-highlight'
+import { addAiRanges, aiHighlightField, clearAiRanges } from './cm-highlight'
 import { cmFindTarget } from './find-target'
 import { useI18n } from '../i18n/locale'
 import type { FindTarget } from '@genoffice/ui'
@@ -31,6 +31,8 @@ export interface SourceEditorHandle {
   /** apply validated patches as one undoable step; returns the post-edit ranges */
   applyPatches(patches: readonly Patch[], highlight: boolean): Array<[number, number]>
   clearHighlights(): void
+  /** the source ranges the marks of the AI's changes cover now (mapped through later edits) */
+  aiRanges(): Array<[number, number]>
   /** select and scroll a source range into view; focus only when the user asked for the editor */
   revealRange(from: number, to: number, focus?: boolean): void
   /** the main selection in source offsets; null until the editor is mounted */
@@ -221,6 +223,14 @@ export const SourceEditor = forwardRef<SourceEditorHandle, Props>(function Sourc
     },
     clearHighlights() {
       viewRef.current?.dispatch({ effects: [clearAiRanges.of(null)] })
+    },
+    aiRanges() {
+      const field = viewRef.current?.state.field(aiHighlightField, false)
+      const ranges: Array<[number, number]> = []
+      field?.between(0, viewRef.current!.state.doc.length, (from, to) => {
+        ranges.push([from, to])
+      })
+      return ranges
     },
     revealRange(from, to, focus = true) {
       const view = viewRef.current

@@ -30,10 +30,16 @@ export interface FrameColors {
   sepiaInk: string
   hitBg: string
   hitInk: string
+  /** the mark over the blocks the last AI run changed (the shared tokens) */
+  aiChangedBg: string
+  aiChangedLine: string
 }
 
 /** The name of the search highlight inside the frame (CSS custom highlights). */
 export const FIND_HIGHLIGHT = 'epub-find'
+
+/** The name of the highlight over the blocks the last AI run changed (screen only, never in the book). */
+export const AI_CHANGED_HIGHLIGHT = 'epub-ai-changed'
 
 /** The paper the book is drawn on: the book's own colours on white, on sepia, or night colours. */
 export type ReadingTheme = 'light' | 'sepia' | 'dark'
@@ -70,6 +76,7 @@ export function viewPrefsCss(prefs: EpubViewPrefs, colors: FrameColors): string 
     rules.push(`body, body * { line-height: ${prefs.lineHeight} !important; }`)
   }
   rules.push(
+    `::highlight(${AI_CHANGED_HIGHLIGHT}) { background-color: ${colors.aiChangedBg}; text-decoration: underline 2px ${colors.aiChangedLine}; }`,
     `::highlight(${FIND_HIGHLIGHT}) { background-color: ${colors.hitBg}; color: ${colors.hitInk}; }`,
   )
   return rules.join('\n')
@@ -89,5 +96,7 @@ export function frameColors(): FrameColors {
     sepiaInk: read('--epub-sepia-ink', 'CanvasText'),
     hitBg: read('--search-hit-active-bg', 'Mark'),
     hitInk: read('--search-hit-active-ink', 'MarkText'),
+    aiChangedBg: read('--color-ai-changed-bg', 'Mark'),
+    aiChangedLine: read('--color-ai-changed-line', 'MarkText'),
   }
 }

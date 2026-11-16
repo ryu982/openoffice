@@ -58,7 +58,7 @@ Elke opdracht is een tool. De interessantste:
 Een verzoek van de opdracht `ieumoffice` of van een MCP-client heb je niet zelf in de app getypt, dus GenOffice gaat er voorzichtig mee om.
 
 - **Zoeken** werkt altijd en is standaard gratis. Een sleutel van een zoekprovider wordt alleen gebruikt als je er een hebt geselecteerd.
-- **Een afbeelding genereren** vraagt een sleutel van een afbeeldingsprovider. In deze versie genereert een abonnement geen afbeeldingen.
+- **Een afbeelding genereren** volgt de keuze voor afbeeldingen genereren in de instellingen. De standaardkeuze, ChatGPT-abonnement (Codex-programma), gebruikt je ChatGPT-abonnement via het Codex-programma en wordt **niet gebruikt tenzij je het toestaat** (zie hieronder). Anders wordt de sleutel van een ingestelde afbeeldingsprovider gebruikt. Een model dat de agent noemt, wordt gebruikt als die route het aanbiedt.
 - **Een afbeelding beschrijven** gebruikt een provider met een sleutel als die is ingesteld. Je Claude- of Codex-abonnement wordt **niet gebruikt tenzij je dat toestaat**.
 - **Video en audio** hebben een provider met een sleutel nodig die video ondersteunt.
 

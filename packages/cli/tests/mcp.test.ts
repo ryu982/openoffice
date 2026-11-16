@@ -283,8 +283,20 @@ describe('mcp server', () => {
     // and hwp_read (about 1 KiB) joined the catalog; 97 KiB before epub_translate and epub_status
     // (about 2 KiB); 99 KiB before hwp_apply with its typed ops and create_hwp (about 12 KiB,
     // decision 0079); 112 KiB before the slide highlight, character spacing, hide and rename ops
-    // (about 0.5 KiB, decision 0094)
-    expect(bytes).toBeLessThanOrEqual(113 * 1024)
+    // (about 0.5 KiB, decision 0094); 113 KiB before diagram_read, diagram_apply with its typed
+    // ops and create_drawio (about 5.5 KiB); 119 KiB before the HWP note settings, page setup,
+    // list, read_formatting and format_look ops (about 1.8 KiB, decision 0106); 121 KiB before
+    // the HWP check_layout op with from_table and from_row (about 0.2 KiB); 122 KiB before the
+    // HWP document looks: cell borders, table looks, style_paragraphs, insert_title_box, the
+    // page number, header and footer ops (about 2.8 KiB, decision 0137); 125 KiB before the
+    // HWP building blocks that followed: numbered levels, columns, breaks, a head across the
+    // columns, paragraph borders and background, character width and spacing, cell text and
+    // row height, the width and place of a table (about 4 KiB, decision 0137); 129 KiB before
+    // the HWP equations, tab stops, page border, cell diagonal and picture width (about
+    // 1.7 KiB, decision 0137); 130 KiB before the HWP tools that change what was written:
+    // list_equations, edit_equation, column widths of a table and contents entries (under
+    // 1 KiB), and map_read, map_apply with its typed ops and map_create (decision 0150)
+    expect(bytes).toBeLessThanOrEqual(140 * 1024)
     expect(bytes).toBeGreaterThan(60 * 1024)
   })
 
@@ -364,8 +376,12 @@ describe('mcp server', () => {
       expect(props.ops!.anyOf!.map((v) => v.type)).toEqual(['array', 'object'])
       expect(props.ops!.items).toBeUndefined()
       // 42 KiB before hwp_read (about 1 KiB) joined the catalog; 43 KiB before epub_translate and
-      // epub_status (about 2 KiB); 45 KiB before hwp_apply and create_hwp (about 2.5 KiB)
-      expect(JSON.stringify(tools).length).toBeLessThan(48 * 1024)
+      // epub_status (about 2 KiB); 45 KiB before hwp_apply and create_hwp (about 2.5 KiB); 48 KiB
+      // before diagram_read, diagram_apply and create_drawio (about 3 KiB); measured 54291 B
+      // (53.0 KiB) with map_read, map_apply and map_create added (decision 0150); 54429 B
+      // (53.2 KiB) after map_create made out required and the map wording fixes — the 54 KiB
+      // ceiling has 867 B left
+      expect(JSON.stringify(tools).length).toBeLessThan(54 * 1024)
     } finally {
       await client2.close()
       disposeContext(ctx2)

@@ -20,6 +20,7 @@ import { he } from './generate/he'
 import { hi } from './generate/hi'
 import { zhTW } from './generate/zh-TW'
 import { vi } from './generate/vi'
+import { tr } from './generate/tr'
 
 /**
  * The generate window and its Home entry points ("make a new document from
@@ -47,6 +48,7 @@ export const generateStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type GenerateStringKey = keyof typeof zh

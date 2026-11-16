@@ -52,12 +52,13 @@ import { fieldRangeAt, toggleFieldCodes, type FieldRange } from '../editor/field
 import { hasRedactionIn } from '../editor/redaction'
 import type { SpellLanguages } from '../../shared/ipc'
 import { TRANSLATE_LANGS, appLangKey } from './translate-langs'
+import { useAiVisible } from '../ai-visibility'
 
 export { FontDialog } from './FontDialog'
 
 /**
  * Editor context menu (right click in the document body):
- * Cut/Copy/Paste · Font… · Paragraph… · Synonyms · Translate · Hyperlink (insert or Edit/Open/Copy/Remove) · New Comment.
+ * Cut/Copy/Paste · Font… · Paragraph… · Synonyms · Explain in plain words · Translate · Hyperlink (insert or Edit/Open/Copy/Remove) · New Comment.
  */
 
 export interface ContextMenuState {
@@ -156,6 +157,7 @@ export function EditorContextMenu({
   onRespell,
 }: EditorContextMenuProps) {
   const { t, lang } = useI18n()
+  const aiOn = useAiVisible()
   const ref = useRef<HTMLDivElement>(null)
   const [submenu, setSubmenu] = useState<string | null>(null)
 
@@ -666,61 +668,80 @@ export function EditorContextMenu({
           </div>
         </>
       )}
-      <div className="ctx-sep" />
-      {item(t('appSynonyms'), {
-        disabled: !synonymText,
-        ai: true,
-        onClick: run(() => onAiPreset(t('appSynonymsPrompt', { text: synonymText }))),
-      })}
-      <div className="ctx-item-wrap" onMouseLeave={() => setSubmenu(null)}>
-        {item(t('appTranslate'), { disabled: !hasSelection, submenuKey: 'translate', ai: true })}
-        {submenu === 'translate' && hasSelection && (
-          <div className="ctx-submenu">
-            {TRANSLATE_LANGS.map(({ code }) => (
-              <button
-                key={code}
-                className="ctx-item"
-                onClick={run(() =>
-                  onAiPreset(
-                    t('appTranslateSelectionPrompt', {
-                      lang: t(appLangKey(code)),
-                      text: selectedText,
-                    }),
-                  ),
-                )}
-              >
-                <span className="ctx-label">
-                  {t('appTranslateTo', { lang: t(appLangKey(code)) })}
-                </span>
-              </button>
-            ))}
+      {/* the AI items and withholding from AI: none while AI is off (Settings › Editors and AI) */}
+      {aiOn && (
+        <>
+          <div className="ctx-sep" />
+          {item(t('appSynonyms'), {
+            disabled: !synonymText,
+            ai: true,
+            onClick: run(() => onAiPreset(t('appSynonymsPrompt', { text: synonymText }))),
+          })}
+          {/* Explain the selection in easy words, always in the UI language (no
+              submenu). Same road as Synonyms: the prompt goes to the AI panel and
+              runs through its usual gate. It quotes selectedText, the redacted
+              projection, so withheld words never leave. Placed just before
+              Translate because the withholding item is pinned right after it. */}
+          {item(t('appEasyWords'), {
+            disabled: !selectedText,
+            ai: true,
+            onClick: run(() => onAiPreset(t('appEasyWordsPrompt', { text: selectedText }))),
+          })}
+          <div className="ctx-item-wrap" onMouseLeave={() => setSubmenu(null)}>
+            {item(t('appTranslate'), {
+              disabled: !hasSelection,
+              submenuKey: 'translate',
+              ai: true,
+            })}
+            {submenu === 'translate' && hasSelection && (
+              <div className="ctx-submenu">
+                {TRANSLATE_LANGS.map(({ code }) => (
+                  <button
+                    key={code}
+                    className="ctx-item"
+                    onClick={run(() =>
+                      onAiPreset(
+                        t('appTranslateSelectionPrompt', {
+                          lang: t(appLangKey(code)),
+                          text: selectedText,
+                        }),
+                      ),
+                    )}
+                  >
+                    <span className="ctx-label">
+                      {t('appTranslateTo', { lang: t(appLangKey(code)) })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      {/* Withholding a span. No AI badge: the item spends the words rather
-          than using the model, and the badge would read "Uses AI".
-          Text only, deliberately. A picture alone in a paragraph is a *block*
-          node (docProtected), which takes no marks at all, and a picture
-          beside text is an inline atom whose mark is dropped by the docx save
-          (convert.ts reads the run's node attrs, never the node's marks) — so
-          offering it for a picture would hide it for one session and then lose
-          the decision on the next save, with nothing to tell the reader. */}
-      {onRedact &&
-        item(t('redactMenuLabel'), {
-          disabled: !canEdit || !hasSelection,
-          onClick: run(onRedact),
-        })}
-      {/* The other half of the item above, and its mirror: offered only when the
-          selection really carries the mark. Without this the sole way to stop
-          withholding a span was to delete the words, which loses the reader's
-          own text to undo a decision they made in the editor. Same reason as
-          the item beside it for no AI badge — this one only moves a mark. */}
-      {onUnredact &&
-        isRedactedSelection &&
-        item(t('redactShowLabel'), {
-          disabled: !canEdit,
-          onClick: run(onUnredact),
-        })}
+          {/* Withholding a span. No AI badge: the item spends the words rather
+              than using the model, and the badge would read "Uses AI".
+              Text only, deliberately. A picture alone in a paragraph is a *block*
+              node (docProtected), which takes no marks at all, and a picture
+              beside text is an inline atom whose mark is dropped by the docx save
+              (convert.ts reads the run's node attrs, never the node's marks) — so
+              offering it for a picture would hide it for one session and then lose
+              the decision on the next save, with nothing to tell the reader. */}
+          {onRedact &&
+            item(t('redactMenuLabel'), {
+              disabled: !canEdit || !hasSelection,
+              onClick: run(onRedact),
+            })}
+          {/* The other half of the item above, and its mirror: offered only when the
+              selection really carries the mark. Without this the sole way to stop
+              withholding a span was to delete the words, which loses the reader's
+              own text to undo a decision they made in the editor. Same reason as
+              the item beside it for no AI badge — this one only moves a mark. */}
+          {onUnredact &&
+            isRedactedSelection &&
+            item(t('redactShowLabel'), {
+              disabled: !canEdit,
+              onClick: run(onUnredact),
+            })}
+        </>
+      )}
       {isFloating && (
         <>
           <div className="ctx-sep" />

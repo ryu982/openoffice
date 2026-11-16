@@ -30,6 +30,7 @@ export const vi = {
   darkView: 'Chế độ đọc tối',
   toc: 'Mục lục',
   tocEmpty: 'Cuốn sách này không có mục lục',
+  sideResize: 'Đổi độ rộng ngăn',
   statusChapter: 'Chương {n}/{total}',
   prevChapter: 'Chương trước',
   nextChapter: 'Chương sau',

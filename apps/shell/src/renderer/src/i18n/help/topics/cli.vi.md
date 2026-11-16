@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` và `media` dùng những gì đã được thiết lập trong ứng dụng ở Cài đặt ▸ AI ▸ Nâng cao:
 
 - `search` lúc nào cũng dùng được. Mặc định nó dùng tìm kiếm miễn phí, hoặc dùng nhà cung cấp tìm kiếm mà bạn đã chọn khóa.
-- `image` cần khóa của nhà cung cấp hình ảnh. Trong phiên bản này, gói đăng ký không tạo được hình ảnh.
+- `image` làm theo lựa chọn tạo hình ảnh trong Cài đặt. Với lựa chọn mặc định Gói ChatGPT (chương trình Codex), lệnh vẽ bằng gói ChatGPT của bạn qua chương trình Codex, nhưng chỉ khi bạn đã cho phép dùng gói đăng ký cho các lệnh gọi tự động (**mặc định tắt**; xem [Kết nối tác nhân lập trình](help://mcp)). Nếu không, lệnh dùng khóa của nhà cung cấp hình ảnh đã thiết lập. `--model` được dùng khi con đường đó cung cấp mô hình; nếu không, lệnh trả lời bằng các mô hình bạn có thể dùng. Hình ảnh đưa vào bằng `--ref` dùng được trên cả hai con đường.
 - `media` với một hình ảnh sẽ dùng nhà cung cấp dùng khóa khi có một nhà cung cấp như vậy được thiết lập. Nó chỉ dùng gói đăng ký Claude hoặc Codex của bạn khi bạn đã cho phép, và việc đó **tắt mặc định**; [Kết nối tác nhân lập trình](help://mcp) giải thích công tắc này và các giới hạn của nó.
 - `media` với video hoặc âm thanh cần một nhà cung cấp dùng khóa có hỗ trợ video.
 

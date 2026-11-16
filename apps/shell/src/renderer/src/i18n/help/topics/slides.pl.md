@@ -52,7 +52,7 @@ Menu zależy od miejsca, w którym klikniesz prawym przyciskiem:
 ## Generowanie przez AI
 
 - Karta AI Slides na stronie głównej: podaj temat lub konspekt, a AI zbuduje prezentację.
-- Bez klucza dostawcy obrazów AI nie może generować obrazów, a prezentacja korzysta zamiast tego z obrazów znalezionych przez wyszukiwanie obrazów; zobacz [Modele AI i ustawienia](help://ai-models).
+- Gdy nie ma czym tworzyć obrazów (ani planu ChatGPT przez program Codex, ani klucza dostawcy obrazów), AI nie może generować obrazów, a prezentacja korzysta zamiast tego z obrazów znalezionych przez wyszukiwanie obrazów; zobacz [Modele AI i ustawienia](help://ai-models).
 - Dalej możesz dopracowywać materiał panelem AI.
 - Prawy przycisk na zaznaczeniu tekstu lub elemencie obraz/wideo/audio ▸ **Ukryj zaznaczenie przed AI** chowa go przed oczami modelu (szczegóły w rozdziale o panelu AI); slajd z ukrytą treścią pomija automatyczne sprawdzanie zrzutem.
 

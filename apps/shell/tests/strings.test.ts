@@ -69,3 +69,67 @@ describe('home-screen locale tables', () => {
     expect(strings[locale].newMarkdown).toBe('AI Markdown')
   })
 })
+
+/**
+ * Image generation through the ChatGPT plan: the app's direct ChatGPT
+ * connection cannot make images (OpenAI does not allow it), so the Settings
+ * choice is named after the plan, and the line under it says to connect the
+ * Codex program with the same account. Every language names both, and OpenAI.
+ */
+describe('image generation through the ChatGPT plan', () => {
+  const others = locales.filter((locale) => locale !== 'en')
+
+  it.each(locales)('locale %s names the ChatGPT plan and the Codex program', (locale) => {
+    const table = strings[locale]
+    for (const key of ['setAiImageCodex', 'setAiImageCodexHint', 'setAiImageCodexConnect'] as const)
+      expect(table[key], key).toMatch(/ChatGPT[\s\S]*Codex|Codex[\s\S]*ChatGPT/)
+    expect(table.setAiImageCodexHint).toContain('Plus')
+    expect(table.setAiImageCodexHint).toContain('OpenAI')
+    expect(table.setAiImageCodexConnect).toContain('OpenAI')
+    expect(table.setAiImageCodexConnectAction).toContain('Codex')
+  })
+
+  it.each(others)('locale %s translates the new lines rather than copying English', (locale) => {
+    for (const key of [
+      'setAiImageCodex',
+      'setAiImageCodexHint',
+      'setAiImageCodexConnect',
+      'setAiImageCodexConnectAction',
+      'setAiHeadlessWarning',
+    ] as const)
+      expect(strings[locale][key], key).not.toBe(strings.en[key])
+  })
+
+  /** the words each language uses for image generation in the automatic-requests warning */
+  const imageGenerationIn: Record<(typeof locales)[number], string> = {
+    zh: '生图',
+    en: 'image generation',
+    vi: 'tạo hình ảnh',
+    tr: 'görüntü oluşturma',
+    ja: '画像生成',
+    ko: '이미지 생성',
+    fr: 'génération d’images',
+    de: 'Bildgenerierung',
+    es: 'generación de imágenes',
+    th: 'สร้างภาพ',
+    id: 'pembuatan gambar',
+    ru: 'генерацию изображений',
+    ar: 'توليد الصور',
+    pt: 'geração de imagens',
+    it: 'generazione di immagini',
+    pl: 'generowania obrazów',
+    cs: 'generování obrázků',
+    nl: 'afbeeldingen te genereren',
+    ms: 'penjanaan imej',
+    he: 'יצירת תמונות',
+    hi: 'इमेज जनरेशन',
+    'zh-TW': '生圖',
+  }
+
+  it.each(locales)(
+    'locale %s names image generation in the automatic-requests warning',
+    (locale) => {
+      expect(strings[locale].setAiHeadlessWarning).toContain(imageGenerationIn[locale])
+    },
+  )
+})

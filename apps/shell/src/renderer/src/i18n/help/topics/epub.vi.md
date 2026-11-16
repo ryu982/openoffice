@@ -12,7 +12,7 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 
 ## Đọc
 
-- Ngăn **Mục lục** bên trái hiển thị mục lục của sách. Bấm vào một mục để đi tới đó. Sách không có mục lục sẽ có danh sách các chương thay thế.
+- Ngăn **Mục lục** bên trái hiển thị mục lục của sách. Bấm vào một mục để đi tới đó. Sách không có mục lục sẽ có danh sách các chương thay thế. Kéo mép trong của ngăn để đổi độ rộng; bấm đúp vào mép để trở về độ rộng ban đầu. Ngăn tìm kiếm dùng cùng độ rộng.
 - Mỗi chương cuộn lên xuống. Cứ cuộn tiếp qua cuối chương để sang chương sau, hoặc qua đầu chương để quay lại. Dòng trạng thái cho biết bạn đang ở chương nào.
 - Thẻ **Xem** đổi cỡ chữ và giãn dòng, đồng thời bật tắt **Chế độ đọc tối**. Các thiết lập này chỉ đổi cách hiển thị trên màn hình, không bao giờ đổi sách, và áp dụng cho mọi cuốn sách.
 - Chỗ bạn đọc dở được ghi nhớ riêng cho từng tệp, trong thư mục dữ liệu của ứng dụng chứ không phải trong sách.
@@ -47,7 +47,7 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 ## Bảng AI
 
 - Hỏi về cuốn sách, nhờ tóm tắt một chương, hoặc nhờ sửa hay viết lại chữ trong đó. AI đọc mục lục và các chương của sách, và tìm chữ trong sách.
-- Thay đổi của AI hiện ra ngay, và một lần hoàn tác (Ctrl+Z) sẽ lấy lại mọi thứ AI đã đổi trong lượt đó. AI có thể làm chữ đậm hoặc nghiêng, nhưng không thể thêm hình ảnh, bảng hay chương.
+- Thay đổi của AI hiện ra ngay, các khối đã sửa được đánh dấu màu vàng, và **Hoàn tác các thay đổi này** trên thẻ dưới câu trả lời sẽ lấy lại mọi thứ AI đã đổi trong lượt đó (miễn là sách chưa được sửa sau lượt đó). AI có thể làm chữ đậm hoặc nghiêng, nhưng không thể thêm hình ảnh, bảng hay chương.
 - Chữ trong sách là tư liệu cho AI, không phải lệnh dành cho AI.
 - Hãy nói "Dịch cuốn sách này sang tiếng Pháp" và AI sẽ mở cửa sổ dịch với ngôn ngữ đó đã được điền sẵn. Không có gì được gửi đi cho tới khi bạn bấm **Bắt đầu**.
 - Sách EPUB cũng có thể được đính kèm trong bảng AI của các trình soạn thảo khác, chọn bằng `@`, và tìm thấy qua tìm kiếm tệp ở màn hình Trang chủ.
@@ -67,6 +67,7 @@ Trình soạn thảo sách điện tử mở sách EPUB (`.epub`) trong một th
 - Phần đã dịch được giữ lại. Nếu bạn dừng, hãy chọn **Xuất phần đã dịch đến giờ** (phần còn lại giữ ngôn ngữ gốc) hoặc **Tiếp tục sau**. Khi bạn mở một cuốn sách có bản dịch chưa xong, GenOffice sẽ đề nghị dịch tiếp. **Dịch lại từ đầu** sẽ xóa bản dịch đã giữ của ngôn ngữ đó trước.
 - Bản dịch đã giữ được tính trong Cài đặt ▸ Chung ▸ **Kết quả AI đã lưu**, cùng với kết quả của tài liệu PDF, và **Xóa tất cả** cũng xóa luôn chúng.
 - Cũng có thể chạy cùng phép dịch này từ [lệnh trên terminal](help://cli) bằng `ieumoffice epub translate`.
+- Chọn **Bản dễ hiểu** ở mục **Cách làm** để viết lại cuốn sách bằng lời dễ hiểu trong ngôn ngữ đã chọn. Kết quả là **Sách bản dễ hiểu** và **Bản gốc, tiếp theo là bản dễ hiểu**; tên sách được ghi chú là bản dễ hiểu bằng ngôn ngữ đó, còn tên tệp mang ghi chú này bằng ngôn ngữ giao diện để khác với tên tệp của bản dịch. Ngôn ngữ ban đầu là ngôn ngữ giao diện và có thể trùng với ngôn ngữ của sách. Bản dễ hiểu được lưu riêng với bản dịch, lời mời làm tiếp cũng hiện riêng, và lệnh terminal không tạo ra nó.
 
 ## Chưa hỗ trợ
 

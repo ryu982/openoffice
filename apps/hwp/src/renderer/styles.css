@@ -226,6 +226,13 @@ body {
 .hwp-notice-info {
   border-color: var(--success-border);
   background: var(--success-bg);
+  /* an information floats over the editor: a click on it reaches the editor below (a
+     dialog's buttons there), and only its close button takes one */
+  pointer-events: none;
+}
+
+.hwp-notice-info .hwp-notice-close {
+  pointer-events: auto;
 }
 
 .hwp-notice-error {
@@ -258,6 +265,10 @@ body {
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .hwp-notice-close:hover {
@@ -341,6 +352,10 @@ body {
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .doc-check-close:hover {
@@ -569,10 +584,17 @@ body {
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: flex;
-  flex-direction: column;
+  /* the bar and the status line across; the pages beside the page layout panel */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--canvas);
   color: var(--text);
+}
+
+.hwp-preview-bar,
+.hwp-preview-status {
+  grid-column: 1 / -1;
 }
 
 .hwp-preview:focus {
@@ -638,6 +660,9 @@ body {
   padding: 0;
   font-size: 16px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hwp-preview-separator {
@@ -691,9 +716,22 @@ body {
   align-items: flex-start;
   justify-content: safe center;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   padding: 24px;
+}
+
+.hwp-preview-schematic {
+  margin: auto;
+}
+
+.hwp-preview-layout {
+  width: 300px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .hwp-preview-grid {

@@ -2,13 +2,15 @@
 
 ## Abrir la configuración
 
-La fila de la parte inferior izquierda de Inicio abre el panel de configuración (muestra «Conectar IA» hasta que hay una IA conectada). Tiene cinco secciones: Cuenta, IA, General, Integraciones y Acerca de.
+La fila de la parte inferior izquierda de Inicio abre el panel de configuración (la línea de debajo muestra si hay una IA conectada). Tiene cinco secciones: Cuenta, IA, General, Integraciones y Acerca de.
+
+También puede abrirla desde cualquier pestaña con **⌘,** (Ctrl+, en Windows y Linux), desde **Configuración…** en el menú de la aplicación en un Mac (el menú con el nombre de la app, a la izquierda de la barra de menús) o desde **Menú (☰) ▸ Configuración…** en Windows y Linux. En una pestaña de Word, ⌘, (Ctrl+,) es subíndice, así que ábrala desde el menú.
 
 **Cuenta** muestra en qué estado están sus conexiones de Claude, ChatGPT y Codex, y **Gestionar conexiones** lleva a la sección IA. La IA tiene sus propios artículos: [Conexión por suscripción](help://subscription) y [Modelos de IA y ajustes](help://ai-models).
 
 ## Idioma
 
-- La configuración ofrece **21 idiomas de interfaz**: inglés, chino simplificado, japonés, coreano, francés, alemán, español, tailandés, indonesio, ruso, árabe, portugués, italiano, polaco, checo, neerlandés, malayo, hebreo, hindi, chino tradicional, vietnamita.
+- La configuración ofrece **22 idiomas de interfaz**: inglés, chino simplificado, japonés, coreano, francés, alemán, español, tailandés, indonesio, ruso, árabe, portugués, italiano, polaco, checo, neerlandés, malayo, hebreo, hindi, chino tradicional, vietnamita, turco.
 - El cambio se aplica de inmediato y se conserva; la barra de menús nativa se reconstruye con el idioma.
 
 ## Tema
@@ -22,8 +24,22 @@ Claro / Oscuro / Seguir el sistema. «Seguir el sistema» sigue la apariencia de
 - **Guardar automáticamente todos los documentos** activa el guardado automático de forma predeterminada en todos los editores; todavía puedes desactivarlo para una ventana.
 - **Ubicación de guardado** con un botón **Cambiar** y **App predeterminada para documentos de Office** para reclamar .docx / .xlsx / .pptx para GenOffice.
 - **Formato de guardado de nuevos documentos HWP** decide si se ofrece primero HWP o HWPX al guardar por primera vez un documento nuevo. Los documentos abiertos conservan su propio formato.
+- **Fuentes de diapositivas con IA** define las fuentes que usa la IA en una presentación nueva cuando su solicitud no nombra ninguna. Elija Automático, Sin serifa, Con serifa o Títulos con serifa, y cambie por separado la fuente sin serifa y la fuente con serifa. Una plantilla de diseño elegida usa sus propias fuentes, y las páginas añadidas a una presentación con otras fuentes siguen esa presentación.
 
 GenOffice no recopila ni envía estadísticas de uso, así que no hay ningún interruptor para ello.
+
+## Editores e IA
+
+Aquí elige qué editores usa y si usa la IA. La misma lista aparece además una vez en otros dos lugares: el paso **Elige tus editores** de las pantallas de bienvenida del primer arranque y una ventana que se muestra una sola vez en Inicio a quienes ya usaban GenOffice antes de que existiera este ajuste. Al principio todo está activado, así que si no toca nada no cambia nada. Los cambios se aplican al instante en todas las ventanas abiertas.
+
+- **Editores**: Word, Excel, PowerPoint, PDF, Herramientas PDF, Markdown y texto, HTML, Mapa mental, Diagrama, HWP (Hangul) y Libro electrónico (EPUB). Las herramientas PDF se activan por separado del editor de PDF. Al menos un editor tiene que seguir activado.
+- **Un editor desactivado** desaparece de las listas de documentos nuevos: las tarjetas de Inicio, el menú **+** de la barra de pestañas, Archivo ▸ Nuevo y la lista de aplicaciones predeterminadas. Los documentos ya abiertos siguen abiertos y las copias de recuperación se conservan.
+- **Al abrir un archivo de un editor desactivado** (doble clic, arrastrar y soltar, Archivo ▸ Abrir, archivos recientes) se le pide elegir entre **Activar y abrir** y **Cancelar**. Si abre varios de sus archivos a la vez, se pregunta una sola vez.
+- **Otras funciones que abrirían su resultado en un editor desactivado**, como convertir un PDF a ese formato, preguntan antes de empezar: **Activar y abrir**, **Solo crear el archivo** (el archivo se crea y se muestra en su carpeta, y el editor sigue desactivado) o **Cancelar**.
+- **Con las funciones de IA desactivadas** desaparecen los paneles de IA, los botones y menús de IA, el panel de preguntas de Inicio, la ventana del agente y los avisos para conectar una IA, y las pestañas Cuenta, IA y Habilidades salen de la configuración. GenOffice no inicia ningún programa de IA desde sus pantallas. Los inicios de sesión, claves, habilidades y ajustes se conservan y vuelven al activar de nuevo la IA. Si todavía hay trabajo de IA en curso, primero se le pregunta si quiere **Detener y desactivar**.
+- La línea de comandos, MCP y esta guía funcionan igual tanto si los editores o la IA están activados como si no.
+
+Aunque la IA esté activada, no crea documentos nuevos para un editor desactivado; le indica que lo active aquí.
 
 ## IA ▸ Avanzado
 
@@ -45,7 +61,7 @@ La configuración puede registrar GenOffice como programa predeterminado para .d
 ## Avisos de software de terceros y actualizaciones
 
 - Ayuda ▸ Avisos de software de terceros: el inventario completo de licencias de código abierto que se distribuye con la aplicación.
-- Menú (☰) ▸ Buscar actualizaciones (en un Mac, Ayuda ▸ Buscar actualizaciones): lanza una comprobación manual; si hay una versión más reciente, ofrece instalarla.
+- Menú (☰) ▸ Buscar actualizaciones (en un Mac, Ayuda ▸ Buscar actualizaciones): lanza una comprobación manual; si hay una versión más reciente, ofrece instalarla. En un Mac también está en el menú de la aplicación, justo debajo de «Acerca de GenOffice».
 
 ## Integración MCP (para usuarios avanzados / clientes de IA)
 

@@ -18,6 +18,8 @@ export const de = {
   cardErrNeedsUpdatePath: 'Von dieser App ausgeführte Datei:',
   cardErrNeedsUpdateWindows:
     'Wenn Sie {provider} in WSL (Ubuntu) oder in einem anderen Ordner aktualisieren, ändert sich diese Datei nicht. Führen Sie {command} in Windows PowerShell aus.',
+  claudeDesktopNote:
+    'Die Claude-Desktop-App ist nicht Claude Code, das diese App ausführt. Claude Code ist ein eigenes Programm für das Terminal, daher ändert die Installation oder Aktualisierung der Desktop-App nichts daran.',
   cardErrTimeout:
     'Das Programm {provider} hat nicht rechtzeitig geantwortet. Prüfen Sie es gleich noch einmal.',
   cardErrFailed:
@@ -58,6 +60,8 @@ export const de = {
   errRateLimit: 'Das Limit des Abonnements {provider} ist aufgebraucht.',
   errRateLimitReset:
     'Das Limit des Abonnements {provider} ist aufgebraucht. Es wird um {time} zurückgesetzt.',
+  errChatGptAppLimit:
+    'Diese App hat die ChatGPT-Nutzung aufgebraucht, auf die sie zugreifen kann. Das kann das Limit des ganzen Tarifs sein oder ein Limit, das für diese App festgelegt wurde. Prüfen Sie es in ChatGPT unter Einstellungen → Nutzung.',
   errUnsafeTools:
     'Das Programm {provider} wurde mit eigenen aktivierten Tools gestartet; der Lauf wurde aus Sicherheitsgründen gestoppt.',
   errMeteredNotAccepted:
@@ -123,7 +127,7 @@ export const de = {
   stepLogin: 'Anmelden',
   stepReady: 'Verbunden',
   installReturnNote:
-    'Wenn die Installation in diesem Fenster abgeschlossen ist, kehren Sie hierher zurück. Die App prüft dann von selbst erneut.',
+    'Während des Downloads zeigt das Fenster einige Minuten lang möglicherweise nichts an. Lassen Sie es geöffnet. Wenn die Installation abgeschlossen ist, kehren Sie hierher zurück. Die App prüft dann von selbst erneut.',
   loginHowNote:
     'Beim Klicken öffnet sich ein Browser. Melden Sie sich mit Ihrem {vendor}-Konto an und klicken Sie auf Zulassen; die Verbindung wird dann von selbst hergestellt.',
   signingInStalledNote:
@@ -161,6 +165,16 @@ export const de = {
     'Im Browser öffnet sich eine ChatGPT-Anmeldeseite. Melden Sie sich an und erlauben Sie dieser App, Ihren ChatGPT-Tarif zu nutzen; die Verbindung wird dann von selbst hergestellt.',
   chatgptLoginUnfinishedNote:
     'Die Anmeldung wurde nicht abgeschlossen. Drücken Sie erneut, um von vorn zu beginnen. Für die Verbindung müssen Sie die Nutzung Ihres ChatGPT-Tarifs erlauben.',
+  chatgptLoginNoPlanNote:
+    'Sie sind bei ChatGPT angemeldet, aber diese App hat keine Erlaubnis erhalten, Ihren Tarif zu nutzen. Drücken Sie erneut und erlauben Sie auf der Freigabeseite die Nutzung des Tarifs. Wenn Sie das bereits getan haben, bietet OpenAI diese Nutzung für Ihr Konto (zum Beispiel eines, das ein Unternehmen oder eine Schule verwaltet) oder Ihren Tarif möglicherweise nicht an. Sie können sich dann mit dem Programm Codex verbinden.',
+  chatgptLoginDeniedNote:
+    'Sie haben sich im Browser angemeldet, aber OpenAI hat diese Verbindung nicht angenommen, oder seine Antwort ließ sich nicht prüfen. Prüfen Sie, ob Datum und Uhrzeit dieses PCs stimmen, und drücken Sie dann erneut, um von vorn zu beginnen.',
+  chatgptLoginNetworkNote:
+    'Die Anmeldung konnte nicht abgeschlossen werden: OpenAI war nicht erreichbar, oder es hat sich kein Browser geöffnet. Prüfen Sie die Internetverbindung (auch Firmennetz, VPN oder Proxy) und drücken Sie dann erneut.',
+  chatgptLoginWorkspacePolicyNote:
+    'Dieses ChatGPT-Konto gehört zu einem Arbeitsbereich, den ein Unternehmen oder eine Schule verwaltet, und OpenAI erlaubt Apps nicht, den ChatGPT-Tarif eines Arbeitsbereichs zu nutzen. Der Administrator des Arbeitsbereichs hat keine Einstellung, mit der er diese App zulassen könnte; eine erneute Anmeldung hilft also nicht. Melden Sie sich mit einem persönlichen ChatGPT-Konto (Go, Plus oder Pro) an oder verbinden Sie sich über die Codex-Karte.',
+  chatgptLoginNotAllowedNote:
+    'Sie haben dieser App die Nutzung Ihres ChatGPT-Tarifs nicht erlaubt, oder der Browser kam mit einem Fehler von der Anmeldung zurück. Drücken Sie erneut, melden Sie sich an und erlauben Sie es auf der Freigabeseite.',
   chatgptSigningInNote:
     'Melden Sie sich im geöffneten Browser mit Ihrem ChatGPT-Konto an und erlauben Sie dieser App, Ihren Tarif zu nutzen. Die Verbindung wird von selbst hergestellt.',
   chatgptPlanNote:
@@ -170,4 +184,18 @@ export const de = {
   browserPageDoneBody: 'Sie können diesen Tab schließen und zur App zurückkehren.',
   browserPageFailedTitle: 'Die Verbindung wurde nicht hergestellt',
   browserPageFailedBody: 'Kehren Sie zur App zurück und versuchen Sie es erneut.',
+  cardOff: 'In dieser App aus',
+  offNote:
+    'Diese App startet das Programm {provider} nicht und fragt auch seinen Status nicht ab. Die Anmeldung von {provider} auf diesem PC und die Nutzung im Terminal bleiben unverändert.',
+  offElsewhereNote: 'Unter Einstellungen → KI können Sie es wieder verwenden.',
+  offSwitchNote:
+    '„In dieser App nicht verwenden“ lässt die Anmeldung von {provider} auf diesem PC bestehen und stoppt nur diese App. Abmelden gilt für den ganzen PC.',
+  actionTurnOff: 'In dieser App nicht verwenden',
+  actionTurnOn: 'Wieder verwenden',
+  connectOffTitle: '{provider} ist in dieser App ausgeschaltet',
+  connectOffBody:
+    'Wählen Sie auf der Karte {provider} unter Einstellungen → KI „Wieder verwenden“ oder eine andere KI.',
+  errOffInApp:
+    '{provider} ist in dieser App ausgeschaltet, daher wurde nichts ausgeführt. Unter Einstellungen → KI können Sie es wieder verwenden.',
+  guideBadgeOff: 'Aus',
 } satisfies Record<keyof typeof zh, string>

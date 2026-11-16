@@ -12,10 +12,12 @@ Ogni editor ha le proprie combinazioni di tasti, e solo poche funzionano ovunque
 | Comprimi / espandi il nastro — ogni editor               | ⌥⌘R   | Ctrl+F1         |
 | Barra compatta — solo Docs                               | ⌥⌘K   | Ctrl+Alt+K      |
 | Apri il foglio delle scorciatoie da tastiera — solo Word | ⌘/    | Ctrl+/          |
+| Aprire le impostazioni — tutte le schede tranne Word     | ⌘,    | Ctrl+,          |
 
 - **F1 apre questo manuale**, non il foglio delle scorciatoie. Il tasto appartiene al menu dell’applicazione, quindi funziona allo stesso modo da Word, Sheets, Slides, PDF o dalla scheda Home.
 - **L’interruttore del nastro è `Ctrl+F1`, oppure `⌥⌘R` su macOS.** Premere `F1` da solo non fa nulla — F1 è il manuale, e il tasto del nastro non condivide deliberatamente quella combinazione. `Ctrl+F1` è accettata anche su macOS, ma `⌥⌘R` è il tasto che usa Office per Mac.
 - **Il foglio delle scorciatoie da tastiera appartiene solo a Word** (`⌘/`). Elenca esattamente la tabella di Word qui sotto. Nessun altro editor ne ha uno.
+- **`⌘,` apre le impostazioni** (`Ctrl+,` su Windows e Linux), come nella maggior parte delle app per Mac. In una scheda Word la combinazione resta il pedice: lì apri le impostazioni dal menu dell’app su un Mac, o da Menu (☰) ▸ Impostazioni… su Windows e Linux.
 
 ![Il foglio delle scorciatoie da tastiera di Word stesso: l’azione a sinistra, la scorciatoia a destra, raggruppati per File, Modifica, Formattazione del testo, Formattazione del paragrafo, Inserimento, Revisione e strumenti, Vista](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ La scorciatoia di Excel per il filtro, Ctrl+Shift+L, non fa nulla su Windows o L
 
 ### Finestra
 
-| Azione                                                                 | macOS      | Windows / Linux |
-| ---------------------------------------------------------------------- | ---------- | --------------- |
-| Salva la cartella di lavoro                                            | ⌘S         | Ctrl+S          |
-| Salva come                                                             | ⇧⌘S        | Ctrl+Shift+S    |
-| Apri una cartella di lavoro                                            | ⌘O         | Ctrl+O          |
-| Stampa                                                                 | ⌘P         | Ctrl+P          |
-| Chiudi la cartella di lavoro (macOS) / Esci dall’app (Windows e Linux) | ⌘W         | Ctrl+Q          |
-| Apri la guida utente                                                   | F1         | F1              |
-| Ingrandisci                                                            | ⌘=         | Ctrl+=          |
-| Zoom con la rotella del mouse                                          | ⌘ + scorri | Ctrl + scorri   |
-| Mostra o nascondi le formule nelle celle                               | ⌘`         | Ctrl+`          |
-| Espandi o comprimi la barra delle formule                              | ⌘⇧U        | Ctrl+Shift+U    |
+| Azione                                                                                  | macOS      | Windows / Linux |
+| --------------------------------------------------------------------------------------- | ---------- | --------------- |
+| Salva la cartella di lavoro                                                             | ⌘S         | Ctrl+S          |
+| Salva come                                                                              | ⇧⌘S        | Ctrl+Shift+S    |
+| Apri una cartella di lavoro                                                             | ⌘O         | Ctrl+O          |
+| Stampa                                                                                  | ⌘P         | Ctrl+P          |
+| Chiudi la cartella di lavoro (macOS) / Esci dall’app (Windows e Linux)                  | ⌘W         | Ctrl+Q          |
+| Apri la guida utente                                                                    | F1         | F1              |
+| Ingrandisci                                                                             | ⌘=         | Ctrl+=          |
+| Zoom con la rotella del mouse                                                           | ⌘ + scorri | Ctrl + scorri   |
+| Mostra o nascondi le formule nelle celle                                                | ⌘`         | Ctrl+`          |
+| Espandi o comprimi la barra delle formule                                               | ⌘⇧U        | Ctrl+Shift+U    |
+| Esegui un pulsante della barra di accesso rapido in base alla posizione (dal 1º al 10º) |            | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -615,23 +618,25 @@ Questi tasti funzionano quando la scheda HWP/HWPX è in primo piano e il documen
 
 ### Modifica
 
-| Azione              | macOS       | Windows / Linux              |
-| ------------------- | ----------- | ---------------------------- |
-| Annulla             | ⌃Z          | Ctrl+Z                       |
-| Ripeti              | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| Elimina la riga     | ⌃Y          | Ctrl+Y                       |
-| Taglia              | ⌃X          | Ctrl+X                       |
-| Copia               | ⌃C          | Ctrl+C                       |
-| Incolla             | ⌃V          | Ctrl+V                       |
-| Elimina             | ⌃E          | Ctrl+E                       |
-| Seleziona tutto     | ⌃A          | Ctrl+A                       |
-| Copia formattazione | ⌥C          | Alt+C                        |
-| Trova               | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| Trova e sostituisci | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| Trova successivo    | ⌃L          | Ctrl+L                       |
-| Trova all’indietro  | ⌃Q, L       | Ctrl+Q, L                    |
-| Vai a               | ⌥G          | Alt+G                        |
-| Confronta documenti | ⌥⇧V         | Alt+Shift+V                  |
+| Azione               | macOS       | Windows / Linux              |
+| -------------------- | ----------- | ---------------------------- |
+| Annulla              | ⌃Z          | Ctrl+Z                       |
+| Ripeti               | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Elimina la riga      | ⌃Y          | Ctrl+Y                       |
+| Taglia               | ⌃X          | Ctrl+X                       |
+| Copia                | ⌃C          | Ctrl+C                       |
+| Incolla              | ⌃V          | Ctrl+V                       |
+| Elimina              | ⌃E          | Ctrl+E                       |
+| Seleziona tutto      | ⌃A          | Ctrl+A                       |
+| Copia formattazione  | ⌥C          | Alt+C                        |
+| Trova                | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Trova e sostituisci  | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Trova successivo     | ⌃L          | Ctrl+L                       |
+| Trova all’indietro   | ⌃Q, L       | Ctrl+Q, L                    |
+| Vai a                | ⌥G          | Alt+G                        |
+| Inizio del documento | ⌃⇞          | Ctrl+PageUp                  |
+| Fine del documento   | ⌃⇟          | Ctrl+PageDown                |
+| Confronta documenti  | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Carattere
 
@@ -757,3 +762,5 @@ Funzionano solo quando il cursore è in una cella vuota di una tabella. Ci sono 
 | Vai alla scheda Home (fuori da una tabella)   | ⇧⌘H   | Ctrl+Shift+H    |
 
 Un tasto scritto come `Ctrl+N,T` significa premere Ctrl+N, rilasciarlo e poi premere T. `F5 → S` significa selezionare un blocco di celle con F5 e poi premere S. `Ctrl+1 … Ctrl+0` indicano dal primo al decimo stile del documento; `Ctrl+Alt+1 … Ctrl+Alt+0` applicano gli stessi stili. Con un blocco di celle selezionato, `Ctrl+Shift+S` (su macOS `⇧⌘S`) è la somma del blocco; altrove quel tasto salva come.
+
+Con il mouse, come in Hangul, un doppio clic seleziona una parola, un triplo clic l’intero paragrafo, e un doppio clic tenuto premuto e trascinato estende la selezione parola per parola. Vale anche mentre si modifica un’intestazione, un piè di pagina o una nota a piè di pagina. Copiare un blocco di celle (`Ctrl+C`) copia il testo delle celle e la tabella stessa, quindi incollandolo nel corpo si ricrea la stessa tabella. Incollare con il solo cursore in una cella di un’altra tabella apre la finestra Paste Cells: sovrascrivere a partire da quella cella (le celle che escono dalla tabella vengono scartate) oppure inserire le celle sopra, sotto, a sinistra o a destra.

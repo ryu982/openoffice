@@ -21,8 +21,7 @@ const placeholders = (text: string): string[] =>
   [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort()
 
 describe('PROJECT_PANEL_STRINGS', () => {
-  it('has every key, non-empty, in all 21 languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('has every key, non-empty, in every UI language', () => {
     expect(Object.keys(PROJECT_PANEL_STRINGS).sort()).toEqual([...LANGS].sort())
     for (const lang of LANGS) {
       const dict = PROJECT_PANEL_STRINGS[lang] as Record<string, string>

@@ -12,7 +12,7 @@ O editor de livros digitais abre livros EPUB (`.epub`) em uma aba. Você lê o l
 
 ## Ler
 
-- O painel **Sumário**, à esquerda, mostra o índice do livro. Clique em um item para ir até ele. Um livro sem índice recebe uma lista dos seus capítulos.
+- O painel **Sumário**, à esquerda, mostra o índice do livro. Clique em um item para ir até ele. Um livro sem índice recebe uma lista dos seus capítulos. Arraste a borda interna do painel para mudar a largura; clique duas vezes na borda para voltar à largura original. O painel de busca usa a mesma largura.
 - Cada capítulo rola para cima e para baixo. Continue rolando depois do fim de um capítulo para passar ao seguinte, ou antes do início dele para voltar. A linha de status mostra em que capítulo você está.
 - A aba **Exibir** muda o tamanho do texto e o espaçamento entre linhas e liga e desliga a **Visualização escura**. Essas configurações mudam só a tela, nunca o livro, e valem para todos os livros.
 - O ponto em que você parou de ler é lembrado para cada arquivo, na pasta de dados do app, e não no livro.
@@ -47,7 +47,7 @@ O editor de livros digitais abre livros EPUB (`.epub`) em uma aba. Você lê o l
 ## Painel de IA
 
 - Pergunte sobre o livro, peça o resumo de um capítulo ou peça que o texto dele seja corrigido ou reescrito. A IA lê o índice e os capítulos do livro e encontra texto nele.
-- As alterações da IA aparecem na hora, e um único desfazer (Ctrl+Z) reverte tudo o que ela mudou naquela vez. A IA pode deixar texto em negrito ou itálico, mas não pode adicionar imagens, tabelas nem capítulos.
+- As alterações da IA aparecem na hora, os blocos alterados ficam marcados em amarelo, e **Desfazer estas alterações**, no cartão abaixo da resposta, reverte tudo o que ela mudou naquela vez (desde que o livro não tenha sido editado depois). A IA pode deixar texto em negrito ou itálico, mas não pode adicionar imagens, tabelas nem capítulos.
 - O texto do livro é material para a IA, não instruções para ela.
 - Peça "Traduza este livro para o francês" e a IA abre a janela de tradução com esse idioma já preenchido. Nada é enviado até você clicar em **Iniciar**.
 - Livros EPUB também podem ser anexados no painel de IA dos outros editores, escolhidos com `@` e encontrados pela pesquisa de arquivos da tela inicial.
@@ -67,6 +67,7 @@ O editor de livros digitais abre livros EPUB (`.epub`) em uma aba. Você lê o l
 - O que já foi traduzido fica guardado. Se você parar, escolha **Exportar o que foi traduzido até agora** (o restante fica no idioma original) ou **Continuar depois**. Quando você abre um livro com uma tradução inacabada, o GenOffice oferece continuar. **Traduzir de novo desde o início** primeiro exclui a tradução guardada para aquele idioma.
 - As traduções guardadas entram em Configurações ▸ Geral ▸ **Resultados de IA salvos**, junto com as de documentos PDF, e **Excluir tudo** também as remove.
 - A mesma tradução também pode ser executada pela [linha de comandos](help://cli) com `ieumoffice epub translate`.
+- Escolha **Linguagem simples** em **Modo** para reescrever o livro com palavras simples no idioma escolhido. Os resultados são um **Livro em linguagem simples** e **Original seguido da linguagem simples**; o título traz, nesse idioma, a indicação de versão em linguagem simples, e o nome do arquivo a traz no idioma da interface, para se diferenciar do de uma tradução. O idioma começa como o da interface e pode ser o do próprio livro. A versão simples é guardada separada das traduções, a continuação é oferecida à parte e os comandos de terminal não a criam.
 
 ## Ainda não disponível
 

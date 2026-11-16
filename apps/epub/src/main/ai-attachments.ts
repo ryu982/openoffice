@@ -28,6 +28,8 @@ import {
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
   ATTACHABLE_IMAGE_MAX_BYTES,
+  diagramPictureExtOf,
+  diagramPictureExtOfName,
 } from '@genoffice/file-parse'
 import { createI18n, getUiLang } from '@genoffice/i18n'
 import { EPUB_CHANNELS } from '../shared/ipc'
@@ -81,6 +83,21 @@ const ATTACH_STRINGS = {
     errImageNoText:
       'Tệp đính kèm hình ảnh không có văn bản; hình ảnh được gửi cùng với tin nhắn của người dùng',
     errNotImage: 'loại hình ảnh không được hỗ trợ',
+  },
+  tr: {
+    dlgAddAttachment: 'Ek Dosya Ekle',
+    filterSupported: 'Desteklenen Dosyalar',
+    filterAll: 'Tüm Dosyalar',
+    errUnsupportedExt: '.{ext} dosyaları desteklenmiyor',
+    errNotFile: 'dosya değil',
+    errTooLarge: '{mb}MB sınırını aşıyor',
+    errImageTooLarge: 'resim 5MB sınırını aşıyor',
+    errUnreadable: 'okunamıyor',
+    errFileTooLarge: 'Dosya boyut sınırını aşıyor',
+    errParseFailed: 'Dosya ayrıştırılamadı',
+    errImageNoText:
+      'Resim eklerinde metin yok; resim, kullanıcı iletisiyle birlikte gönderildiğinden doğrudan resme bakabilirsiniz',
+    errNotImage: 'desteklenen bir resim türü değil',
   },
   ja: {
     dlgAddAttachment: '添付ファイルの追加',
@@ -382,7 +399,8 @@ function extOf(name: string): string {
 
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
-  const ext = extOf(name)
+  // a draw.io picture that holds its diagram is read as diagram text
+  const ext = diagramPictureExtOf(filePath) ?? extOf(name)
   if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
@@ -469,7 +487,8 @@ async function attachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = textCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > attachableMaxBytes(extname(filePath))) throw new Error(tm('errFileTooLarge'))
+  const capExt = diagramPictureExtOfName(filePath) ?? extname(filePath)
+  if (stat.size > attachableMaxBytes(capExt)) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -492,7 +511,7 @@ export async function readAttachmentPage(
     return { ok: false, error: tm('errUnreadable') }
   }
   const name = basename(filePath)
-  const ext = extOf(name)
+  const ext = diagramPictureExtOf(filePath) ?? extOf(name)
   if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
   if (ATTACHABLE_IMAGE_EXTS.has(ext)) return { ok: false, error: tm('errImageNoText') }
   try {

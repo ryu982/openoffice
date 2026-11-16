@@ -6,6 +6,8 @@ Editor PDF má pět karet na pásku: **Domů / Anotace / Úpravy / Stránky / Zo
 
 - Levý postranní panel: **miniatury** (kliknutím přeskočíte, viditelný rozsah je zvýrazněn) nebo **osnova** (záložky, pokud jsou k dispozici).
 - Přiblížení: ovladač poměru vpravo dole; ctrl+kolečko mění přiblížení po stupních.
+- Lupa při otevření: volba **Při otevření** na kartě Zobrazení určuje výchozí zobrazení nově otevřeného PDF: přizpůsobit šířce, přizpůsobit stránce, nebo lupa od 50 % do 200 %. PDF, u kterého jste lupu změnili sami, se znovu otevře s touto lupou.
+- Posun zobrazení: zapněte **nástroj Ruka** (karty Domů a Zobrazení) a tažením posouvejte stránku všemi směry. Dokud je zapnutý, tažení nevybírá text a obyčejné kliknutí odkaz dál otevře. Tažení se stisknutým prostředním tlačítkem (kolečkem) posouvá zobrazení i bez nástroje. Vypne ho Esc nebo výběr jiného nástroje. Když není vybraný žádný text, klávesa H ho zapíná a vypíná.
 - Otáčení: jednotlivé stránky nebo všechny z nabídky Stránky; otočení se při uložení zapíší zpět do souboru.
 - Vyhledávání: ctrl+F v celém textu se zvýrazněním všech nálezů.
 - Šifrované soubory PDF: otevře je výzva k zadání hesla (v samostatném malém okně); heslo se použije pouze pro tuto relaci. Takový dokument lze upravovat a ukládat; uložení heslo zachová. **Anotace → Chránit** nastaví, změní nebo odebere heslo a to, co smějí čtenáři.
@@ -18,7 +20,7 @@ Vyzkoušejte na libovolném odstavci:
 
 ![Lišta s anotací po výběru textu](img/pdf-highlight.png)
 
-2. Zvolte **zvýraznění** (žlutý vzorek otevře paletu barev), **podtržení** nebo **přeškrtnutí**; **Zeptat se AI** odešle výběr spolu s vaší otázkou do panelu AI.
+2. Zvolte jednu ze tří barev **zvýraznění**, nebo **podtržení**, **vlnovku** či **přeškrtnutí**. Barvu zvýraznění změníte tak, že na ni kliknete pravým tlačítkem a vyberete novou. Po podtržení, vlnovce nebo přeškrtnutí se na liště otevře řada barev: klepnutím na jinou barvu ji změníte a další značka bude také v této barvě. **Zeptat se AI** odešle výběr spolu s vaší otázkou do panelu AI.
 3. Chcete-li anotaci zrušit, znovu přetáhnutím vyberte stejný úsek a klikněte na již aktivní tlačítko na liště (přepínač ve stylu Wordu), nebo výběr vyberte a stiskněte Odstranit.
 
 Co očekávat:
@@ -69,6 +71,7 @@ Co očekávat:
 ## Operace se stránkami (Stránky)
 
 - **Otočit / odstranit / přesunout**: tažením miniatur měníte pořadí; odstranění vyžaduje potvrzení.
+- **Více stránek najednou**: klikáním na miniatury s podrženou klávesou Ctrl nebo Shift vyberete více stránek. Delete je odstraní; Ctrl+C, Ctrl+X a Ctrl+V je zkopírují, vyjmou a vloží. Zkopírované stránky lze vložit i do jiné karty PDF a vložení se hned uloží do souboru. Když jsou miniatury zavřené, znovu je otevře tlačítko u levého okraje oblasti stránek.
 - **Importovat stránky**: přeneste stránky z jiného souboru PDF. **Vložit prázdnou stránku** přidá prázdnou stránku.
 - **Nahradit stránky** nahradí celý rozsah stránkami odjinud; **Oříznout stránky** zkrátí okraje, s možností použít to na všechny stránky.
 - **Velikost stránky** přepočítá všechny stránky na jediný rozměr papíru; **Obrátit pořadí** otočí dokument od konce k začátku.
@@ -80,7 +83,9 @@ Co očekávat:
 ## Export a tisk
 
 - **Exportovat jako Word… / PowerPoint… / Excel…** v nabídce Soubor, nebo ty stejné tři z **Převodník PDF** na pásku karet — vše lokálně, bez nahrávání. Ze souboru .pptx vyjde jeden snímek na stránku a ze souboru .xlsx jeden list na stránku. U každého se zeptá, kam uložit.
-- **Tisk**: aktuální pořadí a otočení přes systémový dialog; podporuje rozsahy stránek.
+- **PDF do HWP** v nabídce **Převodník PDF** na pásu karet převede PDF na dokument HWP v nové kartě HWP. V okně importu PDF, které karta zobrazí, zvolte **Importovat** (가져오기); dokument vznikne v této kartě a první uložení se zeptá, kam uložit soubor .hwp nebo .hwpx. Samotné PDF zůstane beze změny a převod probíhá na tomto počítači. Zda se text převezme jako odstavce plynoucí přes stránky, nebo jako pevná textová pole, zvolíte v možnostech (환경 설정) karty HWP v části import PDF.
+- Stejný převod lze spustit i z karty HWP. Vyberte PDF příkazem **Soubor** ▸ **Importovat PDF…** a otevře se nová karta HWP se stejným oknem importu PDF. Dokument karty, ve které byla nabídka použita, zůstane beze změny.
+- **Tisk**: aktuální pořadí a otočení přes systémový dialog. Lze vytisknout rozsah stránek nebo stránky vybrané v miniaturách a v oddílu **Rozložení stránek** zvolit více stránek na list, brožuru, odstíny šedi a další.
 
 ## Ukládání
 
@@ -127,6 +132,9 @@ Stiskněte **E** nebo **T**, případně čipy pro vysvětlení a překlad v pol
 - **Přeložit tuto stránku** (nebo **Přeložit zbytek**, když je část hotová) odešle stránku jedním kliknutím, pokud používáte předplatné; vedle tlačítka je vidět název cílové AI. U připojení placeného podle využití se první kliknutí na kartě nejprve zeptá „si za to bude účtovat poplatek · Přeložit / Zrušit“.
 - Dvojklikem na přeložený odstavec ho upravíte. Upravené odstavce se uchovají jako prostý text a beze změny se použijí v přeložených souborech PDF, Markdown a EPUB. **Přeložit znovu** u odstavce odešle jen ten odstavec, a pokud jste ho upravili, napřed se zeptá.
 - Najetím myší na přeložený odstavec se jeho místo na původní stránce orámuje. Šířku sloupce a velikost písma lze měnit. **Přeložit všechny stránky…** otevře okno **Přeložit dokument**, jehož formát **Jen uložit (bez souboru)** ponechá překlad bez zápisu souboru.
+- Nově přeložené odstavce jsou propojené větu po větě. Najetí myší na přeloženou větu zvýrazní tuto větu na stránce originálu a najetí na větu originálu rozsvítí její překlad. Kde se věta na stránce nenajde, a u odstavců přeložených dříve nebo upravených vámi, zůstává propojení po odstavcích.
+- Lišta nad sloupcem přepíná mezi **Překlad** a **Jednoduché vysvětlení**. Jednoduché vysvětlení přepíše text běžnými slovy a krátkými větami pro děti, starší lidi nebo ty, kdo se jazyk učí; fakta, čísla a jména zůstanou beze změny. Volba se pamatuje a přepnutí nic neodešle. Dokud je vidět vysvětlení, tlačítka stránky a odstavce i úpravy platí pro ně.
+- U jednoduchého vysvětlení otevře **Vysvětlit jednoduše všechny stránky…** okno **Přeložit dokument** s druhem **Jednoduché vysvětlení**. Vysvětlení je delší než originál, a proto z něj nemůže být přeložené PDF; zapisuje se jako Markdown nebo EPUB. Se zapnutou volbou **Originál a pak vysvětlení** následuje za každým odstavcem originálu jeho vysvětlení; když je vypnutá, soubor obsahuje jen vysvětlení. Jazyk je nejprve jazykem rozhraní a může to být i jazyk dokumentu.
 
 ## Zvýraznění pomocí AI
 

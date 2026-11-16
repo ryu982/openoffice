@@ -75,6 +75,7 @@ function fakeEditor(
     getSectionCount: () => 1,
     getParagraphCount: () => state.body.length,
     getControlTextPositions: () => '[]',
+    textToLogicalOffset: (_sec: number, _para: number, offset: number) => offset,
     getParagraphLength: (_sec: number, para: number) => state.body[para]!.length,
     getTextRange: (_sec: number, para: number, start: number, count: number) =>
       state.body[para]!.slice(start, start + count),

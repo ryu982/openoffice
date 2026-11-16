@@ -12,7 +12,7 @@ use xlsx_sidecar::archive::{
     scan_entries_for_text,
 };
 use xlsx_sidecar::find::FindCellsRequest;
-use xlsx_sidecar::recalc::{RecalcCache, RecalcEdit, RecalcRead, recalc_cells};
+use xlsx_sidecar::recalc::{RecalcCache, RecalcEdit, RecalcRead, recalc_cells_reporting};
 use xlsx_sidecar::{CellRange, SidecarError, WorkbookSessions};
 
 const PROTOCOL_VERSION: u8 = 1;
@@ -86,6 +86,12 @@ enum Command {
         path: PathBuf,
         target_path: PathBuf,
     },
+    /// `.xlsx` → `.ods`, a whole conversion (decision 0119).
+    #[serde(rename_all = "camelCase")]
+    ConvertToOds {
+        path: PathBuf,
+        target_path: PathBuf,
+    },
     #[serde(rename_all = "camelCase")]
     SaveArchive {
         source_path: PathBuf,
@@ -100,8 +106,33 @@ enum Command {
     #[serde(rename_all = "camelCase")]
     RecalcCells {
         path: PathBuf,
+        #[serde(default)]
         edits: Vec<RecalcEdit>,
+        #[serde(default)]
         reads: Vec<RecalcRead>,
+        /// Also report formula cells whose cached `<v>` disagrees with the
+        /// engine's computed value (the host refreshes them on save), plus
+        /// array spill cells it cannot refresh. Omitted from the answer when
+        /// the engine skips the audit (a `date1904` workbook): the result then
+        /// carries `auditSkipped` with the reason instead.
+        #[serde(default)]
+        report_stale: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    UpdateExternalLinks {
+        path: PathBuf,
+    },
+    #[serde(rename_all = "camelCase")]
+    ReadExternalLinks {
+        path: PathBuf,
+    },
+    #[serde(rename_all = "camelCase")]
+    ListExternalLinks {
+        path: PathBuf,
+    },
+    #[serde(rename_all = "camelCase")]
+    ReadExternalLinkUsage {
+        path: PathBuf,
     },
 }
 
@@ -216,13 +247,16 @@ impl RecalcWorker {
         path: &PathBuf,
         edits: &[RecalcEdit],
         reads: &[RecalcRead],
+        report_stale: bool,
     ) -> Response {
         let mut cache = self
             .cache
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         self.drain_purges(&mut cache);
-        let response = match recalc_cells(&mut cache, path, edits, reads).and_then(to_json_value) {
+        let response = match recalc_cells_reporting(&mut cache, path, edits, reads, report_stale)
+            .and_then(to_json_value)
+        {
             Ok(value) => Response::success(request_id, value),
             Err(error) => Response::from_error(request_id, error),
         };
@@ -242,6 +276,7 @@ impl RecalcWorker {
         path: PathBuf,
         edits: Vec<RecalcEdit>,
         reads: Vec<RecalcRead>,
+        report_stale: bool,
         output: &SharedOutput,
     ) -> Option<Response> {
         if self
@@ -266,7 +301,7 @@ impl RecalcWorker {
             .name("xlsx-recalc".into())
             .spawn(move || {
                 let reset = BusyReset(Arc::clone(&worker.busy));
-                let response = worker.run(request_id, &path, &edits, &reads);
+                let response = worker.run(request_id, &path, &edits, &reads, report_stale);
                 // Clear busy before replying: a sequential caller issues its
                 // next recalc the moment the response lands, and hitting the
                 // still-set flag bounced it with recalc_busy.
@@ -600,8 +635,12 @@ fn handle_request(
                 to_json_value(serde_json::json!({
                     "sheets": result.sheets,
                     "cells": result.cells,
+                    "formulasDropped": result.formulas_dropped,
                 }))
             })
+        }
+        Command::ConvertToOds { path, target_path } => {
+            xlsx_sidecar::ods_export::convert_to_ods(&path, &target_path).and_then(to_json_value)
         }
         Command::ArchiveManifest { path } => archive_manifest(&path)
             .and_then(|entries| to_json_value(serde_json::json!({ "entries": entries }))),
@@ -642,8 +681,26 @@ fn handle_request(
             )
             .and_then(to_json_value)
         }
-        Command::RecalcCells { path, edits, reads } => {
-            return recalc.dispatch(request_id, path, edits, reads, output);
+        Command::RecalcCells {
+            path,
+            edits,
+            reads,
+            report_stale,
+        } => {
+            return recalc.dispatch(request_id, path, edits, reads, report_stale, output);
+        }
+        Command::UpdateExternalLinks { path } => {
+            xlsx_sidecar::external_links::update_external_link_values(&path).and_then(to_json_value)
+        }
+        Command::ReadExternalLinks { path } => {
+            xlsx_sidecar::external_links::read_external_link_statuses(&path).and_then(to_json_value)
+        }
+        Command::ListExternalLinks { path } => {
+            xlsx_sidecar::external_links::list_external_link_statuses(&path).and_then(to_json_value)
+        }
+        Command::ReadExternalLinkUsage { path } => {
+            xlsx_sidecar::external_links::read_external_link_usage(&path)
+                .and_then(|links| to_json_value(serde_json::json!({ "links": links })))
         }
     };
     Some(match result {
@@ -734,7 +791,7 @@ mod tests {
         let in_flight = InFlightRequest::new();
         let output: SharedOutput = Arc::new(Mutex::new(BufWriter::new(io::stdout())));
 
-        let first = expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        let first = expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(first["cached"], serde_json::json!(false));
 
         let save = serde_json::json!({
@@ -759,7 +816,7 @@ mod tests {
             .unwrap(),
         );
 
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(true));
     }
 
@@ -907,9 +964,9 @@ mod tests {
         write_workbook(&source);
         let recalc = RecalcWorker::new();
 
-        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         recalc.queue_purge(&source);
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(false));
     }
 
@@ -922,10 +979,10 @@ mod tests {
         write_workbook(&source);
         let recalc = RecalcWorker::new();
 
-        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads()));
+        expect_ok(recalc.run("r".into(), &source, &[], &recalc_reads(), false));
         recalc.purge_now_or_queue(&source);
         assert!(recalc.pending_purges.lock().unwrap().is_empty());
-        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads()));
+        let second = expect_ok(recalc.run("r2".into(), &source, &[], &recalc_reads(), false));
         assert_eq!(second["cached"], serde_json::json!(false));
     }
 
@@ -956,9 +1013,90 @@ mod tests {
 
         recalc.busy.store(true, Ordering::Release);
         let response = recalc
-            .dispatch("r".into(), source, Vec::new(), recalc_reads(), &output)
+            .dispatch(
+                "r".into(),
+                source,
+                Vec::new(),
+                recalc_reads(),
+                false,
+                &output,
+            )
             .unwrap();
         assert!(!response.ok);
         assert_eq!(response.error.unwrap().code, "recalc_busy");
+    }
+
+    /// `convert_workbook` answers with the ODF formula loss it took, so the
+    /// window can say how many cells came over as values only (decision 0119).
+    #[test]
+    fn convert_workbook_reports_dropped_formulas() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("book.xlsx");
+        write_workbook(&source);
+        let target = dir.path().join("converted.xlsx");
+        let request = serde_json::json!({
+            "version": 1,
+            "requestId": "c1",
+            "command": "convert_workbook",
+            "path": source,
+            "targetPath": target,
+        });
+        let result = expect_ok(
+            handle_line(
+                &request.to_string(),
+                &mut WorkbookSessions::new(),
+                &RecalcWorker::new(),
+                &CancelledRequests::new(),
+                &InFlightRequest::new(),
+                &Arc::new(Mutex::new(BufWriter::new(io::stdout()))),
+            )
+            .unwrap(),
+        );
+        assert_eq!(result["sheets"], serde_json::json!(1));
+        assert_eq!(result["cells"], serde_json::json!(2));
+        assert_eq!(result["formulasDropped"], serde_json::json!(0));
+    }
+
+    /// `convert_to_ods` answers with the package it wrote and the features it
+    /// could not carry, through the ordinary request envelope.
+    #[test]
+    fn convert_to_ods_reports_the_package_it_wrote() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("book.xlsx");
+        write_workbook(&source);
+        let target = dir.path().join("book.ods");
+        let request = serde_json::json!({
+            "version": 1,
+            "requestId": "o1",
+            "command": "convert_to_ods",
+            "path": source,
+            "targetPath": target,
+        });
+        let result = expect_ok(
+            handle_line(
+                &request.to_string(),
+                &mut WorkbookSessions::new(),
+                &RecalcWorker::new(),
+                &CancelledRequests::new(),
+                &InFlightRequest::new(),
+                &Arc::new(Mutex::new(BufWriter::new(io::stdout()))),
+            )
+            .unwrap(),
+        );
+        assert_eq!(result["sheets"], serde_json::json!(1));
+        assert_eq!(result["cells"], serde_json::json!(2));
+        assert_eq!(result["formulasDropped"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["charts"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["conditionalFormats"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["validations"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["pivots"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["comments"], serde_json::json!(0));
+        assert_eq!(result["dropped"]["images"], serde_json::json!(0));
+        assert!(target.exists(), "the package is written");
+        let file = std::fs::File::open(&target).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        assert_eq!(archive.by_index(0).unwrap().name().unwrap(), "mimetype");
+        assert!(archive.by_name("content.xml").is_ok());
+        assert!(archive.by_name("styles.xml").is_ok());
     }
 }

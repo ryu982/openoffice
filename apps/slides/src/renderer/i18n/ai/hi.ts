@@ -90,8 +90,6 @@ export const hi = {
   aiStopGeneration: 'जनरेशन रोकें',
   aiStop: 'रोकें',
   aiSend: 'भेजें',
-  aiSnapshotsTitle: 'संस्करण स्नैपशॉट',
-  aiRollback: 'रोलबैक',
   aiStarterPolishTitle: 'इस स्लाइड के शीर्षक और टेक्स्ट को बेहतर बनाएँ',
   aiStarterTighten: 'इस स्लाइड के बुलेट पॉइंट अधिक संक्षिप्त करें',
   aiStarterProofread: 'पूरे प्रेज़ेंटेशन में वर्तनी की गलतियाँ जाँचें और सुधारें',
@@ -242,6 +240,11 @@ export const hi = {
   aiTplFontsNotice:
     'टेम्पलेट के फ़ॉन्ट इस ऐप में शामिल हैं। PowerPoint जैसे दूसरे प्रोग्राम में फ़ॉन्ट अलग दिख सकता है।',
   aiTplOpenFonts: 'फ़ॉन्ट फ़ोल्डर खोलें',
+  aiTplFontsAuto: 'फ़ॉन्ट: AI चुनता है',
+  aiTplFontsOne: 'फ़ॉन्ट: {font}',
+  aiTplFontsTwo: 'फ़ॉन्ट: शीर्षक {title}, मुख्य पाठ {body}',
+  aiTplFontsTemplate: 'फ़ॉन्ट: चुने गए टेम्पलेट के',
+  aiTplFontsChange: 'बदलें',
   aiTplDesc_coral: 'लगभग काली पृष्ठभूमि पर क्रीम और नारंगी-गुलाबी रंग, बहुत बड़े और सँकरे शीर्षक।',
   aiTplDesc_blue_professional:
     'क्रीम पृष्ठभूमि पर चटख कोबाल्ट नीले रंग के एक्सेंट। साफ़, आधुनिक और औपचारिक।',

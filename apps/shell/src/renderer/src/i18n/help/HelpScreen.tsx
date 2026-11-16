@@ -19,7 +19,7 @@ import './help.css'
  * over a markdown body per topic. Rendered by the shell renderer when the
  * view is loaded at ?mode=help (the Help tab / F1 / Help menu).
  *
- * Every one of the 21 locales has its own body, title and figure set; a
+ * Every one of the 22 locales has its own body, title and figure set; a
  * locale with no body of its own falls back to English rather than showing a
  * gap, and the registry keeps the count visible either way.
  *

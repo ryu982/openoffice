@@ -20,9 +20,10 @@ import {
   throwIfToolJsonOverBudget,
   type StreamCallbacks,
 } from './protocols/shared'
+import { aiEffortOf, aiEffortsOf, type AiEffort } from './effort'
 import { AiRunError } from './run-error'
-import { subscriptionModelsOf } from './subscription/contract'
-import { onSubscriptionLoginChange } from './subscription/launch'
+import { subscriptionModelsOf, subscriptionVersionAtLeast } from './subscription/contract'
+import { onSubscriptionLoginChange, onSubscriptionOffChange } from './subscription/launch'
 import { createTrackedTempDir, removeTrackedTempDir } from './subscription/temp-dirs'
 import { resolveSubscriptionProgram, type SubscriptionProgram } from './subscription/locate'
 import { setSubscriptionModelSource } from './subscription/models'
@@ -33,6 +34,19 @@ import {
 } from './subscription/process'
 import { codexAccountInfo, setCodexAccountSource } from './subscription/status'
 import { createStreamWatchdog } from './watchdog'
+import {
+  CODEX_IMAGE_INSTRUCTIONS,
+  CODEX_IMAGE_MAX_BYTES,
+  CODEX_IMAGE_MIN_VERSION,
+  CODEX_IMAGE_TIMEOUT_MS,
+  codexImagePrompt,
+  codexImageSnippet,
+  codexReferenceExtension,
+  codexVersionOfUserAgent,
+  sniffImageMime,
+  type CodexImageCall,
+  type CodexImageOutcome,
+} from './codex-image-parts'
 
 interface CodexAppServerTurn {
   text: string
@@ -79,6 +93,9 @@ interface ModelEntry {
   displayName?: unknown
   hidden?: unknown
   isDefault?: unknown
+  /** `[{ reasoningEffort, description }]`: the levels a turn of this model takes */
+  supportedReasoningEfforts?: unknown
+  defaultReasoningEffort?: unknown
 }
 
 const DIAGNOSTIC_LIMIT = 16_000
@@ -97,8 +114,10 @@ const CODEX_BASE_INSTRUCTIONS = `You are the language-model backend embedded in 
 
 /** Max buffered stdout line: a child that writes megabytes without a newline would grow the RPC
  *  buffer until the process dies. The SSE reader and this bridge's stderr reader are both capped;
- *  stdout is the last unbounded reader here. */
-export const MAX_RPC_LINE_BYTES = 4 * 1024 * 1024
+ *  stdout is the last unbounded reader here. One line can carry a whole generated picture as
+ *  base64 (`imageGeneration.result`), so the cap leaves room for the largest picture taken back
+ *  (`CODEX_IMAGE_MAX_BYTES`, a third more as base64) and the item around it. */
+export const MAX_RPC_LINE_BYTES = 40 * 1024 * 1024
 
 interface CodexChildOutput {
   on(event: 'data', listener: (chunk: Buffer) => void): unknown
@@ -126,7 +145,9 @@ export function attachBoundedRpcStdout(
   // A StringDecoder keeps a multi-byte UTF-8 sequence that straddles two pipe chunks intact
   // (Buffer#toString per chunk would turn it into U+FFFD).
   const decoder = new StringDecoder('utf8')
-  let pending = ''
+  /** The current line so far, in the pieces it arrived in: a long line is joined once, at its end,
+   *  instead of being copied and searched again with every chunk. */
+  let pending: string[] = []
   /** UTF-8 bytes buffered for the current line, including any partial sequence held by the decoder. */
   let pendingBytes = 0
   let stopped = false
@@ -139,7 +160,7 @@ export function attachBoundedRpcStdout(
       // stdout lines are still being delivered. A listener throw is not catchable by the caller's
       // promise chain, so report it like an overflow and stop reading rather than crashing the host.
       stopped = true
-      pending = ''
+      pending = []
       pendingBytes = 0
       onOverflow(error instanceof Error ? error : new Error(String(error)))
     }
@@ -147,8 +168,8 @@ export function attachBoundedRpcStdout(
   const flush = (): void => {
     if (stopped) return
     stopped = true
-    const tail = pending + decoder.end()
-    pending = ''
+    const tail = pending.join('') + decoder.end()
+    pending = []
     pendingBytes = 0
     if (tail) emit(tail)
   }
@@ -156,21 +177,29 @@ export function attachBoundedRpcStdout(
   child.stdout.on('close', flush)
   child.stdout.on('data', (chunk: Buffer) => {
     if (stopped) return
-    pending += decoder.write(chunk)
-    const parts = pending.split('\n')
-    pending = parts.pop() ?? ''
-    if (parts.length === 0) {
+    const text = decoder.write(chunk)
+    let start = 0
+    let newline = text.indexOf('\n')
+    if (newline < 0) {
+      if (text) pending.push(text)
       pendingBytes += chunk.length
     } else {
-      pendingBytes = Buffer.byteLength(pending, 'utf8')
-      for (const part of parts) {
-        emit(part)
+      while (newline >= 0) {
+        pending.push(text.slice(start, newline))
+        const line = pending.join('')
+        pending = []
+        emit(line)
         if (stopped) return
+        start = newline + 1
+        newline = text.indexOf('\n', start)
       }
+      const rest = text.slice(start)
+      if (rest) pending.push(rest)
+      pendingBytes = Buffer.byteLength(rest, 'utf8')
     }
     if (pendingBytes > MAX_RPC_LINE_BYTES) {
       stopped = true
-      pending = ''
+      pending = []
       pendingBytes = 0
       onOverflow(
         new Error(
@@ -249,13 +278,40 @@ export const CODEX_CONFIG_OVERRIDES: readonly string[] = [
   'web_search="disabled"',
 ]
 
+/**
+ * Codex's own image tool. The process that serves the chat starts with it off,
+ * so a thread that does not say otherwise has none; each thread then states it
+ * again (`codexThreadFeatures`): off for a chat thread, on for an image thread
+ * alone. Kept out of `CODEX_CONFIG_OVERRIDES`, which agent mode inherits.
+ */
+const CODEX_IMAGE_TOOL_OFF = 'features.image_generation=false'
+
 export function codexAppServerLaunchArgs(): string[] {
   return [
     'app-server',
-    ...CODEX_CONFIG_OVERRIDES.flatMap((override) => ['-c', override]),
+    ...[...CODEX_CONFIG_OVERRIDES, CODEX_IMAGE_TOOL_OFF].flatMap((override) => ['-c', override]),
     '--listen',
     'stdio://',
   ]
+}
+
+/** What a thread is for: a chat turn (no Codex tool at all) or one picture (the image tool alone) */
+export type CodexThreadPurpose = 'chat' | 'image'
+
+/**
+ * The `features` table a thread starts with: the switches the launch turns
+ * off, stated again, and the image tool on for an image thread only. The whole
+ * table is given, not the one key, so the launch switches hold however Codex
+ * layers a thread's table over the launch's.
+ */
+export function codexThreadFeatures(purpose: CodexThreadPurpose): Record<string, boolean> {
+  const features: Record<string, boolean> = {}
+  for (const override of CODEX_CONFIG_OVERRIDES) {
+    const match = /^features\.([a-z_]+)=(true|false)$/.exec(override)
+    if (match) features[match[1]!] = match[2] === 'true'
+  }
+  features.image_generation = purpose === 'image'
+  return features
 }
 
 /** How the bridge finds, starts and ends the Codex program */
@@ -294,6 +350,8 @@ class CodexAppServerClient {
   private idleTimer: ReturnType<typeof setTimeout> | undefined
   private readonly closeListeners = new Set<(error: Error) => void>()
   private stopWhenReleased = false
+  /** the Codex version named in the `initialize` answer, when it names one */
+  private version: string | undefined
 
   constructor(
     program: SubscriptionProgram,
@@ -373,6 +431,11 @@ class CodexAppServerClient {
     await this.initialized
   }
 
+  /** The running Codex's version, once ready; undefined when it did not say */
+  get codexVersion(): string | undefined {
+    return this.version
+  }
+
   async request(method: string, params: unknown, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
     await this.initialized
     return this.requestWire(method, params, timeoutMs)
@@ -430,10 +493,11 @@ class CodexAppServerClient {
   }
 
   private async initialize(): Promise<void> {
-    await this.requestWire('initialize', {
+    const result = await this.requestWire('initialize', {
       clientInfo: { name: CODEX_CLIENT_NAME, title: PRODUCT_NAME, version: '0.1.0' },
       capabilities: { experimentalApi: false, requestAttestation: false },
     })
+    this.version = codexVersionOfUserAgent(objectValue(result)?.userAgent)
     this.notify('initialized')
   }
 
@@ -539,6 +603,11 @@ class CodexAppServerClient {
 }
 
 const clients = new Map<string, CodexAppServerClient>()
+/**
+ * Codex is turned off in this app (decision 0114). A process started meanwhile, for a request
+ * that chose Codex before the switch, serves that request and ends; none joins the pool.
+ */
+let codexOff = false
 
 /** Stop every child process during Electron shutdown or integration-test cleanup. */
 export function shutdownCodexAppServers(): void {
@@ -547,9 +616,10 @@ export function shutdownCodexAppServers(): void {
 }
 
 /**
- * The app ran Codex's own login or logout. A running app-server may go on with the login it
- * started with, so none of them serves another request: each is ended at once when idle, and
- * after the runs it is serving otherwise. The next request starts a process on the new login.
+ * The app ran Codex's own login or logout, or Codex was turned off in this app. A running
+ * app-server may go on with the login it started with, and one turned off must not stay: none
+ * of them serves another request. Each is ended at once when idle, and after the runs it is
+ * serving otherwise. The next request starts a process of its own.
  */
 function retireCodexAppServers(): void {
   for (const [key, client] of [...clients]) {
@@ -561,6 +631,11 @@ function retireCodexAppServers(): void {
 onSubscriptionLoginChange((provider) => {
   if (provider === 'codex') retireCodexAppServers()
 })
+onSubscriptionOffChange(({ provider, off }) => {
+  if (provider !== 'codex') return
+  codexOff = off
+  if (off) retireCodexAppServers()
+})
 
 async function clientFor(cliPathValue: string | undefined): Promise<CodexAppServerClient> {
   const program = await runtime.resolve('codex', { configuredPath: cliPathValue })
@@ -570,7 +645,8 @@ async function clientFor(cliPathValue: string | undefined): Promise<CodexAppServ
   const client = new CodexAppServerClient(program, () => {
     if (clients.get(key) === client) clients.delete(key)
   })
-  clients.set(key, client)
+  if (codexOff) client.stopWhenUnused()
+  else clients.set(key, client)
   return client
 }
 
@@ -744,8 +820,20 @@ function fingerprint(message: AgentMessage): string {
   return createHash('sha256').update(JSON.stringify(message)).digest('hex')
 }
 
-function sessionSignature(system: string, tools: AgentToolDef[], model: string): string {
-  return createHash('sha256').update(JSON.stringify({ system, tools, model })).digest('hex')
+/**
+ * What a reused thread must have been started with. The effort is part of it:
+ * a turn's effort also holds for the turns after it, so a thread run at one
+ * level is not reused at another, nor at the default.
+ */
+function sessionSignature(
+  system: string,
+  tools: AgentToolDef[],
+  model: string,
+  effort: AiEffort | undefined,
+): string {
+  return createHash('sha256')
+    .update(JSON.stringify({ system, tools, model, effort: effort ?? '' }))
+    .digest('hex')
 }
 
 function incrementalMessages(
@@ -801,19 +889,21 @@ export function codexThreadStartParams(
   tempDir: string,
   mode: 'profile' | 'read-only',
   mcpServers: CodexMcpServerOverrides = {},
+  purpose: CodexThreadPurpose = 'chat',
 ): Record<string, unknown> {
   const base = {
     ...(config.model.trim() ? { model: config.model.trim() } : {}),
     cwd: tempDir,
     approvalPolicy: 'never',
     serviceName: CODEX_CLIENT_NAME,
-    baseInstructions: CODEX_BASE_INSTRUCTIONS,
+    baseInstructions: purpose === 'image' ? CODEX_IMAGE_INSTRUCTIONS : CODEX_BASE_INSTRUCTIONS,
     // nothing of the thread is written to the user's Codex home
     ephemeral: true,
   }
   const mcp = Object.keys(mcpServers).length > 0 ? { mcp_servers: mcpServers } : undefined
+  const features = codexThreadFeatures(purpose)
   if (mode === 'read-only') {
-    return { ...base, sandbox: 'read-only', ...(mcp ? { config: mcp } : {}) }
+    return { ...base, sandbox: 'read-only', config: { ...mcp, features } }
   }
   return {
     ...base,
@@ -823,6 +913,7 @@ export function codexThreadStartParams(
         [CODEX_PERMISSION_PROFILE]: { filesystem: { ':minimal': 'read', [tempDir]: 'read' } },
       },
       ...mcp,
+      features,
     },
   }
 }
@@ -910,6 +1001,7 @@ async function startNativeThread(
   client: CodexAppServerClient,
   config: AiProviderConfig,
   tempDir: string,
+  purpose: CodexThreadPurpose = 'chat',
 ): Promise<string> {
   let mcpServers: CodexMcpServerOverrides
   try {
@@ -920,7 +1012,7 @@ async function startNativeThread(
     // without the names nothing can be switched off, so nothing is started
     throw unsafeToolsError('Codex could not report its configured MCP servers')
   }
-  const threadId = await startThreadWithPermissions(client, config, tempDir, mcpServers)
+  const threadId = await startThreadWithPermissions(client, config, tempDir, mcpServers, purpose)
   await assertNoMcpServers(client, threadId)
   return threadId
 }
@@ -930,12 +1022,13 @@ async function startThreadWithPermissions(
   config: AiProviderConfig,
   tempDir: string,
   mcpServers: CodexMcpServerOverrides,
+  purpose: CodexThreadPurpose,
 ): Promise<string> {
   let profileResult: unknown
   try {
     profileResult = await client.request(
       'thread/start',
-      codexThreadStartParams(config, tempDir, 'profile', mcpServers),
+      codexThreadStartParams(config, tempDir, 'profile', mcpServers, purpose),
     )
     if (activePermissionProfileId(profileResult) === CODEX_PERMISSION_PROFILE) {
       return threadIdFrom(profileResult)
@@ -953,7 +1046,7 @@ async function startThreadWithPermissions(
   return threadIdFrom(
     await client.request(
       'thread/start',
-      codexThreadStartParams(config, tempDir, 'read-only', mcpServers),
+      codexThreadStartParams(config, tempDir, 'read-only', mcpServers, purpose),
     ),
   )
 }
@@ -1067,12 +1160,18 @@ export interface CodexTurnTransport {
   onClose?(listener: (error: Error) => void): () => void
 }
 
+/**
+ * Run one turn of a thread to its end and resolve with its last agent message.
+ * `observe` sees each notification of that turn (after the thread and turn
+ * filter), before the turn handles it: how an image call reads its items.
+ */
 export async function waitForTurn(
   client: CodexTurnTransport,
   threadId: string,
   start: () => Promise<unknown>,
   signal: AbortSignal,
   cb: StreamCallbacks,
+  observe?: (method: string, params: Record<string, unknown>) => void,
 ): Promise<string> {
   if (signal.aborted) throw cancelledError()
   let turnId = ''
@@ -1129,6 +1228,7 @@ export async function waitForTurn(
       if (message.method !== 'error' || params.willRetry !== true) cb.onActivity?.()
       const eventTurnId = typeof params.turnId === 'string' ? params.turnId : ''
       if (turnId && eventTurnId && eventTurnId !== turnId) return
+      if (typeof message.method === 'string') observe?.(message.method, params)
       if (message.method === 'turn/started') {
         const turn = objectValue(params.turn)
         if (typeof turn?.id === 'string') turnId = turn.id
@@ -1185,7 +1285,8 @@ async function runCodexAppServer(
   const run = async (client: CodexAppServerClient): Promise<void> => {
     await assertRunnableAccount(client)
     const model = config.model.trim() || (await defaultModelFor(client))
-    const signature = sessionSignature(system, tools, model)
+    const effort = await effortFor(client, model, config.effort)
+    const signature = sessionSignature(system, tools, model, effort)
     let session = client.getSession(nativeSessionId)
     let nextMessages = incrementalMessages(session, signature, messages)
     if (!session || nextMessages === null) {
@@ -1216,6 +1317,7 @@ async function runCodexAppServer(
               ...imagePaths.map((path) => ({ type: 'localImage', path })),
             ],
             outputSchema: codexAppServerOutputSchema(tools),
+            ...(effort ? { effort } : {}),
           }),
         cb.signal,
         cb,
@@ -1357,6 +1459,35 @@ function modelEntryId(entry: ModelEntry): string {
       : ''
 }
 
+/** The known effort levels Codex lists for one `model/list` entry */
+function modelEntryEfforts(entry: ModelEntry): AiEffort[] | undefined {
+  const options = Array.isArray(entry.supportedReasoningEfforts)
+    ? entry.supportedReasoningEfforts
+    : []
+  return aiEffortsOf(options.map((option) => objectValue(option)?.reasoningEffort))
+}
+
+/**
+ * The configured effort when one page of a `model/list` answer lists it for
+ * `model`, undefined otherwise (Codex then runs the level it would anyway).
+ */
+export function codexListedEffort(
+  listed: unknown,
+  model: string,
+  configured: unknown,
+): AiEffort | undefined {
+  const effort = aiEffortOf(configured)
+  if (!effort) return undefined
+  const data = objectValue(listed)?.data
+  for (const value of Array.isArray(data) ? data : []) {
+    const entry = objectValue(value) as ModelEntry | undefined
+    if (!entry || entry.hidden === true) continue
+    if (modelEntryId(entry) !== model && entry.model !== model) continue
+    return modelEntryEfforts(entry)?.includes(effort) ? effort : undefined
+  }
+  return undefined
+}
+
 /** Every entry of `model/list` that is not hidden, page by page, as Codex gives it */
 async function readModelEntries(client: CodexAppServerClient): Promise<ModelEntry[]> {
   const entries: ModelEntry[] = []
@@ -1378,9 +1509,13 @@ async function readModelEntries(client: CodexAppServerClient): Promise<ModelEntr
 }
 
 async function readModelCatalog(client: CodexAppServerClient): Promise<CodexModelCatalog> {
+  return modelCatalogOf(await readModelEntries(client))
+}
+
+function modelCatalogOf(entries: ModelEntry[]): CodexModelCatalog {
   const models: string[] = []
   let defaultModel = ''
-  for (const entry of await readModelEntries(client)) {
+  for (const entry of entries) {
     const id = modelEntryId(entry)
     if (!id || models.includes(id)) continue
     models.push(id)
@@ -1403,6 +1538,7 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
     const entry = objectValue(value) as ModelEntry | undefined
     if (!entry || entry.hidden === true) return []
     const id = modelEntryId(entry)
+    const efforts = modelEntryEfforts(entry)
     return id
       ? [
           {
@@ -1412,6 +1548,7 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
               ? { resolved: entry.model }
               : {}),
             ...(entry.isDefault === true ? { isDefault: true } : {}),
+            ...(efforts ? { efforts, defaultEffort: entry.defaultReasoningEffort } : {}),
           },
         ]
       : []
@@ -1425,6 +1562,8 @@ export function codexSubscriptionModels(entries: unknown): AiSubscriptionModel[]
     label: model.label,
     ...(model.resolved ? { resolved: model.resolved } : {}),
     ...(model === fallback ? { isDefault: true } : {}),
+    ...(model.efforts ? { efforts: model.efforts } : {}),
+    ...(model.defaultEffort ? { defaultEffort: model.defaultEffort } : {}),
   }))
 }
 
@@ -1462,6 +1601,41 @@ setSubscriptionModelSource('codex', ({ configuredPath, signal }) =>
  */
 const RPC_UNSUPPORTED = /^Codex app-server error \((?:-32601|-32600)\)/
 
+/**
+ * The list each running process gave, read once for what a run needs from it
+ * (the default model, the levels a model takes); an entry is gone with its
+ * process, and a failed reading is not kept, so the next run asks again.
+ */
+const listedModels = new WeakMap<CodexAppServerClient, Promise<ModelEntry[]>>()
+
+function listedModelEntries(client: CodexAppServerClient): Promise<ModelEntry[]> {
+  const known = listedModels.get(client)
+  if (known) return known
+  const reading = readModelEntries(client)
+  listedModels.set(client, reading)
+  reading.catch(() => {
+    if (listedModels.get(client) === reading) listedModels.delete(client)
+  })
+  return reading
+}
+
+/**
+ * The configured effort when the model takes it, undefined otherwise: Codex
+ * then runs the level it would run anyway. Only a configured level makes the
+ * bridge read the list (once per process), and a list it cannot read leaves
+ * the level out rather than failing the run.
+ */
+async function effortFor(
+  client: CodexAppServerClient,
+  model: string,
+  configured: unknown,
+): Promise<AiEffort | undefined> {
+  const effort = aiEffortOf(configured)
+  if (!effort) return undefined
+  const entries = await listedModelEntries(client).catch(() => undefined)
+  return codexListedEffort({ data: entries }, model, effort)
+}
+
 /** The default model each running process listed; an entry is gone with its process */
 const defaultModels = new WeakMap<CodexAppServerClient, Promise<string>>()
 
@@ -1476,28 +1650,322 @@ const defaultModels = new WeakMap<CodexAppServerClient, Promise<string>>()
 function defaultModelFor(client: CodexAppServerClient): Promise<string> {
   const known = defaultModels.get(client)
   if (known) return known
-  const reading = readModelCatalog(client).then(
-    ({ defaultModel }) => {
-      if (defaultModel) return defaultModel
-      throw new Error('Codex listed no model, so there is no default model to run with')
-    },
-    (error: unknown) => {
-      if (error instanceof AiRunError) throw error
-      const detail = error instanceof Error ? error.message : String(error)
-      if (RPC_UNSUPPORTED.test(detail)) {
-        throw new AiRunError(
-          'needs-update',
-          'Codex is too old for this app: it cannot list its models, so there is no default model to run with',
-          { provider: 'codex' },
-        )
-      }
-      throw new Error(`Codex could not report its default model: ${detail}`, { cause: error })
-    },
-  )
+  const reading = listedModelEntries(client)
+    .then(modelCatalogOf)
+    .then(
+      ({ defaultModel }) => {
+        if (defaultModel) return defaultModel
+        throw new Error('Codex listed no model, so there is no default model to run with')
+      },
+      (error: unknown) => {
+        if (error instanceof AiRunError) throw error
+        const detail = error instanceof Error ? error.message : String(error)
+        if (RPC_UNSUPPORTED.test(detail)) {
+          throw new AiRunError(
+            'needs-update',
+            'Codex is too old for this app: it cannot list its models, so there is no default model to run with',
+            { provider: 'codex' },
+          )
+        }
+        throw new Error(`Codex could not report its default model: ${detail}`, { cause: error })
+      },
+    )
   defaultModels.set(client, reading)
   // a failed reading is not kept: the next run asks again
   reading.catch(() => {
     if (defaultModels.get(client) === reading) defaultModels.delete(client)
   })
   return reading
+}
+
+// ── One picture through the subscription ──
+
+/** The lowest effort `model` takes by Codex's list; undefined (Codex's default) when it lists none */
+async function lowestEffortFor(
+  client: CodexAppServerClient,
+  model: string,
+): Promise<AiEffort | undefined> {
+  const entries = await listedModelEntries(client).catch(() => undefined)
+  const entry = entries?.find((value) => modelEntryId(value) === model || value.model === model)
+  return entry ? modelEntryEfforts(entry)?.[0] : undefined
+}
+
+function unavailableImage(
+  reason: 'free-plan' | 'not-subscription' | 'off',
+  message: string,
+): CodexImageOutcome {
+  return { kind: 'unavailable', reason, message }
+}
+
+function refusedImage(message: string): CodexImageOutcome {
+  return { kind: 'refused', message }
+}
+
+/** Epoch milliseconds from the reset time of an image item's failure (Codex gives seconds) */
+function failureResetsAt(value: unknown): number | undefined {
+  const seconds = finiteNumber(value)
+  if (seconds === undefined || seconds <= 0) return undefined
+  return seconds > 1e12 ? seconds : seconds * 1000
+}
+
+/** When the used-up windows among those Codex reported reset, the latest of them */
+function exhaustedReset(usage: readonly AiSubscriptionUsage[]): number | undefined {
+  const resets = usage.filter((window) => window.utilization >= 1).map((window) => window.resetsAt)
+  return resets.length > 0 ? Math.max(...resets) : undefined
+}
+
+/** What the notifications of an image turn said, as far as the outcome needs it */
+interface ImageTurnRecord {
+  /** the first completed `imageGeneration` item that carried data */
+  picture: Record<string, unknown> | undefined
+  /** the first image item that failed on the usage limit */
+  limitFailure: Record<string, unknown> | undefined
+  /** the first image item that failed for another reason, by the kind Codex gave */
+  otherFailure: string | undefined
+  /** an image item came with a file id and no data: an older protocol */
+  fileIdOnly: boolean
+  /** the message of a turn Codex ended as failed */
+  turnFailure: string | undefined
+  /** the usage windows Codex reported during the turn */
+  usage: AiSubscriptionUsage[]
+}
+
+function recordImageTurn(
+  record: ImageTurnRecord,
+  method: string,
+  params: Record<string, unknown>,
+): void {
+  if (method === 'turn/completed') {
+    const turn = objectValue(params.turn)
+    if (turn?.status === 'failed') {
+      const message = objectValue(turn.error)?.message
+      record.turnFailure = typeof message === 'string' && message ? message : 'the turn failed'
+    }
+    return
+  }
+  if (method !== 'item/completed') return
+  const item = objectValue(params.item)
+  if (item?.type !== 'imageGeneration') return
+  const failure = objectValue(item.failure)
+  if (failure) {
+    if (failure.type === 'usageLimitExceeded') record.limitFailure ??= failure
+    else record.otherFailure ??= typeof failure.type === 'string' ? failure.type : 'unknown'
+    return
+  }
+  if (typeof item.result === 'string' && item.result) {
+    record.picture ??= item
+    return
+  }
+  if (typeof item.fileId === 'string' && item.fileId) record.fileIdOnly = true
+}
+
+const OVERSIZE_MESSAGE = (maxBytes: number) =>
+  `Codex made a picture larger than ${maxBytes} bytes, which is not taken.`
+
+/** The outcome of a picture item's data: the picture, or why it is not taken */
+function pictureOutcome(
+  item: Record<string, unknown>,
+  call: CodexImageCall,
+  maxBytes: number,
+): CodexImageOutcome {
+  const data = String(item.result)
+  // checked on the base64 length first, so an oversized picture is never decoded
+  if (Math.floor((data.length * 3) / 4) > maxBytes + 2)
+    return refusedImage(OVERSIZE_MESSAGE(maxBytes))
+  const bytes = new Uint8Array(Buffer.from(data, 'base64'))
+  if (bytes.byteLength > maxBytes) return refusedImage(OVERSIZE_MESSAGE(maxBytes))
+  const mime = sniffImageMime(bytes)
+  if (!mime) return refusedImage('Codex returned picture data in a format the app cannot read.')
+  if (call.transparent && item.transparentBackground !== true) {
+    return refusedImage(
+      'Codex did not make the picture with a transparent background, so it was not inserted. Ask again without transparency, or use an image provider key that makes transparent pictures.',
+    )
+  }
+  return { kind: 'image', bytes, mime }
+}
+
+/** The reference pictures as files in the call's temp folder, the one user path the thread reads */
+async function writeReferences(call: CodexImageCall, tempDir: string): Promise<string[]> {
+  const paths: string[] = []
+  for (const reference of call.references ?? []) {
+    const name = `reference-${paths.length + 1}${codexReferenceExtension(reference.mime)}`
+    const path = join(tempDir, name)
+    await writeFile(path, reference.bytes)
+    paths.push(path)
+  }
+  return paths
+}
+
+const NOT_SUBSCRIPTION_MESSAGE =
+  'Codex is not signed in with a ChatGPT plan (it uses a login billed by usage, or one the app does not know), and pictures are made through Codex only on a ChatGPT plan.'
+const FREE_PLAN_MESSAGE =
+  'Codex on this ChatGPT plan has no image generation tool: ChatGPT Plus or a higher plan is needed.'
+
+async function runImageThread(
+  client: CodexAppServerClient,
+  call: CodexImageCall,
+  signal: AbortSignal,
+): Promise<CodexImageOutcome> {
+  const version = client.codexVersion
+  if (version && !subscriptionVersionAtLeast(version, CODEX_IMAGE_MIN_VERSION)) {
+    throw new AiRunError(
+      'needs-update',
+      `Codex ${version} is too old to make pictures for this app; version ${CODEX_IMAGE_MIN_VERSION} or newer is required`,
+      { provider: 'codex' },
+    )
+  }
+  const accountRead = await client.request('account/read', { refreshToken: false })
+  const login = codexAccountInfo(accountRead)
+  if (login && !login.signedIn) throw signedOutError()
+  if (!login || login.loginMethod !== 'subscription') {
+    return unavailableImage('not-subscription', NOT_SUBSCRIPTION_MESSAGE)
+  }
+  // only looked at to explain a turn that made no picture
+  const freePlan = objectValue(objectValue(accountRead)?.account)?.planType === 'free'
+  if (signal.aborted) throw cancelledError()
+
+  const model =
+    call.model?.trim() || call.configuredModel?.trim() || (await defaultModelFor(client))
+  const effort = await lowestEffortFor(client, model)
+  if (signal.aborted) throw cancelledError()
+
+  const tempDir = await createTrackedTempDir(CODEX_TEMP_PREFIX)
+  let threadId: string | undefined
+  try {
+    const referencePaths = await writeReferences(call, tempDir)
+    if (signal.aborted) throw cancelledError()
+    threadId = await startNativeThread(client, { apiKey: '', model }, tempDir, 'image')
+    if (signal.aborted) throw cancelledError()
+
+    const record: ImageTurnRecord = {
+      picture: undefined,
+      limitFailure: undefined,
+      otherFailure: undefined,
+      fileIdOnly: false,
+      turnFailure: undefined,
+      usage: [],
+    }
+    const thread = threadId
+    let finalText = ''
+    let turnError: unknown
+    try {
+      finalText = await waitForTurn(
+        client,
+        thread,
+        () =>
+          client.request('turn/start', {
+            threadId: thread,
+            input: [
+              ...referencePaths.map((path) => ({ type: 'localImage', path })),
+              {
+                type: 'text',
+                text: codexImagePrompt(call, referencePaths.length),
+                text_elements: [],
+              },
+            ],
+            ...(effort ? { effort } : {}),
+          }),
+        signal,
+        {
+          signal,
+          onDelta: () => undefined,
+          onToolCall: () => undefined,
+          onSubscriptionUsage: (usage) => {
+            record.usage = usage
+            call.onUsage?.(usage)
+          },
+        },
+        (method, params) => recordImageTurn(record, method, params),
+      )
+    } catch (error) {
+      turnError = error
+    }
+
+    if (signal.aborted) throw turnError ?? cancelledError()
+    if (record.picture) {
+      return pictureOutcome(record.picture, call, call.maxBytes ?? CODEX_IMAGE_MAX_BYTES)
+    }
+    if (record.limitFailure) {
+      const resetsAt = failureResetsAt(record.limitFailure.resetsAt) ?? exhaustedReset(record.usage)
+      throw new AiRunError('rate-limit', 'The Codex usage limit for pictures is used up', {
+        provider: 'codex',
+        ...(resetsAt !== undefined ? { resetsAt } : {}),
+      })
+    }
+    if (turnError instanceof AiRunError) throw turnError
+    if (record.turnFailure !== undefined) {
+      return refusedImage(
+        `Codex could not make the picture: ${codexImageSnippet(record.turnFailure)}`,
+      )
+    }
+    // the process ended or a request failed: no answer about the picture came
+    if (turnError !== undefined) throw turnError
+    if (record.fileIdOnly) {
+      throw new AiRunError(
+        'needs-update',
+        'This Codex does not hand the picture data to the app; update Codex and try again',
+        { provider: 'codex' },
+      )
+    }
+    if (record.otherFailure !== undefined) {
+      return refusedImage(`Codex could not make the picture (${record.otherFailure}).`)
+    }
+    if (freePlan) return unavailableImage('free-plan', FREE_PLAN_MESSAGE)
+    const said = codexImageSnippet(finalText)
+    return refusedImage(`Codex did not make a picture.${said ? ` Codex said: ${said}` : ''}`)
+  } finally {
+    if (threadId) {
+      void client.request('thread/delete', { threadId }).catch(() => undefined)
+    }
+    await removeTrackedTempDir(tempDir)
+  }
+}
+
+/**
+ * Make one picture through the Codex subscription: a disposable thread on the
+ * same `codex app-server` process as the chat, locked like a chat thread (the
+ * app's overrides, every MCP server off and confirmed off, the permission
+ * profile or the read-only sandbox, no approvals), with Codex's image tool as
+ * the only tool turned on. The picture is the data in the first completed
+ * `imageGeneration` item; the copy Codex saves in its own folder is not read.
+ *
+ * Throws `AiRunError` for rate-limit, needs-update, not-installed, signed-out,
+ * unsafe-tools and timeout, and an `AbortError` when the caller cancels. Does
+ * not turn `codexImageGenerationAvailable()` on: the process that registers a
+ * generator does.
+ */
+export async function generateCodexImage(call: CodexImageCall): Promise<CodexImageOutcome> {
+  if (codexOff || call.codexOff) {
+    return unavailableImage('off', 'Codex is turned off in this app.')
+  }
+  if (call.signal?.aborted) throw cancelledError()
+  const controller = new AbortController()
+  const onCancel = (): void => controller.abort()
+  call.signal?.addEventListener('abort', onCancel, { once: true })
+  const timeoutMs = call.timeoutMs ?? CODEX_IMAGE_TIMEOUT_MS
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  timer.unref?.()
+  try {
+    return await withClient(
+      call.cliPath?.trim() || undefined,
+      (client) => runImageThread(client, call, controller.signal),
+      controller.signal,
+    )
+  } catch (error) {
+    if (timedOut && !call.signal?.aborted) {
+      throw new AiRunError(
+        'timeout',
+        `Codex did not finish the picture within ${Math.round(timeoutMs / 1000)} seconds`,
+        { provider: 'codex' },
+      )
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+    call.signal?.removeEventListener('abort', onCancel)
+  }
 }

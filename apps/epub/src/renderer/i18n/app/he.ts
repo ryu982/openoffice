@@ -30,6 +30,7 @@ export const he = {
   darkView: 'תצוגה כהה',
   toc: 'תוכן העניינים',
   tocEmpty: 'לספר זה אין תוכן עניינים',
+  sideResize: 'שינוי רוחב החלונית',
   statusChapter: 'פרק {n}/{total}',
   prevChapter: 'הפרק הקודם',
   nextChapter: 'הפרק הבא',

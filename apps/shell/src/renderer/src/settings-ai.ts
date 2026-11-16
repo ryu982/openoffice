@@ -297,14 +297,13 @@ export function advancedPaneUseChoice(
 
 /**
  * Providers the Advanced key pane lists: everything that has something to
- * fill in there. Claude runs on its own login and has no field of its own;
- * Codex stays for the path of a custom install.
+ * fill in there. The two subscription CLIs take no key, and stay for the path
+ * of an install the automatic lookup cannot reach (a GUI app on macOS never
+ * sees the PATH a shell profile sets).
  */
 export function advancedProviderIds(catalog: readonly { id: string }[]): AiProviderId[] {
   const known = new Set<string>(AI_PROVIDERS.map((meta) => meta.id))
-  return catalog
-    .map((entry) => entry.id)
-    .filter((id) => known.has(id) && id !== 'claude-code') as AiProviderId[]
+  return catalog.map((entry) => entry.id).filter((id) => known.has(id)) as AiProviderId[]
 }
 
 /**
@@ -351,6 +350,25 @@ export function mediaSpecialChoices(
   if (block === 'image') return codexImageAvailable ? ['codex', 'none'] : ['none']
   if (block === 'analysis') return ['chat']
   return ['none']
+}
+
+/**
+ * Whether the image generation block says to connect the Codex program with
+ * the same ChatGPT account: the app's direct ChatGPT connection is ready, yet
+ * it cannot make images (OpenAI does not allow it), Codex is not ready on a
+ * subscription login, and the tool report says image generation has no route
+ * right now. The stored selection does not decide it; an unread report
+ * (`null`) shows nothing.
+ */
+export function chatGptImageConnectShown(
+  statuses: AiSubscriptionStatuses,
+  imageGenerationAvailable: boolean | null,
+): boolean {
+  return (
+    statuses.chatgpt?.state === 'ready' &&
+    statuses.codex?.state !== 'ready' &&
+    imageGenerationAvailable === false
+  )
 }
 
 /** Key providers able to serve a media block */

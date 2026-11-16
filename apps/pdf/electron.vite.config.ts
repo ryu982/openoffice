@@ -20,6 +20,7 @@ export default defineConfig({
           '@genoffice/i18n',
           'pdf-lib',
           '@genoffice/electron-utils',
+          '@genoffice/print-layout',
           '@genoffice/font-metrics',
         ],
       }),

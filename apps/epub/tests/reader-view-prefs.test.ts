@@ -21,6 +21,8 @@ const COLORS: FrameColors = {
   sepiaInk: 'var-sepia-ink',
   hitBg: 'var-hit-bg',
   hitInk: 'var-hit-ink',
+  aiChangedBg: 'var-ai-bg',
+  aiChangedLine: 'var-ai-line',
 }
 
 describe('view settings', () => {

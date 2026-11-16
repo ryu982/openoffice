@@ -19,7 +19,7 @@ import {
   patchTargets,
   pluginHooks,
 } from '../scripts/rhwp-patches.mjs'
-import { AGENT_PLUGIN_ID } from '../studio-plugin/agent-plugin.mjs'
+import { AGENT_PLUGIN_ID, EASY_WORDS_COMMAND } from '../studio-plugin/agent-plugin.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -204,13 +204,16 @@ describe('rhwp nested-table patches', () => {
   })
 
   it('let Cut take a selected table in a cell, after copying it', () => {
+    // the studio's text around the patch, as the pinned commit has it: the copy already
+    // takes a table in a cell (tableObjectClipboardTarget), the guard and the delete did not
     const source = [
-      '      if (ref) {',
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
+      '    if (!ref) return;',
+      '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+      '    if (table?.cellPath && table.cellPath.length > 1) return;',
+      '    const handle = this.wasm.borrowDocumentHandle();',
+      '      if (!await this.copySelectedObject(isCurrent) || !isCurrent()) return;',
+      '      } else {',
       '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
       "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
       '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
       '          return this.cursor.getPosition();',
@@ -218,9 +221,10 @@ describe('rhwp nested-table patches', () => {
       '',
     ].join('\n')
     const patched = applyPatch('studio-nested-table-cut', source)
-    expect(patched).not.toContain('ref.cellPath.length > 1')
-    expect(patched.indexOf('this.performCopy();')).toBeLessThan(
-      patched.indexOf('wasm.deleteTableAt(ref);'),
+    expect(patched).not.toContain('cellPath.length > 1')
+    expect(patched).not.toContain('deleteTableControl')
+    expect(patched.indexOf('this.copySelectedObject(isCurrent)')).toBeLessThan(
+      patched.indexOf('wasm.deleteTableAt(table!);'),
     )
   })
 
@@ -375,188 +379,80 @@ describe('rhwp memo menu patches', () => {
   })
 })
 
-describe('rhwp memo delete-undo patches', () => {
-  // the studio's text around the patches, as the pinned release has it
-  const bridge = [
-    '  getHyperlinkContext(target: HyperlinkTarget): HyperlinkContext {',
-    "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
-    '    return JSON.parse(this.doc.getHyperlinkContext(JSON.stringify(target)));',
+describe('rhwp easy-words menu patch', () => {
+  // the ends of the two right-click lists and what follows them, as the pinned release has them
+  const menus = [
+    '  private getTableContextMenuItems(): ContextMenuItem[] {',
+    '    return [',
+    "      { type: 'command', commandId: 'table:formula', label: '계산식(F)...' },",
+    "      { type: 'separator' },",
+    "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+    "      { type: 'command', commandId: 'table:delete' },",
+    '    ];',
     '  }',
     '',
-  ].join('\n')
-  const command = [
-    'export class DeleteTextCommand implements EditCommand {',
-    '  execute(wasm: WasmBridge): DocumentPosition {',
-    '    if (!isCaption && this.count > 0) {',
-    '      const target = hyperlinkTarget(this.position);',
-    '      const context = wasm.getHyperlinkContext(target);',
-    '      if (context.links.some(link => this.position.charOffset < link.end',
-    '        && link.start < this.position.charOffset + this.count)) {',
-    '        this.fragmentId = wasm.captureDeleteRange(target.section, target.para, target.para);',
-    '      }',
-    '    }',
+    '  /** 일반 컨텍스트 메뉴 항목 */',
+    '  private getDefaultContextMenuItems(): ContextMenuItem[] {',
+    '    return [',
+    "      { type: 'command', commandId: 'format:para-num-shape', label: '문단 번호 모양(N)...' },",
+    '    ];',
     '  }',
-    '}',
     '',
+    '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+    '  private onKeyDown(e: KeyboardEvent): void {',
   ].join('\n')
-  const patched = applyPatch('studio-memo-delete-undo', command)
-
-  type Anchor = {
-    sectionIndex: number
-    paraIndex: number | null
-    startCharIdx: number | null
-    endCharIdx: number | null
-    path: { controlIndex: number; cellIndex?: number; paraIndex: number }[] | null
-  }
-  type Target = { section: number; para: number; cellPath: [number, number, number][] }
-
-  /** The helper the patch adds, run against a bridge that holds the given memos. */
-  function overlaps(anchors: Anchor[], target: Target, offset: number, count: number): boolean {
-    const start = patched.indexOf('export function memoAnchorOverlaps(')
-    const block = patched.slice(start, patched.indexOf('\n}\n', start) + 2)
-    const js = ts.transpileModule(block.replace('export function', 'function'), {
-      compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText
-    const helper = new Function(`${js}\nreturn memoAnchorOverlaps`)() as (
-      wasm: { getMemoAnchors(): Anchor[] },
-      target: Target,
-      offset: number,
-      count: number,
-    ) => boolean
-    return helper({ getMemoAnchors: () => anchors }, target, offset, count)
+  const item = `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`
+  const split = (patched: string) => {
+    const at = patched.indexOf('getDefaultContextMenuItems')
+    return { table: patched.slice(0, at), body: patched.slice(at) }
   }
 
-  const body = (start: number, end: number): Anchor => ({
-    sectionIndex: 0,
-    paraIndex: 3,
-    startCharIdx: start,
-    endCharIdx: end,
-    path: null,
-  })
-
-  it('give the bridge the memo anchors, and none from an engine without memos', () => {
-    const patched = applyPatch('studio-memo-anchors', bridge)
-    expect(patched).toContain('  getMemoAnchors(): {')
-    expect(patched).toContain("if (!doc || typeof doc.getMemoList !== 'function') return [];")
-    expect(patched).toContain('return JSON.parse(doc.getMemoList());')
-    expect(patched.indexOf('getMemoAnchors(')).toBeLessThan(
-      patched.indexOf('  getHyperlinkContext('),
+  it("put the plugin's command in the body and table cell menus, once each, by its own name", () => {
+    const patched = applyPatch('studio-easy-words-context-menu', menus)
+    const { table, body } = split(patched)
+    for (const menu of [table, body]) expect(menu.split(item)).toHaveLength(2)
+    // no label of its own: the menu shows the label the app gives the command
+    expect(patched).not.toMatch(/ieum-easy-words', label/)
+    expect(body).toContain(`${item}\n    ];`)
+    expect(table).toContain(
+      `${item}\n      { type: 'separator' },\n      { type: 'command', commandId: 'table:split'`,
     )
   })
 
-  it('capture the paragraph when a typed deletion touches a memo anchor, as for a link', () => {
-    expect(patched).toContain(
-      '        || memoAnchorOverlaps(wasm, target, this.position.charOffset, this.count)) {',
+  it('stand right after 메모 once the memo patch is in, as the build applies them', () => {
+    expect(STUDIO_PATCHES.indexOf('studio-easy-words-context-menu')).toBe(
+      STUDIO_PATCHES.indexOf('studio-memo-context-menu') + 1,
     )
-    expect(patched.indexOf('export function memoAnchorOverlaps(')).toBeLessThan(
-      patched.indexOf('export class DeleteTextCommand'),
+    const patched = applyPatch(
+      'studio-easy-words-context-menu',
+      applyPatch('studio-memo-context-menu', menus),
     )
-    expect(patched.split('captureDeleteRange').length).toBe(2)
+    const memo = "      { type: 'command', commandId: 'insert:comment' },"
+    const { table, body } = split(patched)
+    expect(body).toContain(`${memo}\n${item}\n    ];`)
+    expect(table).toContain(`${memo}\n${item}\n      { type: 'separator' },`)
   })
 
-  it('see a deletion inside or at the edge of a body memo, not beside it', () => {
-    const at = { section: 0, para: 3, cellPath: [] as [number, number, number][] }
-    expect(overlaps([body(2, 5)], at, 4, 1)).toBe(true)
-    expect(overlaps([body(2, 5)], at, 2, 1)).toBe(true)
-    expect(overlaps([body(2, 5)], at, 1, 1)).toBe(false)
-    expect(overlaps([body(2, 5)], at, 5, 1)).toBe(false)
-    expect(overlaps([body(2, 5)], at, 0, 9)).toBe(true)
-    // a caret memo is not removed by a deletion, so nothing to capture
-    expect(overlaps([body(2, 2)], at, 1, 2)).toBe(false)
-    // another paragraph or section, or a range-less memo spanning paragraphs
-    expect(overlaps([body(2, 5)], { ...at, para: 4 }, 3, 1)).toBe(false)
-    expect(overlaps([{ ...body(2, 5), sectionIndex: 1 }], at, 3, 1)).toBe(false)
-    expect(overlaps([{ ...body(2, 5), startCharIdx: null, endCharIdx: null }], at, 3, 1)).toBe(
-      false,
-    )
-    expect(overlaps([], at, 3, 1)).toBe(false)
-  })
-
-  it('match a memo in a table cell or a text box by its path', () => {
-    const cell: Anchor = {
-      ...body(0, 4),
-      path: [{ controlIndex: 1, cellIndex: 2, paraIndex: 0 }],
-    }
-    const box: Anchor = { ...body(0, 4), path: [{ controlIndex: 5, paraIndex: 1 }] }
-    expect(overlaps([cell], { section: 0, para: 3, cellPath: [[1, 2, 0]] }, 1, 1)).toBe(true)
-    expect(overlaps([cell], { section: 0, para: 3, cellPath: [[1, 3, 0]] }, 1, 1)).toBe(false)
-    expect(overlaps([cell], { section: 0, para: 3, cellPath: [] }, 1, 1)).toBe(false)
-    expect(overlaps([box], { section: 0, para: 3, cellPath: [[5, 0, 1]] }, 3, 1)).toBe(true)
-  })
-
-  it('fail when the text is gone, and are in the studio build', () => {
-    expect(() => applyPatch('studio-memo-anchors', 'export class WasmBridge {}')).toThrow(
-      /rhwp patch/,
-    )
+  it('keep CRLF sources working and fail when a list changed', () => {
+    const crlf = applyPatch('studio-easy-words-context-menu', menus.replaceAll('\n', '\r\n'))
+    expect(crlf.split(EASY_WORDS_COMMAND)).toHaveLength(3)
+    expect(crlf).not.toMatch(/[^\r]\n/)
     expect(() =>
-      applyPatch('studio-memo-delete-undo', command.replace('implements EditCommand', '')),
+      applyPatch('studio-easy-words-context-menu', menus.replace('표 나누기', '표 쪼개기')),
     ).toThrow(/rhwp patch/)
-    expect(STUDIO_PATCHES).toContain('studio-memo-anchors')
-    expect(STUDIO_PATCHES).toContain('studio-memo-delete-undo')
-  })
-})
-
-describe('rhwp font memo patches', () => {
-  // the studio's text around the patches, as the pinned release has it
-  const bridge = [
-    'let canvasFontSubstitutionInstalled = false;',
-    '',
-    'function installCanvasFontSubstitution(): void {',
-    '  Object.defineProperty(proto, "font", {',
-    '    set(value: string) {',
-    '      descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    '    },',
-    '  });',
-    '}',
-    '',
-  ].join('\n')
-  const patched = applyPatch('studio-font-memo-use', applyPatch('studio-font-memo-state', bridge))
-
-  /** The memo the patch adds, run against a substitution that counts its calls. */
-  function memoWith(substitute: (font: string) => string): (font: string) => string {
-    const start = patched.indexOf('let canvasFontMemo')
-    const block = patched.slice(start, patched.indexOf('\n}\n', start) + 2)
-    const js = ts.transpileModule(block, {
-      compilerOptions: { target: ts.ScriptTarget.ES2022 },
-    }).outputText
-    return new Function('substituteCssFontFamily', `${js}\nreturn memoSubstituteCssFontFamily`)(
-      substitute,
-    )
-  }
-
-  it('send the font setter through the memo, after the host fonts as before', () => {
-    expect(patched).toContain(
-      'scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value))',
-    )
-    expect(patched).not.toContain('?? substituteCssFontFamily(String(value))')
-    expect(patched.startsWith('let canvasFontSubstitutionInstalled = false;\n')).toBe(true)
-  })
-
-  it('substitute a font string once in a synchronous stretch, and again after it', async () => {
-    const calls: string[] = []
-    const memo = memoWith((font) => {
-      calls.push(font)
-      return `${font} chain`
-    })
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(memo('bold 10px "B"')).toBe('bold 10px "B" chain')
-    expect(calls).toEqual(['10px "A"', 'bold 10px "B"'])
-    // a microtask checkpoint: fonts found or a document opened since then are seen
-    await Promise.resolve()
-    expect(memo('10px "A"')).toBe('10px "A" chain')
-    expect(calls).toEqual(['10px "A"', 'bold 10px "B"', '10px "A"'])
-  })
-
-  it('are in the studio build', () => {
-    expect(STUDIO_PATCHES).toContain('studio-font-memo-state')
-    expect(STUDIO_PATCHES).toContain('studio-font-memo-use')
+    expect(() =>
+      applyPatch(
+        'studio-easy-words-context-menu',
+        menus.replace('/** 특수 키 처리', '/** 키 처리'),
+      ),
+    ).toThrow(/rhwp patch/)
   })
 })
 
 describe('rhwp PC fonts patch', () => {
   // the studio's text around the patch, as the pinned release has it
   const main = [
+    "import { loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
     'import {',
     '  clearStoredLocalFonts,',
     '  detectLocalFonts,',
@@ -569,17 +465,52 @@ describe('rhwp PC fonts patch', () => {
     '    setupEventListeners();',
     '    setupModalFocusRestore();',
     '',
+    "    void wasm.prepareDeclaredFontEnvironment('canvas2d').then(changed => {",
+    "      eventBus.emit('document-view-changed');",
+    "    }).catch(error => console.warn('[LocalFonts] View refresh failed:', error));",
+    '',
   ].join('\n')
   const patched = applyPatch('studio-pc-fonts', main)
 
   it('looks at the PC once the studio listens for font changes, with its own detection', () => {
-    expect(patched).toContain(`import { refreshPcFonts } from '${PC_FONTS_MODULE}';`)
-    expect(patched).toContain('  getLocalFontRecords,\n')
+    expect(patched).toContain(
+      `import { installFontPresence, noteFontsApplying, refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+    )
+    // rhwp v0.9.0's main.ts does not import the records; the patch imports them under a
+    // name of its own, which a later main.ts that imports them again cannot clash with
+    expect(patched).toContain(
+      "import { getLocalFontRecords as ieumLocalFontRecords } from '@/core/local-fonts';",
+    )
+    expect(patched).not.toMatch(/[^.\w]getLocalFontRecords\(/)
     const call = patched.indexOf('void refreshPcFonts({')
     expect(call).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
     expect(call).toBeLessThan(patched.indexOf('setupModalFocusRestore();'))
     expect(patched).toContain('detect: () => detectLocalFonts({ force: true }),')
     expect(patched).toContain("eventBus.emit('local-fonts-changed'")
+  })
+
+  it('hands the font marks what the studio knows of the PC before it looks', () => {
+    expect(patched).toContain(
+      "import { getDetectedOSFonts, loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
+    )
+    const hand = patched.indexOf('installFontPresence({')
+    expect(hand).toBeGreaterThan(patched.indexOf('setupEventListeners();'))
+    expect(hand).toBeLessThan(patched.indexOf('void refreshPcFonts({'))
+    expect(patched).toContain(
+      '      records: () => ieumLocalFontRecords({ includeRegistered: true }),\n',
+    )
+    expect(patched).toContain('      detected: getDetectedOSFonts,\n')
+    expect(patched).toContain('      state: getLocalFontState,\n')
+  })
+
+  it("hands over the studio's work on the document's fonts after a font change, whole", () => {
+    expect(patched).toContain(
+      "    noteFontsApplying(wasm.prepareDeclaredFontEnvironment('canvas2d').then(changed => {\n",
+    )
+    expect(patched).toContain(
+      "    }).catch(error => console.warn('[LocalFonts] View refresh failed:', error)));\n",
+    )
+    expect(patched).not.toContain("void wasm.prepareDeclaredFontEnvironment('canvas2d')")
   })
 
   it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
@@ -590,6 +521,45 @@ describe('rhwp PC fonts patch', () => {
       /studio-pc-fonts/,
     )
     expect(STUDIO_PATCHES).toContain('studio-pc-fonts')
+  })
+})
+
+describe('rhwp missing font marks patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const toolbar = [
+    "import { getLocalFonts } from '@/core/local-fonts';",
+    '  ) {',
+    "    this.styleName = container.querySelector('#style-name')!;",
+    "    this.fontName = container.querySelector('#font-name')!;",
+    "    this.fontSize = container.querySelector('#font-size')!;",
+    '        button.textContent = entry.label;',
+    '        button.title = entry.label;',
+    "        button.addEventListener('click', () => this.selectFontMenuEntry(entry.value));",
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-missing-font-marks', toolbar)
+
+  it('watches the font box as soon as the toolbar has it', () => {
+    expect(patched).toContain(`import { markFontOption, watchFontBox } from '${PC_FONTS_MODULE}';`)
+    expect(patched).toContain(
+      "    this.fontName = container.querySelector('#font-name')!;\n    watchFontBox(this.fontName);\n",
+    )
+  })
+
+  it('marks each font menu entry after the studio named it', () => {
+    expect(patched).toContain(
+      '        button.title = entry.label;\n        markFontOption(button, entry.value);\n',
+    )
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    expect(applyPatch('studio-missing-font-marks', toolbar.replaceAll('\n', '\r\n'))).toContain(
+      'markFontOption(button, entry.value);\r\n',
+    )
+    expect(() =>
+      applyPatch('studio-missing-font-marks', toolbar.replace('button.title', 'x')),
+    ).toThrow(/studio-missing-font-marks/)
+    expect(STUDIO_PATCHES).toContain('studio-missing-font-marks')
   })
 })
 
@@ -712,7 +682,7 @@ describe('rhwp clipboard objects patch', () => {
   it('let the app write a block, and leave another editor’s copy to that editor', () => {
     const patched = applyPatch('studio-clipboard-objects', keyboard)
     expect(patched).toContain(
-      "import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '@ieum/clipboard-html';",
+      "import { ieumPasteHtmlInCell, ieumPictureHtml, ieumPictureIsRendering, ieumSelectionHtml } from '@ieum/clipboard-html';",
     )
     expect(patched).toContain(
       'html = ieumSelectionHtml(this.wasm,\n            start.sectionIndex,',
@@ -721,7 +691,9 @@ describe('rhwp clipboard objects patch', () => {
     expect(patched).toContain(
       '    text === internalClipboardText &&\n    readRhwpClipboardToken(html) === null;',
     )
-    expect(patched).toContain('  if (items && readRhwpClipboardToken(html) === null) {')
+    expect(patched).toContain(
+      '  if (items && readRhwpClipboardToken(html) === null && !ieumPictureIsRendering(html, text)) {',
+    )
   })
 
   it('fail when the text is gone, and are in the studio build', () => {
@@ -731,6 +703,33 @@ describe('rhwp clipboard objects patch', () => {
     expect(STUDIO_PATCHES).toContain('studio-clipboard-objects')
   })
 })
+
+/**
+ * The names TypeScript cannot find in one file read alone (imports unresolved, so what a file
+ * imports counts as declared): what the code uses that the file neither declares nor imports.
+ */
+function unresolvedNames(file: string, text: string): Set<string> {
+  const slash = (path: string) => path.replaceAll('\\', '/')
+  const target = slash(file)
+  const host = ts.createCompilerHost({})
+  const read = host.getSourceFile
+  host.getSourceFile = (name, language) =>
+    slash(name) === target ? ts.createSourceFile(name, text, language, true) : read(name, language)
+  const program = ts.createProgram(
+    [target],
+    { noResolve: true, noEmit: true, lib: ['lib.esnext.d.ts', 'lib.dom.d.ts'], types: [] },
+    host,
+  )
+  const names = new Set<string>()
+  for (const diagnostic of program.getSemanticDiagnostics(program.getSourceFile(target))) {
+    // 2304: cannot find name; 2552: cannot find name, did you mean
+    if (diagnostic.code !== 2304 && diagnostic.code !== 2552) continue
+    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')
+    const name = /'([^']+)'/.exec(message)?.[1]
+    if (name) names.add(name)
+  }
+  return names
+}
 
 describe('the studio source the build fetched', () => {
   // build-studio.mjs keeps it under the tag the engine names (vendor/rhwp-core, decision 0050)
@@ -754,16 +753,17 @@ describe('the studio source the build fetched', () => {
     'src/engine/input-handler-keyboard.ts',
     'src/engine/input-handler-text.ts',
     'src/engine/input-handler-table.ts',
-    'src/engine/command.ts',
     'src/command/commands/edit.ts',
     'src/command/commands/format.ts',
     'src/command/commands/insert.ts',
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
     'src/ui/table-cell-props-dialog.ts',
+    'src/ui/toolbar.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
     'src/i18n/locales/en.ts',
+    'src/view/canvas-view.ts',
     'src/view/viewport-manager.ts',
   ].map((file) => join(studio, file))
 
@@ -775,6 +775,49 @@ describe('the studio source the build fetched', () => {
       expect(() => applyPatch(name, readFileSync(targets[0], 'utf8')), name).not.toThrow()
     }
   })
+
+  // A patch that names something its file no longer has builds without a word (the bundler
+  // leaves the name to the global scope) and fails when it runs: rhwp v0.9.0's main.ts stopped
+  // importing getLocalFontRecords, which studio-pc-fonts called (decision 0116).
+  it.skipIf(!existsSync(studio))(
+    'names nothing its file does not declare or import',
+    () => {
+      for (const file of files) {
+        const names = STUDIO_PATCHES.filter((name) => patchTargets(name, file))
+        if (names.length === 0 || !existsSync(file)) continue
+        const before = readFileSync(file, 'utf8')
+        const after = names.reduce((code, name) => applyPatch(name, code), before)
+        const known = unresolvedNames(file, before)
+        expect(
+          [...unresolvedNames(file, after)].filter((name) => !known.has(name)),
+          file,
+        ).toEqual([])
+      }
+    },
+    120_000,
+  )
+
+  it.skipIf(!existsSync(studio))(
+    'puts 쉬운 말로 풀기 after 메모 in both menus, in build order',
+    () => {
+      const file = join(studio, 'src/engine/input-handler.ts')
+      let code = readFileSync(file, 'utf8')
+      for (const name of STUDIO_PATCHES) {
+        if (patchTargets(name, file)) code = applyPatch(name, code)
+      }
+      const lines = code.split(/\r?\n/)
+      const after = (method: string) => {
+        const from = lines.findIndex((line) =>
+          line.includes(`private ${method}(): ContextMenuItem[]`),
+        )
+        const memo = lines.indexOf("      { type: 'command', commandId: 'insert:comment' },", from)
+        return lines[memo + 1]
+      }
+      const item = `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`
+      expect(after('getTableContextMenuItems')).toBe(item)
+      expect(after('getDefaultContextMenuItems')).toBe(item)
+    },
+  )
 
   it.skipIf(!existsSync(studio))('has what the plugin and the Hangul keys reach into', () => {
     const read = (file: string) => {

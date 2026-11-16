@@ -43,8 +43,8 @@ function localeBlock(locale: string): string {
 describe('ODT in the shell lists', () => {
   it('counts .odt as a Word document in every docx family list', () => {
     expect(EXT_FAMILY.docx).toContain('odt')
-    expect(literal(main, 'SEARCH_EXT_FAMILY')).toMatch(/docx: \['docx', 'doc', 'odt'\]/)
-    expect(literal(home, 'FILTER_FAMILY')).toMatch(/docx: \['docx', 'doc', 'odt'\]/)
+    expect(literal(main, 'SEARCH_EXT_FAMILY')).toMatch(/docx: \['docx', 'doc', 'dot', 'odt'\]/)
+    expect(literal(home, 'FILTER_FAMILY')).toMatch(/docx: \['docx', 'doc', 'dot', 'odt'\]/)
   })
 
   it('shows .odt in the folder tree, the open dialog and the open card', () => {
@@ -88,7 +88,6 @@ describe('ODT export menus', () => {
   })
 
   it('names the item and the dialog filter in every language', () => {
-    expect(LANGS).toHaveLength(21)
     const english = localeBlock('en')
     const englishOdt = english.match(/menuExportOdt: '([^']*)'/)?.[1]
     expect(englishOdt).toBe('Export as ODT…')

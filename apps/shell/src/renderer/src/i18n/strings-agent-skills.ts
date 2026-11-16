@@ -20,6 +20,7 @@ import { he } from './agent-skills/he'
 import { hi } from './agent-skills/hi'
 import { zhTW } from './agent-skills/zh-TW'
 import { vi } from './agent-skills/vi'
+import { tr } from './agent-skills/tr'
 
 /**
  * The agent window's skill screens: the one-time notice, the "next session"
@@ -49,6 +50,7 @@ export const agentSkillsStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type AgentSkillsStringKey = keyof typeof zh

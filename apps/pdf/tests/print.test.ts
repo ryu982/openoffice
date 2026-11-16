@@ -11,7 +11,25 @@ function fakeDoc(numPages: number, render = vi.fn(() => ({ promise: Promise.reso
 }
 
 beforeEach(() => {
-  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,FAKE')
+  // jsdom has no canvas encoder or object URLs; pages are encoded with toBlob
+  Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
+    configurable: true,
+    writable: true,
+    value: (callback: (blob: Blob | null) => void) => {
+      void Promise.resolve().then(() => callback(new Blob(['FAKE'], { type: 'image/jpeg' })))
+    },
+  })
+  let nextUrl = 0
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(() => `blob:fake-${(nextUrl += 1)}`),
+  })
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  })
   // jsdom does not implement img.decode or window.print
   Object.defineProperty(HTMLImageElement.prototype, 'decode', {
     configurable: true,
@@ -25,6 +43,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).toBlob
+  delete (URL as unknown as Record<string, unknown>).createObjectURL
+  delete (URL as unknown as Record<string, unknown>).revokeObjectURL
   document.body.innerHTML = ''
 })
 

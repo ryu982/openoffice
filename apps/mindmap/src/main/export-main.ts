@@ -1,11 +1,12 @@
 /**
  * Export and print, the main-process side.
  *
- * The renderer draws the map: the picture of the current sheet as PNG bytes,
- * the page for PDF and print as one self-contained HTML document, and the
- * outline as text. This side asks where to put the file, writes it with the
- * atomic writer, and turns the page into a PDF or hands it to the system's
- * print dialog in a hidden window of its own.
+ * The renderer draws the map: the picture of the current sheet as PNG bytes
+ * or as one self-contained SVG document, the page for PDF and print as one
+ * self-contained HTML document, and the outline as text. This side asks where
+ * to put the file (unless Save As already asked: `grantSaveAsExport`), writes
+ * it with the atomic writer, and turns the page into a PDF or hands it to the
+ * system's print dialog in a hidden window of its own.
  *
  * That window loads nothing from anywhere. The page carries its own content
  * policy (no scripts, pictures only from `data:`), the window runs in a session
@@ -16,11 +17,14 @@
  * is exported or printed.
  *
  * PDF and print are one landscape A4 page: the renderer fits the map to it,
- * and this side asks for exactly that page size.
+ * and this side asks for exactly that page size. The advanced print layout
+ * (decision 0141, `print-layout.ts`) makes that same page into its print job
+ * PDF the way the PDF export does, and prints the arranged faces from a hidden
+ * window of the same session, which loads only the files of that print.
  */
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { extname, join, resolve } from 'node:path'
+import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { BrowserWindow, app, dialog, ipcMain, session } from 'electron'
 import type { IpcMainInvokeEvent } from 'electron'
@@ -31,14 +35,21 @@ import {
   showSaveDialogWithMemory,
   type PrintDialogWindow,
 } from '@genoffice/electron-utils'
+import {
+  LABEL_SPEC_FILE_NAME,
+  ensurePrintLayoutIpc,
+  type PrintLayoutWindow,
+} from '@genoffice/electron-utils/print-arranged'
 import { atomicWriteFile } from './atomic-write'
 import { tm } from './i18n-main'
+import { registerMindmapPrintLayout } from './print-layout'
 import { MINDMAP_CHANNELS } from '../shared/ipc'
 import type { ExportResult, PrintResult } from '../shared/ipc'
 
 /** What each kind of export is saved as. The format names are the formats' own and are not translated. */
 export const EXPORT_KINDS = {
   png: { extension: '.png', filter: 'PNG' },
+  svg: { extension: '.svg', filter: 'SVG' },
   pdf: { extension: '.pdf', filter: 'PDF' },
   markdown: { extension: '.md', filter: 'Markdown' },
 } as const
@@ -56,6 +67,9 @@ const MAX_OUTLINE_CHARS = 64 * 1024 * 1024
 const MAX_PNG_BYTES = 512 * 1024 * 1024
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/** What an SVG file written here starts with. */
+const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
 /** A suggested name as a file name: no path characters, not too long, never empty. */
 export function exportFileBase(name: unknown): string {
@@ -77,6 +91,22 @@ export function withExportExtension(path: string, kind: ExportKind): string {
 
 function isPng(bytes: Uint8Array): boolean {
   return bytes.byteLength > PNG_SIGNATURE.length && PNG_SIGNATURE.every((b, i) => bytes[i] === b)
+}
+
+/**
+ * The picture of a sheet as this editor's renderer writes it (`snapshotSvg`):
+ * one SVG element from start to end, and no script anywhere. A `<` in text or
+ * an attribute is escaped by the serializer, so `<script` can only be an
+ * element. Pictures in it are `data:` addresses already: the copy keeps no
+ * other source (`snapshot.ts`).
+ */
+export function isMapSvg(text: unknown): text is string {
+  if (typeof text !== 'string' || text.length > MAX_PAGE_CHARS) return false
+  return (
+    text.startsWith('<svg xmlns="http://www.w3.org/2000/svg"') &&
+    text.endsWith('</svg>') &&
+    !/<script\b/i.test(text)
+  )
 }
 
 /** Bytes as they arrive over IPC: a typed array, a buffer, or nothing usable. */
@@ -129,6 +159,41 @@ async function pickTarget(
   return withExportExtension(picked.filePath, kind)
 }
 
+/** Paths Save As picked for an export, per view: that one path, once, for that one kind. */
+const saveAsGrants = new Map<number, { kind: ExportKind; path: string }>()
+
+/**
+ * Save As › an export type: the dialog has run, so the export the renderer
+ * sends next for this view may write `path` without asking again. Null drops it.
+ */
+export function grantSaveAsExport(
+  webContentsId: number,
+  grant: { kind: ExportKind; path: string } | null,
+): void {
+  if (grant) saveAsGrants.set(webContentsId, grant)
+  else saveAsGrants.delete(webContentsId)
+}
+
+/**
+ * Where the export goes: the path Save As granted, taken once and only when it
+ * is exactly that path for this kind; without one, the export's own dialog.
+ */
+async function targetOf(
+  e: IpcMainInvokeEvent,
+  kind: ExportKind,
+  request: unknown,
+  options: ExportIpcOptions,
+): Promise<string | null> {
+  const given = fieldOf(request, 'path')
+  if (given === undefined) return pickTarget(e, kind, fieldOf(request, 'suggestedName'), options)
+  const grant = saveAsGrants.get(e.sender.id)
+  if (typeof given !== 'string' || !grant || grant.kind !== kind || grant.path !== given) {
+    throw new Error('mindmap: this export path was not picked in Save As')
+  }
+  saveAsGrants.delete(e.sender.id)
+  return given
+}
+
 let blockerInstalled = false
 
 /** The temp page files an export window is loading right now, as path keys. */
@@ -146,12 +211,30 @@ export function allowPageFile(path: string): () => void {
   return () => pageFiles.delete(key)
 }
 
-/** A `data:` address, or exactly a page file being loaded; no other file, share or host. */
+/** The temp folders of arranged prints loading right now: their page and its face pictures. */
+const pageFolders = new Set<string>()
+
+/**
+ * Lets the export session load the files directly inside the folder of this
+ * page file (the arranged print's page and the face pictures beside it, all
+ * written by the shared print layout), until the returned function is called.
+ */
+export function allowPageFolder(pagePath: string): () => void {
+  const key = pathKey(dirname(pagePath))
+  pageFolders.add(key)
+  return () => pageFolders.delete(key)
+}
+
+/**
+ * A `data:` address, exactly a page file being loaded, or a file directly
+ * inside the folder of an arranged print; no other file, share or host.
+ */
 export function exportRequestAllowed(url: string): boolean {
   if (/^data:/i.test(url)) return true
   if (!/^file:/i.test(url)) return false
   try {
-    return pageFiles.has(pathKey(fileURLToPath(url)))
+    const path = fileURLToPath(url)
+    return pageFiles.has(pathKey(path)) || pageFolders.has(pathKey(dirname(path)))
   } catch {
     return false
   }
@@ -216,6 +299,8 @@ export async function pageToPdf(html: string): Promise<Buffer> {
 function printWindow(): PrintDialogWindow {
   const win = pageWindow(true)
   let release = (): void => {}
+  // a window closed some other way still gives the folder back
+  win.once('closed', () => release())
   return {
     loadFile: (path) => {
       release()
@@ -241,6 +326,35 @@ function printWindow(): PrintDialogWindow {
   }
 }
 
+/**
+ * The window the advanced print layout prints its face pictures from: the
+ * print window's settings (hidden, sandboxed, scripts on for the readiness
+ * probe, the export session), allowed the folder of the page it loads.
+ */
+function arrangedPrintWindow(): PrintLayoutWindow {
+  const win = pageWindow(true)
+  let release = (): void => {}
+  return {
+    loadFile: (path) => {
+      release()
+      release = allowPageFolder(path)
+      return win.loadFile(path)
+    },
+    webContents: {
+      executeJavaScript: (script, userGesture) =>
+        win.webContents.executeJavaScript(script, userGesture),
+      print: (options, callback) => win.webContents.print(options, callback),
+    },
+    show: () => win.show(),
+    focus: () => win.focus(),
+    isDestroyed: () => win.isDestroyed(),
+    destroy: () => {
+      release()
+      win.destroy()
+    },
+  }
+}
+
 let registered = false
 
 /** Registers the export and print channels. Called with the editor's other channels. */
@@ -254,9 +368,22 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
       return { ok: false, error: 'mindmap: bad picture export request' }
     }
     try {
-      const target = await pickTarget(e, 'png', fieldOf(request, 'suggestedName'), options)
+      const target = await targetOf(e, 'png', request, options)
       if (!target) return { ok: true, canceled: true }
       await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+      return { ok: true, path: target }
+    } catch (err) {
+      return { ok: false, error: messageOf(err) }
+    }
+  })
+
+  ipcMain.handle(MINDMAP_CHANNELS.exportSvg, async (e, request: unknown): Promise<ExportResult> => {
+    const svg = fieldOf(request, 'svg')
+    if (!isMapSvg(svg)) return { ok: false, error: 'mindmap: bad SVG export request' }
+    try {
+      const target = await targetOf(e, 'svg', request, options)
+      if (!target) return { ok: true, canceled: true }
+      await atomicWriteFile(target, Buffer.from(`${XML_DECLARATION}${svg}`, 'utf8'))
       return { ok: true, path: target }
     } catch (err) {
       return { ok: false, error: messageOf(err) }
@@ -269,7 +396,7 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
       return { ok: false, error: 'mindmap: bad PDF export request' }
     }
     try {
-      const target = await pickTarget(e, 'pdf', fieldOf(request, 'suggestedName'), options)
+      const target = await targetOf(e, 'pdf', request, options)
       if (!target) return { ok: true, canceled: true }
       await atomicWriteFile(target, await pageToPdf(html))
       return { ok: true, path: target }
@@ -286,7 +413,7 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
         return { ok: false, error: 'mindmap: bad outline export request' }
       }
       try {
-        const target = await pickTarget(e, 'markdown', fieldOf(request, 'suggestedName'), options)
+        const target = await targetOf(e, 'markdown', request, options)
         if (!target) return { ok: true, canceled: true }
         await atomicWriteFile(target, Buffer.from(text, 'utf8'))
         return { ok: true, path: target }
@@ -307,5 +434,18 @@ export function registerMindmapExportIpc(options: ExportIpcOptions): void {
       fileName: 'map.html',
       dirPrefix: 'genoffice-mindmap-print-',
     })
+  })
+
+  // advanced print layout: the page above as the PDF export's PDF, arranged and printed or saved
+  ensurePrintLayoutIpc({
+    ipcMain,
+    labelSpecPath: () => join(app.getPath('userData'), LABEL_SPEC_FILE_NAME),
+  })
+  registerMindmapPrintLayout({
+    ipcMain,
+    pageToPdf,
+    createPrintWindow: arrangedPrintWindow,
+    pickSavePath: (event, suggestedName) =>
+      pickTarget(event as IpcMainInvokeEvent, 'pdf', suggestedName, options),
   })
 }

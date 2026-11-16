@@ -55,7 +55,11 @@ describe('which template a request uses', () => {
     expect(isTemplateMissing('no-template')).toBe(true)
     expect(isTemplateMissing('not-found')).toBe(true)
     expect(isTemplateMissing('failed')).toBe(false)
-    expect(templateOpenResultOf({ ok: true, tabId: 't3' })).toEqual({ ok: true, tabId: 't3' })
+    expect(templateOpenResultOf({ ok: true, tabId: 't3' })).toEqual({
+      ok: true,
+      tabId: 't3',
+      attached: false,
+    })
     expect(templateOpenResultOf({ ok: false, reason: 'no-template' })).toEqual({
       ok: false,
       reason: 'no-template',
@@ -63,22 +67,22 @@ describe('which template a request uses', () => {
     expect(templateOpenResultOf(null)).toEqual({ ok: false, reason: 'failed' })
   })
 
-  it('makes the chip of a skill the model used, titled by the skill name', () => {
-    expect(chipRefForSkill({ id: 'app:letter', name: 'letter', title: 'Letter' })).toEqual({
+  it('makes the chip of a skill the model used, titled as lists show the skill', () => {
+    expect(chipRefForSkill({ id: 'app:letter', name: 'letter', title: '가정통신문' })).toEqual({
       id: 'app:letter',
       source: 'app',
-      title: 'letter',
+      title: '가정통신문',
     })
+    expect(chipRefForSkill({ id: 'app:letter', name: 'letter', title: 'letter' }).title).toBe(
+      'letter',
+    )
     expect(chipRefForSkill({ id: 'plugin:p:x', name: 'x', title: 'X' }).source).toBe('plugin')
   })
 
-  it('titles a builtin chip by its name and a made-up name by its title', () => {
+  it('titles a builtin chip by its name', () => {
     expect(
       chipRefForSkill({ id: 'builtin:humanizer', name: 'humanizer', title: 'Humanizer' }),
     ).toEqual({ id: 'builtin:humanizer', source: 'builtin', title: 'humanizer' })
-    expect(
-      chipRefForSkill({ id: 'app:skill-a1b2c3', name: 'skill-a1b2c3', title: '가정통신문' }).title,
-    ).toBe('가정통신문')
   })
 })
 
@@ -109,6 +113,37 @@ describe('what a new tab takes over', () => {
     expect(handedRequestOf(raw, 'docs')).toBeNull()
     expect(handedRequestOf({ ...raw, mode: 'ai' }, 'hwp')).toBeNull()
     expect(handedRequestOf(null, 'hwp')).toBeNull()
+  })
+
+  it('reads the note the app sends with a request, and only a text one', () => {
+    const raw = { id: 'h2', mode: 'skill', target: 'hwp', text: 'tidy it up', chips: [] }
+    expect(
+      handedRequestOf({ ...raw, note: 'The file is already in this document.' }, 'hwp'),
+    ).toEqual({
+      id: 'h2',
+      text: 'tidy it up',
+      chips: [],
+      note: 'The file is already in this document.',
+    })
+    expect(handedRequestOf({ ...raw, note: 7 }, 'hwp')).toEqual({
+      id: 'h2',
+      text: 'tidy it up',
+      chips: [],
+    })
+    expect(handedRequestOf({ ...raw, note: '' }, 'hwp')).not.toHaveProperty('note')
+  })
+
+  it('reads the asking document a request brought along, paths only', () => {
+    const raw = {
+      id: 'h3',
+      mode: 'skill',
+      target: 'docs',
+      text: 'fill it',
+      chips: [],
+      attach: ['C:/docs/notes.hwp', '', 7],
+    }
+    expect(handedRequestOf(raw, 'docs')?.attach).toEqual(['C:/docs/notes.hwp'])
+    expect(handedRequestOf({ ...raw, attach: [] }, 'docs')?.attach).toBeUndefined()
   })
 
   it('carries the pending proposal of a preview, wanting its template', () => {
@@ -235,7 +270,7 @@ describe('SKILL_TEMPLATE_STRINGS', () => {
   const NON_LATIN: readonly Lang[] = ['zh', 'ja', 'ko', 'th', 'ru', 'ar', 'he', 'hi', 'zh-TW']
   const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
-  it('has every key, non-empty, with the same placeholders, in all 21 languages', () => {
+  it('has every key, non-empty, with the same placeholders, in all 22 languages', () => {
     expect(Object.keys(SKILL_TEMPLATE_STRINGS).sort()).toEqual([...LANGS].sort())
     for (const lang of LANGS) {
       const dict = SKILL_TEMPLATE_STRINGS[lang] as Record<string, string>

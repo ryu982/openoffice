@@ -5,7 +5,7 @@
  * Extracted from App.tsx; the App component passes a SaveContext built fresh
  * per call so refs and state never go stale.
  */
-import type { WorkbookFile, WorkbookFilterState } from '../shared/desktop-api'
+import type { WorkbookFile, WorkbookFilterState, WorkbookSaveRequest } from '../shared/desktop-api'
 import {
   carryLateJournalCells,
   isSheetRemoved,
@@ -72,6 +72,11 @@ export interface SaveContext {
       viewColumn: number
     } | null,
   ) => void
+  /** Save As › PDF: export the active sheet to the path the Save As dialog
+      returned (the Export PDF command's layout and writer). Optional in tests. */
+  exportPdfCopy?: (saveAsPath: string) => Promise<boolean>
+  /** Save As › ODS: export the whole workbook to the path the Save As dialog
+      returned. Optional in tests. */
 }
 
 /// CSV files whose "keep this format?" question was already answered with
@@ -87,6 +92,13 @@ export interface SaveOutcome {
   bytes?: Uint8Array
   /** the main-process refusal, verbatim, when the save request itself failed */
   error?: string
+  /** mode 'ods': the pending edits as the save request a save would send */
+  request?: WorkbookSaveRequest
+  /**
+   * Save As ended on the ODS format: nothing was saved, and the caller runs
+   * the export to this path once the save gate is free again.
+   */
+  odsSaveAsPath?: string
 }
 
 /**
@@ -97,10 +109,14 @@ export interface SaveOutcome {
  * explicitTarget: MCP save_sheet — a dialog-free Save As to an exact path
  * (main enforces the overwrite policy; the request carries it). Callers pass
  * mode 'save-as' with it.
+ *
+ * mode 'ods': assemble the payload and hand it back unsent. The ODS export
+ * passes it to the main process, which writes it into a private copy — the
+ * workbook itself is not saved.
  */
 export async function handleSave(
   ctx: SaveContext,
-  mode: 'save' | 'save-as' | 'recovery' | 'template',
+  mode: 'save' | 'save-as' | 'recovery' | 'template' | 'ods',
   quiet = false,
   explicitTarget?: { path: string; overwrite: boolean },
 ): Promise<SaveOutcome> {
@@ -137,7 +153,9 @@ export async function handleSave(
     }
   })()
   if (!state) {
-    if (mode !== 'recovery' && mode !== 'template') ctx.setMessage(t('appDemoNoSave'))
+    if (mode !== 'recovery' && mode !== 'template' && mode !== 'ods') {
+      ctx.setMessage(t('appDemoNoSave'))
+    }
     return { ok: false }
   }
   const edits = toSaveEdits(state.editJournal)
@@ -305,6 +323,7 @@ export async function handleSave(
     total === 0 &&
     mode !== 'save-as' &&
     mode !== 'template' &&
+    mode !== 'ods' &&
     !restoreWriteBack &&
     !firstSaveAs
   ) {
@@ -371,7 +390,7 @@ export async function handleSave(
   try {
     staged = await stageEditsForSave(window.desktopApi, state.file.sessionId, edits)
   } catch (error: unknown) {
-    if (mode === 'recovery' || mode === 'template') return { ok: false }
+    if (mode === 'recovery' || mode === 'template' || mode === 'ods') return { ok: false }
     const message = stripIpcErrorWrapper(error instanceof Error ? error.message : '')
     const failed = message || t('appSaveFailed')
     ctx.setMessage(failed)
@@ -380,7 +399,7 @@ export async function handleSave(
   }
   const payload = {
     sessionId: state.file.sessionId,
-    mode: mode === 'recovery' || mode === 'template' ? ('save' as const) : mode,
+    mode: mode === 'recovery' || mode === 'template' || mode === 'ods' ? ('save' as const) : mode,
     // MCP explicit-path save: main skips the Save-As dialog and enforces the
     // overwrite policy from these two fields
     ...(explicitTarget
@@ -414,6 +433,7 @@ export async function handleSave(
     workbookProtectionState,
     protectedRangeStates,
   }
+  if (mode === 'ods') return { ok: true, request: payload }
   if (mode === 'template') {
     // A skill's template (spec 5.6): the same payload, written to a temp copy
     // by the main process and handed back as bytes; nothing else changes.
@@ -502,6 +522,21 @@ export async function handleSave(
           result.csvSaveAsPath,
         )
         return { ok: false }
+      }
+      if (result.pdfSaveAsPath !== undefined) {
+        // The user picked PDF in the Save As dialog: no xlsx was written —
+        // the active sheet is exported to the chosen path instead. Like the
+        // CSV pick, the journal stays pending and the session keeps its path.
+        await ctx.exportPdfCopy?.(result.pdfSaveAsPath)
+        return { ok: false }
+      }
+      if (result.odsSaveAsPath !== undefined) {
+        // The ODS pick is the same kind of copy: the whole workbook is
+        // exported and the .xlsx session keeps its path and pending edits.
+        // The export gathers the edits through this same save gate, so it
+        // cannot start from inside it — the caller runs it once this save
+        // has returned.
+        return { ok: false, odsSaveAsPath: result.odsSaveAsPath }
       }
       // a quiet (automatic) save deferred by the copy-pair guard stays silent:
       // the renderer keeps its dirty state and the message would be wrong
@@ -652,6 +687,8 @@ const SAVE_ERROR_PATTERNS = [
   ['The save target is locked by another program', 'appSaveErrTargetLocked'],
   ['style edits cannot be saved', 'appSaveErrStylesheetLimited'],
   ['Saving would change the workbook package structure', 'appSaveErrPackageGuard'],
+  ['was not found in the workbook', 'appSaveErrSheetNotFound'],
+  ['a new sheet takes its old name', 'appSaveErrSheetNameReused'],
   ['charts support', 'appSaveErrChartUnsupported'],
   ['Converting a', 'appSaveErrChartUnsupported'],
   ['Replacing series on a', 'appSaveErrChartUnsupported'],

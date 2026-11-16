@@ -218,6 +218,16 @@ export const PROJECT_CHAT_STRINGS = defineStrings({
     toolMemoryRemoved: 'Đã xóa ghi nhớ: {text}',
     toolRememberFailed: 'Không ghi nhớ được: {text}',
   },
+  tr: {
+    toolListFiles: 'Projenin dosya listesine bakıldı',
+    toolSearch: 'Projede arandı: {query}',
+    toolRead: 'Okundu: {path}',
+    toolReadFailed: 'Okunamadı: {path}',
+    toolRemembered: 'Hatırlandı: {text}',
+    toolMemoryChanged: 'Bellek değişti: {text}',
+    toolMemoryRemoved: 'Bellekten kaldırıldı: {text}',
+    toolRememberFailed: 'Hatırlanamadı: {text}',
+  },
 })
 
 export type ProjectChatStringKey = keyof typeof zh

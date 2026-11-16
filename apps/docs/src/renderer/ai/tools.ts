@@ -9,7 +9,8 @@ import type {
   ReadUrlResult,
 } from '../../shared/ipc'
 import { t } from '../i18n/locale'
-import { MIND_MAP_LIMITS, MIND_MAP_TOOL, parseMindMapTree } from './mind-map'
+import { MIND_MAP_LIMITS, MIND_MAP_TOOL, parseMindMapTree } from '@genoffice/agent-core/mind-map'
+import { undoDoubledEscapes } from '@genoffice/agent-core/doubled-escapes'
 import { executeOps, opNames } from './ops'
 import { odtGuardRefusalText, odtToolRefusal, startOdtToolCall } from './odt-tools'
 import { clipExcerpt, repliesOf, resolveCommentAnchor } from './comment-ops'
@@ -535,6 +536,11 @@ export const AGENT_TOOLS: AgentToolDef[] = [
         aspectRatio: {
           type: 'string',
           description: 'e.g. "1:1", "16:9", "4:3"; omit for the default',
+        },
+        model: {
+          type: 'string',
+          description:
+            'image model name, only when the user named a model; the app uses it if the current image route offers it, otherwise it answers with the models it can use',
         },
         maxWidthPx: { type: 'integer', description: 'maximum width (px), default 480' },
       },
@@ -1063,16 +1069,18 @@ async function executeAsyncTool(
       const prompt = String(call.input.prompt ?? '').trim()
       if (!prompt) return fail(t('aiSumGenerateImage'), 'prompt must not be empty')
       const aspectRatio = String(call.input.aspectRatio ?? '').trim()
+      const model = String(call.input.model ?? '').trim()
       const generated = await window.desktop.aiGenerateImage({
         prompt,
         ...(aspectRatio ? { aspectRatio } : {}),
+        ...(model ? { model } : {}),
       })
       if (signal?.aborted)
         return fail(t('aiSumGenerateImage'), 'stopped by the user; the image was not inserted')
       if (!generated.url) {
         return fail(t('aiSumGenerateImage'), generated.error ?? 'image generation failed')
       }
-      return insertImageFromUrl(
+      const inserted = await insertImageFromUrl(
         editor,
         generated.url,
         Number(call.input.maxWidthPx) || 480,
@@ -1083,6 +1091,10 @@ async function executeAsyncTool(
           blockLabel: 'Image (AI)',
         },
       )
+      // the shared tool's remark (e.g. Codex picked the image model) reaches the model
+      return generated.note
+        ? { ...inserted, output: `${inserted.output}\nNote: ${generated.note}` }
+        : inserted
     }
     case 'create_document': {
       const typeRaw = call.input.type === undefined ? 'docx' : String(call.input.type)
@@ -1276,10 +1288,14 @@ async function insertImageBytes(
     // freshness baseline stale, so only our own insertion may mark the doc
     // seen. Checked right before the write — there is no async gap after.
     const userEditedDuringFetch = editedExternally(editor)
+    // The editor leaves a picture it just placed selected, and the user may have text
+    // selected: inserting over a selection would replace it (a second AI picture used to
+    // wipe out the first). A non-empty selection is kept and the picture goes after it.
+    const { selection } = editor.state
     editor
       .chain()
       .focus()
-      .insertContent({
+      .insertContentAt(selection.empty ? selection.from : selection.to, {
         type: 'docProtected',
         attrs: {
           docxIndex: null,
@@ -1301,6 +1317,30 @@ async function insertImageBytes(
   } catch {
     return fail(labels.failLabel, 'the image could not be decoded')
   }
+}
+
+/**
+ * The plain-text argument each tool writes as new text, where a line break starts a new
+ * paragraph or line. The text a call looks for (a comment's anchor `text`, `afterText`,
+ * `find`) and HTML arguments are left out: see `undoDoubledEscapes`.
+ */
+const NEW_PLAIN_TEXT: Readonly<Record<string, string>> = {
+  add_comment: 'comment',
+  reply_comment: 'text',
+  insert_footnote: 'text',
+  insert_endnote: 'text',
+  edit_note: 'replace',
+  set_header_footer: 'text',
+  insert_text_box: 'text',
+}
+
+/** The call with a line break the model escaped twice turned back into one. */
+function withDoubledEscapesUndone(call: AgentToolCall): AgentToolCall {
+  const key = NEW_PLAIN_TEXT[call.name]
+  const value = key ? call.input[key] : undefined
+  if (!key || typeof value !== 'string') return call
+  const text = undoDoubledEscapes(value)
+  return text === value ? call : { ...call, input: { ...call.input, [key]: text } }
 }
 
 export function executeTool(
@@ -1325,7 +1365,7 @@ export function executeTool(
   startOdtToolCall()
   const result = executeToolUnguarded(
     editor,
-    call,
+    withDoubledEscapesUndone(call),
     numIds,
     track,
     signal,

@@ -105,12 +105,18 @@ jobs:
           fi
           npm run check:skill-version
 
-      # Whole-tree, not changed-files: every one of the manual's 21 languages
+      # Whole-tree, not changed-files: every one of the manual's 22 languages
       # has to match the English article's structure. A language that quietly
       # falls behind is exactly what no reviewer sees, and it is invisible in a
       # diff — the change that causes it looks like an ordinary translation.
       - name: Check manual language coverage
         run: npm run check:help-langs
+
+      # Prose no type can see: an AGENTS.md or doc that still says "all N
+      # languages" after one was added is read as an instruction, and the new
+      # language is skipped. The count comes from LANGS.
+      - name: Check stated language counts
+        run: npm run check:lang-count
 
       # Keep tracked code comments and contributor-facing documentation
       # English-only; functional CJK strings and AI prompt examples are allowed.
@@ -143,6 +149,19 @@ jobs:
       # (tools/ooxml-validate); the runner image is not guaranteed to have it.
       - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libxml2-utils
+
+      # `sheet apply`'s dependent-cache audit lives in the Rust xlsx-sidecar, and
+      # the CLI suite skips its sidecar-backed tests (`it.skipIf(!sidecar)`) when
+      # the binary is missing. Only the sheets package's test script builds it,
+      # and the root `test` script runs @genoffice/cli before @genoffice/sheets —
+      # so build the sidecar up front or CI's pass proves nothing about the
+      # audit. The cargo cache above holds the target dir, so this is cheap.
+      - name: Build xlsx-sidecar (the CLI audit tests run against it)
+        run: |
+          npm run native:build -w @genoffice/sheets
+          # the sidecar-gated CLI tests read the generated compatibility fixture
+          # (gitignored, normally produced by the sheets gate below)
+          npm run fixtures -w @genoffice/sheets
 
       - name: Test
         run: npm test

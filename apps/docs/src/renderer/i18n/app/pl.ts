@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const pl = {
+  appLegacyDocImported:
+    'Plik .{ext} otwarto jako przekonwertowaną kopię .docx. Oryginał pozostaje bez zmian; zapis tworzy nowy plik .docx.',
   appScTitle: 'Skróty klawiaturowe',
   appScFilter: 'Szukaj skrótu',
   appScNone: 'Brak pasujących skrótów',
@@ -54,6 +56,7 @@ export const pl = {
   appVerticalTextNotice:
     'Ten dokument zawiera tekst pionowy (na razie wyświetlany poziomo; zapis pozostaje bez zmian)',
   appNewDocCreated: 'Utworzono pusty dokument. Opisz w panelu AI po lewej, co wygenerować.',
+  appNewDocCreatedNoAi: 'Utworzono pusty dokument.',
   appNewFailed: 'Nie udało się utworzyć dokumentu: {error}',
   appSaveFailed: 'Zapisywanie nie powiodło się: {error}',
   appAutoSavedAt: 'Zapisano automatycznie ({time})',
@@ -95,6 +98,9 @@ export const pl = {
   appPrintRangeAll: 'Wszystkie strony',
   appPrintRangeCurrent: 'Bieżąca strona',
   appPrintRangeCustom: 'Zakres niestandardowy',
+  appPrintRangeSelection: 'Zaznaczenie',
+  appPrintSelectionPreparing: 'Dzielenie zaznaczenia na strony…',
+  appPrintSelectionFailed: 'Nie udało się podzielić zaznaczenia na strony: {error}',
   appPrintRangeHint: 'np. 1,3,5-8',
   appPrintPageCount: 'Stron: {n}',
   appPrintNoPages: 'Brak stron do wydrukowania',
@@ -355,6 +361,9 @@ export const pl = {
   appAiBadgeTip: 'Używa AI',
   appTranslate: 'Przetłumacz',
   appTranslateTo: 'Przetłumacz na {lang}',
+  appEasyWords: 'Wyjaśnij prostymi słowami',
+  appEasyWordsPrompt:
+    'Wyjaśnij zaznaczony fragment po polsku tak, aby zrozumiały go także osoby, które potrzebują prostego tekstu (dzieci, osoby starsze, osoby uczące się polskiego). Używaj codziennych słów i krótkich zdań, zachowaj wszystkie fakty, liczby i warunki. Nie modyfikuj dokumentu: „{text}”',
   redactMenuLabel: 'Ukryj zaznaczenie przed AI',
   redactDialogDesc:
     'Słowa zostają w dokumencie i w pliku; model widzi tylko symbol. Nadaj mu nazwę, by wiedział, co oznacza.',
@@ -385,6 +394,7 @@ export const pl = {
   appLangHindi: 'hindi',
   appLangTraditionalChinese: 'tradycyjny chiński',
   appLangVietnamese: 'wietnamski',
+  appLangTurkish: 'turecki',
   appWrapTextMenu: 'Zawijaj tekst',
   appViewImage: 'Wyświetl obraz',
   appSaveImageAs: 'Zapisz obraz jako…',
@@ -587,4 +597,10 @@ export const pl = {
   appMergeSourceLoaded: 'Wczytano {name} ({n} rekordów)',
   appMergeWritten: 'Zapisano dokumentów: {n}',
   appMergeNothingToWrite: 'Nie ma czego zapisać',
+  appExportingHwp: 'Eksportowanie dokumentu HWP…',
+  appExportedHwp: 'Wyeksportowano dokument HWP: {path}',
+  appExportHwpFailed: 'Eksport do HWP nie powiódł się: {error}',
+  appExportHwpCanceled: 'Anulowano eksport do HWP',
+  appExportHwpReadback:
+    'Nie udało się zapisać tego dokumentu dokładnie jako .hwp. Spróbuj zapisać go jako .hwpx.',
 } satisfies Record<keyof typeof zh, string>

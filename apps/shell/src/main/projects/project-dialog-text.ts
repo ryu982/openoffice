@@ -622,6 +622,36 @@ export const PROJECT_DIALOG_STRINGS = defineStrings({
     pickParentTitle: 'Chọn nơi tạo dự án mới',
     pickFolderButton: 'Chọn',
   } satisfies Keys,
+  tr: {
+    trustTitle: 'Bu klasördeki talimatlar kullanılsın mı?',
+    trustMessage:
+      '“{name}” klasöründe, bu bilgisayardaki uygulamanın yazmadığı talimatlar, bellek veya sohbetler var.',
+    trustHint:
+      'Önce okuyun, sonra seçin. “Talimatlar olmadan kullan” seçeneğinde AI yalnızca klasördeki dosyaları ve bu bilgisayardaki sohbetleri kullanır.',
+    trustInstructions: 'Talimatlar (instructions.md)',
+    trustMemory: 'Bellek (memory.md)',
+    trustForeignChats: 'Başka bilgisayarlarda yazılmış sohbetler',
+    trustMoreChats: '…ve {count} tane daha',
+    chatUntitled: '(başlıksız)',
+    trustUse: 'Talimatlarla kullan',
+    trustWithout: 'Talimatlar olmadan kullan',
+    cancel: 'İptal',
+    trustViewAll: 'Tümünü görüntüle',
+    trustViewHint:
+      '“Tümünü görüntüle” dosyaları uygulamada açar. Okuduktan sonra bu pencereye dönün; soru yeniden görünür.',
+    trustMoreChars: '({count} karakter daha)',
+    downloadTitle: 'Dosya bu bilgisayarda değil',
+    downloadMessage: '“{file}” bu bilgisayarda değil ve indirilmesi gerekiyor. İndirilsin mi?',
+    downloadButton: 'İndir',
+    newProjectTitle: 'Yeni proje',
+    useExistingMessage:
+      '“{name}” adlı bir klasör zaten var. Bu klasör proje olarak kullanılsın mı?',
+    useExistingButton: 'Bu klasörü kullan',
+    pickFolderTitle: 'Proje olarak kullanılacak klasörü seçin',
+    relocateTitle: 'Proje klasörünü yeniden seçin',
+    pickParentTitle: 'Yeni projenin oluşturulacağı yeri seçin',
+    pickFolderButton: 'Seç',
+  } satisfies Keys,
 })
 
 export const projectDialogText = createI18n(PROJECT_DIALOG_STRINGS)

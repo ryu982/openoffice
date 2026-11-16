@@ -1,0 +1,37 @@
+/* Settings → Editors and AI (EditorChoiceSection): the note above the
+ * switches, the question before running AI jobs are stopped, and the note on
+ * what turning AI off keeps. The switches themselves are editor-choice.css. */
+
+.es-lead {
+  margin: -8px 0 14px;
+}
+
+.es-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-hover);
+}
+
+.es-confirm-text {
+  color: var(--text);
+}
+
+.es-confirm-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.es-failed {
+  margin-top: 10px;
+}
+
+.es-note {
+  margin-top: 14px;
+}

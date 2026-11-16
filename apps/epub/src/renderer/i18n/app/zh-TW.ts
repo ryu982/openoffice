@@ -30,6 +30,7 @@ export const zhTW = {
   darkView: '深色閱讀',
   toc: '目錄',
   tocEmpty: '這本書沒有目錄',
+  sideResize: '調整窗格寬度',
   statusChapter: '第 {n}/{total} 章',
   prevChapter: '上一章',
   nextChapter: '下一章',

@@ -61,6 +61,7 @@ import { invalidateWikiHeads } from './editor/wikiSuggest'
 import { dirOf, setImageBaseDir, VIEW_IMAGE_EVENT } from './editor/localImage'
 import { Ribbon } from './components/Ribbon'
 import type { MarkdownTheme } from '../shared/markdown-theme'
+import { applyEditorFont, rememberEditorFont, storedEditorFont } from './editor-font'
 import { ImageHostDialog } from './components/ImageHostDialog'
 import { RedactMenu } from './components/RedactMenu'
 import { OutlinePane } from './components/OutlinePane'
@@ -75,13 +76,15 @@ import { showToast } from './components/toast-bus'
 import { TableMenu } from './components/TableMenu'
 import { FrontmatterPanel } from './components/FrontmatterPanel'
 import { AiAskPopover } from './components/AiAskPopover'
+import { useAiVisible } from './ai-visibility'
 import { AiPanel, type AiPreset, type MarkdownAiDeps } from './ai/AiPanel'
 import { EDIT_QUEUE_MAX, selectionForAnchor, type EditQueueItem } from './ai/edit-queue'
 import { addQueueAnchor, clearQueueAnchors, removeQueueAnchors } from './editor/aiQueueAnchors'
 import { DOCX_MAX_IMAGE_PX, exportDocxBytes } from './export/docxExport'
 import { decodeImageDataUrl, toDocxImage } from './export/exportImage'
 import { buildPrintHtml } from './export/printHtml'
-import { PrintPreviewDialog } from './print/PrintPreviewDialog'
+import { PrintPreviewDialog, type PrintPreviewContent } from './print/PrintPreviewDialog'
+import { selectionPrintRoot, sourcePrintRoot } from './print/print-content'
 import { diagramSvgToPng, renderDiagram } from './editor/diagrams'
 import type { DiagramLanguage } from './editor/diagrams'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
@@ -189,6 +192,10 @@ export default function App() {
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const exportingImagesRef = useRef(false)
+  /** Save As hands Word/ODT/page-image targets to the export code defined below it */
+  const runExportRef = useRef<
+    (format: ExportFormat, outPath?: string, saveAsTarget?: string) => Promise<boolean>
+  >(async () => false)
   const [imageExportStatus, setImageExportStatus] = useState<{
     key: StringKey
     params?: Record<string, string | number>
@@ -204,6 +211,9 @@ export default function App() {
   const aiPanelOpen = effectiveAiPanelOpen(aiOpen, paneRole)
   // the sidebar switch is a soft hide; it closes the panel when it turns off
   const aiSidebarEnabled = useAiSidebarEnabled(setAiOpen)
+  // Settings › Editors and AI: while AI is off no AI part of this editor is drawn
+  // (panel, ribbon entries, Ask AI, withholding); turning it back on brings them back
+  const aiOn = useAiVisible()
   const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
   const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
   const editQueueRef = useRef(editQueue)
@@ -244,6 +254,13 @@ export default function App() {
     if (theme === 'default') document.documentElement.removeAttribute('data-markdown-theme')
     else document.documentElement.setAttribute('data-markdown-theme', theme)
     window.markdownApi.setMarkdownTheme(theme).catch(() => {})
+  }
+  // main.tsx applies the stored font before the first paint; live picks apply it here
+  const [editorFont, setEditorFont] = useState(storedEditorFont)
+  const pickEditorFont = (font: string | null): void => {
+    setEditorFont(font)
+    applyEditorFont(font)
+    rememberEditorFont(font)
   }
   // off by default: it takes over the editor's right-click menu, and a reader
   // should opt into that rather than discover it
@@ -824,6 +841,14 @@ export default function App() {
             setSaveState('idle')
             return true
           }
+          // Word, ODT or page images: nothing was written yet. The export menu's
+          // code builds the copy and writes it to the approved path; the document
+          // keeps its path and unsaved edits like the PDF answer above
+          if (result.exportAs) {
+            setSaveState('idle')
+            void runExportRef.current(result.exportAs, undefined, result.path)
+            return true
+          }
           // what this note offers `[[...#` has just changed on disk
           invalidateWikiHeads()
           const unchanged =
@@ -896,9 +921,12 @@ export default function App() {
     [flushSource, sourceMode, doSaveSource],
   )
 
-  /** `outPath` (headless export only) skips the save dialog; resolves true when a file was written. */
+  /**
+   * `outPath` (headless export only) skips the save dialog; resolves true when a file was written.
+   * `saveAsTarget` is the path Save As approved for this format (no second dialog).
+   */
   const runExport = useCallback(
-    async (format: ExportFormat, outPath?: string) => {
+    async (format: ExportFormat, outPath?: string, saveAsTarget?: string) => {
       // a source file has no rendered document to export
       if (sourceMode) return false
       const current = editorRef.current
@@ -921,6 +949,7 @@ export default function App() {
             buildPrintHtml(current.view.dom, suggestedName),
             suggestedName,
             (count) => setImageExportStatus({ key: 'appExportImagesProgress', params: { count } }),
+            saveAsTarget,
           )
           if (!result.ok) throw new Error(result.error)
           if ('canceled' in result) {
@@ -958,7 +987,7 @@ export default function App() {
           return data ? toDocxImage(data, DOCX_MAX_IMAGE_PX) : null
         }
         const rasterizeDiagram = async (source: string, language: DiagramLanguage) => {
-          const result = await renderDiagram(language, source)
+          const result = await renderDiagram(language, source, DOCX_MAX_IMAGE_PX)
           return result.ok ? diagramSvgToPng(result.svg, DOCX_MAX_IMAGE_PX) : null
         }
         const bytes = await exportDocxBytes(current.getJSON(), loadImage, rasterizeDiagram)
@@ -967,14 +996,26 @@ export default function App() {
           const result = await window.markdownApi.exportOdt({
             base64: bytesToBase64(bytes),
             suggestedName,
+            ...(saveAsTarget ? { saveAsTarget } : {}),
           })
           if (!result.ok) console.error('[markdown] odt export failed:', result.error)
+          return result.ok && !('canceled' in result)
+        }
+        if (format === 'hwp' || format === 'hwpx') {
+          // same Word bytes as the docx export; the main process converts them to Hangul
+          const result = await window.markdownApi.exportHwp({
+            base64: bytesToBase64(bytes),
+            suggestedName,
+            ...(saveAsTarget ? { saveAsTarget } : {}),
+          })
+          if (!result.ok) console.error('[markdown] hwp export failed:', result.error)
           return result.ok && !('canceled' in result)
         }
         const result = await window.markdownApi.exportDocx({
           base64: bytesToBase64(bytes),
           suggestedName,
           mode: format === 'docs' ? 'openInDocs' : 'dialog',
+          ...(saveAsTarget ? { saveAsTarget } : {}),
         })
         if (!result.ok) console.error('[markdown] docx export failed:', result.error)
         return result.ok && !('canceled' in result)
@@ -985,6 +1026,7 @@ export default function App() {
     },
     [sourceMode],
   )
+  runExportRef.current = runExport
 
   // Headless export mode (--headless-export): this renderer lives in a hidden
   // window whose only job is to run the File menu's PDF export against a path
@@ -1032,23 +1074,30 @@ export default function App() {
     [sourceRev, sourceMode],
   )
 
-  const [printPreviewHtml, setPrintPreviewHtml] = useState<string | null>(null)
+  const [printPreview, setPrintPreview] = useState<PrintPreviewContent | null>(null)
   const printDoc = useCallback(() => {
     const current = editorRef.current
-    if (!current || statusRef.current !== 'ready' || printPreviewHtml !== null) return
+    if (!current || statusRef.current !== 'ready' || printPreview !== null) return
     const title =
       (filePathRef.current
         ? filePathRef.current.replace(/^.*[/\\]/, '').replace(/\.(md|markdown|txt|json)$/i, '')
         : deriveAutoFileName(current)) || 'Untitled'
     let printRoot: HTMLElement = current.view.dom
+    // the "Selection" range: only the selected part, as a document of its own
+    let selectionRoot: HTMLElement | null
     if (sourceMode) {
-      printRoot = document.createElement('div')
-      const pre = document.createElement('pre')
-      pre.textContent = sourceTextRef.current
-      printRoot.appendChild(pre)
+      printRoot = sourcePrintRoot(sourceTextRef.current)
+      const picked = sourceRef.current?.selectedText() ?? ''
+      selectionRoot = picked ? sourcePrintRoot(picked) : null
+    } else {
+      selectionRoot = selectionPrintRoot(current.view)
     }
-    setPrintPreviewHtml(buildPrintHtml(printRoot, title))
-  }, [printPreviewHtml, sourceMode])
+    setPrintPreview({
+      html: buildPrintHtml(printRoot, title),
+      selectionHtml: selectionRoot ? buildPrintHtml(selectionRoot, title) : null,
+      title,
+    })
+  }, [printPreview, sourceMode])
 
   useEffect(() => {
     const offExport = window.markdownApi.onExportRequest((format) => void runExport(format))
@@ -1281,6 +1330,10 @@ export default function App() {
     if (editorRef.current) clearQueueAnchors(editorRef.current)
     setEditQueue([])
   }, [])
+  // AI turned off: the queued AI edits go with the panel, and so do their anchors
+  useEffect(() => {
+    if (!aiOn && editQueueRef.current.length > 0) queueClear()
+  }, [aiOn, queueClear])
   /** a submission hands its items to the run and drops them from the queue */
   const queueConsume = useCallback((qids: string[]): void => {
     if (editorRef.current) removeQueueAnchors(editorRef.current, qids)
@@ -1422,6 +1475,8 @@ export default function App() {
         imageEnabled={Boolean(filePath)}
         mdTheme={mdTheme}
         onMarkdownTheme={pickMarkdownTheme}
+        editorFont={editorFont}
+        onEditorFont={pickEditorFont}
         onInsertImage={insertImage}
         onImageHost={() => setImageHostOpen(true)}
         frontmatterOpen={fmOpen}
@@ -1454,39 +1509,41 @@ export default function App() {
       />
       {status === 'loading' && <div className="center-note">{t('loading')}</div>}
       <div className="app-main" style={status === 'ready' ? undefined : { display: 'none' }}>
-        <div
-          className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
-            !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
-          }`}
-        >
-          {!aiPanelOpen && aiSidebarEnabled && (
-            <button
-              className="ai-rail"
-              data-tip={t('aiOpenAssistant')}
-              aria-label={t('aiOpenAssistant')}
-              onClick={() => onAiRailClick(paneRole, aiOpen, setAiOpen, requestFocus)}
-            >
-              <AiMark size={22} />
-            </button>
-          )}
-          {/* mounted only after the file is loaded so chat history resolves against the real path */}
-          {status === 'ready' && (
-            <AiPanel
-              deps={aiDeps}
-              filePath={filePath}
-              preset={aiPreset}
-              onCollapse={() => setAiOpen(false)}
-              editQueue={editQueue}
-              onQueueEditInstruction={queueUpdate}
-              onQueueRemove={queueRemove}
-              onQueueClear={queueClear}
-              onQueueFocus={queueFocus}
-              onQueueConsume={queueConsume}
-              templateDocument={templateDocument}
-              onSkillHandoff={() => setAiOpen(true)}
-            />
-          )}
-        </div>
+        {aiOn && (
+          <div
+            className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
+              !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
+            }`}
+          >
+            {!aiPanelOpen && aiSidebarEnabled && (
+              <button
+                className="ai-rail"
+                data-tip={t('aiOpenAssistant')}
+                aria-label={t('aiOpenAssistant')}
+                onClick={() => onAiRailClick(paneRole, aiOpen, setAiOpen, requestFocus)}
+              >
+                <AiMark size={22} />
+              </button>
+            )}
+            {/* mounted only after the file is loaded so chat history resolves against the real path */}
+            {status === 'ready' && (
+              <AiPanel
+                deps={aiDeps}
+                filePath={filePath}
+                preset={aiPreset}
+                onCollapse={() => setAiOpen(false)}
+                editQueue={editQueue}
+                onQueueEditInstruction={queueUpdate}
+                onQueueRemove={queueRemove}
+                onQueueClear={queueClear}
+                onQueueFocus={queueFocus}
+                onQueueConsume={queueConsume}
+                templateDocument={templateDocument}
+                onSkillHandoff={() => setAiOpen(true)}
+              />
+            )}
+          </div>
+        )}
         {outlineOpen && !sourceMode && (
           <OutlinePane
             items={outlineItems}
@@ -1617,7 +1674,7 @@ export default function App() {
           onDismiss={() => setWikiSuggestState(null)}
         />
       )}
-      <RedactMenu editor={editor} enabled={redactEnabled} />
+      <RedactMenu editor={editor} enabled={redactEnabled && aiOn} />
       <ToastHost />
       {graphOpen && (
         <GraphView
@@ -1649,7 +1706,7 @@ export default function App() {
         />
       )}
       {!sourceMode && <TableMenu editor={editor} scrollRef={scrollRef} zoom={zoom} />}
-      {editor && !sourceMode && status === 'ready' && (
+      {editor && !sourceMode && status === 'ready' && aiOn && (
         <AiAskPopover
           editor={editor}
           queueFull={editQueue.length >= EDIT_QUEUE_MAX}
@@ -1660,8 +1717,13 @@ export default function App() {
           onQueueRemove={queueRemove}
         />
       )}
-      {printPreviewHtml !== null && (
-        <PrintPreviewDialog html={printPreviewHtml} onClose={() => setPrintPreviewHtml(null)} />
+      {printPreview !== null && (
+        <PrintPreviewDialog
+          html={printPreview.html}
+          selectionHtml={printPreview.selectionHtml}
+          title={printPreview.title}
+          onClose={() => setPrintPreview(null)}
+        />
       )}
     </div>
   )

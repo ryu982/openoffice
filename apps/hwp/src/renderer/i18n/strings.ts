@@ -20,6 +20,7 @@ import { he } from './app/he'
 import { hi } from './app/hi'
 import { zhTW } from './app/zh-TW'
 import { vi } from './app/vi'
+import { tr } from './app/tr'
 
 /** User-visible strings of the HWP editor host (status and errors around the embedded editor) */
 export const strings = defineStrings({
@@ -44,4 +45,5 @@ export const strings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

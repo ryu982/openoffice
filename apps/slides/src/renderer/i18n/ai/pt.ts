@@ -90,8 +90,6 @@ export const pt = {
   aiStopGeneration: 'Parar geração',
   aiStop: 'Parar',
   aiSend: 'Enviar',
-  aiSnapshotsTitle: 'Instantâneos de versão',
-  aiRollback: 'Reverter',
   aiStarterPolishTitle: 'Melhorar o título e o texto deste slide',
   aiStarterTighten: 'Tornar os tópicos deste slide mais concisos',
   aiStarterProofread: 'Verificar erros de digitação em toda a apresentação e corrigi-los',
@@ -243,6 +241,11 @@ export const pt = {
   aiTplFontsNotice:
     'As fontes do modelo já vêm neste aplicativo. Outros programas, como o PowerPoint, podem mostrar uma fonte diferente.',
   aiTplOpenFonts: 'Abrir pasta de fontes',
+  aiTplFontsAuto: 'Fontes: a IA escolhe',
+  aiTplFontsOne: 'Fontes: {font}',
+  aiTplFontsTwo: 'Fontes: títulos {title}, texto {body}',
+  aiTplFontsTemplate: 'Fontes: as do modelo escolhido',
+  aiTplFontsChange: 'Alterar',
   aiTplDesc_coral:
     'Creme e rosa alaranjado sobre fundo quase preto, com títulos enormes e estreitos.',
   aiTplDesc_blue_professional:

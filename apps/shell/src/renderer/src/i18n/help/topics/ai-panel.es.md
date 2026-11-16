@@ -45,7 +45,7 @@ En el panel de IA de los editores Docs, Sheets, Slides, Hangul, HTML y mapas men
 
 ## Retroceso y seguridad
 
-- El panel de Docs conserva una **lista de versiones**: una instantánea por vuelta, puede volver a cualquiera de ellas y ese propio retroceso se puede deshacer con Ctrl+Z. Las instantáneas sobreviven a reabrir el documento.
+- Una vuelta en la que la IA cambió el documento lleva, bajo su respuesta, una tarjeta **Cambios hechos en el documento: N**, y los lugares cambiados se marcan en amarillo sobre el documento. Las marcas solo se ven en pantalla —nunca se guardan, imprimen ni exportan— y desaparecen cuando envía la siguiente petición o pulsa **Ocultar marcas**. **Deshacer estos cambios** revierte la vuelta entera de una vez. En Docs, Markdown, HTML, Slides, mapa mental y diagrama, deshacer una vuelta anterior deshace también las que vinieron después; en Hangul, Sheets, PDF y EPUB solo se puede deshacer la última vuelta, y solo si el documento no se editó después. Cuando no se pueda deshacer, use el Deshacer propio del editor (Ctrl+Z).
 - Las ediciones de la IA pasan por la misma canalización de edición que las manuales (se pueden deshacer y requieren guardar): nada omite su confirmación de guardado.
 
 ## Ocultar una selección a la IA

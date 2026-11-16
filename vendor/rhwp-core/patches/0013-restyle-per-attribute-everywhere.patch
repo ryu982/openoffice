@@ -1,14 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: pblsketch <239486537+pblsketch@users.noreply.github.com>
-Date: Fri, 23 Oct 2026 00:00:00 +0900
-Subject: [PATCH 13/13] =?UTF-8?q?fix(style):=20=EC=8A=A4=ED=83=80=EC=9D=BC?=
- =?UTF-8?q?=20=EA=B1=B8=EA=B8=B0=C2=B7=EA=B3=A0=EC=B9=98=EA=B8=B0=EB=A5=BC?=
- =?UTF-8?q?=20=EC=86=8D=EC=84=B1=EB=A7=88=EB=8B=A4=20=EB=A7=9E=EC=B6=94?=
- =?UTF-8?q?=EA=B3=A0=20=EB=AA=A8=EB=93=A0=20=EB=AC=B8=EB=8B=A8=EC=97=90=20?=
- =?UTF-8?q?=ED=8D=BC=EB=9C=A8=EB=A6=B0=EB=8B=A4?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Date: Sun, 8 Nov 2026 00:00:00 +0900
+Subject: [PATCH 5/29] fix(style): 스타일 걸기·고치기를 속성마다 맞추고 모든 문단에 퍼뜨린다
 
 한컴 한글 2024 와 같게 한다.
 
@@ -20,20 +13,22 @@ Content-Transfer-Encoding: 8bit
   것만 바꿨다.
 - 글자 스타일을 고치면 그 글자 모양을 쓰는 글자가 따라 바뀐다. 다른 스타일과 글자
   모양을 나눠 쓰는 글자 스타일은 가릴 수 없어 그대로 둔다.
+
+Ported onto devel 7d06d5c70: formatting.rs apply_cell_style_native conflict — devel added restamp_cell_format_origin() before the cell paragraph edit; kept that call and placed the patch's char-shape run collection after it. Everything else applied as-is.
 ---
- src/document_core/commands/formatting.rs | 262 +++++++++++++++++++++--
- src/model/document.rs                    |  75 +++++++
+ src/document_core/commands/formatting.rs | 262 ++++++++++++++++++++++++++++---
+ src/model/document.rs                    |  75 +++++++++
  src/model/paragraph.rs                   |  26 +++
- src/model/style.rs                       | 124 +++++++++++
- src/wasm_api.rs                          |  86 +-------
- src/wasm_api/tests.rs                    | 163 ++++++++++++++
+ src/model/style.rs                       | 124 +++++++++++++++
+ src/wasm_api.rs                          |  86 +---------
+ src/wasm_api/tests.rs                    | 163 +++++++++++++++++++
  6 files changed, 631 insertions(+), 105 deletions(-)
 
 diff --git a/src/document_core/commands/formatting.rs b/src/document_core/commands/formatting.rs
-index 95cce1d58..33a3f2788 100644
+index bd2b7a130db4adbcd6ce7d8fb2ca2d14e5bb1307..168f5232f279d1af28b007922c9abbfebc899e4f 100644
 --- a/src/document_core/commands/formatting.rs
 +++ b/src/document_core/commands/formatting.rs
-@@ -1993,6 +1993,194 @@ impl DocumentCore {
+@@ -2235,6 +2235,194 @@ impl DocumentCore {
          base_psid
      }
  
@@ -228,7 +223,7 @@ index 95cce1d58..33a3f2788 100644
      /// 본문 문단의 LineSeg를 현재 CharShape/ParaShape 기준으로 다시 계산한다.
      pub(crate) fn reflow_body_paragraph(&mut self, sec_idx: usize, para_idx: usize) {
          let para_shape_id = match self
-@@ -2135,10 +2323,25 @@ impl DocumentCore {
+@@ -2381,10 +2569,25 @@ impl DocumentCore {
              return Ok("{\"ok\":true}".to_string());
          }
  
@@ -258,7 +253,7 @@ index 95cce1d58..33a3f2788 100644
  
          let para = self
              .document
-@@ -2151,13 +2354,11 @@ impl DocumentCore {
+@@ -2397,13 +2600,11 @@ impl DocumentCore {
  
          para.style_id = style_id as u8;
          para.para_shape_id = new_para_shape_id;
@@ -277,7 +272,7 @@ index 95cce1d58..33a3f2788 100644
          }
  
          self.reflow_body_paragraph(sec_idx, para_idx);
-@@ -2239,11 +2440,30 @@ impl DocumentCore {
+@@ -2487,10 +2688,15 @@ impl DocumentCore {
              return Ok("{\"ok\":true}".to_string());
          }
  
@@ -295,6 +290,12 @@ index 95cce1d58..33a3f2788 100644
 +                _ => self.resolve_style_para_shape_id(style_id, current_psid),
 +            };
          let (old_indent, new_indent) = self.para_shape_indents(current_psid, new_para_shape_id);
+         self.restamp_cell_format_origin(
+             (
+@@ -2503,6 +2709,20 @@ impl DocumentCore {
+             current_psid,
+             new_para_shape_id,
+         )?;
 +        let runs: Vec<u32> = self
 +            .get_cell_paragraph_ref(
 +                sec_idx,
@@ -312,9 +313,9 @@ index 95cce1d58..33a3f2788 100644
  
          {
              let cell_para = self.get_cell_paragraph_mut(
-@@ -2256,13 +2476,11 @@ impl DocumentCore {
-             cell_para.style_id = style_id as u8;
+@@ -2516,13 +2736,11 @@ impl DocumentCore {
              cell_para.para_shape_id = new_para_shape_id;
+             cell_para.cell_format_vpos_dirty = true;
              restamp_indentation(&mut cell_para.line_segs, old_indent, new_indent);
 -            if let Some(old) = old_style {
 -                cell_para.replace_style_char_shape_preserving_overrides(
@@ -332,10 +333,10 @@ index 95cce1d58..33a3f2788 100644
          }
  
 diff --git a/src/model/document.rs b/src/model/document.rs
-index a83677f76..9ef723925 100644
+index 587a2337236a86299eb5190c58c5688ec4e0106e..9c2b319d9a721b866a05985aa0d0462f4988b896 100644
 --- a/src/model/document.rs
 +++ b/src/model/document.rs
-@@ -632,6 +632,81 @@ impl Document {
+@@ -754,6 +754,81 @@ impl Document {
          new_id
      }
  
@@ -418,10 +419,10 @@ index a83677f76..9ef723925 100644
      pub fn find_or_create_tab_def(&mut self, new_td: super::style::TabDef) -> u16 {
          // 동일한 TabDef가 이미 있는지 검색
 diff --git a/src/model/paragraph.rs b/src/model/paragraph.rs
-index 601e696c5..823dba631 100644
+index 743cfd6d6abf869df6f8c001fa42f84cc90bff16..c8444900df4b96bfbbb263c0b21e6d9ad4291680 100644
 --- a/src/model/paragraph.rs
 +++ b/src/model/paragraph.rs
-@@ -2704,6 +2704,32 @@ impl Paragraph {
+@@ -3907,6 +3907,32 @@ impl Paragraph {
          }
      }
  
@@ -455,10 +456,10 @@ index 601e696c5..823dba631 100644
      pub fn apply_char_shape_to_entire_text(&mut self, char_shape_id: u32) {
          let text_len = self.text.chars().count();
 diff --git a/src/model/style.rs b/src/model/style.rs
-index cf7344f1e..72c765c92 100644
+index ca1e5e29aa6621599e3ac50dde3bd64c7538980b..b2d9132c48b10f847a60f73c3684ad664ee3d15e 100644
 --- a/src/model/style.rs
 +++ b/src/model/style.rs
-@@ -1171,6 +1171,130 @@ impl ParaShapeMods {
+@@ -1224,6 +1224,130 @@ impl ParaShapeMods {
      }
  }
  
@@ -590,10 +591,10 @@ index cf7344f1e..72c765c92 100644
  mod tests {
      use super::*;
 diff --git a/src/wasm_api.rs b/src/wasm_api.rs
-index 059f72c8e..6631e51ce 100644
+index 7858aeee62f37f83031d690424d90b82a246fec3..588bcc133b1d37a6aae148604fd35e9c7152a6b2 100644
 --- a/src/wasm_api.rs
 +++ b/src/wasm_api.rs
-@@ -7370,7 +7370,6 @@ impl HwpDocument {
+@@ -8128,7 +8128,6 @@ impl HwpDocument {
          };
          let old_csid = style.char_shape_id as u32;
          let old_psid = style.para_shape_id;
@@ -601,7 +602,7 @@ index 059f72c8e..6631e51ce 100644
  
          // CharShape 수정
          if !char_mods_json.is_empty() && char_mods_json != "{}" {
-@@ -7411,88 +7410,9 @@ impl HwpDocument {
+@@ -8193,88 +8192,9 @@ impl HwpDocument {
          self.core.document.doc_info.styles[style_id as usize].raw_data = None;
          self.core.document.doc_info.raw_stream_dirty = true;
  
@@ -694,10 +695,10 @@ index 059f72c8e..6631e51ce 100644
          // 스타일 캐시 무효화 + 전체 리빌드
          let num_sections = self.core.document.sections.len();
 diff --git a/src/wasm_api/tests.rs b/src/wasm_api/tests.rs
-index a1c0f32fe..1ee4bd173 100644
+index e9e82431b7199f98c0af101b5e63308b631425a8..1dee75acb0331e4f8843ac272baac224b5f6fc17 100644
 --- a/src/wasm_api/tests.rs
 +++ b/src/wasm_api/tests.rs
-@@ -28124,3 +28124,166 @@ fn issue_4576_rebuild_derived_state_recomputes_composition_and_pagination() {
+@@ -26876,3 +26876,166 @@ fn issue_4576_rebuild_derived_state_recomputes_composition_and_pagination() {
          "페이지 트리가 기준선과 같아야 한다 (옛 코드 잔재 없음)"
      );
  }

@@ -47,6 +47,10 @@ export const nl = {
   saveFailedStatus: 'Opslaan mislukt',
   exportFailed: 'Exporteren mislukt',
   printFailed: 'Afdrukken mislukt: {error}',
+  printRangeEmpty: "Dit document heeft {count} pagina's. Typ paginanummers binnen dat bereik.",
+  printPagesFailed: "Kan de te printen pagina's niet tellen: {error}",
+  printLayoutSaved: 'Het geschikte resultaat is als pdf opgeslagen.',
+  printLayoutSaveFailed: 'Kan de pdf niet opslaan: {error}',
   exportHtmlSkipped:
     'Geëxporteerd, maar {count} bron(nen) konden niet worden ingesloten (bijv. {first})',
   viewPreview: 'Voorbeeld',
@@ -83,7 +87,7 @@ export const nl = {
   previewNeedsSave:
     'Relatieve afbeeldingen en stijlen verschijnen in het voorbeeld zodra het bestand is opgeslagen',
   inspectHint:
-    'Klik op een element in het voorbeeld om het te selecteren, dubbelklik om tekst te bewerken',
+    'Klik op een element in het voorbeeld om het te selecteren, dubbelklik om tekst te bewerken, Shift+klik of {alt}+slepen om er meerdere te selecteren',
   nodeDynamic:
     'Dit element is door het paginascript gemaakt en bestaat niet in de bron; bewerk via de bron of AI',
   nodeDynamicShort: 'door script gemaakt',

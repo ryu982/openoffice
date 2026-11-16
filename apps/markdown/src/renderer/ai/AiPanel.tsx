@@ -7,11 +7,14 @@ import {
   AiConnectPrompt,
   AiFirstConnectionNotice,
   AiInputTruncatedNotice,
+  AiChangesCard,
+  type AiChangesState,
   AiMark,
   AiToolsUnsupportedNotice,
   AiSubscriptionUsageLine,
   aiSubscriptionText,
   useAiSendGate,
+  useSubscriptionUsageUpdates,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode } from 'react'
@@ -21,6 +24,9 @@ import {
   type IpcStreamError,
   type MindMapTreeNode,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type {
   AiSettings,
@@ -33,11 +39,14 @@ import {
   AiQueueStrip,
   AI_QUEUE_LABELS,
   AiScopeQuote,
-  AiTypingIndicator,
+  AiReplyProgress,
   AiUsageChip,
   addTokenUsage,
   createFileNav,
   Markdown,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   useChatRunQueue,
   NO_SKILL_USE,
   SentSkillChips,
@@ -64,12 +73,12 @@ import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
-import { clearAiHighlights } from '../editor/aiHighlight'
+import { aiMarks, clearAiHighlights } from '../editor/aiHighlight'
 import { setInactiveSelectionShown } from '../editor/inactiveSelection'
 import { uiOp } from '../editor/ops'
 import { createMarkdownSkill, MARKDOWN_RULES } from './markdown-skill'
 import { MindMapCard } from './MindMapCard'
-import { mindMapToMermaid } from './mind-map'
+import { mindMapToMermaid } from '@genoffice/agent-core/mind-map'
 import {
   buildDocWriterRequest,
   countMarkdownBlocks,
@@ -162,6 +171,21 @@ interface ChatEntry {
   memory?: ProjectMemoryLine[]
   /** another editor's tools on a reopened project message: one summary line */
   otherEditorTools?: OtherEditorTools
+  /** the run this reply ends changed the document (session-only, not persisted) */
+  changes?: RunChanges
+}
+
+/**
+ * What one run changed, on its last reply. The run is taken back by restoring
+ * the snapshot taken before its first change, which also takes back every
+ * later run (and anything typed since), so those cards turn 'reverted' too.
+ */
+interface RunChanges {
+  /** the snapshot it restores (ids grow with each run) */
+  id: number
+  state: AiChangesState
+  /** top-level blocks the run marked, when that is every place it changed */
+  count?: number
 }
 
 /** A project chat message as this panel shows it */
@@ -185,6 +209,14 @@ function entryFromProject(m: ProjectChatEntry & { skillProposals?: string[] }): 
   }
 }
 
+/** an apply_ops input that writes the properties block, which no mark on the page can show */
+function setsFrontmatter(input: Record<string, unknown>): boolean {
+  const ops = input.ops
+  return (
+    Array.isArray(ops) && ops.some((op) => (op as { op?: unknown } | null)?.op === 'setFrontmatter')
+  )
+}
+
 /** longest selection excerpt echoed on a user bubble */
 const SCOPE_TEXT_MAX = 200
 
@@ -198,8 +230,7 @@ export interface DocSnapshot {
 }
 
 interface Snapshot {
-  label: string
-  time: string
+  id: number
   doc: DocSnapshot
 }
 
@@ -283,9 +314,13 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    editor: 'markdown',
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -311,6 +346,11 @@ export function AiPanel({
     cards: skillCards,
     busy,
     send: (text, use) => send(text, undefined, undefined, use),
+    // a template skill called in a document with content asks where to run
+    hasContent: () => {
+      const doc = deps.getSnapshot()
+      return doc.body.trim() !== '' || doc.frontmatter.trim() !== ''
+    },
     onTaken: onSkillHandoff,
     setComposer: setPrompt,
   })
@@ -319,7 +359,13 @@ export function AiPanel({
   /** the skills of the last send: a retry sends the same skill text */
   const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  /** the snapshots the change cards restore, oldest first; a card whose snapshot was pushed out is 'expired' */
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const nextSnapshotIdRef = useRef(1)
+  /** taken before the in-flight run's first change; becomes its card's snapshot when the run ends */
+  const runSnapshotRef = useRef<DocSnapshot | null>(null)
+  /** the in-flight run changed something its marks cannot show (the properties block) */
+  const runUnmarkedRef = useRef(false)
   // bumped on selection/doc changes so the scope chip & queue rows stay fresh
   const [, setScopeTick] = useState(0)
   /** the scope chip's expandable preview of the selected text */
@@ -421,6 +467,9 @@ export function AiPanel({
   const streamErrorRef = useRef<IpcStreamError | null>(null)
   /** usage windows the subscription program reported last */
   const [subscriptionUsage, setSubscriptionUsage] = useState<AiSubscriptionUsage[]>([])
+  // usage a picture request reported reaches every window (the chat stream only its own);
+  // the shared merge keeps the windows a report does not name
+  useSubscriptionUsageUpdates(() => window.markdownApi.aiSubscription, setSubscriptionUsage)
   /** the input of the last run was cut to fit a limit */
   const [inputTruncated, setInputTruncated] = useState(false)
   const langRef = useRef(lang)
@@ -646,6 +695,26 @@ export function AiPanel({
     [],
   )
 
+  /**
+   * The card of the run that just ended, if it changed the document: its
+   * snapshot joins the ring (the oldest falls out past MAX_SNAPSHOTS) and the
+   * count is the blocks its marks sit in, unless something it changed has no mark.
+   */
+  const takeRunChanges = (): { changes: RunChanges } | Record<string, never> => {
+    const doc = runSnapshotRef.current
+    const unmarked = runUnmarkedRef.current
+    runSnapshotRef.current = null
+    runUnmarkedRef.current = false
+    if (!doc) return {}
+    const id = nextSnapshotIdRef.current++
+    setSnapshots((prev) => [...prev, { id, doc }].slice(-MAX_SNAPSHOTS))
+    const editor = depsRef.current.getEditor()
+    const marks = editor ? aiMarks(editor.state) : null
+    const count =
+      marks && !unmarked && !marks.unmarked && marks.blocks > 0 ? marks.blocks : undefined
+    return { changes: { id, state: 'applied', ...(count !== undefined ? { count } : {}) } }
+  }
+
   // The loop is built once; every mutable value goes through a ref getter
   const loopRef = useRef<AgentLoop<DocSnapshot> | null>(null)
   if (!loopRef.current) {
@@ -669,10 +738,13 @@ export function AiPanel({
         createSearchSkill(),
         // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
         ...panelUserSkills({
+          editor: 'markdown',
           lang: () => langRef.current,
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -692,22 +764,14 @@ export function AiPanel({
           patchLast((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },
         onToolExecuted: ({ call, execution, snapshotBefore }) => {
           if (execution.mutated) runMutatedRef.current = true
-          if (snapshotBefore !== undefined) {
-            const label = runInstructionRef.current.slice(0, 40)
-            const time = new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            setSnapshots((prev) =>
-              [...prev, { label, time, doc: snapshotBefore }].slice(-MAX_SNAPSHOTS),
-            )
-          }
+          if (snapshotBefore !== undefined) runSnapshotRef.current = snapshotBefore
+          if (execution.mutated && setsFrontmatter(call.input)) runUnmarkedRef.current = true
           // mind maps ride the UI-only display side channel onto the message
           const display = execution.display
           const mindmap = display?.kind === 'mindmap' ? display.tree : undefined
@@ -744,22 +808,25 @@ export function AiPanel({
           const final = truncated
             ? [base, tGlobal('aiTruncatedNote')].filter(Boolean).join('\n\n')
             : base
+          // a cancelled run keeps what it already changed: that gets its card too
+          const changed = takeRunChanges()
           patchLast((last) => ({
             streaming: false,
             text: final || (last.tools?.length ? last.text : tGlobal('aiNoReply')),
             // A stop mid-tool can leave a running placeholder behind — drop it
             tools: last.tools?.filter((tl) => !tl.running),
+            ...changed,
           }))
           persistMessage('assistant', final, runToolsRef.current)
           projectPanelRef.current.finishSend()
-          const editor = depsRef.current.getEditor()
-          if (editor) clearAiHighlights(editor)
           depsRef.current.onRunDone(runMutatedRef.current)
           setBusy(false)
         },
         onError: (error) => {
           const blocked = blockedRunOf(streamErrorRef.current, error)
           streamErrorRef.current = null
+          // a run can fail after it already changed the document: its card stays
+          const changed = takeRunChanges()
           if (blocked) {
             // the queue must not fire one message after another into the same wall
             msgQueueRef.current.hold()
@@ -783,6 +850,7 @@ export function AiPanel({
                 isError: true,
                 ...(blocked ? { blocked } : {}),
                 tools: last.tools?.filter((tl) => !tl.running),
+                ...changed,
               }
             }
             return next
@@ -857,6 +925,8 @@ export function AiPanel({
           }))
         })
         if (applied && !loopRef.current?.busy) {
+          // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+          windowMcpState()?.newConversation()
           loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
           // the next request re-reads the current text of the skills this conversation used
           skillsRef.current.restoreHistory(
@@ -880,8 +950,14 @@ export function AiPanel({
     msgQueue.clear()
     sendGate.reset()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     setBusy(false)
     setChat([])
+    // the cards go with the chat, and the snapshots and marks with them
+    setSnapshots([])
+    runSnapshotRef.current = null
+    clearMarks()
     skills.resetConversation()
     skillCards.reset()
     skillTemplates.reset()
@@ -979,6 +1055,10 @@ export function AiPanel({
     runInstructionRef.current = instruction
     runDisplayRef.current = displayText ?? instruction
     runMutatedRef.current = false
+    runSnapshotRef.current = null
+    runUnmarkedRef.current = false
+    // the marks show what the last run changed: a new run starts with none
+    clearMarks()
     runToolsRef.current = []
     runUsageRef.current = undefined
     // a queue batch carries its own display text: no selection quote
@@ -1104,6 +1184,10 @@ export function AiPanel({
       ? ''
       : editor.state.doc.textBetween(liveSelection.from, liveSelection.to, '\n', ' ').trim()
   const hasScopeSelection = selectionText.length > 0
+  // whether the marks of the last run are on the page (the scope tick re-renders on edits and clears)
+  const marksShown = !!editor && !editor.isDestroyed && aiMarks(editor.state).shown
+  /** the newest reply with a changes card: only its run's changes are marked */
+  const latestChangesIdx = chat.map((entry) => entry.changes !== undefined).lastIndexOf(true)
 
   /** the × on the scope chip: collapse the selection so the run targets the whole document */
   const clearScopeSelection = (): void => {
@@ -1188,11 +1272,50 @@ export function AiPanel({
     window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
   }
 
-  const rollback = (snapshot: Snapshot): void => {
-    if (busy) return
-    depsRef.current.restoreSnapshot(snapshot.doc)
-    setSnapshots((prev) => prev.filter((s) => s !== snapshot))
+  /** takes the marks of the last run's changes off the document */
+  const clearMarks = (): void => {
+    const current = depsRef.current.getEditor()
+    if (current) clearAiHighlights(current)
+    // a clear changes no content, so no editor update re-renders the card
+    setScopeTick((tick) => tick + 1)
   }
+
+  /**
+   * Takes a run back: the document returns to the snapshot from before the
+   * run's first change. That also drops every later run (and edits made since),
+   * so their cards turn 'reverted' and their snapshots go.
+   */
+  const revertRun = (id: number): void => {
+    if (busy) return
+    const snapshot = snapshots.find((s) => s.id === id)
+    if (!snapshot) return
+    let state: AiChangesState = 'reverted'
+    try {
+      depsRef.current.restoreSnapshot(snapshot.doc)
+    } catch {
+      state = 'refused'
+    }
+    if (state === 'reverted') {
+      clearMarks()
+      setSnapshots((prev) => prev.filter((s) => s.id < id))
+    }
+    setChat((prev) =>
+      prev.map((entry) => {
+        const changes = entry.changes
+        if (!changes || changes.state !== 'applied') return entry
+        if (changes.id === id) return { ...entry, changes: { ...changes, state } }
+        if (state === 'reverted' && changes.id > id)
+          return { ...entry, changes: { ...changes, state: 'reverted' } }
+        return entry
+      }),
+    )
+  }
+
+  /** the card's state: an applied run whose snapshot fell out of the ring can no longer be taken back */
+  const cardState = (changes: RunChanges): AiChangesState =>
+    changes.state === 'applied' && !snapshots.some((s) => s.id === changes.id)
+      ? 'expired'
+      : changes.state
 
   // Re-derive the display width on window resize (max is 60% of the window);
   // growing the window back restores the preferred width
@@ -1347,7 +1470,14 @@ export function AiPanel({
             )
           }
           const hasTools = (entry.tools?.length ?? 0) > 0
-          if (!entry.text && !entry.streaming && !hasTools && !entry.otherEditorTools) return null
+          if (
+            !entry.text &&
+            !entry.streaming &&
+            !hasTools &&
+            !entry.otherEditorTools &&
+            !entry.changes
+          )
+            return null
           const isLast = i === chat.length - 1
           // Action row appears once per completed reply: on the turn's final segment only
           // (mid-turn segments have a following assistant entry; the live turn ends when !busy)
@@ -1360,11 +1490,7 @@ export function AiPanel({
               key={i}
               className={`ai-msg ai-msg-assistant${entry.isError && !blocked ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
-              {!entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator label={hasTools ? t('aiWorking') : t('aiThinking')} />
-                </span>
-              ) : blocked ? (
+              {blocked ? (
                 <AiBlockedNotice
                   kind={blocked.kind}
                   provider={blocked.provider}
@@ -1409,11 +1535,29 @@ export function AiPanel({
               <SkillUsedNotes tools={entry.tools} />
               {projectPanel.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
+              {entry.changes && (
+                <AiChangesCard
+                  lang={lang}
+                  state={cardState(entry.changes)}
+                  count={entry.changes.count}
+                  canRevert={!busy}
+                  revertsLater={chat.some(
+                    (later) =>
+                      later.changes &&
+                      later.changes.id > entry.changes!.id &&
+                      later.changes.state === 'applied',
+                  )}
+                  onRevert={() => revertRun(entry.changes!.id)}
+                  // the marks are of the newest run's changes
+                  onClearMarks={i === latestChangesIdx && marksShown ? clearMarks : null}
+                />
+              )}
               {entry.usage && (
                 <div className="ai-message-usage">
                   <AiUsageChip usage={entry.usage} lang={lang} />
                 </div>
               )}
+              <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   <button
@@ -1473,6 +1617,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
         {sendGate.connectChoice && (
           <AiConnectPrompt
             choice={sendGate.connectChoice}
@@ -1506,26 +1652,6 @@ export function AiPanel({
         )}
         {projectPanel.notices}
       </div>
-
-      {snapshots.length > 0 && (
-        <div className="ai-versions">
-          <div className="ai-versions-title">
-            <IconClock />
-            {t('aiSnapshotsTitle')}
-          </div>
-          {snapshots.map((s, i) => (
-            <div key={i} className="ai-version-row">
-              <span className="ai-version-label" data-tip={s.label}>
-                <span className="ai-version-time">{s.time}</span>
-                {s.label}
-              </span>
-              <button className="ai-version-rollback" disabled={busy} onClick={() => rollback(s)}>
-                {t('aiRollback')}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="ai-composer">
         {activePartial && (
@@ -1635,6 +1761,7 @@ export function AiPanel({
                 onRefreshSubscriptions={subscription.refresh}
               />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
+              <McpServerButton lang={lang} />
             </>
           }
           sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}
@@ -1829,24 +1956,6 @@ function IconCollapse(): ReactElement {
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M5.5 2.5v11" />
       <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function IconClock(): ReactElement {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="6" />
-      <path d="M8 4.8V8l2.2 1.6" />
     </svg>
   )
 }

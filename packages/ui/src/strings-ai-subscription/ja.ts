@@ -18,6 +18,8 @@ export const ja = {
   cardErrNeedsUpdatePath: 'このアプリが実行するファイル:',
   cardErrNeedsUpdateWindows:
     'WSL（Ubuntu）や別のフォルダーにある {provider} を更新しても、このファイルは変わりません。Windows PowerShell で {command} を実行してください。',
+  claudeDesktopNote:
+    'Claude デスクトップアプリは、このアプリが実行する Claude Code ではありません。Claude Code はターミナルで使う別のプログラムなので、デスクトップアプリをインストールまたは更新しても変わりません。',
   cardErrTimeout:
     '{provider} のプログラムから時間内に応答がありませんでした。しばらくしてから、もう一度確認してください。',
   cardErrFailed: '{provider} の確認中に問題が発生しました。もう一度確認してください。',
@@ -55,6 +57,8 @@ export const ja = {
   errRateLimit: '{provider} のサブスクリプションの上限に達しました。',
   errRateLimitReset:
     '{provider} のサブスクリプションの上限に達しました。{time} にリセットされます。',
+  errChatGptAppLimit:
+    'このアプリが使える ChatGPT の利用量を使い切りました。プラン全体の上限か、このアプリ用に設定した上限の可能性があります。ChatGPT の「設定 → 利用状況」で確認してください。',
   errUnsafeTools:
     '{provider} のプログラムが独自のツールを有効にしたまま起動したため、安全のため実行を停止しました。',
   errMeteredNotAccepted:
@@ -118,7 +122,7 @@ export const ja = {
   stepLogin: 'ログイン',
   stepReady: '接続完了',
   installReturnNote:
-    'そのウィンドウでインストールが終わったら、この画面に戻ってください。アプリが自動でもう一度確認します。',
+    'ダウンロード中の数分間、そのウィンドウには何も表示されないことがあります。閉じずにお待ちください。インストールが終わったら、この画面に戻ってください。アプリが自動でもう一度確認します。',
   loginHowNote:
     '押すとブラウザーが開きます。{vendor} のアカウントでログインして「許可」を押すと、自動で接続されます。',
   signingInStalledNote:
@@ -156,6 +160,16 @@ export const ja = {
     'ブラウザーで ChatGPT のログイン画面が開きます。ログインして、このアプリが ChatGPT のプランを使うことを許可すると、自動で接続されます。',
   chatgptLoginUnfinishedNote:
     'ログインが完了していません。もう一度押すと最初からやり直します。接続するには、ChatGPT のプランの使用を許可する必要があります。',
+  chatgptLoginNoPlanNote:
+    'ChatGPT へのログインはできましたが、このアプリがプランを使う許可を得られませんでした。もう一度押し、許可の画面でプランの使用を許可してください。許可したのにこうなる場合は、このアカウント（会社や学校が管理するアカウントなど）やプランでは OpenAI がこの使い方を提供していない可能性があります。その場合は Codex プログラムで接続できます。',
+  chatgptLoginDeniedNote:
+    'ブラウザーではログインしましたが、OpenAI がこの接続を受け付けなかったか、返ってきた応答を確認できませんでした。この PC の日付と時刻が正しいか確かめてから、もう一度押して最初からやり直してください。',
+  chatgptLoginNetworkNote:
+    'OpenAI に接続できなかったか、ブラウザーを開けなかったため、ログインを完了できませんでした。インターネット接続（社内ネットワーク、VPN、プロキシを含む）を確認してから、もう一度押してください。',
+  chatgptLoginWorkspacePolicyNote:
+    'この ChatGPT アカウントは会社や学校が管理するワークスペースに属しているため、OpenAI はこのアプリでワークスペースの ChatGPT プランを使うことを許可していません。ワークスペースの管理者がこのアプリを許可する設定はないため、もう一度ログインしても結果は同じです。個人の ChatGPT アカウント(Go、Plus、Pro)でログインするか、Codex カードから接続してください。',
+  chatgptLoginNotAllowedNote:
+    'このアプリに ChatGPT のプランの使用を許可しなかったか、ブラウザーがログイン失敗として戻ってきました。もう一度押してログインし、許可の画面で許可してください。',
   chatgptSigningInNote:
     '開いたブラウザーで ChatGPT のアカウントにログインし、このアプリがプランを使うことを許可してください。終わると自動で接続されます。',
   chatgptPlanNote:
@@ -165,4 +179,18 @@ export const ja = {
   browserPageDoneBody: 'このタブを閉じてアプリに戻ってください。',
   browserPageFailedTitle: '接続できませんでした',
   browserPageFailedBody: 'アプリに戻ってもう一度お試しください。',
+  cardOff: 'このアプリではオフ',
+  offNote:
+    'このアプリは {provider} のプログラムを実行せず、状態の確認もしません。この PC の {provider} のサインインと、ターミナルでの利用はそのままです。',
+  offElsewhereNote: '設定 → AI で再び使えるようにできます。',
+  offSwitchNote:
+    '「このアプリでは使わない」は、この PC の {provider} のサインインをそのままにして、このアプリでだけ止めます。ログアウトは PC 全体に適用されます。',
+  actionTurnOff: 'このアプリでは使わない',
+  actionTurnOn: '再び使う',
+  connectOffTitle: '{provider} はこのアプリではオフになっています',
+  connectOffBody:
+    '設定 → AI の {provider} のカードで「再び使う」を押すか、別の AI を選んでください。',
+  errOffInApp:
+    '{provider} はこのアプリでオフになっているため、実行しませんでした。設定 → AI で再び使えるようにできます。',
+  guideBadgeOff: 'オフ',
 } satisfies Record<keyof typeof zh, string>

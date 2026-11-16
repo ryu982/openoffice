@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createEditor } from '@rhwp/editor'
 import type { ChromeVisibility, RhwpEditor } from '@rhwp/editor'
 import type { Params } from '@genoffice/i18n'
+import { IconClose } from '@genoffice/ui/icons'
 import {
   aiPanelInitiallyOpen,
+  aiVisible,
   rememberAiPanelOpen,
   skillTemplateText,
   templateDocumentOf,
+  useAppChoice,
   useAutoSavePref,
   useSplitPaneFocusPing,
   type TemplateDocument,
@@ -14,14 +17,17 @@ import {
 import { HwpAiDock } from './ai/AiDock'
 import { DocCheckPanel } from './check/DocCheckPanel'
 import { createAgentBridge } from './ai/agent-bridge'
+import { afterPrefillTaken, easyWordsRequest, type AiPrefill } from './ai/easy-words'
 import {
   DIRTY_EVENT,
+  EASY_WORDS_EVENT,
   FILE_COMMAND_EVENT,
   MEMO_NOT_COPIED_EVENT,
   MEMO_REMOVED_EVENT,
+  MISSING_FONTS_EVENT,
 } from '../../studio-plugin/agent-plugin.mjs'
 import blankHwpUrl from './assets/blank.hwp?url'
-import { useI18n, type StringKey } from './i18n/locale'
+import { t as translateNow, useI18n, type StringKey } from './i18n/locale'
 import { MEMO_INSERT_EVENT, memoNoticeOf, type MemoNotice } from './MemoPanel'
 import { MemoSide, MemoToggle, memoPanelInitiallyOpen, rememberMemoPanelOpen } from './MemoSide'
 import { openDocumentsDroppedOn } from './editor-drop'
@@ -42,6 +48,7 @@ import { hwpFormatOfPath } from '../shared/ipc'
 import type {
   HwpFormat,
   PreviewAction,
+  PrintJob,
   PrintMode,
   PrintResult,
   SaveMode,
@@ -92,6 +99,8 @@ const detailOf = (error: unknown) => (error instanceof Error ? error.message : S
  */
 const isBridgeTimeout = (error: unknown) =>
   error instanceof Error && error.message.startsWith('Request timeout')
+/** The user closed the editor's PDF import dialog (a PDF opened to be converted, decision 0116). */
+const isPdfImportCancelled = (error: unknown) => detailOf(error).includes('PDF_IMPORT_CANCELLED')
 
 function savePortOf(editor: RhwpEditor): SaveEditorPort {
   const agent = createAgentBridge(() => editor)
@@ -122,8 +131,19 @@ function savePortOf(editor: RhwpEditor): SaveEditorPort {
     },
     setMemoLock: (locked) => agent.setMemoLock(locked),
     measureTabs: async (spots) => (await agent.measureTabs(spots)).tabs,
+    savePreview: async () => {
+      const made = await agent.savePreview()
+      return { text: made.text, image: made.png === null ? null : bytesOfBase64(made.png) }
+    },
     notifySaved: (fileName) => editor.notifySaved(fileName),
   }
+}
+
+function bytesOfBase64(text: string): Uint8Array {
+  const raw = atob(text)
+  const bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+  return bytes
 }
 
 export default function App() {
@@ -154,9 +174,24 @@ export default function App() {
   const prePresentChromeRef = useRef<ChromeVisibility | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [aiOpen, setAiOpen] = useState(() => aiPanelInitiallyOpen(AI_OPEN_KEY))
+  /**
+   * AI turned off in Settings takes every AI entrance away: the dock and its rail, the
+   * editor's right-click 쉬운 말로 풀기, the check panel's hand-off and the marks of the AI's
+   * changes on the pages. Turned on, they come back.
+   */
+  const aiOn = aiVisible(useAppChoice(window.aiOfficeEditorChoice))
   const [checkOpen, setCheckOpen] = useState(false)
-  /** a request the check panel hands to the AI input box; `nonce` says it is a new one */
-  const [aiPrefill, setAiPrefill] = useState<{ text: string; nonce: number } | null>(null)
+  /**
+   * a request for the AI panel; `nonce` says it is a new one. The check panel's waits in the
+   * input box, the editor's 쉬운 말로 풀기 runs at once (`autoRun`)
+   */
+  const [aiPrefill, setAiPrefill] = useState<AiPrefill | null>(null)
+  // a request sent at once runs once: the dock unmounts under the print preview and mounts
+  // again after it, and must not find the same request waiting there
+  const takeAiPrefill = useCallback(
+    (taken: AiPrefill) => setAiPrefill((current) => afterPrefillTaken(current, taken)),
+    [],
+  )
   /** counts changes made through the bridge, so the check panel can read the document again */
   const [docRevision, setDocRevision] = useState(0)
   /** the memo column beside the document: out or not, independent of the AI dock */
@@ -174,21 +209,24 @@ export default function App() {
   const [filePath, setFilePath] = useState<string | null>(null)
   /** an untitled copy's name (a skill template's): the title it has until its first save */
   const copyNameRef = useRef<string | null>(null)
+  /** the editor holds a document read from a file, not the blank one a new document starts as */
+  const openedFileRef = useRef(false)
+  /** the notice of the fonts not on this PC was given; a new language marks them again only */
+  const missingToldRef = useRef(false)
   /** crash-recovery copies of the document (recovery-flow.ts), once it is in the editor */
   const copierRef = useRef<RecoveryCopier | null>(null)
   /** the editor holds a restored recovery copy that has not been saved since */
   const restoredRef = useRef(false)
-  /** the AI panel's way into the document: the app's plugin inside the editor */
+  /** the app's plugin inside the editor, for the calls that change no document */
+  const pluginBridge = useMemo(() => createAgentBridge(() => editorRef.current), [])
+  /** the AI panel's way into the document: the same plugin, telling of each possible change */
   const agentBridge = useMemo(
     () =>
-      withChangeNotes(
-        createAgentBridge(() => editorRef.current),
-        () => {
-          copierRef.current?.noteChange()
-          setDocRevision((revision) => revision + 1)
-        },
-      ),
-    [],
+      withChangeNotes(pluginBridge, () => {
+        copierRef.current?.noteChange()
+        setDocRevision((revision) => revision + 1)
+      }),
+    [pluginBridge],
   )
 
   // the shell's split panes: tell it whenever this pane gains focus
@@ -237,6 +275,7 @@ export default function App() {
           if (!disposed) setPhase('ready')
           return
         }
+        openedFileRef.current = true
         formatRef.current = hwpFormatOfPath(path) ?? 'hwp'
         setDocFormat(formatRef.current)
         // an untitled copy (a skill template's, spec 5.7) is read from its temp file but
@@ -260,6 +299,10 @@ export default function App() {
         if (disposed) return
         if (editor && isBridgeTimeout(error)) return
         setPhase('failed')
+        if (editor && isPdfImportCancelled(error)) {
+          setNotice({ tone: 'info', key: 'pdfImportCancelled', sticky: true })
+          return
+        }
         setNotice({
           tone: 'error',
           key: editor ? 'openFailed' : 'editorFailed',
@@ -370,6 +413,9 @@ export default function App() {
     setNotice({ tone: notice.tone ?? 'info', key: notice.key, params: notice.params })
   }, [])
 
+  // Save As > PDF: the PDF export, set once it exists below (it is made after the save)
+  const pdfCopyRef = useRef<(path: string) => Promise<void>>(async () => {})
+
   const save = useCallback(
     async (mode: SaveMode, automatic = false): Promise<boolean> => {
       const editor = editorRef.current
@@ -395,6 +441,11 @@ export default function App() {
       savingDoneRef.current = done
       try {
         const outcome = await runSave(savePortOf(editor), window.hwpApi, mode, automatic)
+        if (outcome.kind === 'export') {
+          // a copy, as File > Export as PDF writes it; nothing about the document changes
+          await pdfCopyRef.current(outcome.path)
+          return false
+        }
         if (outcome.kind === 'saved') {
           restoredRef.current = false
           copierRef.current?.saved()
@@ -461,8 +512,10 @@ export default function App() {
     if (!frame) return
     void agentBridge
       .installFileMenu({
+        open: t('fileOpen'),
         save: t('fileSave'),
         saveAs: t('fileSaveAs'),
+        importPdf: t('fileImportPdf'),
         pdf: t('fileExportPdf'),
         preview: t('filePreview'),
         print: t('filePrint'),
@@ -471,8 +524,10 @@ export default function App() {
     const onCommand = (event: Event) => {
       const command = (event as CustomEvent<unknown>).detail
       if (
+        command === 'open' ||
         command === 'save' ||
         command === 'saveAs' ||
+        command === 'importPdf' ||
         command === 'pdf' ||
         command === 'preview' ||
         command === 'print'
@@ -492,6 +547,75 @@ export default function App() {
       frame.removeEventListener(MEMO_INSERT_EVENT, onMemoInsert)
     }
   }, [phase, agentBridge, t])
+
+  // the editor's right-click 쉬운 말로 풀기 (studio-easy-words-context-menu): named in the app's
+  // language, it hands the selected text over, and the AI panel explains it in plain words at
+  // once, through its usual gate. Naming it changes no document, so it skips the change notes
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const frame = editorRef.current?.element.contentWindow
+    if (!frame) return
+    if (!aiOn) {
+      // AI is off: the item leaves the menus, and the AI's marks leave the pages with its panel
+      void pluginBridge.removeEasyWords().catch(() => {})
+      void pluginBridge.clearMarks().catch(() => {})
+      return
+    }
+    void pluginBridge.installEasyWords(t('easyWordsLabel')).catch(() => {})
+    const onEasyWords = (event: Event) => {
+      const request = easyWordsRequest((event as CustomEvent<unknown>).detail, t, Date.now())
+      if (!request) return
+      setAiPrefill(request)
+      setAiOpen(true)
+    }
+    frame.addEventListener(EASY_WORDS_EVENT, onEasyWords)
+    return () => frame.removeEventListener(EASY_WORDS_EVENT, onEasyWords)
+  }, [phase, pluginBridge, t, aiOn])
+
+  // fonts that are not on this PC are drawn with others while the file keeps their names
+  // (a document from Hancom Office on a PC without it): the editor's font menu and font box
+  // mark them, and a document read from a file says which of its fonts are drawn that way.
+  // The blank new document is left alone: its fonts are marked in the font box
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const frame = editorRef.current?.element.contentWindow
+    if (!frame) return
+    const onMissing = (event: Event) => {
+      const fonts = (event as CustomEvent<{ fonts?: unknown }>).detail?.fonts
+      if (missingToldRef.current || !openedFileRef.current) return
+      if (!Array.isArray(fonts) || fonts.length === 0) return
+      missingToldRef.current = true
+      const missing: Notice = {
+        tone: 'info',
+        key: 'missingFonts',
+        params: { fonts: fonts.join(', ') },
+      }
+      setNotice((current) => current ?? missing)
+    }
+    frame.addEventListener(MISSING_FONTS_EVENT, onMissing)
+    void pluginBridge
+      .watchMissingFonts({
+        tag: translateNow('missingFontTag'),
+        hint: translateNow('missingFontHint'),
+      })
+      .catch(() => {})
+    return () => frame.removeEventListener(MISSING_FONTS_EVENT, onMissing)
+  }, [phase, pluginBridge, lang])
+
+  // the characters of the block and of the document in the editor's status bar (issue #295),
+  // counted as 문서 정보 counts them once typing or the selection rests
+  useEffect(() => {
+    if (phase !== 'ready') return
+    void pluginBridge
+      .showCharCount({
+        total: translateNow('charCountTotal'),
+        selected: translateNow('charCountSelected'),
+        hint: translateNow('charCountHint'),
+        hintSelected: translateNow('charCountHintSelected'),
+        locale: lang,
+      })
+      .catch(() => {})
+  }, [phase, pluginBridge, lang])
 
   // crash-recovery copies while the document has unsaved changes; typing never waits on one
   useEffect(() => {
@@ -623,19 +747,32 @@ export default function App() {
     async (
       mode: PrintMode,
       onProgress: (done: number, total: number) => void = () => {},
+      /** the PDF path Save As picked: no dialog then */
+      path?: string,
     ): Promise<PrintResult> => {
       if (phase !== 'ready') return { ok: false, error: 'the editor is not ready' }
       if (printingRef.current) return { ok: false, error: 'already printing' }
       printingRef.current = true
       try {
         const job = await gatherPrintJob(agentBridge, mode, onProgress)
-        return await window.hwpApi.printPages(job)
+        return await (path === undefined
+          ? window.hwpApi.printPages(job)
+          : window.hwpApi.printPages(job, { path }))
       } catch (error) {
         return { ok: false, error: detailOf(error) }
       } finally {
         printingRef.current = false
       }
     },
+    [phase, agentBridge],
+  )
+
+  /** The preview's advanced print layout: the job's pages as the PDF export gathers them. */
+  const gatherLayoutJob = useCallback(
+    (onProgress: (done: number, total: number) => void): Promise<PrintJob> =>
+      phase === 'ready'
+        ? gatherPrintJob(agentBridge, 'pdf', onProgress)
+        : Promise.reject(new Error('the editor is not ready')),
     [phase, agentBridge],
   )
 
@@ -692,24 +829,62 @@ export default function App() {
     [phase, openPreview],
   )
 
+  /** File > Export as PDF, and Save As with PDF picked (`path`: no second dialog). */
+  const exportPdf = useCallback(
+    async (path?: string): Promise<void> => {
+      const result = await runPrint(
+        'pdf',
+        (done, total) =>
+          setNotice({
+            tone: 'info',
+            key: 'printPreparing',
+            params: { done, total },
+            sticky: true,
+          }),
+        path,
+      )
+      setNotice(result.ok ? null : { tone: 'error', key: 'pdfFailed', detail: result.error })
+    },
+    [runPrint],
+  )
+
+  useEffect(() => {
+    pdfCopyRef.current = exportPdf
+  }, [exportPdf])
+
+  // Headless export mode (--headless-export): this view lives in a hidden window whose
+  // only job is the File menu's PDF export to the path the command line gave, then a
+  // report so the main process can exit. A document that did not open is reported, not
+  // exported as a blank page.
+  const headlessStartedRef = useRef(false)
+  useEffect(() => {
+    if (phase !== 'ready' && phase !== 'failed') return
+    if (headlessStartedRef.current) return
+    headlessStartedRef.current = true
+    void (async () => {
+      const outPath = await window.hwpApi.consumeHeadlessExport().catch(() => null)
+      if (!outPath) return
+      if (phase === 'failed') {
+        window.hwpApi.headlessExportDone({ ok: false, error: 'the input document did not open' })
+        return
+      }
+      const result = await runPrint('pdf', undefined, outPath)
+      window.hwpApi.headlessExportDone(
+        result.ok && !result.canceled
+          ? { ok: true }
+          : { ok: false, error: result.ok ? 'the PDF export was canceled' : result.error },
+      )
+    })()
+  }, [phase, runPrint])
+
   // PDF still exports without a preview; the preview's PDF button uses runPrint directly.
   useEffect(
     () =>
       window.hwpApi.onPrintRequest((mode) => {
         if (mode !== 'pdf' || printingRef.current) return
-        void (async () => {
-          const result = await runPrint('pdf', (done, total) =>
-            setNotice({
-              tone: 'info',
-              key: 'printPreparing',
-              params: { done, total },
-              sticky: true,
-            }),
-          )
-          setNotice(result.ok ? null : { tone: 'error', key: 'pdfFailed', detail: result.error })
-        })()
+        void exportPdf()
       }),
-    [runPrint],
+    [exportPdf],
   )
 
   // autosave to the document's own file: 30 s and window blur, after the user has
@@ -903,7 +1078,7 @@ export default function App() {
       <div className="app-main">
         {/* the AI dock, then the memo column beside the document (as the PDF editor's notes);
             both can be out at once, and both need an open document. The preview covers both. */}
-        {phase === 'ready' && !preview.open && (
+        {phase === 'ready' && !preview.open && aiOn && (
           <HwpAiDock
             open={aiOpen}
             setOpen={setAiOpen}
@@ -911,6 +1086,7 @@ export default function App() {
             filePath={filePath}
             templateDocument={templateDocument}
             prefill={aiPrefill}
+            onPrefillTaken={takeAiPrefill}
           />
         )}
         {phase === 'ready' && (
@@ -932,10 +1108,14 @@ export default function App() {
               format={docFormat}
               revision={docRevision}
               onClose={() => setCheckOpen(false)}
-              onHandOff={(request) => {
-                setAiPrefill({ text: request, nonce: Date.now() })
-                setAiOpen(true)
-              }}
+              onHandOff={
+                aiOn
+                  ? (request) => {
+                      setAiPrefill({ text: request, nonce: Date.now() })
+                      setAiOpen(true)
+                    }
+                  : undefined
+              }
             />
           )}
           {phase === 'booting' && <div className="hwp-cover">{t('loading')}</div>}
@@ -954,7 +1134,7 @@ export default function App() {
                 aria-label={t('dismiss')}
                 onClick={() => setNotice(null)}
               >
-                ×
+                <IconClose size={14} />
               </button>
             </div>
           )}
@@ -968,6 +1148,8 @@ export default function App() {
           onClose={closePreview}
           onPrint={runPrint}
           onEditPage={editPage}
+          printLayout={window.hwpApi.printLayout}
+          gatherJob={gatherLayoutJob}
         />
       )}
     </div>

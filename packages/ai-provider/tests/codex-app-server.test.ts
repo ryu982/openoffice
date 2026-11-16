@@ -77,6 +77,14 @@ describe('Codex app-server bridge', () => {
           filesystem: { ':minimal': 'read', '/tmp/genoffice-codex-x': 'read' },
         },
       },
+      // a chat thread states the launch switches again, Codex's image tool off among them
+      features: {
+        hooks: false,
+        plugins: false,
+        apps: false,
+        memories: false,
+        image_generation: false,
+      },
     })
     expect(codexThreadStartParams(config, '/tmp/genoffice-codex-x', 'read-only')).toMatchObject({
       sandbox: 'read-only',

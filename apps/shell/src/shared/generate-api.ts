@@ -174,3 +174,16 @@ export interface GenerateHomeApi {
   /** the Starred view's group: every file in it */
   openWithGroup(group: string): Promise<void>
 }
+
+/**
+ * The editor choice as the generate window reads it. The window's preload may
+ * not import the shared choice bridge: a module two preloads import is split
+ * into a chunk a sandboxed preload cannot load (the window comes up blank).
+ * These equal `APP_CHOICE_CHANNELS.get` / `.changed` and `APP_CHOICE_BRIDGE_KEY`
+ * in @genoffice/electron-utils/app-choice (a test keeps them in step).
+ */
+export const GENERATE_CHOICE = {
+  get: 'app:get-editor-choice',
+  changed: 'app:editor-choice-changed',
+  bridgeKey: 'aiOfficeEditorChoice',
+} as const

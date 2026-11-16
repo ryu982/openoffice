@@ -58,7 +58,7 @@ Ogni comando è uno strumento. Quelli più interessanti:
 Una richiesta che arriva dal comando `ieumoffice` o da un client MCP non l'hai digitata tu nell'app, quindi GenOffice la tratta con cautela.
 
 - **La ricerca** funziona sempre ed è gratuita per impostazione predefinita. La chiave di un provider di ricerca viene usata solo se ne hai selezionata una.
-- **Generare un'immagine** richiede la chiave di un provider di immagini. In questa versione un abbonamento non genera immagini.
+- **Generare un'immagine** segue la scelta per la generazione di immagini nelle impostazioni. Quella predefinita, Piano ChatGPT (programma Codex), usa il tuo piano ChatGPT tramite il programma Codex e **non viene usata a meno che tu non lo consenta** (vedi sotto). Altrimenti si usa la chiave di un provider di immagini configurato. Un modello indicato dall’agente viene usato quando quella via lo offre.
 - **Descrivere un'immagine** usa un provider con chiave quando ce n'è uno configurato. Il tuo abbonamento Claude o Codex **non viene usato a meno che tu non lo consenta**.
 - **Video e audio** richiedono un provider con chiave che supporta i video.
 

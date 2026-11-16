@@ -12,10 +12,12 @@ Cada editor tiene sus propias combinaciones de teclas, y solo unas cuantas funci
 | Plegar / desplegar la cinta — todos los editores           | ⌥⌘R   | Ctrl+F1         |
 | Cinta compacta — solo Docs                                 | ⌥⌘K   | Ctrl+Alt+K      |
 | Abrir la hoja de atajos de teclado — solo Word             | ⌘/    | Ctrl+/          |
+| Abrir la configuración — todas las pestañas salvo Word     | ⌘,    | Ctrl+,          |
 
 - **F1 abre este manual**, no la hoja de atajos. La tecla pertenece al menú de la aplicación, así que funciona igual desde Word, Sheets, Slides, PDF o la pestaña Home.
 - **El conmutador de la cinta es `Ctrl+F1`, o `⌥⌘R` en macOS.** Pulsar `F1` a secas no hace nada — F1 es el manual, y la tecla de la cinta deliberadamente no la comparte. `Ctrl+F1` también se acepta en macOS, aunque `⌥⌘R` es la tecla que usa Office para Mac.
 - **La hoja de atajos de teclado es solo de Word** (`⌘/`). Contiene exactamente la tabla de Word de abajo. Ningún otro editor tiene una.
+- **`⌘,` abre la configuración** (`Ctrl+,` en Windows y Linux), como en la mayoría de las apps de Mac. En una pestaña de Word la combinación sigue siendo subíndice; ábrala allí desde el menú de la aplicación en un Mac, o desde Menú (☰) ▸ Configuración… en Windows y Linux.
 
 ![La hoja de atajos de teclado propia de Word: la acción a la izquierda, el atajo a la derecha, agrupados por Archivo, Edición, Formato de texto, Formato de párrafo, Insertar, Revisión y herramientas, Vista](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ El atajo de filtro de Excel, Ctrl+Shift+L, no hace nada en Windows ni en Linux. 
 
 ### Ventana
 
-| Acción                                                             | macOS     | Windows / Linux |
-| ------------------------------------------------------------------ | --------- | --------------- |
-| Guardar el libro                                                   | ⌘S        | Ctrl+S          |
-| Guardar como                                                       | ⇧⌘S       | Ctrl+Shift+S    |
-| Abrir un libro                                                     | ⌘O        | Ctrl+O          |
-| Imprimir                                                           | ⌘P        | Ctrl+P          |
-| Cerrar el libro (macOS) / Salir de la aplicación (Windows y Linux) | ⌘W        | Ctrl+Q          |
-| Abrir la guía del usuario                                          | F1        | F1              |
-| Acercar                                                            | ⌘=        | Ctrl+=          |
-| Zoom con la rueda del ratón                                        | ⌘ + rueda | Ctrl + rueda    |
-| Mostrar u ocultar las fórmulas en las celdas                       | ⌘`        | Ctrl+`          |
-| Ampliar o reducir la barra de fórmulas                             | ⌘⇧U       | Ctrl+Shift+U    |
+| Acción                                                                        | macOS     | Windows / Linux |
+| ----------------------------------------------------------------------------- | --------- | --------------- |
+| Guardar el libro                                                              | ⌘S        | Ctrl+S          |
+| Guardar como                                                                  | ⇧⌘S       | Ctrl+Shift+S    |
+| Abrir un libro                                                                | ⌘O        | Ctrl+O          |
+| Imprimir                                                                      | ⌘P        | Ctrl+P          |
+| Cerrar el libro (macOS) / Salir de la aplicación (Windows y Linux)            | ⌘W        | Ctrl+Q          |
+| Abrir la guía del usuario                                                     | F1        | F1              |
+| Acercar                                                                       | ⌘=        | Ctrl+=          |
+| Zoom con la rueda del ratón                                                   | ⌘ + rueda | Ctrl + rueda    |
+| Mostrar u ocultar las fórmulas en las celdas                                  | ⌘`        | Ctrl+`          |
+| Ampliar o reducir la barra de fórmulas                                        | ⌘⇧U       | Ctrl+Shift+U    |
+| Ejecutar un botón de la barra de acceso rápido según su posición (1.º a 10.º) |           | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -615,23 +618,25 @@ Estas teclas funcionan cuando la pestaña HWP/HWPX está delante y el documento 
 
 ### Edición
 
-| Acción              | macOS       | Windows / Linux              |
-| ------------------- | ----------- | ---------------------------- |
-| Deshacer            | ⌃Z          | Ctrl+Z                       |
-| Rehacer             | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| Eliminar la línea   | ⌃Y          | Ctrl+Y                       |
-| Cortar              | ⌃X          | Ctrl+X                       |
-| Copiar              | ⌃C          | Ctrl+C                       |
-| Pegar               | ⌃V          | Ctrl+V                       |
-| Eliminar            | ⌃E          | Ctrl+E                       |
-| Seleccionar todo    | ⌃A          | Ctrl+A                       |
-| Copiar formato      | ⌥C          | Alt+C                        |
-| Buscar              | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| Buscar y reemplazar | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| Buscar siguiente    | ⌃L          | Ctrl+L                       |
-| Buscar hacia atrás  | ⌃Q, L       | Ctrl+Q, L                    |
-| Ir a                | ⌥G          | Alt+G                        |
-| Comparar documentos | ⌥⇧V         | Alt+Shift+V                  |
+| Acción                  | macOS       | Windows / Linux              |
+| ----------------------- | ----------- | ---------------------------- |
+| Deshacer                | ⌃Z          | Ctrl+Z                       |
+| Rehacer                 | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| Eliminar la línea       | ⌃Y          | Ctrl+Y                       |
+| Cortar                  | ⌃X          | Ctrl+X                       |
+| Copiar                  | ⌃C          | Ctrl+C                       |
+| Pegar                   | ⌃V          | Ctrl+V                       |
+| Eliminar                | ⌃E          | Ctrl+E                       |
+| Seleccionar todo        | ⌃A          | Ctrl+A                       |
+| Copiar formato          | ⌥C          | Alt+C                        |
+| Buscar                  | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| Buscar y reemplazar     | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| Buscar siguiente        | ⌃L          | Ctrl+L                       |
+| Buscar hacia atrás      | ⌃Q, L       | Ctrl+Q, L                    |
+| Ir a                    | ⌥G          | Alt+G                        |
+| Al inicio del documento | ⌃⇞          | Ctrl+PageUp                  |
+| Al final del documento  | ⌃⇟          | Ctrl+PageDown                |
+| Comparar documentos     | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Carácter
 
@@ -757,3 +762,5 @@ Solo funcionan cuando el cursor está en una celda vacía de una tabla. Hay tecl
 | Ir a la pestaña Inicio (fuera de una tabla)   | ⇧⌘H   | Ctrl+Shift+H    |
 
 Una tecla escrita como `Ctrl+N,T` significa pulsar Ctrl+N, soltar y luego pulsar T. `F5 → S` significa seleccionar un bloque de celdas con F5 y luego pulsar S. `Ctrl+1 … Ctrl+0` corresponden a los estilos primero a décimo del documento; `Ctrl+Alt+1 … Ctrl+Alt+0` aplican los mismos estilos. Con un bloque de celdas seleccionado, `Ctrl+Shift+S` (en macOS `⇧⌘S`) es la suma del bloque; fuera de él, esa tecla guarda como.
+
+Con el ratón, como en Hangul, un doble clic selecciona una palabra, un triple clic el párrafo entero, y un doble clic mantenido y arrastrado amplía la selección palabra por palabra. También funciona al editar un encabezado, un pie de página o una nota al pie. Copiar un bloque de celdas (`Ctrl+C`) copia el texto de las celdas y la propia tabla, así que al pegarlo en el cuerpo se crea de nuevo la misma tabla. Pegar con solo el cursor en una celda de otra tabla abre el cuadro Paste Cells: sobrescribir desde esa celda (las celdas que quedan fuera de la tabla se descartan) o insertar las celdas arriba, abajo, a la izquierda o a la derecha.

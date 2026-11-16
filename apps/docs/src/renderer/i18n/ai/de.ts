@@ -83,7 +83,6 @@ export const de = {
   aiCopied: 'Kopiert',
   aiRegenerateTitle: 'Neu generieren',
   aiSnapshotsTitle: 'Versionsschnappschüsse',
-  aiRollback: 'Zurücksetzen',
   aiScopeSelected: '{count} Absatz/Absätze ausgewählt',
   aiScopeEmptyDoc: 'Leeres Dokument',
   aiScopeCursor: 'An der Cursorposition',
@@ -203,4 +202,7 @@ export const de = {
   aiMindMapReset: 'Ansicht zurücksetzen',
   aiMindMapExpand: 'Zweig ausklappen',
   aiMindMapCollapse: 'Zweig einklappen',
+  aiMindMapToggleLayout: 'Layout wechseln',
+  aiMindMapLayoutTopDown: 'Auf das Layout von oben nach unten umstellen',
+  aiMindMapLayoutLeftRight: 'Auf das Layout von links nach rechts umstellen',
 } satisfies Record<keyof typeof zh, string>

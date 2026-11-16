@@ -52,7 +52,7 @@ O menu depende de onde clicou com o botão direito:
 ## Geração com IA
 
 - O cartão AI Slides no Início: dê um tema ou um esquema e a IA monta a apresentação inteira.
-- Sem a chave de um fornecedor de imagens, a IA não consegue gerar imagens, e a apresentação usa em vez disso imagens encontradas pela pesquisa de imagens; consulte [Modelos de IA e configurações](help://ai-models).
+- Sem um meio de criar imagens (nem o seu plano do ChatGPT pelo programa Codex, nem a chave de um fornecedor de imagens), a IA não consegue gerar imagens, e a apresentação usa em vez disso imagens encontradas pela pesquisa de imagens; consulte [Modelos de IA e configurações](help://ai-models).
 - Continue a ajustar com o painel de IA depois disso.
 - Clique direito numa seleção de texto ou num elemento imagem/vídeo/áudio ▸ **Ocultar a seleção da IA** tira-o da vista do modelo (detalhes no capítulo do painel de IA); um slide com conteúdo oculto pula a checagem automática por captura.
 

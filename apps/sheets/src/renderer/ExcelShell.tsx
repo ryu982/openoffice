@@ -39,6 +39,7 @@ import {
   UndoIcon,
 } from './ribbon-icons'
 import { sheetContextMenuAction } from './sheet-context-menu'
+import { odsConversionNoticeText, type OdsConversionNotice } from './ods-import'
 import { useAiDock } from './ai/use-ai-dock'
 
 import { ColorDropdown } from './ColorDropdown'
@@ -49,6 +50,7 @@ import { AllowEditRangesDialog } from './AllowEditRangesDialog'
 import { ProtectSheetDialog } from './ProtectSheetDialog'
 import type { SheetProtectionAllow } from '@genoffice/xlsx-gateway/gateway/xlsx-protection'
 import { GoToDialog } from './GoToDialog'
+import { QueriesDialog } from './QueriesDialog'
 import { SheetTabContextMenu } from './SheetTabContextMenu'
 import type { SheetTabActions } from './sheet-tab-actions'
 import { PasteSpecialDialog } from './PasteSpecialDialog'
@@ -82,11 +84,11 @@ import {
   ribbonDatePattern,
 } from './excel-format-shortcuts'
 import { isModalOpen, resolveGlobalShortcut } from './global-shortcuts'
-import { stepFontSize } from './font-size-ladder'
+import { scrollRibbonOnWheel } from './ribbon-wheel'
 
 import type { ChartSeriesVisualState } from '@genoffice/xlsx-gateway/domain/chart-visual'
 import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
-import type { AttachmentMeta } from '../shared/desktop-api'
+import type { AttachmentMeta, WorkbookQueriesResult } from '../shared/desktop-api'
 import {
   AiChatPanel,
   type AiChatMessage,
@@ -132,8 +134,30 @@ import type { SelectedTableRibbon } from './table-design-actions'
 import type { TableOptionKey } from './table-design'
 import { builtinTablePalette, tableStyleNames, type TableStyleFamily } from './table-styles'
 import { STATUS_BAR_FUNCS, type StatusBarFunc } from './status-bar-stats'
+import {
+  DEFAULT_QUICK_ACCESS,
+  QUICK_ACCESS_CATALOG,
+  QUICK_ACCESS_MAX_ITEMS,
+  QUICK_ACCESS_STORAGE_KEY,
+  moveQuickAccess,
+  parseQuickAccess,
+  quickAccessDigit,
+  quickAccessItem,
+  quickAccessSlotForKey,
+  readQuickAccess,
+  toggleQuickAccess,
+  writeQuickAccess,
+  type QuickAccessBuiltin,
+} from './quick-access'
 import { SHEET_ZOOM_MAX, SHEET_ZOOM_MIN, clampZoomPercent } from './zoom-range'
 import { ZoomDialog } from './ZoomDialog'
+
+/// The font buttons format the characters selected in the cell editor; not
+/// taking focus on press (as Excel's ribbon does) keeps that selection and
+/// lets typing carry on in the cell after a click.
+function keepCellEditorFocus(event: { preventDefault(): void }): void {
+  event.preventDefault()
+}
 
 // No File tab: file commands live in the macOS
 // application menu (File → Open/Save/Save As) and the toolbar icons.
@@ -259,6 +283,8 @@ interface ExcelShellProps {
   readonly sheetHasContent: boolean
   /// true while the real LLM agent is running (composer disabled meanwhile).
   readonly aiBusy: boolean
+  /** AI is turned on in Settings; off, every AI part of the window is gone */
+  readonly aiOn: boolean
   /** tokens billed across the session, shown beside the composer */
   readonly sessionUsage?: AiTokenUsageView
   /** subscription connection as the AI panel shows it */
@@ -301,6 +327,10 @@ interface ExcelShellProps {
   readonly onStop: () => void
   readonly onNewChat: () => void
   readonly onUndo: (steps?: number) => void
+  /// The changes card of the AI reply at this chat index takes its run back.
+  readonly onRevertAiChanges: (index: number) => Promise<void>
+  /// "Hide marks" on a changes card: the grid drops the last run's marks.
+  readonly onClearAiMarks: () => void
   /// A1 notation of the selected AI scope, including an explicitly requested
   /// single cell, or null when there is no scope.
   readonly aiScopeRange: string | null
@@ -319,6 +349,9 @@ interface ExcelShellProps {
   /// Left side of the status bar (ready / streaming / AI progress messages).
   readonly statusMessage: string
   readonly emptyCsvNotice: boolean
+  /// The open document came from an .ods copy: the footer keeps saying that
+  /// saving writes an .xlsx and how many formulas were kept as values.
+  readonly odsNotice?: OdsConversionNotice | null
   readonly onOpenWorkbook: () => void
   readonly onDismissEmptyCsvNotice: () => void
   /// The open workbook keeps no recovery copy (password protected): shown once per tab.
@@ -337,7 +370,7 @@ interface ExcelShellProps {
   readonly canSaveAs: boolean
   readonly onSaveAs: () => void
   /// QAT redo (workbook history, same path as the app menu's ⇧⌘Z); undo
-  /// shares the AI panel's onUndo above.
+  /// is onUndo above.
   readonly onRedo: () => void
   /// Undo/redo stack occupancy: the QAT buttons grey out when there is nothing to apply.
   readonly canUndo: boolean
@@ -420,6 +453,8 @@ interface ExcelShellProps {
   /// Name Box / Go To jump; returns an error message, or null on success.
   readonly onGoToReference: (ref: string) => string | null
   readonly onListDefinedNames: () => readonly { name: string; ref: string }[]
+  /// Data › Queries & Connections: the open workbook's connections (read-only).
+  readonly onReadWorkbookQueries: () => Promise<WorkbookQueriesResult>
   readonly onReadPasteSpecialSource: () => Promise<PasteSpecialSource>
   /// Resolves to an error message, or null on success.
   readonly onPasteSpecial: (
@@ -443,6 +478,9 @@ interface ExcelShellProps {
   readonly pageLayout: PageLayoutEcho
   /// Manual-recalc mode echo for the Calculation Options menu.
   readonly calcManual: boolean
+  /// Formula view (sheetView/@showFormulas) of the active sheet: the sheet
+  /// renders formulas instead of their values.
+  readonly showFormulas: boolean
   /// Goal Seek solve; rejects with a user-facing Error message.
   readonly onGoalSeek: (setCell: string, toValue: number, byCell: string) => Promise<GoalSeekResult>
   /// Data Table (What-If) run; rejects with a user-facing Error message.
@@ -504,6 +542,7 @@ export function ExcelShell({
   formatPainterActive,
   sheetHasContent,
   aiBusy,
+  aiOn,
   sessionUsage,
   aiSubscription,
   chat,
@@ -548,6 +587,7 @@ export function ExcelShell({
   activeCellA1,
   onGoToReference,
   onListDefinedNames,
+  onReadWorkbookQueries,
   onReadPasteSpecialSource,
   onPasteSpecial,
   functionArguments,
@@ -563,6 +603,8 @@ export function ExcelShell({
   onStop,
   onNewChat,
   onUndo,
+  onRevertAiChanges,
+  onClearAiMarks,
   aiScopeRange,
   aiScopeColumns,
   aiScopeLocked,
@@ -573,6 +615,7 @@ export function ExcelShell({
   openingWorkbook,
   statusMessage,
   emptyCsvNotice,
+  odsNotice,
   onOpenWorkbook,
   onDismissEmptyCsvNotice,
   recoveryNotice,
@@ -598,6 +641,7 @@ export function ExcelShell({
   onGetCreateTableRange,
   pageLayout,
   calcManual,
+  showFormulas,
   onGoalSeek,
   onDataTable,
   onGetDataTableRange,
@@ -605,6 +649,9 @@ export function ExcelShell({
   onGetFillSeriesContext,
 }: ExcelShellProps): React.JSX.Element {
   const { t } = useI18n()
+  // The .ods import line: the same value for the life of the document, so a
+  // command's transient status message never hides or replaces it.
+  const odsNoticeText = odsNotice ? odsConversionNoticeText(odsNotice, t) : null
   const [activeTab, setActiveTab] = useState<RibbonTab>('Home')
   const collapse = useRibbonCollapse('ai-sheets-ribbon-collapsed', {
     collapse: t('appRibbonCollapse'),
@@ -619,17 +666,28 @@ export function ExcelShell({
   )
   // the sidebar switch is a soft hide; it closes the panel when it turns off
   const aiSidebarEnabled = useAiSidebarEnabled(setIsCopilotOpen)
+  // Native listener, delegated because each ribbon tab mounts its own `.ribbon`,
+  // and because React registers wheel as passive, which forbids preventDefault.
+  useEffect(() => {
+    window.addEventListener('wheel', scrollRibbonOnWheel, { passive: false })
+    return () => window.removeEventListener('wheel', scrollRibbonOnWheel)
+  }, [])
   useEffect(() => {
     rememberAiPanelOpen('ai-sheets-show-ai', isCopilotOpen)
   }, [isCopilotOpen])
   // Split panes (decision 0036): as the secondary pane the dock is forced to
   // the rail, and the rail's click asks the shell to focus this pane first.
   const aiDock = useAiDock(isCopilotOpen, setIsCopilotOpen)
+  // AI turned off in Settings: no panel and no rail, while the remembered
+  // open state waits for AI to come back on
+  const aiDockOpen = aiOn && aiDock.open
+  const aiOnRef = useRef(aiOn)
+  aiOnRef.current = aiOn
   // the "show the AI sidebar" setting off hides the copilot rail (soft hide):
   // an explicit AI action (ribbon run, toggle) still opens the panel, and
   // closing it returns to hidden — no dead affordances, no invisible runs
   useEffect(() => {
-    if (openAiRequest) setIsCopilotOpen(true)
+    if (openAiRequest && aiOnRef.current) setIsCopilotOpen(true)
   }, [openAiRequest])
   const [showFormatCells, setShowFormatCells] = useState(false)
   const [axisSizeTarget, setAxisSizeTarget] = useState<'row' | 'col' | null>(null)
@@ -698,9 +756,25 @@ export function ExcelShell({
   const [showFillSeries, setShowFillSeries] = useState(false)
   const [showConsolidateDialog, setShowConsolidateDialog] = useState(false)
   const [showGoTo, setShowGoTo] = useState(false)
+  const [showQueries, setShowQueries] = useState(false)
   const [pasteSpecialSource, setPasteSpecialSource] = useState<PasteSpecialSource | null>(null)
   const [showZoomDialog, setShowZoomDialog] = useState(false)
   const [statsMenuAt, setStatsMenuAt] = useState<{ x: number; y: number } | null>(null)
+  // The quick-access row is a per-PC choice; another sheet tab changing it
+  // reaches this one through the storage event.
+  const [quickAccess, setQuickAccess] = useState(() => readQuickAccess(globalThis.localStorage))
+  const [quickAccessMenuAt, setQuickAccessMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const changeQuickAccess = (next: string[]): void => {
+    setQuickAccess(next)
+    writeQuickAccess(globalThis.localStorage, next)
+  }
+  useEffect(() => {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key === QUICK_ACCESS_STORAGE_KEY) setQuickAccess(parseQuickAccess(event.newValue))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   const openStatsMenu = (event: { clientX: number; clientY: number; preventDefault(): void }) => {
     event.preventDefault()
     setStatsMenuAt({ x: event.clientX, y: event.clientY })
@@ -752,6 +826,7 @@ export function ExcelShell({
     else if (command === 'subtotal-open') setShowSubtotalDialog(true)
     else if (command === 'consolidate-open') setShowConsolidateDialog(true)
     else if (command === 'goto-open') setShowGoTo(true)
+    else if (command === 'queries-open') setShowQueries(true)
     else if (command === PASTE_SPECIAL_OPEN_SHELL_COMMAND) {
       void onReadPasteSpecialSource().then((source) => setPasteSpecialSource(source))
     } else if (command === 'header-footer-open') setShowHeaderFooter(true)
@@ -762,9 +837,11 @@ export function ExcelShell({
       else if (!protection.protected) setProtectSheetMode('protect')
       else if (protection.hasPassword) setProtectSheetMode('unprotect')
       else onCommand('sheet-unprotect')
-    } else if (command === 'ai-open-panel') setIsCopilotOpen(true)
-    else if (command === 'ai-toggle-panel') setIsCopilotOpen((v) => !v)
-    else if (command === 'chart-element-title') setChartTextTarget('title')
+    } else if (command === 'ai-open-panel') {
+      if (aiOn) setIsCopilotOpen(true)
+    } else if (command === 'ai-toggle-panel') {
+      if (aiOn) setIsCopilotOpen((v) => !v)
+    } else if (command === 'chart-element-title') setChartTextTarget('title')
     else if (command === 'chart-element-axis-cat') setChartTextTarget('axis-category')
     else if (command === 'chart-element-axis-val') setChartTextTarget('axis-value')
     else if (command === 'formula-bar-toggle') toggleFormulaBarExpand()
@@ -772,6 +849,8 @@ export function ExcelShell({
   }
   const dispatchCommandRef = useRef(dispatchCommand)
   dispatchCommandRef.current = dispatchCommand
+  const quickAccessRef = useRef(quickAccess)
+  const runQuickAccessRef = useRef<(index: number) => void>(() => {})
   useEffect(() => {
     setContextMenuCommandSink((command) => dispatchCommandRef.current(command))
     const unregisterFx = registerFxButtonOpener(() =>
@@ -800,7 +879,16 @@ export function ExcelShell({
         currencySymbol: ribbonCurrencySymbol(getLang()),
         datePattern: ribbonDatePattern(getLang()),
       })
-      if (!action) return
+      if (!action) {
+        // Alt+digit runs the Nth quick-access button; same gate as the
+        // table's `sheet` rows, since most of these write to the range
+        const slot = quickAccessSlotForKey(event, IS_MAC)
+        if (slot === null || slot >= quickAccessRef.current.length) return
+        if (isModalOpen() || onIsCellEditingRef.current() || !isGridKeyTarget(event.target)) return
+        event.preventDefault()
+        runQuickAccessRef.current(slot)
+        return
+      }
       event.preventDefault()
       if (action.kind === 'dialog') {
         if (action.dialog === 'formatCells') setShowFormatCells(true)
@@ -907,58 +995,73 @@ export function ExcelShell({
     ...(selectedVisualKind === 'image' ? (['Picture Format'] as const) : []),
   ]
   const saveAsTitle = `${t('appSaveAs')} (${platformShortcuts('⇧⌘S')})`
+  const quickAccessBuiltins: Record<
+    QuickAccessBuiltin,
+    { title: string; icon: React.JSX.Element; disabled: boolean; run: () => void }
+  > = {
+    save: { title: t('appSaveTitle'), icon: <SaveIcon />, disabled: !canSave, run: onSave },
+    'save-as': { title: saveAsTitle, icon: <SaveAsIcon />, disabled: !canSaveAs, run: onSaveAs },
+    undo: { title: t('appUndo'), icon: <UndoIcon />, disabled: !canUndo, run: () => onUndo() },
+    redo: { title: t('appRedo'), icon: <RedoIcon />, disabled: !canRedo, run: onRedo },
+  }
+  const runQuickAccess = (index: number): void => {
+    const item = quickAccessItem(quickAccess[index] ?? '')
+    if (!item) return
+    if (item.builtin) {
+      const builtin = quickAccessBuiltins[item.builtin]
+      if (!builtin.disabled) builtin.run()
+    } else if (item.command) dispatchCommand(item.command)
+  }
+  quickAccessRef.current = quickAccess
+  runQuickAccessRef.current = runQuickAccess
 
   return (
     <main
-      className={`app-shell ${aiDock.open ? '' : 'copilot-collapsed'}${presenting ? ' sheet-presenting' : ''}`}
+      className={`app-shell ${aiDockOpen ? '' : 'copilot-collapsed'}${presenting ? ' sheet-presenting' : ''}`}
       inert={openingWorkbook}
       aria-busy={openingWorkbook}
     >
       <header className={`excel-header ${collapse.rootClass}`} ref={collapse.rootRef}>
         <nav
-          className={`ribbon-tabs ${IN_TAB ? '' : IS_MAC ? 'ribbon-tabs-mac' : 'ribbon-tabs-win'}`}
+          // a row longer than the default gives the tabs their room back in a
+          // narrow window (styles.css)
+          className={`ribbon-tabs ${IN_TAB ? '' : IS_MAC ? 'ribbon-tabs-mac' : 'ribbon-tabs-win'}${quickAccess.length > DEFAULT_QUICK_ACCESS.length ? ' qa-crowded' : ''}`}
           aria-label={t('appScopeWorkbook')}
           onDoubleClick={collapse.onTabsDoubleClick}
         >
+          {quickAccess.map((id, index) => {
+            const item = quickAccessItem(id)
+            if (!item) return null
+            const builtin = item.builtin ? quickAccessBuiltins[item.builtin] : null
+            const digit = IS_MAC ? null : quickAccessDigit(index)
+            const title = `${builtin ? builtin.title : t(item.labelKey)}${digit ? ` (Alt+${digit})` : ''}`
+            return (
+              <button
+                type="button"
+                className="qa-btn"
+                key={id}
+                data-tip={title}
+                aria-label={title}
+                disabled={builtin?.disabled ?? false}
+                onClick={() => runQuickAccess(index)}
+              >
+                {builtin ? builtin.icon : <ToolSymbol symbol={item.symbol ?? ''} />}
+              </button>
+            )
+          })}
           <button
             type="button"
-            className="qa-btn"
-            data-tip={t('appSaveTitle')}
-            aria-label={t('appSaveTitle')}
-            disabled={!canSave}
-            onClick={onSave}
+            className="qa-btn qa-customize"
+            data-tip={t('appQuickAccessCustomize')}
+            aria-label={t('appQuickAccessCustomize')}
+            aria-haspopup="menu"
+            aria-expanded={quickAccessMenuAt !== null}
+            onClick={(event) => {
+              const box = event.currentTarget.getBoundingClientRect()
+              setQuickAccessMenuAt((at) => (at ? null : { x: box.left, y: box.bottom + 2 }))
+            }}
           >
-            <SaveIcon />
-          </button>
-          <button
-            type="button"
-            className="qa-btn"
-            data-tip={saveAsTitle}
-            aria-label={saveAsTitle}
-            disabled={!canSaveAs}
-            onClick={onSaveAs}
-          >
-            <SaveAsIcon />
-          </button>
-          <button
-            type="button"
-            className="qa-btn"
-            data-tip={t('appUndo')}
-            aria-label={t('appUndo')}
-            disabled={!canUndo}
-            onClick={() => onUndo()}
-          >
-            <UndoIcon />
-          </button>
-          <button
-            type="button"
-            className="qa-btn"
-            data-tip={t('appRedo')}
-            aria-label={t('appRedo')}
-            disabled={!canRedo}
-            onClick={onRedo}
-          >
-            <RedoIcon />
+            <CaretIcon />
           </button>
           <label
             className={`autosave-toggle ${autoSave ? 'on' : ''}`}
@@ -1018,6 +1121,7 @@ export function ExcelShell({
               .map((entry) => entry.name)
           }}
           calcManual={calcManual}
+          showFormulas={showFormulas}
           onRefreshPivot={onRefreshPivot}
           onIsSelectionInPivot={onIsSelectionInPivot}
           onCommand={dispatchCommand}
@@ -1025,57 +1129,63 @@ export function ExcelShell({
             setIsCopilotOpen(true)
             onSend(nextPrompt)
           }}
-          aiOpen={aiDock.open}
+          aiOn={aiOn}
+          aiOpen={aiDockOpen}
           onAiToggle={() => setIsCopilotOpen((open) => !open)}
         />
       </header>
 
       {/* AI panel docks on the left, full height under the ribbon (unified with docs) */}
-      <div className={`sheet-body${!aiSidebarEnabled && !aiDock.open ? ' ai-dock-off' : ''}`}>
-        <AiChatPanel
-          isOpen={aiDock.open}
-          focusRequest={openAiRequest}
-          hideRail={!aiSidebarEnabled}
-          hasContent={sheetHasContent}
-          chat={chat}
-          {...(historicChat !== undefined ? { historicChat } : {})}
-          renderSkillCard={renderSkillCard}
-          skillNotes={skillNotes}
-          onTemplateSkill={onTemplateSkill}
-          attachments={attachments}
-          attachNotice={attachNotice}
-          onPickAttachments={onPickAttachments}
-          onDrivePicked={onDrivePicked}
-          docMention={docMention}
-          onAddAttachmentPaths={onAddAttachmentPaths}
-          onAddPastedImage={onAddPastedImage}
-          onRemoveAttachment={onRemoveAttachment}
-          prompt={prompt}
-          preview={preview}
-          aiBusy={aiBusy}
-          sessionUsage={sessionUsage}
-          subscription={aiSubscription}
-          onPromptChange={onPromptChange}
-          onSend={onSend}
-          onSendQueued={(text, atts, skillUse) => {
-            // the panel asks the send gate first: a message stays queued while it asks to
-            // connect or shows the first-use notice
-            if (aiBusy) return false
-            onSend(text, atts, undefined, skillUse)
-            return true
-          }}
-          onStop={onStop}
-          onNewChat={onNewChat}
-          onUndo={onUndo}
-          scopeRange={aiScopeRange}
-          scopeColumns={aiScopeColumns}
-          scopeLocked={aiScopeLocked}
-          onScopeDismiss={onAiScopeDismiss}
-          onCitation={onAiCitation}
-          onExpand={aiDock.onExpand}
-          onCollapse={() => setIsCopilotOpen(false)}
-          project={aiProject}
-        />
+      <div
+        className={`sheet-body${!aiOn || (!aiSidebarEnabled && !aiDock.open) ? ' ai-dock-off' : ''}`}
+      >
+        {aiOn && (
+          <AiChatPanel
+            isOpen={aiDock.open}
+            focusRequest={openAiRequest}
+            hideRail={!aiSidebarEnabled}
+            hasContent={sheetHasContent}
+            chat={chat}
+            {...(historicChat !== undefined ? { historicChat } : {})}
+            renderSkillCard={renderSkillCard}
+            skillNotes={skillNotes}
+            onTemplateSkill={onTemplateSkill}
+            attachments={attachments}
+            attachNotice={attachNotice}
+            onPickAttachments={onPickAttachments}
+            onDrivePicked={onDrivePicked}
+            docMention={docMention}
+            onAddAttachmentPaths={onAddAttachmentPaths}
+            onAddPastedImage={onAddPastedImage}
+            onRemoveAttachment={onRemoveAttachment}
+            prompt={prompt}
+            preview={preview}
+            aiBusy={aiBusy}
+            sessionUsage={sessionUsage}
+            subscription={aiSubscription}
+            onPromptChange={onPromptChange}
+            onSend={onSend}
+            onSendQueued={(text, atts, skillUse) => {
+              // the panel asks the send gate first: a message stays queued while it asks to
+              // connect or shows the first-use notice
+              if (aiBusy) return false
+              onSend(text, atts, undefined, skillUse)
+              return true
+            }}
+            onStop={onStop}
+            onNewChat={onNewChat}
+            onRevertChanges={onRevertAiChanges}
+            onClearMarks={onClearAiMarks}
+            scopeRange={aiScopeRange}
+            scopeColumns={aiScopeColumns}
+            scopeLocked={aiScopeLocked}
+            onScopeDismiss={onAiScopeDismiss}
+            onCitation={onAiCitation}
+            onExpand={aiDock.onExpand}
+            onCollapse={() => setIsCopilotOpen(false)}
+            project={aiProject}
+          />
+        )}
         <div className="sheet-main">
           <section className="workbook-area">
             <div id="univer-container" className="spreadsheet" />
@@ -1112,6 +1222,23 @@ export function ExcelShell({
           {/* Status bar spans the sheet column only — the AI dock keeps the full window height (unified with docs/slides). */}
           <footer className="status-bar" onContextMenu={openStatsMenu}>
             <div className="status-left">
+              {/* Formula view is per sheet and survives a save, so a sheet can
+                  open showing formulas instead of values. Say so in the status
+                  bar: the one-off toast that announced the switch is gone by
+                  the time anyone notices, and the sheet looks broken. */}
+              {showFormulas && (
+                <span className="status-flag" role="status" title={t('appShowingFormulas')}>
+                  {t('appShowingFormulasActive')}
+                </span>
+              )}
+              {/* The document was opened from an .ods copy: saving writes an
+                  .xlsx. A document fact, so it stays beside the shared status
+                  chip, in its own value that command messages never clear. */}
+              {odsNoticeText && (
+                <span className="status-flag status-ods" role="status" title={odsNoticeText}>
+                  {odsNoticeText}
+                </span>
+              )}
               <span className="status-msg">{statusMessage}</span>
             </div>
             <div className="status-right">
@@ -1181,6 +1308,16 @@ export function ExcelShell({
               </button>
             </div>
           </footer>
+          {quickAccessMenuAt && (
+            <QuickAccessMenu
+              at={quickAccessMenuAt}
+              ids={quickAccess}
+              showDigits={!IS_MAC}
+              builtinTitle={(builtin) => quickAccessBuiltins[builtin].title}
+              onChange={changeQuickAccess}
+              onClose={() => setQuickAccessMenuAt(null)}
+            />
+          )}
           {statsMenuAt && (
             <StatusBarStatsMenu
               at={statsMenuAt}
@@ -1371,6 +1508,13 @@ export function ExcelShell({
           source={pasteSpecialSource}
           onApply={(options) => onPasteSpecial(pasteSpecialSource, options)}
           onClose={() => setPasteSpecialSource(null)}
+        />
+      )}
+      {showQueries && (
+        <QueriesDialog
+          load={onReadWorkbookQueries}
+          onGo={onGoToReference}
+          onClose={() => setShowQueries(false)}
         />
       )}
       {showGoTo && (
@@ -1970,7 +2114,8 @@ function LinkDialog({
   )
 }
 
-function Ribbon({
+/** The active tab's ribbon body (exported for its tests). */
+export function Ribbon({
   activeTab,
   selectionFormat,
   formatPainterActive,
@@ -1987,10 +2132,12 @@ function Ribbon({
   outlineSummary,
   onCommand,
   onAiRun,
+  aiOn,
   aiOpen,
   onAiToggle,
   onListNames,
   calcManual,
+  showFormulas,
   onRefreshPivot,
   onIsSelectionInPivot,
 }: {
@@ -2011,12 +2158,16 @@ function Ribbon({
   readonly selectedTable: SelectedTableRibbon | null
   readonly outlineSummary: { below: boolean; right: boolean }
   readonly onCommand: (command: string) => void
+  /// Formula view of the active sheet; the button reads as pressed.
+  readonly showFormulas: boolean
   /** Defined names for the Use in Formula menu. */
   readonly onListNames: () => readonly string[]
   /** Manual-recalc mode echo for the Calculation Options menu. */
   readonly calcManual: boolean
   /** Open the AI panel and immediately send the given prompt */
   readonly onAiRun: (prompt: string) => void
+  /** AI is turned on in Settings; off, the AI buttons and menus are not drawn */
+  readonly aiOn: boolean
   /** AI side panel visibility (docs/slides parity: the entry button toggles it) */
   readonly aiOpen: boolean
   readonly onAiToggle: () => void
@@ -3015,6 +3166,7 @@ function Ribbon({
           </div>
           <RibbonButton
             large
+            active={showFormulas}
             label={t('appShowFormulas')}
             detail={t('appShowFormulasDetail')}
             symbol="ƒ"
@@ -3110,6 +3262,17 @@ function Ribbon({
             >
               <ToolSymbol symbol="⟳" />
               {t('appRefreshAll')}
+            </button>
+          </div>
+          {/* four rows overflow the band; the fourth starts a second column */}
+          <div className="row-stack">
+            <button
+              className="styles-row as-button"
+              data-tip={t('appQueriesConnectionsTitle')}
+              onClick={() => onCommand('queries-open')}
+            >
+              <ToolSymbol symbol="⇄" />
+              {t('appQueriesConnections')}
             </button>
           </div>
         </RibbonGroup>
@@ -3368,26 +3531,28 @@ function Ribbon({
             </button>
           </div>
         </RibbonGroup>
-        <RibbonGroup label={t('appGroupLanguage')}>
-          <div className="ribbon-tool large" data-tip={t('appTranslateTitle')}>
-            <span className="tool-icon-row">
-              <ToolSymbol symbol="文" />
-              <CaretIcon />
-            </span>
-            <span>
-              <strong>{t('appTranslate')}</strong>
-            </span>
-            <MenuSelect
-              cover
-              label={t('appTranslate')}
-              options={TRANSLATE_LANGUAGES.map((language) => ({
-                value: language,
-                label: language,
-              }))}
-              onPick={(language) => onAiRun(t('appTranslatePrompt', { language }))}
-            />
-          </div>
-        </RibbonGroup>
+        {aiOn && (
+          <RibbonGroup label={t('appGroupLanguage')}>
+            <div className="ribbon-tool large" data-tip={t('appTranslateTitle')}>
+              <span className="tool-icon-row">
+                <ToolSymbol symbol="文" />
+                <CaretIcon />
+              </span>
+              <span>
+                <strong>{t('appTranslate')}</strong>
+              </span>
+              <MenuSelect
+                cover
+                label={t('appTranslate')}
+                options={TRANSLATE_LANGUAGES.map((language) => ({
+                  value: language,
+                  label: language,
+                }))}
+                onPick={(language) => onAiRun(t('appTranslatePrompt', { language }))}
+              />
+            </div>
+          </RibbonGroup>
+        )}
         <RibbonGroup label={t('appGroupComments')}>
           <RibbonButton
             large
@@ -3489,77 +3654,79 @@ function Ribbon({
     : [...fontSizes, echoSize].sort((a, b) => a - b)
   return (
     <div className="ribbon" data-ribbon-body="">
-      <RibbonGroup label={aiSubscriptionText(lang, 'aiAssistant')}>
-        <button
-          className={`ribbon-tool as-button large ai-entry ${aiOpen ? 'active' : ''}`}
-          data-tip={t('aiOpenAssistant')}
-          onClick={onAiToggle}
-        >
-          <span className="tool-icon-row">
-            <AiMark size={26} />
-          </span>
-          <span>
-            <strong>{aiSubscriptionText(lang, 'aiAssistant')}</strong>
-          </span>
-        </button>
-        <button
-          className="ribbon-tool as-button large ai-entry"
-          disabled={!sheetHasContent}
-          data-tip={t('aiCheckBtn')}
-          onClick={() => onAiRun(t('aiCheckPrompt'))}
-        >
-          <span className="tool-icon-row">
-            <span className="ai-feature-icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11 3.25C15.2802 3.25 18.75 6.71979 18.75 11C18.75 15.2802 15.2802 18.75 11 18.75C6.71979 18.75 3.25 15.2802 3.25 11C3.25 6.71979 6.71979 3.25 11 3.25Z" />
-                <path
-                  d="M7.5 10.8235L9.64097 12.9645C9.93755 13.2611 10.4177 13.2634 10.7171 12.9697L14.7647 9"
+      {aiOn && (
+        <RibbonGroup label={aiSubscriptionText(lang, 'aiAssistant')}>
+          <button
+            className={`ribbon-tool as-button large ai-entry ${aiOpen ? 'active' : ''}`}
+            data-tip={t('aiOpenAssistant')}
+            onClick={onAiToggle}
+          >
+            <span className="tool-icon-row">
+              <AiMark size={26} />
+            </span>
+            <span>
+              <strong>{aiSubscriptionText(lang, 'aiAssistant')}</strong>
+            </span>
+          </button>
+          <button
+            className="ribbon-tool as-button large ai-entry"
+            disabled={!sheetHasContent}
+            data-tip={t('aiCheckBtn')}
+            onClick={() => onAiRun(t('aiCheckPrompt'))}
+          >
+            <span className="tool-icon-row">
+              <span className="ai-feature-icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
-                />
-                <path d="M20 20.5L16.5 17" strokeLinecap="round" />
-              </svg>
+                  strokeLinejoin="round"
+                >
+                  <path d="M11 3.25C15.2802 3.25 18.75 6.71979 18.75 11C18.75 15.2802 15.2802 18.75 11 18.75C6.71979 18.75 3.25 15.2802 3.25 11C3.25 6.71979 6.71979 3.25 11 3.25Z" />
+                  <path
+                    d="M7.5 10.8235L9.64097 12.9645C9.93755 13.2611 10.4177 13.2634 10.7171 12.9697L14.7647 9"
+                    strokeLinecap="round"
+                  />
+                  <path d="M20 20.5L16.5 17" strokeLinecap="round" />
+                </svg>
+              </span>
             </span>
-          </span>
-          <span>
-            <strong>{t('aiCheckBtn')}</strong>
-          </span>
-        </button>
-        <button
-          className="ribbon-tool as-button large ai-entry"
-          disabled={!sheetHasContent}
-          data-tip={t('aiAnalyzeBtn')}
-          onClick={() => onAiRun(t('aiAnalyzePrompt'))}
-        >
-          <span className="tool-icon-row">
-            <span className="ai-feature-icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3.88589 14.2073H8.48682" strokeLinecap="round" />
-                <path d="M3.88589 19.0112H8.48682" strokeLinecap="round" />
-                <path d="M3.88589 9.40369H11.692" strokeLinecap="round" />
-                <path d="M3.88589 4.59998H19.1645" strokeLinecap="round" />
-                <path d="M15.1995 10.5445C15.3784 10.0908 16.0206 10.0908 16.1996 10.5445L16.706 11.8286C17.0338 12.6598 17.6918 13.3178 18.523 13.6456L19.8071 14.1521C20.2608 14.331 20.2608 14.9732 19.8071 15.1522L18.523 15.6586C17.6918 15.9864 17.0338 16.6444 16.706 17.4756L16.1996 18.7597C16.0206 19.2134 15.3784 19.2134 15.1995 18.7597L14.693 17.4756C14.3652 16.6444 13.7072 15.9864 12.876 15.6586L11.592 15.1522C11.1382 14.9732 11.1382 14.331 11.592 14.1521L12.876 13.6456C13.7072 13.3178 14.3652 12.6598 14.693 11.8286L15.1995 10.5445Z" />
-              </svg>
+            <span>
+              <strong>{t('aiCheckBtn')}</strong>
             </span>
-          </span>
-          <span>
-            <strong>{t('aiAnalyzeBtn')}</strong>
-          </span>
-        </button>
-      </RibbonGroup>
+          </button>
+          <button
+            className="ribbon-tool as-button large ai-entry"
+            disabled={!sheetHasContent}
+            data-tip={t('aiAnalyzeBtn')}
+            onClick={() => onAiRun(t('aiAnalyzePrompt'))}
+          >
+            <span className="tool-icon-row">
+              <span className="ai-feature-icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3.88589 14.2073H8.48682" strokeLinecap="round" />
+                  <path d="M3.88589 19.0112H8.48682" strokeLinecap="round" />
+                  <path d="M3.88589 9.40369H11.692" strokeLinecap="round" />
+                  <path d="M3.88589 4.59998H19.1645" strokeLinecap="round" />
+                  <path d="M15.1995 10.5445C15.3784 10.0908 16.0206 10.0908 16.1996 10.5445L16.706 11.8286C17.0338 12.6598 17.6918 13.3178 18.523 13.6456L19.8071 14.1521C20.2608 14.331 20.2608 14.9732 19.8071 15.1522L18.523 15.6586C17.6918 15.9864 17.0338 16.6444 16.706 17.4756L16.1996 18.7597C16.0206 19.2134 15.3784 19.2134 15.1995 18.7597L14.693 17.4756C14.3652 16.6444 13.7072 15.9864 12.876 15.6586L11.592 15.1522C11.1382 14.9732 11.1382 14.331 11.592 14.1521L12.876 13.6456C13.7072 13.3178 14.3652 12.6598 14.693 11.8286L15.1995 10.5445Z" />
+                </svg>
+              </span>
+            </span>
+            <span>
+              <strong>{t('aiAnalyzeBtn')}</strong>
+            </span>
+          </button>
+        </RibbonGroup>
+      )}
       <RibbonGroup label={t('appGroupClipboard')}>
         <button
           className="ribbon-tool as-button large"
@@ -3647,14 +3814,16 @@ function Ribbon({
             <button
               data-tip={t('appIncreaseFontSize')}
               aria-label={t('appIncreaseFontSize')}
-              onClick={() => onCommand(`font-size:${stepFontSize(echoSize, 1)}`)}
+              onMouseDown={keepCellEditorFocus}
+              onClick={() => onCommand('font-size-step:1')}
             >
               <ToolSymbol symbol="A↑" />
             </button>
             <button
               data-tip={t('appDecreaseFontSize')}
               aria-label={t('appDecreaseFontSize')}
-              onClick={() => onCommand(`font-size:${stepFontSize(echoSize, -1)}`)}
+              onMouseDown={keepCellEditorFocus}
+              onClick={() => onCommand('font-size-step:-1')}
             >
               <ToolSymbol symbol="A↓" />
             </button>
@@ -3663,6 +3832,7 @@ function Ribbon({
             <button
               data-tip={t('appBold')}
               className={selectionFormat?.bold ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('bold')}
             >
               <b>B</b>
@@ -3670,6 +3840,7 @@ function Ribbon({
             <button
               data-tip={t('appItalic')}
               className={selectionFormat?.italic ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('italic')}
             >
               <em>I</em>
@@ -3677,6 +3848,7 @@ function Ribbon({
             <button
               data-tip={t('appUnderline')}
               className={selectionFormat?.underline ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('underline')}
             >
               <u>U</u>
@@ -3690,6 +3862,7 @@ function Ribbon({
             <button
               data-tip={t('appStrikethrough')}
               className={selectionFormat?.strike ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('strike')}
             >
               <s>S</s>
@@ -3698,6 +3871,7 @@ function Ribbon({
               data-tip={t('appSuperscript')}
               aria-label={t('appSuperscript')}
               className={selectionFormat?.vertAlign === 'superscript' ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('superscript')}
             >
               <ToolSymbol symbol="x²" />
@@ -3706,6 +3880,7 @@ function Ribbon({
               data-tip={t('appSubscript')}
               aria-label={t('appSubscript')}
               className={selectionFormat?.vertAlign === 'subscript' ? 'is-active' : ''}
+              onMouseDown={keepCellEditorFocus}
               onClick={() => onCommand('subscript')}
             >
               <ToolSymbol symbol="x₂" />
@@ -4228,6 +4403,119 @@ function StatusBarStatsMenu({
           {t(STAT_LABEL[func])}
         </button>
       ))}
+    </div>
+  )
+}
+
+/// The quick-access row's customize dropdown: the buttons on the row first,
+/// in their Alt+digit order, then the rest of the catalog to tick.
+function QuickAccessMenu({
+  at,
+  ids,
+  showDigits,
+  builtinTitle,
+  onChange,
+  onClose,
+}: {
+  readonly at: { x: number; y: number }
+  readonly ids: readonly string[]
+  /** Alt+digit exists on Windows and Linux only */
+  readonly showDigits: boolean
+  readonly builtinTitle: (builtin: QuickAccessBuiltin) => string
+  readonly onChange: (next: string[]) => void
+  readonly onClose: () => void
+}): React.JSX.Element {
+  const { t } = useI18n()
+  const ref = useRef<HTMLDivElement>(null)
+  useEscapeClose(true, onClose)
+  useEffect(() => {
+    const onPress = (event: MouseEvent): void => {
+      const target = event.target as Element
+      // the trigger toggles the menu itself
+      if (ref.current?.contains(target) || target.closest?.('.qa-customize')) return
+      onClose()
+    }
+    window.addEventListener('mousedown', onPress)
+    return () => window.removeEventListener('mousedown', onPress)
+  }, [onClose])
+  const full = ids.length >= QUICK_ACCESS_MAX_ITEMS
+  const label = (id: string): string => {
+    const item = quickAccessItem(id)
+    if (!item) return id
+    return item.builtin ? builtinTitle(item.builtin) : t(item.labelKey)
+  }
+  const style: React.CSSProperties = {
+    left: Math.max(8, Math.min(at.x, window.innerWidth - 300)),
+    top: at.y,
+    maxHeight: Math.max(160, window.innerHeight - at.y - 12),
+  }
+  return (
+    <div
+      ref={ref}
+      className="status-stats-menu quick-access-menu"
+      role="menu"
+      aria-label={t('appQuickAccessCustomize')}
+      style={style}
+    >
+      {showDigits && <p className="quick-access-hint">{t('appQuickAccessHint')}</p>}
+      {ids.map((id, index) => (
+        <div className="quick-access-row" key={id}>
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={true}
+            onClick={() => onChange(toggleQuickAccess(ids, id))}
+          >
+            <i className="check-box">✓</i>
+            <span className="quick-access-label">{label(id)}</span>
+            {showDigits && <kbd>Alt+{quickAccessDigit(index)}</kbd>}
+          </button>
+          <button
+            type="button"
+            className="quick-access-move"
+            aria-label={t('appQuickAccessMoveEarlier')}
+            data-tip={t('appQuickAccessMoveEarlier')}
+            disabled={index === 0}
+            onClick={() => onChange(moveQuickAccess(ids, id, -1))}
+          >
+            <ToolSymbol symbol="↑" />
+          </button>
+          <button
+            type="button"
+            className="quick-access-move"
+            aria-label={t('appQuickAccessMoveLater')}
+            data-tip={t('appQuickAccessMoveLater')}
+            disabled={index === ids.length - 1}
+            onClick={() => onChange(moveQuickAccess(ids, id, 1))}
+          >
+            <ToolSymbol symbol="↓" />
+          </button>
+        </div>
+      ))}
+      <hr />
+      {full && <p className="quick-access-hint">{t('appQuickAccessFull')}</p>}
+      {QUICK_ACCESS_CATALOG.filter((item) => !ids.includes(item.id)).map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={false}
+          disabled={full}
+          onClick={() => onChange(toggleQuickAccess(ids, item.id))}
+        >
+          <i className="check-box" />
+          <span className="quick-access-label">{label(item.id)}</span>
+        </button>
+      ))}
+      <hr />
+      <button
+        type="button"
+        role="menuitem"
+        className="quick-access-reset"
+        onClick={() => onChange([...DEFAULT_QUICK_ACCESS])}
+      >
+        {t('appQuickAccessReset')}
+      </button>
     </div>
   )
 }

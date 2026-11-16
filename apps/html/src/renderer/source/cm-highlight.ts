@@ -1,13 +1,14 @@
 import { StateEffect, StateField, type Extension } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
 
-/** transient wash over ranges the AI just wrote; mapped through later edits, cleared on demand */
+/** the wash over ranges the AI wrote; mapped through later edits, cleared on demand */
 export const addAiRanges = StateEffect.define<Array<[number, number]>>({
   map: (ranges, change) => ranges.map(([a, b]) => [change.mapPos(a), change.mapPos(b, 1)]),
 })
 export const clearAiRanges = StateEffect.define<null>()
 
-const mark = Decoration.mark({ class: 'cm-ai-changed' })
+// the shared look of a mark over what the AI changed (@genoffice/ui ai-changes.css)
+const mark = Decoration.mark({ class: 'ai-changed-mark' })
 
 export const aiHighlightField = StateField.define<DecorationSet>({
   create: () => Decoration.none,

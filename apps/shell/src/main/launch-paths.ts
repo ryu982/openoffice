@@ -11,6 +11,7 @@ export const LAUNCHABLE_EXTS = [
   'xls',
   'csv',
   'tsv',
+  'ods',
   'pptx',
   'pdf',
   'md',
@@ -23,10 +24,36 @@ export const LAUNCHABLE_EXTS = [
   'hwp',
   'hwpx',
   'epub',
+  'drawio',
+  'dio',
+  'vsdx',
 ] as const
 
-const SUPPORTED_LAUNCH_RE = new RegExp(`\\.(${LAUNCHABLE_EXTS.join('|')})$`, 'i')
-const UNSUPPORTED_LAUNCH_RE = /\.(doc|rtf|ppt|pps|odp|ods|xlsb|pages|key|numbers)$/i
+/**
+ * draw.io pictures the suite opens as diagrams, known by their double
+ * extension. Their last extension is a picture's, so no file association
+ * claims them; they reach the app from a drop, the open dialog or a command
+ * line that names them.
+ */
+export const LAUNCHABLE_DOUBLE_EXTS = ['drawio.svg', 'drawio.png'] as const
+
+/**
+ * Files the suite imports but never claims: a `.mm` mind map belongs to the
+ * programs that made it (FreeMind, Freeplane), and a legacy Word or PowerPoint
+ * file (`.doc`, `.dot`, `.ppt`) opens as a converted copy, so no file
+ * association names them. They reach the app the same ways as a draw.io picture.
+ */
+export const LAUNCHABLE_UNCLAIMED_EXTS = ['mm', 'doc', 'dot', 'ppt'] as const
+
+const SUPPORTED_LAUNCH_RE = new RegExp(
+  `\\.(${[
+    ...LAUNCHABLE_EXTS,
+    ...LAUNCHABLE_UNCLAIMED_EXTS,
+    ...LAUNCHABLE_DOUBLE_EXTS.map((ext) => ext.replace('.', '\\.')),
+  ].join('|')})$`,
+  'i',
+)
+const UNSUPPORTED_LAUNCH_RE = /\.(rtf|pps|odp|xlsb|pages|key|numbers)$/i
 
 interface LaunchPayload {
   launchPaths?: unknown

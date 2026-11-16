@@ -89,8 +89,6 @@ export const pl = {
   aiStopGeneration: 'Zatrzymaj generowanie',
   aiStop: 'Zatrzymaj',
   aiSend: 'Wyślij',
-  aiSnapshotsTitle: 'Migawki wersji',
-  aiRollback: 'Przywróć',
   aiStarterPolishTitle: 'Popraw tytuł i tekst tego slajdu',
   aiStarterTighten: 'Skróć punkty tego slajdu, aby były zwięźlejsze',
   aiStarterProofread: 'Sprawdź literówki w całej prezentacji i popraw je',
@@ -242,6 +240,11 @@ export const pl = {
   aiTplFontsNotice:
     'Czcionki szablonu są dołączone do tej aplikacji. Inne programy, takie jak PowerPoint, mogą pokazać inną czcionkę.',
   aiTplOpenFonts: 'Otwórz folder czcionek',
+  aiTplFontsAuto: 'Czcionki: wybiera AI',
+  aiTplFontsOne: 'Czcionki: {font}',
+  aiTplFontsTwo: 'Czcionki: tytuły {title}, tekst {body}',
+  aiTplFontsTemplate: 'Czcionki: z wybranego szablonu',
+  aiTplFontsChange: 'Zmień',
   aiTplDesc_coral:
     'Krem i pomarańczowy róż na prawie czarnym tle, z ogromnymi, wąskimi nagłówkami.',
   aiTplDesc_blue_professional:

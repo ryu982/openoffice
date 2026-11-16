@@ -30,6 +30,7 @@ export const pl = {
   darkView: 'Widok ciemny',
   toc: 'Spis treści',
   tocEmpty: 'Ta książka nie ma spisu treści',
+  sideResize: 'Zmień szerokość panelu',
   statusChapter: 'Rozdział {n}/{total}',
   prevChapter: 'Poprzedni rozdział',
   nextChapter: 'Następny rozdział',

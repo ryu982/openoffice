@@ -58,7 +58,7 @@ Jeder Befehl ist ein Werkzeug. Die interessanten:
 Eine Anfrage vom Befehl `ieumoffice` oder von einem MCP-Client haben Sie nicht selbst in der App eingetippt; deshalb geht GenOffice vorsichtig damit um.
 
 - **Die Suche** funktioniert immer und ist standardmäßig kostenlos. Der Schlüssel eines Suchanbieters wird nur verwendet, wenn Sie einen ausgewählt haben.
-- **Ein Bild erzeugen** setzt den Schlüssel eines Bildanbieters voraus. In dieser Version erzeugt ein Abonnement keine Bilder.
+- **Ein Bild erzeugen** folgt der Auswahl für die Bildgenerierung in den Einstellungen. Die Voreinstellung ChatGPT-Tarif (Codex-Programm) nutzt Ihren ChatGPT-Tarif über das Codex-Programm und wird **nur verwendet, wenn Sie es erlauben** (siehe unten). Sonst wird der Schlüssel eines eingerichteten Bildanbieters verwendet. Ein Modell, das der Agent nennt, wird verwendet, wenn dieser Weg es anbietet.
 - **Ein Bild beschreiben** läuft über einen Anbieter mit Schlüssel, wenn einer eingerichtet ist. Ihr Claude- oder Codex-Abonnement wird **nur verwendet, wenn Sie es erlauben**.
 - **Video und Audio** brauchen einen Anbieter mit Schlüssel, der Video unterstützt.
 

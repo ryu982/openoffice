@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const ru = {
+  appLegacyPptImported:
+    'Файл .ppt открыт как преобразованная копия .pptx. Исходный файл не изменяется; при сохранении создаётся новый файл .pptx. Заметки докладчика и анимация не переносятся.',
   redactMenuLabel: 'Скрыть выделение от ИИ',
   redactDialogDesc:
     'Выбранное остается в документе и в файле, а модель видит только метку. Дайте ей имя, чтобы было понятно, что она обозначает.',
@@ -174,6 +176,9 @@ export const ru = {
   appPrintLandscape: 'Альбомная',
   appPrintFrame: 'Рамка вокруг слайдов',
   appPrintHidden: 'Печатать скрытые слайды',
+  appPrintRangeSelected: 'Выбранные слайды',
+  appPrintLayoutBlocked:
+    'Выдачи и страницы заметок печатаются по одной странице на лист. Чтобы расположить страницы, выберите «Слайды на всю страницу».',
   appPrintPageCount: 'Страниц: {n}',
   appPrintNoPages: 'Нет слайдов для печати',
   appPrintRendering: 'Создание предварительного просмотра…',
@@ -184,6 +189,7 @@ export const ru = {
   appCtxSendToBack: 'На задний план',
   appCtxBringForward: 'Переместить вперед',
   appCtxSendBackward: 'Переместить назад',
+  appCtxRotate: 'Повернуть',
   appCtxRotateLeft90: 'Повернуть на 90° влево',
   appCtxRotateRight90: 'Повернуть на 90° вправо',
   appCtxFlipH: 'Отразить по горизонтали',

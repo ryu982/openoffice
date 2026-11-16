@@ -1,7 +1,24 @@
 /// Excel's Print with Preview: settings on the left, the paginated pages on
 /// the right. The preview is the very HTML the printer and the PDF export
-/// receive (one paper-sized box per page), shown one page at a time.
-import { useEffect, useMemo, useRef, useState } from 'react'
+/// receive (one paper-sized box per page), shown one page at a time. Below the
+/// settings sits the shared page layout panel; while one of its options
+/// rearranges the faces the preview shows its diagram instead, and with any
+/// option on Print takes the arranged route (spec 3, 4.5, 4.7).
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import {
+  effectiveCollate,
+  isCollateLocked,
+  PrintLayoutPanel,
+  PrintLayoutSchematic,
+  printLayoutProblem,
+  showsLayoutSchematic,
+  takesNewPrintRoute,
+  usePrintLayoutOptions,
+  type PrintLayoutPreviewRequest,
+  type PrintLayoutProgress,
+} from '@genoffice/ui'
+import type { PrintLayoutOptions } from '@genoffice/print-layout/plan'
 
 import type { PrinterInfo } from '../shared/desktop-api'
 import type { PageSetupJournalState } from './edit-journal'
@@ -9,6 +26,7 @@ import { useI18n } from './i18n/locale'
 import { useModalDialog } from './modal-dialog'
 import { type PrintJob, type PrintPreviewHost, type PrintRange } from './page-layout-actions'
 import { assemblePrintHtml, type PaperGeometry } from './print-html'
+import { printJobPageSizes } from './print-layout-pages'
 
 type MarginsPreset = 'normal' | 'wide' | 'narrow' | 'custom'
 type Scaling = 'none' | 'sheet' | 'columns' | 'rows' | 'fit-file' | 'custom'
@@ -39,6 +57,9 @@ const PREVIEW_PADDING_PX = 24
 /// Option values that are not printer names (Electron: '' = system default).
 const DEFAULT_PRINTER = ''
 const SYSTEM_DIALOG = '\u0000system-dialog'
+/// The sheet's own paper, orientation, margins and scaling size the job's
+/// pages (spec 4.5), so the panel shows no paper or fit field of its own.
+const LAYOUT_CAPABILITIES = { showPaperAndFit: false } as const
 
 function initialSettings(host: PrintPreviewHost): Settings {
   const { setup } = host
@@ -106,7 +127,7 @@ export function PrintDialog({
   /// Bumped when Page Setup (Header & Footer) closes so the preview re-lays out.
   readonly revision: number
 }): React.JSX.Element {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [settings, setSettings] = useState<Settings>(() => initialSettings(host))
   const [range, setRange] = useState<PrintRange>('active')
   const [printers, setPrinters] = useState<PrinterInfo[]>([])
@@ -125,6 +146,26 @@ export function PrintDialog({
   const paneRef = useRef<HTMLDivElement | null>(null)
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const modal = useModalDialog(onClose)
+  // Mounted per open, so every print starts from the defaults (spec 4).
+  const [layout, setLayout] = usePrintLayoutOptions(true)
+  const [layoutProgress, setLayoutProgress] = useState<PrintLayoutProgress | null>(null)
+  const layoutRunning = useRef(false)
+
+  // Progress of a print or save; the result preview shows its own.
+  useEffect(
+    () =>
+      host.onArrangedProgress((progress) => {
+        if (layoutRunning.current) setLayoutProgress(progress)
+      }),
+    [host],
+  )
+  // Closing the dialog stops a layout job it started; nothing is sent then.
+  useEffect(
+    () => () => {
+      if (layoutRunning.current) void host.cancelArranged()
+    },
+    [host],
+  )
 
   useEffect(() => {
     let alive = true
@@ -238,12 +279,23 @@ export function PrintDialog({
   const rangeInvalid =
     pagesMode === 'range' && (from < 1 || to < from || (pageCount > 0 && to > pageCount))
   const canOutput = job !== null && !busy && !rangeInvalid
+  const arranged = takesNewPrintRoute(layout)
+  const schematic = showsLayoutSchematic(layout)
+  const jobPages = useMemo(
+    () => (job && !rangeInvalid ? printJobPageSizes(job.documents, pages) : null),
+    // `pages` is a fresh object every render; its parts are the dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [job, rangeInvalid, pagesMode, from, to],
+  )
+  const layoutProblem = arranged ? printLayoutProblem(layout, jobPages) : null
 
-  const run = async (action: (built: PrintJob) => Promise<string>): Promise<void> => {
+  /// A null message: the user stopped a layout job, so the dialog stays open.
+  const run = async (action: (built: PrintJob) => Promise<string | null>): Promise<void> => {
     if (!job) return
     setBusy(true)
     try {
       const message = await action(job)
+      if (message === null) return
       host.setMessage(message)
       onClose()
     } catch (reason: unknown) {
@@ -252,6 +304,42 @@ export function PrintDialog({
       setBusy(false)
     }
   }
+
+  const runLayout = (action: (built: PrintJob) => Promise<string | null>): Promise<void> => {
+    layoutRunning.current = true
+    setLayoutProgress(null)
+    setError(null)
+    return run(action).finally(() => {
+      layoutRunning.current = false
+      setLayoutProgress(null)
+    })
+  }
+
+  const print = (): void => {
+    const output = {
+      deviceName: deviceName === SYSTEM_DIALOG ? null : deviceName,
+      copies,
+      collate,
+      pages,
+    }
+    void (arranged
+      ? runLayout((built) => host.printArranged(built, output, layout))
+      : run((built) => host.print(built, output)))
+  }
+
+  const saveArranged = (options: PrintLayoutOptions): void => {
+    void runLayout((built) => host.saveArrangedPdf(built, pages, options))
+  }
+
+  const previewRequest = useCallback<PrintLayoutPreviewRequest>(
+    (options, context) =>
+      job
+        ? host.previewArranged(job, pages, options, context)
+        : Promise.reject(new Error('the print job is not ready')),
+    // `pages` is a fresh object every render; its parts are the dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [host, job, pagesMode, from, to],
+  )
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -264,196 +352,222 @@ export function PrintDialog({
       >
         <header>{t('dlgPrintTitle')}</header>
         <div className="print-dialog-body">
-          <div className="print-settings dialog-grid">
-            <label className="dialog-span">
-              {t('dlgPrintPrinter')}
-              <select value={deviceName} onChange={(event) => setDeviceName(event.target.value)}>
-                <option value={DEFAULT_PRINTER}>{t('dlgPrintDefaultPrinter')}</option>
-                {printers.map((printer) => (
-                  <option key={printer.name} value={printer.name}>
-                    {printer.displayName}
-                  </option>
-                ))}
-                <option value={SYSTEM_DIALOG}>{t('dlgPrintSystemDialog')}</option>
-              </select>
-            </label>
-            <label>
-              {t('dlgPrintCopies')}
-              <input
-                type="number"
-                min={1}
-                max={999}
-                value={copies}
-                onChange={(event) =>
-                  setCopies(Math.min(999, Math.max(1, Number(event.target.value) || 1)))
-                }
-              />
-            </label>
-            <label className="dialog-check">
-              <input
-                type="checkbox"
-                checked={collate}
-                onChange={(event) => setCollate(event.target.checked)}
-              />
-              {t('dlgPrintCollate')}
-            </label>
-            <label className="dialog-span">
-              {t('dlgPrintRange')}
-              <select
-                value={range}
-                onChange={(event) => setRange(event.target.value as PrintRange)}
-              >
-                <option value="active">{t('dlgPrintActiveSheets')}</option>
-                <option value="workbook">{t('dlgPrintEntireWorkbook')}</option>
-                <option value="selection" disabled={!host.hasSelection}>
-                  {t('dlgPrintSelection')}
-                </option>
-              </select>
-            </label>
-            <label className="dialog-span">
-              {t('dlgPrintPages')}
-              <span className="print-pages-row">
-                <select
-                  value={pagesMode}
-                  onChange={(event) => setPagesMode(event.target.value as 'all' | 'range')}
-                >
-                  <option value="all">{t('dlgPrintAllPages')}</option>
-                  <option value="range">{t('dlgPrintPageRange')}</option>
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  max={Math.max(pageCount, 1)}
-                  value={from}
-                  disabled={pagesMode === 'all'}
-                  aria-label={t('dlgPrintPagesFrom')}
-                  onChange={(event) => setFrom(Number(event.target.value) || 1)}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  max={Math.max(pageCount, 1)}
-                  value={to}
-                  disabled={pagesMode === 'all'}
-                  aria-label={t('dlgPrintPagesTo')}
-                  onChange={(event) => setTo(Number(event.target.value) || 1)}
-                />
-              </span>
-            </label>
-            <label>
-              {t('dlgPrintOrientation')}
-              <select
-                value={settings.orientation}
-                onChange={(event) => {
-                  const orientation = event.target.value as Settings['orientation']
-                  update({ orientation }, `orientation:${orientation}`)
-                }}
-              >
-                <option value="portrait">{t('dlgPrintPortrait')}</option>
-                <option value="landscape">{t('dlgPrintLandscape')}</option>
-              </select>
-            </label>
-            <label>
-              {t('dlgPrintPaper')}
-              <select
-                value={settings.paperSize}
-                onChange={(event) => {
-                  const paperSize = Number(event.target.value)
-                  update({ paperSize }, `paper:${paperSize}`)
-                }}
-              >
-                {PAPERS.map((entry) => (
-                  <option key={entry.code} value={entry.code}>
-                    {entry.label}
-                  </option>
-                ))}
-                {PAPERS.some((entry) => entry.code === settings.paperSize) ? null : (
-                  <option value={settings.paperSize}>{t('dlgPrintPaperFromFile')}</option>
-                )}
-              </select>
-            </label>
-            <label>
-              {t('dlgPrintMargins')}
-              <select
-                value={settings.margins}
-                onChange={(event) => {
-                  const margins = event.target.value as MarginsPreset
-                  update({ margins }, margins === 'custom' ? null : `margins:${margins}`)
-                }}
-              >
-                <option value="normal">{t('dlgPrintMarginsNormal')}</option>
-                <option value="wide">{t('dlgPrintMarginsWide')}</option>
-                <option value="narrow">{t('dlgPrintMarginsNarrow')}</option>
-                {host.marginsPreset === 'custom' && (
-                  <option value="custom">{t('dlgPrintMarginsCustom')}</option>
-                )}
-              </select>
-            </label>
-            <label>
-              {t('dlgPrintScaling')}
-              <select
-                value={settings.scaling}
-                onChange={(event) => setScaling(event.target.value as Scaling)}
-              >
-                <option value="none">{t('dlgPrintNoScaling')}</option>
-                <option value="sheet">{t('dlgPrintFitSheet')}</option>
-                <option value="columns">{t('dlgPrintFitColumns')}</option>
-                <option value="rows">{t('dlgPrintFitRows')}</option>
-                {host.setup.fitToPage && (
-                  <option value="fit-file">
-                    {t('dlgPrintFitFile', {
-                      width: host.setup.fitToWidth || '*',
-                      height: host.setup.fitToHeight || '*',
-                    })}
-                  </option>
-                )}
-                <option value="custom">{t('dlgPrintCustomScale')}</option>
-              </select>
-            </label>
-            {settings.scaling === 'custom' && (
+          <div className="print-settings">
+            <div className="dialog-grid">
               <label className="dialog-span">
-                {t('dlgPrintCustomScalePercent')}
+                {t('dlgPrintPrinter')}
+                <select value={deviceName} onChange={(event) => setDeviceName(event.target.value)}>
+                  <option value={DEFAULT_PRINTER}>{t('dlgPrintDefaultPrinter')}</option>
+                  {printers.map((printer) => (
+                    <option key={printer.name} value={printer.name}>
+                      {printer.displayName}
+                    </option>
+                  ))}
+                  <option value={SYSTEM_DIALOG}>{t('dlgPrintSystemDialog')}</option>
+                </select>
+              </label>
+              <label>
+                {t('dlgPrintCopies')}
                 <input
                   type="number"
-                  min={10}
-                  max={400}
-                  value={settings.scale}
-                  onChange={(event) => {
-                    const scale = Math.min(400, Math.max(10, Number(event.target.value) || 100))
-                    setScaling('custom', scale)
-                  }}
+                  min={1}
+                  max={999}
+                  value={copies}
+                  onChange={(event) =>
+                    setCopies(Math.min(999, Math.max(1, Number(event.target.value) || 1)))
+                  }
                 />
               </label>
-            )}
-            <label className="dialog-check">
-              <input
-                type="checkbox"
-                checked={settings.printGridlines}
-                onChange={(event) =>
-                  update(
-                    { printGridlines: event.target.checked },
-                    `print-gridlines:${event.target.checked ? '1' : '0'}`,
-                  )
-                }
-              />
-              {t('dlgPrintGridlines')}
-            </label>
-            <label className="dialog-check">
-              <input
-                type="checkbox"
-                checked={settings.printHeadings}
-                onChange={(event) =>
-                  update(
-                    { printHeadings: event.target.checked },
-                    `print-headings:${event.target.checked ? '1' : '0'}`,
-                  )
-                }
-              />
-              {t('dlgPrintHeadings')}
-            </label>
+              <label className="dialog-check">
+                <input
+                  type="checkbox"
+                  checked={effectiveCollate(layout, collate)}
+                  disabled={isCollateLocked(layout)}
+                  onChange={(event) => setCollate(event.target.checked)}
+                />
+                {t('dlgPrintCollate')}
+              </label>
+              <label className="dialog-span">
+                {t('dlgPrintRange')}
+                <select
+                  value={range}
+                  onChange={(event) => setRange(event.target.value as PrintRange)}
+                >
+                  <option value="active">{t('dlgPrintActiveSheets')}</option>
+                  <option value="workbook">{t('dlgPrintEntireWorkbook')}</option>
+                  <option value="selection" disabled={!host.hasSelection}>
+                    {t('dlgPrintSelection')}
+                  </option>
+                </select>
+              </label>
+              <label className="dialog-span">
+                {t('dlgPrintPages')}
+                <span className="print-pages-row">
+                  <select
+                    value={pagesMode}
+                    onChange={(event) => setPagesMode(event.target.value as 'all' | 'range')}
+                  >
+                    <option value="all">{t('dlgPrintAllPages')}</option>
+                    <option value="range">{t('dlgPrintPageRange')}</option>
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(pageCount, 1)}
+                    value={from}
+                    disabled={pagesMode === 'all'}
+                    aria-label={t('dlgPrintPagesFrom')}
+                    onChange={(event) => setFrom(Number(event.target.value) || 1)}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(pageCount, 1)}
+                    value={to}
+                    disabled={pagesMode === 'all'}
+                    aria-label={t('dlgPrintPagesTo')}
+                    onChange={(event) => setTo(Number(event.target.value) || 1)}
+                  />
+                </span>
+              </label>
+              <label>
+                {t('dlgPrintOrientation')}
+                <select
+                  value={settings.orientation}
+                  onChange={(event) => {
+                    const orientation = event.target.value as Settings['orientation']
+                    update({ orientation }, `orientation:${orientation}`)
+                  }}
+                >
+                  <option value="portrait">{t('dlgPrintPortrait')}</option>
+                  <option value="landscape">{t('dlgPrintLandscape')}</option>
+                </select>
+              </label>
+              <label>
+                {t('dlgPrintPaper')}
+                <select
+                  value={settings.paperSize}
+                  onChange={(event) => {
+                    const paperSize = Number(event.target.value)
+                    update({ paperSize }, `paper:${paperSize}`)
+                  }}
+                >
+                  {PAPERS.map((entry) => (
+                    <option key={entry.code} value={entry.code}>
+                      {entry.label}
+                    </option>
+                  ))}
+                  {PAPERS.some((entry) => entry.code === settings.paperSize) ? null : (
+                    <option value={settings.paperSize}>{t('dlgPrintPaperFromFile')}</option>
+                  )}
+                </select>
+              </label>
+              <label>
+                {t('dlgPrintMargins')}
+                <select
+                  value={settings.margins}
+                  onChange={(event) => {
+                    const margins = event.target.value as MarginsPreset
+                    update({ margins }, margins === 'custom' ? null : `margins:${margins}`)
+                  }}
+                >
+                  <option value="normal">{t('dlgPrintMarginsNormal')}</option>
+                  <option value="wide">{t('dlgPrintMarginsWide')}</option>
+                  <option value="narrow">{t('dlgPrintMarginsNarrow')}</option>
+                  {host.marginsPreset === 'custom' && (
+                    <option value="custom">{t('dlgPrintMarginsCustom')}</option>
+                  )}
+                </select>
+              </label>
+              <label>
+                {t('dlgPrintScaling')}
+                <select
+                  value={settings.scaling}
+                  onChange={(event) => setScaling(event.target.value as Scaling)}
+                >
+                  <option value="none">{t('dlgPrintNoScaling')}</option>
+                  <option value="sheet">{t('dlgPrintFitSheet')}</option>
+                  <option value="columns">{t('dlgPrintFitColumns')}</option>
+                  <option value="rows">{t('dlgPrintFitRows')}</option>
+                  {host.setup.fitToPage && (
+                    <option value="fit-file">
+                      {t('dlgPrintFitFile', {
+                        width: host.setup.fitToWidth || '*',
+                        height: host.setup.fitToHeight || '*',
+                      })}
+                    </option>
+                  )}
+                  <option value="custom">{t('dlgPrintCustomScale')}</option>
+                </select>
+              </label>
+              {settings.scaling === 'custom' && (
+                <label className="dialog-span">
+                  {t('dlgPrintCustomScalePercent')}
+                  <input
+                    type="number"
+                    min={10}
+                    max={400}
+                    value={settings.scale}
+                    onChange={(event) => {
+                      const scale = Math.min(400, Math.max(10, Number(event.target.value) || 100))
+                      setScaling('custom', scale)
+                    }}
+                  />
+                </label>
+              )}
+              <label className="dialog-check">
+                <input
+                  type="checkbox"
+                  checked={settings.printGridlines}
+                  onChange={(event) =>
+                    update(
+                      { printGridlines: event.target.checked },
+                      `print-gridlines:${event.target.checked ? '1' : '0'}`,
+                    )
+                  }
+                />
+                {t('dlgPrintGridlines')}
+              </label>
+              <label className="dialog-check">
+                <input
+                  type="checkbox"
+                  checked={settings.printHeadings}
+                  onChange={(event) =>
+                    update(
+                      { printHeadings: event.target.checked },
+                      `print-headings:${event.target.checked ? '1' : '0'}`,
+                    )
+                  }
+                />
+                {t('dlgPrintHeadings')}
+              </label>
+            </div>
+            <PrintLayoutPanel
+              lang={lang}
+              value={layout}
+              onChange={setLayout}
+              pages={jobPages}
+              capabilities={LAYOUT_CAPABILITIES}
+              labelSpecStore={host.labelSpecStore}
+              showSchematic={false}
+              {...(job ? { onPreviewRequest: previewRequest } : {})}
+              {...(canOutput ? { onSavePdf: saveArranged } : {})}
+              job={{
+                progress: layoutProgress,
+                onCancel: () => void host.cancelArranged(),
+              }}
+              disabled={busy}
+            />
           </div>
           <div className="print-preview">
-            <div className="print-preview-bar">
+            {/* The page preview stays mounted under the diagram so its size
+                tracking and laid-out frame are ready when the diagram goes. */}
+            {schematic && (
+              <div className="print-preview-schematic" data-print-preview="schematic">
+                <PrintLayoutSchematic lang={lang} pages={jobPages} options={layout} />
+              </div>
+            )}
+            <div className="print-preview-bar" hidden={schematic}>
               <button
                 className="secondary"
                 disabled={current <= 1}
@@ -486,7 +600,12 @@ export function PrintDialog({
                 {fit ? t('dlgPrintZoomActual') : t('dlgPrintZoomFit')}
               </button>
             </div>
-            <div className="print-preview-pane" ref={paneRef}>
+            <div
+              className="print-preview-pane"
+              ref={paneRef}
+              hidden={schematic}
+              data-print-preview="pages"
+            >
               {assembled && (
                 <div
                   className="print-preview-page"
@@ -533,17 +652,9 @@ export function PrintDialog({
           </button>
           <button
             className="primary-action"
-            disabled={!canOutput}
-            onClick={() =>
-              void run((built) =>
-                host.print(built, {
-                  deviceName: deviceName === SYSTEM_DIALOG ? null : deviceName,
-                  copies,
-                  collate,
-                  pages,
-                }),
-              )
-            }
+            data-print-action="print"
+            disabled={!canOutput || layoutProblem !== null}
+            onClick={print}
           >
             {t('dlgPrintButton')}
           </button>

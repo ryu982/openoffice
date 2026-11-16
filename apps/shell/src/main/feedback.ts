@@ -41,6 +41,15 @@ export const FEEDBACK_STRINGS = defineStrings({
     btnOpen: 'Mở bảng hỏi',
     btnCancel: 'Hủy',
   } satisfies Keys,
+  tr: {
+    menuLabel: 'Geri bildirim gönder',
+    dialogTitle: 'Geri bildirim gönder',
+    dialogBody:
+      'Anket tarayıcınızda açılır. Aşağıdaki bilgiler panoya kopyalanır, böylece ankete yapıştırabilirsiniz. Uygulama kendi başına hiçbir şey göndermez ve belge içerikleri asla eklenmez.',
+    details: 'Sürüm {version}\nSistem {os}\nArayüz dili {language}',
+    btnOpen: 'Anketi aç',
+    btnCancel: 'İptal',
+  } satisfies Keys,
   ja: {
     menuLabel: 'フィードバックを送る',
     dialogTitle: 'フィードバックを送る',

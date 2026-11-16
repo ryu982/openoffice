@@ -20,6 +20,7 @@ import { he } from './translate/he'
 import { hi } from './translate/hi'
 import { zhTW } from './translate/zh-TW'
 import { vi } from './translate/vi'
+import { tr } from './translate/tr'
 
 /** Copy for document translation: the window, the confirmation, the job strip and the result report */
 export const translateStrings = defineStrings({
@@ -44,4 +45,5 @@ export const translateStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

@@ -50,7 +50,7 @@ Menu berubah mengikut tempat anda klik kanan:
 ## Penjanaan dengan AI
 
 - Kad AI Slides pada Laman Utama: berikan topik atau rangka kerja, dan AI akan menyediakan persembahan tersebut.
-- Tanpa kunci penyedia imej, AI tidak dapat menjana gambar, dan persembahan menggunakan gambar yang ditemui melalui carian imej; lihat [Model AI dan tetapan](help://ai-models).
+- Jika tiada cara untuk menjana gambar (tiada pelan ChatGPT melalui program Codex dan tiada kunci penyedia imej), AI tidak dapat menjana gambar, dan persembahan menggunakan gambar yang ditemui melalui carian imej; lihat [Model AI dan tetapan](help://ai-models).
 - Anda boleh terus menyelaraskan dengan panel AI, yang mengubah gaya teks melalui skrip dalam persekitaran terkawal, iaitu mekanisme yang sama seperti dalam [Sheets].
 - Klik kanan pada pemilihan teks atau elemen gambar/video/audio ▸ **Sembunyikan pemilihan daripada AI** menjauhkannya daripada mata model (butiran dalam bab panel AI); slaid dengan kandungan tersembunyi melangkau semakan tangkapan skrin automatik.
 

@@ -20,6 +20,7 @@ import { he } from './agent-web/he'
 import { hi } from './agent-web/hi'
 import { zhTW } from './agent-web/zh-TW'
 import { vi } from './agent-web/vi'
+import { tr } from './agent-web/tr'
 
 /**
  * The agent window's web choices and web permission prompts (spec 7), kept apart
@@ -47,6 +48,7 @@ export const agentWebStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type AgentWebStringKey = keyof typeof zh

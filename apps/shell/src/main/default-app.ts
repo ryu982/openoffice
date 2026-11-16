@@ -2,6 +2,8 @@ import { execFile } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { decodeCommandOutput } from '@genoffice/electron-utils'
+import type { EditorItemId } from '@genoffice/electron-utils/app-choice'
 import type { DefaultAppStatus } from '../shared/home-api'
 
 // macOS writes the LaunchServices user choice via osascript (no helper binary to
@@ -13,6 +15,8 @@ interface OfficeType {
   mime: string
   /** Windows ProgId written by the NSIS installer = win.fileAssociations[].name in electron-builder.cjs */
   progId: string
+  /** the editor that opens it (Settings → Editors and AI) */
+  item: EditorItemId
 }
 
 export const OFFICE_TYPES: readonly OfficeType[] = [
@@ -21,30 +25,52 @@ export const OFFICE_TYPES: readonly OfficeType[] = [
     uti: 'org.openxmlformats.wordprocessingml.document',
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     progId: 'IeumOffice.WordDocument',
+    item: 'docs',
   },
   {
     ext: 'xlsx',
     uti: 'org.openxmlformats.spreadsheetml.sheet',
     mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     progId: 'IeumOffice.ExcelWorkbook',
+    item: 'sheets',
   },
   {
     ext: 'xlsm',
     uti: 'org.openxmlformats.spreadsheetml.sheet.macroenabled',
     mime: 'application/vnd.ms-excel.sheet.macroEnabled.12',
     progId: 'IeumOffice.ExcelMacroEnabledWorkbook',
+    item: 'sheets',
   },
   {
     ext: 'xls',
     uti: 'com.microsoft.excel.xls',
     mime: 'application/vnd.ms-excel',
     progId: 'IeumOffice.Excel972003Workbook',
+    item: 'sheets',
   },
   {
     ext: 'pptx',
     uti: 'org.openxmlformats.presentationml.presentation',
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     progId: 'IeumOffice.PowerPointPresentation',
+    item: 'slides',
+  },
+  // draw.io diagrams. macOS knows the type by the identifier draw.io exports;
+  // electron-builder.cjs imports the same declaration (mac.extendInfo) so the
+  // type resolves where draw.io is not installed. Both extensions share it.
+  {
+    ext: 'drawio',
+    uti: 'com.jgraph.drawio',
+    mime: 'application/vnd.jgraph.mxfile',
+    progId: 'IeumOffice.Diagram',
+    item: 'diagram',
+  },
+  {
+    ext: 'dio',
+    uti: 'com.jgraph.drawio',
+    mime: 'application/vnd.jgraph.mxfile',
+    progId: 'IeumOffice.Diagram',
+    item: 'diagram',
   },
 ]
 
@@ -61,6 +87,11 @@ export interface DefaultAppDeps {
   run: RunCommand
   openExternal: (url: string) => Promise<void>
   readFile?: (path: string) => string
+  /**
+   * The editors turned off now: their types are neither checked nor claimed
+   * (Settings → Editors and AI). Absent = all on.
+   */
+  editorsOff?: () => readonly EditorItemId[]
 }
 
 export interface DefaultAppService {
@@ -73,10 +104,15 @@ const UNSUPPORTED: DefaultAppStatus = { state: 'unsupported', others: [], manual
 
 export function execFileRunner(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: 15_000, windowsHide: true }, (err, stdout) => {
-      if (err) reject(err)
-      else resolve(String(stdout))
-    })
+    execFile(
+      cmd,
+      args,
+      { timeout: 15_000, windowsHide: true, encoding: 'buffer' },
+      (err, stdout) => {
+        if (err) reject(err)
+        else resolve(decodeCommandOutput(stdout))
+      },
+    )
   })
 }
 
@@ -186,15 +222,26 @@ function linuxDesktopName(id: string, readFile: (p: string) => string): string {
   return id.replace(/\.desktop$/, '')
 }
 
+/** the Office types whose editor is on, in OFFICE_TYPES order */
+export function claimableOfficeTypes(off: readonly EditorItemId[]): OfficeType[] {
+  return OFFICE_TYPES.filter((t) => !off.includes(t.item))
+}
+
 export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService {
   const readFile = deps.readFile ?? ((p: string) => readFileSync(p, 'utf8'))
-  const utis = OFFICE_TYPES.map((t) => t.uti)
-  const mimes = OFFICE_TYPES.map((t) => t.mime)
+  const types = (): OfficeType[] => claimableOfficeTypes(deps.editorsOff?.() ?? [])
+  const utisOf = (list: OfficeType[]): string[] => list.map((t) => t.uti)
+  const mimesOf = (list: OfficeType[]): string[] => list.map((t) => t.mime)
 
   const macBundle = deps.platform === 'darwin' ? macAppBundlePath(deps.exePath) : null
 
   async function status(): Promise<DefaultAppStatus> {
     if (!deps.packaged) return UNSUPPORTED
+    const list = types()
+    // every editor with an Office type is off: there is nothing to make default
+    if (list.length === 0) return UNSUPPORTED
+    const utis = utisOf(list)
+    const mimes = mimesOf(list)
     try {
       if (deps.platform === 'darwin') {
         if (!macBundle) return UNSUPPORTED
@@ -216,7 +263,7 @@ export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService
         return { ...st, others: st.others.map((id) => linuxDesktopName(id, readFile)) }
       }
       if (deps.platform === 'win32') {
-        const owners = await Promise.all(OFFICE_TYPES.map((t) => windowsOwner(t)))
+        const owners = await Promise.all(list.map((t) => windowsOwner(t)))
         const st = summarize(owners, (id) => OFFICE_TYPES.some((t) => t.progId === id))
         const names = await Promise.all(st.others.map((id) => windowsProgIdName(id)))
         return { ...st, others: [...new Set(names)], manualOnly: true }
@@ -244,7 +291,11 @@ export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService
 
   async function windowsProgIdName(progId: string): Promise<string> {
     try {
-      return parseRegValue(await deps.run('reg', ['query', `HKCR\\${progId}`, '/ve'])) ?? progId
+      const name =
+        parseRegValue(await deps.run('reg', ['query', `HKCR\\${progId}`, '/ve'])) ?? progId
+      // A code page we still cannot decode would surface as replacement
+      // characters. The ProgId is ASCII and stays readable, so prefer it.
+      return name.includes('\uFFFD') ? progId : name
     } catch {
       return progId
     }
@@ -252,6 +303,10 @@ export function createDefaultAppService(deps: DefaultAppDeps): DefaultAppService
 
   async function set(): Promise<DefaultAppStatus> {
     if (!deps.packaged) return UNSUPPORTED
+    const list = types()
+    if (list.length === 0) return UNSUPPORTED
+    const utis = utisOf(list)
+    const mimes = mimesOf(list)
     try {
       if (deps.platform === 'darwin' && macBundle) {
         await deps.run('osascript', ['-l', 'JavaScript', '-e', MAC_SET_SCRIPT, macBundle, ...utis])

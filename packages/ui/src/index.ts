@@ -48,17 +48,20 @@ export {
   type DocMentionStringKey,
 } from './strings-doc-mention'
 export { AiComposer } from './AiComposer'
+export { clipboardPictureIsRendering } from './clipboard-picture'
 export {
   SKILL_CHIPS_MAX,
   aiSkillsBridge,
   chipsAfterListChange,
   filterPickerSkills,
+  isMadeUpSkillName,
   pickerSkillsOf,
   removeSkillTrigger,
   skillChipOf,
   skillChipRef,
   skillChipRefsOf,
   skillDisplayName,
+  skillNameBeside,
   skillPickerKeyAction,
   skillSourceLabel,
   skillTriggerAt,
@@ -80,6 +83,7 @@ export {
   skillForRequestOf,
   skillRequestText,
   type SkillForRequest,
+  type SkillRequestOptions,
   type SkillRequestBuild,
 } from './skill-send'
 export { SentSkillChips, SkillChip, SkillChipRow, SkillPicker } from './SkillPicker'
@@ -109,6 +113,9 @@ export {
   skillCardNameVerdict,
   skillCardSaveBlock,
   skillCardSaveFailureKey,
+  SAME_NAME_ON,
+  sameNameSourcesOf,
+  skillCardDraftLabel,
   skillCardSaveInput,
   skillCardSaveResultOf,
   skillCardSavedRecord,
@@ -133,6 +140,13 @@ export {
   type SkillProposalCardProps,
 } from './SkillProposalCard'
 export {
+  SkillEditorsChooser,
+  skillEditorName,
+  skillEditorsSummary,
+  type SkillEditorsDraft,
+} from './SkillEditorsChooser'
+export { skillEditorsText, type SkillEditorsStringKey } from './strings-skill-editors'
+export {
   panelUserSkills,
   useSkillProposals,
   type PanelUserSkillsOptions,
@@ -140,6 +154,24 @@ export {
   type SkillProposalsOptions,
 } from './use-skill-proposals'
 export { SKILL_CARD_STRINGS, skillCardText, type SkillCardStringKey } from './strings-skill-card'
+export { McpPermissionCard, McpPermissionPrompt } from './McpPermissionCard'
+export { McpServerButton } from './McpServerButton'
+export {
+  resolveMcpWindowState,
+  useMcpPermissionRequests,
+  useMcpWindow,
+  type McpWindowView,
+} from './use-mcp-window'
+export {
+  MCP_INPUT_PREVIEW_CHARS,
+  mcpInputPreview,
+  mcpInputText,
+  mcpServerAction,
+  mcpServerButtonVisible,
+  mcpServerStatusText,
+  type McpServerAction,
+} from './user-mcp-model'
+export { USER_MCP_STRINGS, userMcpText, type UserMcpStringKey } from './strings-user-mcp'
 export {
   TEMPLATE_EDITORS,
   chipRefForSkill,
@@ -226,10 +258,12 @@ export {
   canPickScreenColor,
   pickScreenColor,
 } from './color-picker'
+export { COLOR_SWATCH_NAMES, colorSwatchName } from './strings-color-names'
 export { installScreenTips } from './screentip'
 export {
   installPopoverDismiss,
   useDismissablePopover,
+  useEscapeToClose,
   type PopoverDismissOptions,
 } from './popover-dismiss'
 export { Dropdown, type DropdownOption } from './dropdown'
@@ -254,8 +288,21 @@ export {
   type RibbonCollapseLabels,
   type RibbonDensity,
 } from './ribbon-collapse'
-export { AiTypingIndicator } from './AiTypingIndicator'
-export { IconSend, IconStop, type IconProps } from './icons'
+export { AiReplyProgress, AiTypingIndicator } from './AiTypingIndicator'
+export {
+  IconArrowDown,
+  IconArrowLeft,
+  IconArrowUp,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconClose,
+  IconPicture,
+  IconSend,
+  IconStop,
+  IconTable,
+  type IconProps,
+} from './icons'
 export { AiMark, type AiMarkProps } from './AiMark'
 export { Markdown, type MarkdownNav } from './Markdown'
 export { FILE_NAV_SCHEME, createFileNav, fileNavHref, parseFileNavHref } from './file-nav'
@@ -410,6 +457,13 @@ export {
   type UseSubscriptionConnectionOptions,
 } from './use-subscription-connection'
 export {
+  mergeLatestSubscriptionUsage,
+  subscriptionUsageOf,
+  useSubscriptionUsageUpdates,
+  type SubscriptionUsageMerge,
+  type SubscriptionUsageSource,
+} from './use-subscription-usage-updates'
+export {
   AI_SUBSCRIPTION_STRINGS,
   aiSubscriptionText,
   type AiSubscriptionStringKey,
@@ -452,6 +506,24 @@ export {
   type AiConnectStepsView,
 } from './connect-guide'
 export { AiBlockedNotice } from './AiBlockedNotice'
+export { AiRunStopNotice } from './AiRunStopNotice'
+export {
+  runContinueNote,
+  runStopCode,
+  runStopNotice,
+  runStopText,
+  type RunStopNotice,
+} from './run-stop'
+export { AI_RUN_STOP_LABELS, type AiRunStopLabels } from './strings-run-stop'
+export {
+  AiChangesCard,
+  aiChangesLabels,
+  aiChangesNote,
+  aiChangesTitle,
+  type AiChangeLine,
+  type AiChangesState,
+} from './AiChangesCard'
+export { AI_CHANGES_LABELS, type AiChangesLabels } from './strings-ai-changes'
 export { AiSubscriptionUsageLine } from './AiSubscriptionUsageLine'
 export {
   AiCodexNotice,
@@ -568,3 +640,24 @@ export type {
 } from './use-project-panel'
 export type { ProjectChatStringKey } from './strings-project-chat'
 export { useScrollWindow } from './scroll-window'
+export {
+  NAME_FROM_TITLE_DELAY_MS,
+  nameFromTitle,
+  useNameFromTitle,
+  type SuggestSkillName,
+} from './skill-name-from-title'
+export { createImeEnterGuard, useImeEnterGuard, type ImeEnterGuard } from './ime-enter'
+export * from './print-layout'
+export {
+  PRINT_LAYOUT_STRINGS,
+  printLayoutText,
+  type PrintLayoutStringKey,
+} from './strings-print-layout'
+export {
+  ALL_ON_APP_CHOICE_STATE,
+  PENDING_APP_CHOICE_STATE,
+  aiVisible,
+  useAppChoice,
+  type AppChoiceSource,
+  type AppChoiceState,
+} from './use-app-choice'

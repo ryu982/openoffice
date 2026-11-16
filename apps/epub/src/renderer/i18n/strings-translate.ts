@@ -20,6 +20,7 @@ import { he } from './translate/he'
 import { hi } from './translate/hi'
 import { zhTW } from './translate/zh-TW'
 import { vi } from './translate/vi'
+import { tr } from './translate/tr'
 
 /** User-visible strings: book translation: dialog, confirmation, progress, report */
 export const translateStrings = defineStrings({
@@ -44,4 +45,5 @@ export const translateStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

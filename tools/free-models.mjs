@@ -65,8 +65,14 @@ export function compareFreeModels({ listed, rejected, catalog }) {
   return { gone, candidates, staleRejections }
 }
 
+/**
+ * Whether the weekly check fails: only for an offered model that is gone. New
+ * candidates are reported without failing it. They appear most weeks, and a
+ * run that is red every week hid the one that named a withdrawn model
+ * (decision 0138).
+ */
 export function needsAction(result) {
-  return result.gone.length > 0 || result.candidates.length > 0
+  return result.gone.length > 0
 }
 
 const GONE_REASON = {
@@ -80,7 +86,7 @@ export function reportMarkdown(result) {
   if (result.gone.length > 0) {
     lines.push('## 앱이 보여 주지만 지금은 쓸 수 없는 모델', '')
     lines.push(
-      '사용자가 고르면 실패합니다. `packages/ai-provider/src/free-ai.ts`의 `OPENROUTER_FREE_MODELS`에서 빼고 새 버전을 냅니다.',
+      '앱은 OpenRouter에서 목록을 받으면 이 모델을 선택기에서 감추고, 이 모델로 연결된 사람을 목록에 남은 다음 모델로 옮깁니다. 목록을 받지 못한 앱과 그 기능이 없는 예전 판에서는 고르면 실패합니다. `packages/ai-provider/src/free-ai.ts`의 `OPENROUTER_FREE_MODELS`에서 빼고 새 버전을 냅니다.',
       '',
     )
     for (const m of result.gone) lines.push(`- \`${m.id}\`: ${GONE_REASON[m.reason]}`)
@@ -89,7 +95,7 @@ export function reportMarkdown(result) {
   if (result.candidates.length > 0) {
     lines.push('## 시험해 볼 새 무료 모델', '')
     lines.push(
-      '이름이 `:free`로 끝나고 도구 호출을 지원합니다. 앱에서 문서 편집이 되는지는 시험해야 압니다: `npm run free-models:trial` (`docs/operations.md`의 "무료 모델 점검").',
+      '이름이 `:free`로 끝나고 도구 호출을 지원합니다. 급한 일은 아니어서 이것만으로는 점검이 실패하지 않습니다. 앱에서 문서 편집이 되는지는 시험해야 압니다: `npm run free-models:trial` (`docs/operations.md`의 "무료 모델 점검").',
       '',
     )
     for (const m of result.candidates) {

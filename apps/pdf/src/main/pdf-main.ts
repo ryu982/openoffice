@@ -7,16 +7,18 @@ import {
   realpathSync,
   statSync,
   unlinkSync,
+  watch,
   writeFileSync,
 } from 'node:fs'
-import { randomUUID } from 'node:crypto'
-import { copyFile, readFile, stat, writeFile } from 'node:fs/promises'
-import { tmpdir, userInfo } from 'node:os'
+import { createHash, randomUUID } from 'node:crypto'
+import { copyFile, open, readFile, stat, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell, webContents } from 'electron'
 import type { WebContents } from 'electron'
 import {
   buildPrintableHtml,
+  configuredAuthorName,
   configuredDefaultSaveDir,
   confirmOverwriteIfConflicted,
   contextMenuLabels,
@@ -40,12 +42,26 @@ import type {
   RecoveryStore,
   SaveDiskState,
 } from '@genoffice/electron-utils'
+import { askBeforeMakeAndOpen } from '@genoffice/electron-utils/editor-entrance'
 import { brandText, createI18n, getUiLang } from '@genoffice/i18n'
-import { generateImageTool, documentMediaRoots, withMediaCallSignal } from '@genoffice/ai-search'
+import {
+  abortMediaCalls,
+  generateImageTool,
+  documentMediaRoots,
+  withMediaCallSignal,
+} from '@genoffice/ai-search'
+import { registerAiJob } from '@genoffice/electron-utils/ai-activity'
+import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
+import { aiFeaturesOn } from '@genoffice/electron-utils/app-choice'
 import { sharedSubscriptionStatuses } from '@genoffice/ai-provider/subscription'
 import { PDF_CHANNELS, PDF_TOOLS_HANDOFF, type PdfToolsHandoffTool } from '../shared/ipc'
 import { CertificateEncryptionError, WrongPasswordError, decryptDocument } from './pdf-crypt'
-import { buildExportImagePaths, hasValidExportPageNumbers } from './export-images'
+import { AI_OFF_FALLBACK, createScreenAiJobs } from './screen-ai-jobs'
+import {
+  buildExportImagePaths,
+  buildSaveAsImagePaths,
+  hasValidExportPageNumbers,
+} from './export-images'
 import type {
   ExportImagesRequest,
   ExportImagesResult,
@@ -56,6 +72,10 @@ import type {
   InsertBlankPageResult,
   InsertPdfRequest,
   InsertPdfResult,
+  CopyPagesRequest,
+  CopyPagesResult,
+  PastePagesRequest,
+  PastePagesResult,
   MergePagesRequest,
   MergePagesResult,
   MergePdfRequest,
@@ -63,6 +83,8 @@ import type {
   PagePreviewRequest,
   ReplacePagesRequest,
   ReplacePagesResult,
+  RestoreFileRequest,
+  RestoreFileResult,
   SetPageSizeRequest,
   SetPageSizeResult,
   SplitPagesRequest,
@@ -88,6 +110,7 @@ import type {
   SignaturePosition,
 } from '../shared/ipc'
 import { writePdfAtomically } from './atomic-write'
+import { watchDiskFile, type DiskWatch, type DiskWatchDeps } from './disk-watch'
 import {
   copyPdfToPath,
   cropPagesBytes,
@@ -135,7 +158,12 @@ import {
 } from './note-link'
 import type { PdfNoteResult, PdfRecoveryCopyResult } from '../shared/ipc'
 import { createPdfRecovery, pdfLooksEncrypted } from './pdf-recovery'
+import { copiedPagesOf, heldCopiedPages, holdCopiedPages } from './page-clipboard'
+import { LABEL_SPEC_FILE_NAME } from '@genoffice/electron-utils/print-arranged'
+import { registerPdfPrintLayout } from './print-layout'
 import { ResultStore, documentHashOfFile } from '../../../../packages/pdf-structure/src/store'
+/** the largest slice readFileChunk hands over IPC (the renderer loops) */
+const PDF_READ_CHUNK_MAX_BYTES = 8 * 1024 * 1024
 
 const tDlg = createI18n({
   zh: {
@@ -200,6 +228,27 @@ const tDlg = createI18n({
     btnSave: 'Lưu',
     btnDontSave: 'Không lưu',
     btnCancel: 'Hủy',
+  },
+  tr: {
+    dlgExportImages: 'Görselleri Klasöre Aktar',
+    dlgExtract: 'Sayfaları PDF Olarak Çıkar',
+    dlgInsert: 'İçe Aktarılacak PDF’i Seç',
+    dlgSplit: 'PDF’i Klasöre Böl',
+    dlgMerge: 'Birleştirilecek PDF’leri Seç',
+    dlgMergeSave: 'Birleştirilmiş PDF’i Farklı Kaydet',
+    dlgMergePages: 'Birleştirilmiş Sayfaları Farklı Kaydet',
+    dlgReplace: 'Yerine Kullanılacak PDF’i Seç',
+    dlgSplitPages: 'Bölünmüş Sayfaları Farklı Kaydet',
+    dlgRedactCopy: 'Karartılmış Kopyayı Farklı Kaydet',
+    dlgPickCertificate: 'Sertifika Dosyası Seç',
+    dlgSignedCopy: 'İmzalı Kopyayı Farklı Kaydet',
+    filterCertificate: 'Sertifika Dosyaları (.p12, .pfx)',
+    filterPdf: 'PDF Belgeleri',
+    closeUnsavedMsg: 'Bu PDF’te kaydedilmemiş değişiklikler var.',
+    closeUnsavedDetail: 'Kapatmadan önce kaydedilsin mi?',
+    btnSave: 'Kaydet',
+    btnDontSave: 'Kaydetme',
+    btnCancel: 'İptal',
   },
   ja: {
     dlgExportImages: '画像をフォルダに書き出す',
@@ -639,6 +688,15 @@ interface RuntimePaths {
     request: CreateDocumentRequest,
     ownerWebContentsId?: number,
   ) => Promise<CreateDocumentResult>
+  /**
+   * "Create the file only" of the annotation list's document while the editor
+   * it opens in is off (editor choice spec 7.3): the shell writes it where new
+   * documents go and shows it in its folder. Never the AI's creator.
+   */
+  writeDocumentFile?: (
+    request: CreateDocumentRequest,
+    ownerWebContentsId: number,
+  ) => Promise<CreateDocumentResult>
   /** The shell's PDF tools window, opened on a task with a file picked (decision 0030) */
   openPdfTools?: (path: string, tool: PdfToolsHandoffTool) => boolean
   /** The shell opens (or brings forward) a PDF's note in a Markdown tab (reading-assist 4.9) */
@@ -748,6 +806,18 @@ function openGeneratedPdf(path: string): void {
  * (View > Reload) remounts the renderer and consumes again — a one-shot entry
  * would strand the tab on "No file to open". */
 const openPathByWc = new Map<number, string>()
+
+/** the shell's refusal of a screen's AI run while AI is turned off (Settings) */
+const aiOffRefusal = (senderId: number): string =>
+  aiRunRefusal({ senderId, provider: '', model: '' }) ?? AI_OFF_FALLBACK
+
+/** the screens' document jobs on the shell's list of running AI work */
+const screenAiJobs = createScreenAiJobs({
+  aiOn: aiFeaturesOn,
+  refusal: aiOffRefusal,
+  register: registerAiJob,
+  stopChannel: PDF_CHANNELS.aiJobStop,
+})
 /** File paths granted to each view — readFile only allows these */
 const allowedByWc = new Map<number, Set<string>>()
 /** Unsaved-changes flags mirrored from the renderer; drives the save prompt before closing a tab/window */
@@ -756,6 +826,8 @@ const closeSaveWaiters = new Map<number, (ok: boolean) => void>()
 const saveAsWaiters = new Map<number, (outcome: PdfSaveAsOutcome) => void>()
 /** Save As destination granted per view (main-process dialog pick); the save handler refuses any other non-source target */
 const saveAsTargetByWc = new Map<number, string>()
+/** Save As › PNG page images: the name the shell's save dialog picked, used once by the next `saveAs` export */
+const imageTargetByWc = new Map<number, string>()
 /** Only a copy produced by this view may receive subsequent in-place redactions. */
 const redactionPathByWc = new Map<number, string>()
 const redactionFlows = new Set<number>()
@@ -800,6 +872,97 @@ async function conflictStopsSave(
       lang: getUiLang(),
     })) === 'cancel'
   )
+}
+
+// ── Disk-change notice (issue #405): each view watches the file it shows and
+// hears when another program changed, removed or renamed it. The app's own
+// writes hold the path as "being written" and then move the view's baseline.
+const diskWatchByWc = new Map<number, DiskWatch>()
+const ownWritesInFlight = new Map<string, number>()
+
+const diskWatchDeps: DiskWatchDeps = {
+  watchDir: (dir, onEvent) => {
+    try {
+      const watcher = watch(dir, { persistent: false }, (_event, filename) =>
+        onEvent(typeof filename === 'string' ? filename : null),
+      )
+      // the folder went away or the platform gave up: no more notices for this view
+      watcher.on('error', () => watcher.close())
+      return watcher
+    } catch {
+      return null
+    }
+  },
+  stat: async (path) => {
+    try {
+      const info = await stat(path)
+      return info.isFile() ? { mtimeMs: info.mtimeMs, size: info.size } : null
+    } catch {
+      return null
+    }
+  },
+  read: async (path) => {
+    try {
+      return new Uint8Array(await readFile(path))
+    } catch {
+      return null
+    }
+  },
+  // the same digest as recordDiskState, so a baseline and a check compare
+  hash: (bytes) => createHash('sha256').update(bytes).digest('hex'),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+  ownWriteInFlight: (path) => (ownWritesInFlight.get(path) ?? 0) > 0,
+  settleMs: 400,
+  caseInsensitive: process.platform === 'win32' || process.platform === 'darwin',
+}
+
+/** The view (re)loaded `path`: watch it against the bytes it just read */
+function watchViewFile(contents: WebContents, path: string): void {
+  const wcId = contents.id
+  const baseline = docDiskStates.get(wcId)?.get(path) ?? null
+  const current = diskWatchByWc.get(wcId)
+  if (current?.path === path) {
+    current.rebase(baseline)
+    return
+  }
+  current?.close()
+  diskWatchByWc.set(
+    wcId,
+    watchDiskFile(
+      path,
+      baseline,
+      (kind) => {
+        if (!contents.isDestroyed()) contents.send(PDF_CHANNELS.diskFileChanged, { path, kind })
+      },
+      diskWatchDeps,
+    ),
+  )
+}
+
+function stopViewWatch(wcId: number): void {
+  diskWatchByWc.get(wcId)?.close()
+  diskWatchByWc.delete(wcId)
+}
+
+/**
+ * Write `path` as this view: other views' watchers wait while it is written,
+ * and on success this view's record and watcher move to the written bytes, so
+ * its own save never reads as another program's change.
+ */
+async function writeOwnFile<T>(wcId: number, path: string, write: () => Promise<T>): Promise<T> {
+  ownWritesInFlight.set(path, (ownWritesInFlight.get(path) ?? 0) + 1)
+  try {
+    const result = await write()
+    await rememberDiskState(wcId, path)
+    const watcher = diskWatchByWc.get(wcId)
+    if (watcher?.path === path) watcher.rebase(docDiskStates.get(wcId)?.get(path) ?? null)
+    return result
+  } finally {
+    const left = (ownWritesInFlight.get(path) ?? 1) - 1
+    if (left > 0) ownWritesInFlight.set(path, left)
+    else ownWritesInFlight.delete(path)
+  }
 }
 /** A derived copy (redacted or certificate-signed) becomes this tab's document */
 let pdfRedactionSavedHook: ((wc: WebContents, path: string) => void) | null = null
@@ -1109,6 +1272,11 @@ export function pdfFileRenamed(contents: WebContents, oldPath: string, newPath: 
     states.delete(oldPath)
     states.set(newPath, recorded)
   }
+  // the old name is gone because the app moved it: watch the new one, no notice
+  if (diskWatchByWc.get(wcId)?.path === oldPath && !contents.isDestroyed()) {
+    stopViewWatch(wcId)
+    watchViewFile(contents, newPath)
+  }
   if (!contents.isDestroyed()) contents.send(PDF_CHANNELS.fileRenamed, newPath)
 }
 
@@ -1358,6 +1526,19 @@ export function requestPdfSaveAsOutcome(
   })
 }
 
+/**
+ * Save As › PNG page images: grant the picked name to the view, then ask the
+ * renderer to draw every page and export it (`saveAs: true`). The export
+ * writes one file per page beside that name (numbered when there are more
+ * pages); the path never comes from the renderer. False = not sent.
+ */
+export function requestPdfPageImages(contents: WebContents, targetPath: string): boolean {
+  if (contents.isDestroyed() || !/\.png$/i.test(targetPath)) return false
+  imageTargetByWc.set(contents.id, targetPath)
+  contents.send(PDF_CHANNELS.exportImagesRequest)
+  return true
+}
+
 /** Saved signatures live in userData, shared by all documents and windows */
 const signaturesPath = () => join(app.getPath('userData'), 'pdf-signatures.json')
 
@@ -1454,6 +1635,29 @@ function registerPdfIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
 
+  // Advanced print: the job PDF comes from the view's saved document (the
+  // renderer saves pending edits first), arranged and printed from here
+  registerPdfPrintLayout({
+    ipcMain,
+    labelSpecPath: () => join(app.getPath('userData'), LABEL_SPEC_FILE_NAME),
+    async readViewBytes(viewId, path) {
+      if (!pdfPathGranted(viewId, path)) throw new Error('pdf: path not granted to this view')
+      return viewDocumentBytes(viewId, path)
+    },
+    createPrintWindow: () => new BrowserWindow({ show: false, webPreferences: { sandbox: true } }),
+    async pickSavePath(event, editor) {
+      const parent = BrowserWindow.fromWebContents(event.sender as WebContents)
+      const options = {
+        defaultPath: basename(editor.path).replace(/\.pdf$/i, '') + '-print.pdf',
+        filters: [{ name: tm('filterPdf'), extensions: ['pdf'] }],
+      }
+      const picked = parent
+        ? await dialog.showSaveDialog(parent, options)
+        : await dialog.showSaveDialog(options)
+      return picked.canceled || !picked.filePath ? null : picked.filePath
+    },
+  })
+
   // the recovery question (a copy of unsaved edits) is answered before the renderer reads the file
   ipcMain.handle(PDF_CHANNELS.consumePending, (e) => {
     const path = openPathByWc.get(e.sender.id) ?? null
@@ -1462,13 +1666,7 @@ function registerPdfIpc(): void {
     return recovery.resolveOnOpen(e.sender, path).then(() => path)
   })
 
-  ipcMain.handle(PDF_CHANNELS.getUsername, () => {
-    try {
-      return userInfo().username
-    } catch {
-      return ''
-    }
-  })
+  ipcMain.handle(PDF_CHANNELS.getUsername, (): string => configuredAuthorName(app))
 
   ipcMain.handle(PDF_CHANNELS.readFile, async (e, path: unknown) => {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
@@ -1482,6 +1680,60 @@ function registerPdfIpc(): void {
     return buf.byteOffset === 0 && buf.byteLength === buf.buffer.byteLength
       ? buf.buffer
       : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+  })
+
+  // Chunked reads for the same grant: one 42 MB ArrayBuffer over IPC has
+  // killed renderers before first paint on Windows (genoffice#2366), while
+  // small slices deserialize fine. The size rides along so the renderer's
+  // loop needs no separate stat.
+  ipcMain.handle(
+    PDF_CHANNELS.readFileChunk,
+    async (e, path: unknown, start: unknown, end: unknown) => {
+      // the preload hands the grant's path, start and end as positional args
+      if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
+        throw new Error('pdf: path not granted to this view')
+      }
+      const from = typeof start === 'number' && Number.isInteger(start) && start >= 0 ? start : -1
+      const to = typeof end === 'number' && Number.isInteger(end) && end >= from ? end : -1
+      if (from < 0 || to < 0 || to - from > PDF_READ_CHUNK_MAX_BYTES) {
+        throw new Error('pdf: invalid chunk range')
+      }
+      // a view restored from a recovery copy shows the copy until it is saved
+      const restored = recovery.viewBytes(e.sender.id, path)
+      if (restored) {
+        if (from === 0) await rememberDiskState(e.sender.id, path)
+        return { data: restored.slice(from, to), fileSize: restored.byteLength }
+      }
+      const handle = await open(path, 'r')
+      let result: { data: Uint8Array; fileSize: number }
+      try {
+        const length = to - from
+        const buf = Buffer.alloc(length)
+        const { bytesRead } = await handle.read(buf, 0, length, from)
+        const fileSize = (await handle.stat()).size
+        result = { data: new Uint8Array(buf.subarray(0, bytesRead)), fileSize }
+      } finally {
+        await handle.close()
+      }
+      // The reader's copy: this view's save guard compares against this state
+      if (from === 0) await rememberDiskState(e.sender.id, path)
+      return result
+    },
+  )
+
+  // the view has read its file: hear when another program changes it (untitled
+  // working copies live in the app's temp folder and need no watch)
+  ipcMain.handle(PDF_CHANNELS.watchDiskFile, (e, path: unknown): boolean => {
+    if (!pdfPathGranted(e.sender.id, path) || untitledCopyPdfPaths.has(path)) return false
+    watchViewFile(e.sender, path)
+    return true
+  })
+
+  // the person chose to reload from disk: a restored copy stops standing in for the file
+  ipcMain.handle(PDF_CHANNELS.discardForDiskReload, (e, path: unknown): boolean => {
+    if (!pdfPathGranted(e.sender.id, path)) return false
+    recovery.discardedForDisk(e.sender.id, path)
+    return true
   })
 
   // pdf.js has already accepted `password` for these bytes on the render side;
@@ -1520,6 +1772,33 @@ function registerPdfIpc(): void {
       if (!create) return { ok: false, error: 'pdf: document creation is unavailable in this host' }
       try {
         return await create(parsed, e.sender.id)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  // The annotation list's "Open as Markdown / Word document" (no AI): the
+  // document opens in another editor, so while that editor is off the shell
+  // asks before anything is made (editor choice spec 7.3)
+  ipcMain.handle(
+    PDF_CHANNELS.annotDocument,
+    async (e, request: unknown): Promise<CreateDocumentResult> => {
+      if (!allowedByWc.has(e.sender.id)) {
+        return { ok: false, error: 'pdf: sender is not a registered PDF view' }
+      }
+      const parsed = parseCreateDocumentRequest(request)
+      if (!parsed || (parsed.type !== 'md' && parsed.type !== 'docx')) {
+        return { ok: false, error: 'pdf: invalid annotation document request' }
+      }
+      const answer = await askBeforeMakeAndOpen(parsed.type === 'md' ? 'markdown' : 'docs', {
+        fileName: `${parsed.title}.${parsed.type}`,
+      })
+      if (answer === 'cancel') return { ok: false, canceled: true }
+      const make = answer === 'file-only' ? runtime.writeDocumentFile : runtime.createDocument
+      if (!make) return { ok: false, error: 'pdf: document creation is unavailable in this host' }
+      try {
+        return await make(parsed, e.sender.id)
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
@@ -1628,11 +1907,15 @@ function registerPdfIpc(): void {
     // a view restored from a recovery copy saves from the copy's bytes, not the file
     const restoredSource = recovery.viewBytes(e.sender.id, path)
     try {
-      const { skippedTextEdits, skippedTextInserts, skippedImageEdits } = restoredSource
-        ? await savePdfBytesToPath(restoredSource, target, request)
-        : await savePdfToPath(path, target, request)
-      // Refresh the record for the written bytes
-      await rememberDiskState(e.sender.id, target)
+      // Refresh the record for the written bytes (writeOwnFile does, watcher included)
+      const { skippedTextEdits, skippedTextInserts, skippedImageEdits } = await writeOwnFile(
+        e.sender.id,
+        target,
+        () =>
+          restoredSource
+            ? savePdfBytesToPath(restoredSource, target, request)
+            : savePdfToPath(path, target, request),
+      )
       // a save in place changed the document's hash: its note link follows (spec 5.4)
       if (target === path && request.redactions === undefined) void noteLinks.afterSave(path)
       // the person saved this blank: it now has a saved path (its untitled name may stay)
@@ -2075,12 +2358,70 @@ function registerPdfIpc(): void {
           new Uint8Array(await readFile(other)),
           typeof afterPageIndex === 'number' ? afterPageIndex : -1,
         )
-        await writePdfAtomically(path, merged)
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, merged))
         return { ok: true, insertedCount: count }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
     },
+  )
+
+  // Page clipboard: the copied pages stay here, so a paste in any PDF view reads
+  // no path from the renderer. Copying applies the view's pending edits in memory.
+  ipcMain.handle(
+    PDF_CHANNELS.copyPages,
+    async (e, request: CopyPagesRequest): Promise<CopyPagesResult> => {
+      const { source, pages } = request ?? {}
+      const path = source?.path
+      if (
+        !pdfPathGranted(e.sender.id, path) ||
+        source.targetPath !== undefined ||
+        !Array.isArray(pages)
+      ) {
+        return { ok: false, error: 'pdf: path not granted to this view' }
+      }
+      if (carriesProtection(source)) return { ok: false, error: 'pdf: protected', protected: true }
+      try {
+        const bytes = await viewDocumentBytes(e.sender.id, path)
+        if (pdfLooksEncrypted(bytes)) return { ok: false, error: 'pdf: protected', protected: true }
+        const copied = await copiedPagesOf(bytes, source, pages)
+        if (!copied) return { ok: false, error: 'pdf: no such pages' }
+        holdCopiedPages(copied)
+        return { ok: true, count: copied.count }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    PDF_CHANNELS.pastePages,
+    async (e, request: PastePagesRequest): Promise<PastePagesResult> => {
+      const { path, afterPageIndex } = request ?? {}
+      if (!pdfPathGranted(e.sender.id, path)) {
+        return { ok: false, error: 'pdf: path not granted to this view' }
+      }
+      const copied = heldCopiedPages()
+      if (!copied) return { ok: true, insertedCount: 0 }
+      try {
+        const target = new Uint8Array(await readFile(path))
+        if (pdfLooksEncrypted(target))
+          return { ok: false, error: 'pdf: protected', protected: true }
+        const { merged, count } = await insertPdfBytes(
+          target,
+          copied.bytes,
+          typeof afterPageIndex === 'number' ? afterPageIndex : -1,
+        )
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, merged))
+        return { ok: true, insertedCount: count }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  ipcMain.handle(PDF_CHANNELS.copiedPageCount, (e): number =>
+    allowedByWc.has(e.sender.id) ? (heldCopiedPages()?.count ?? 0) : 0,
   )
 
   // Compare: pick a second document and extract its per-page text main-side —
@@ -2193,7 +2534,7 @@ function registerPdfIpc(): void {
           new Uint8Array(await readFile(path)),
           typeof afterPageIndex === 'number' ? afterPageIndex : -1,
         )
-        await writePdfAtomically(path, bytes)
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, bytes))
         return { ok: true }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
@@ -2321,8 +2662,30 @@ function registerPdfIpc(): void {
           new Uint8Array(await readFile(other)),
           pages,
         )
-        await writePdfAtomically(path, merged)
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, merged))
         return { ok: true, removed, inserted }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    PDF_CHANNELS.restoreFile,
+    async (e, request: RestoreFileRequest): Promise<RestoreFileResult> => {
+      const { path, bytes } = request ?? {}
+      // a buffer from the renderer's realm (the web build's worker) fails instanceof
+      if (
+        typeof path !== 'string' ||
+        !allowedByWc.get(e.sender.id)?.has(path) ||
+        Object.prototype.toString.call(bytes) !== '[object ArrayBuffer]'
+      ) {
+        return { ok: false, error: 'pdf: path not granted to this view' }
+      }
+      try {
+        // this view's own write: its disk watch must not read it as another program's change
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, new Uint8Array(bytes)))
+        return { ok: true }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
@@ -2341,7 +2704,7 @@ function registerPdfIpc(): void {
       }
       try {
         const bytes = await setPageSizeBytes(new Uint8Array(await readFile(path)), width, height)
-        await writePdfAtomically(path, bytes)
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, bytes))
         return { ok: true }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
@@ -2389,7 +2752,7 @@ function registerPdfIpc(): void {
       }
       try {
         const bytes = await cropPagesBytes(new Uint8Array(await readFile(path)), pages, rect)
-        await writePdfAtomically(path, bytes)
+        await writeOwnFile(e.sender.id, path, () => writePdfAtomically(path, bytes))
         return { ok: true }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
@@ -2405,6 +2768,25 @@ function registerPdfIpc(): void {
         return { ok: false, error: 'pdf: no images' }
       if (!hasValidExportPageNumbers(pageNumbers, images.length))
         return { ok: false, error: 'pdf: invalid page numbers' }
+      if (request?.saveAs === true) {
+        // Save As › PNG page images: only the name the shell's dialog picked, once
+        const target = imageTargetByWc.get(e.sender.id)
+        imageTargetByWc.delete(e.sender.id)
+        const outputPaths = target ? buildSaveAsImagePaths(target, images.length) : null
+        // the picked name is a .png: the pages must be PNG too
+        if (!target || !outputPaths || request.format === 'jpg')
+          return { ok: false, error: 'pdf: target not picked for this view' }
+        try {
+          for (const [i, b64] of images.entries()) {
+            await writeFile(outputPaths[i]!, Buffer.from(b64, 'base64'))
+          }
+          // Reveal the exported images so success is never silent
+          shell.showItemInFolder(outputPaths[0]!)
+          return { ok: true, savedDir: dirname(target), count: images.length }
+        } catch (err) {
+          return { ok: false, error: err instanceof Error ? err.message : String(err) }
+        }
+      }
       const ext = request?.format === 'jpg' ? 'jpg' : 'png'
       const win =
         BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getFocusedWindow() ?? undefined
@@ -2430,28 +2812,56 @@ function registerPdfIpc(): void {
 
   // pdf-owned (unlike ai:image-search / ai:fetch-image, which the shell registers app-wide):
   // slides' ai:generate-image is only registered once a slides view exists, so pdf needs its own
-  ipcMain.handle(PDF_CHANNELS.generateImage, (e, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-    // ends with its tab, or when the tab's AI run is stopped
-    withMediaCallSignal(e.sender, (signal) =>
-      generateImageTool(
-        join(app.getPath('userData'), 'ai-settings.json'),
-        {
-          prompt: String(op?.prompt ?? ''),
-          aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
+  ipcMain.handle(
+    PDF_CHANNELS.generateImage,
+    async (e, op: { prompt?: unknown; aspectRatio?: unknown; model?: unknown }) => {
+      // the AI window is hidden while AI is off; a late call is refused, not run
+      if (!aiFeaturesOn()) return { error: aiOffRefusal(e.sender.id) }
+      const senderId = e.sender.id
+      // a model the user named: generateImageTool decides whether this route offers it
+      const model = typeof op?.model === 'string' ? op.model.trim() : ''
+      // ends with its tab, or when the tab's AI run is stopped
+      const run = withMediaCallSignal(e.sender, (signal) =>
+        generateImageTool(
+          join(app.getPath('userData'), 'ai-settings.json'),
+          {
+            prompt: String(op?.prompt ?? ''),
+            aspectRatio: op?.aspectRatio ? String(op.aspectRatio) : undefined,
+            ...(model ? { model } : {}),
+          },
+          {
+            // pdf keeps its media (exported/edited images) beside the open file
+            mediaRoots: documentMediaRoots(
+              openPathByWc.get(senderId),
+              join(app.getPath('temp'), 'genoffice-pasted'),
+            ),
+            // a user request from the AI panel: the connected subscription may be used
+            context: { path: 'screen', statuses: sharedSubscriptionStatuses() },
+            signal,
+          },
+        ),
+      )
+      // part of the AI window's turn: Settings counts it and can stop it
+      const unregister = registerAiJob({
+        kind: 'chat',
+        stop: () => {
+          abortMediaCalls(senderId)
+          return run.catch(() => undefined)
         },
-        {
-          // pdf keeps its media (exported/edited images) beside the open file
-          mediaRoots: documentMediaRoots(
-            openPathByWc.get(e.sender.id),
-            join(app.getPath('temp'), 'genoffice-pasted'),
-          ),
-          // a user request from the AI panel: the connected subscription may be used
-          context: { path: 'screen', statuses: sharedSubscriptionStatuses() },
-          signal,
-        },
-      ),
-    ),
+      })
+      try {
+        return await run
+      } finally {
+        unregister()
+      }
+    },
   )
+
+  // the document jobs the screen runs (AI page reading, translation, AI highlights, overview)
+  ipcMain.handle(PDF_CHANNELS.aiJobBegin, (e, jobId: unknown) =>
+    screenAiJobs.begin(e.sender, jobId),
+  )
+  ipcMain.on(PDF_CHANNELS.aiJobEnd, (e, jobId: unknown) => screenAiJobs.end(e.sender.id, jobId))
 
   // ── Certificate (digital) signatures ──
 
@@ -2735,8 +3145,10 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
     allowedByWc.delete(wcId)
     dirtyByWc.delete(wcId)
     docDiskStates.delete(wcId)
+    stopViewWatch(wcId)
     certEntriesByWc.delete(wcId)
     saveAsTargetByWc.delete(wcId)
+    imageTargetByWc.delete(wcId)
     closeSaveWaiters.get(wcId)?.(false)
     closeSaveWaiters.delete(wcId)
     saveAsWaiters.get(wcId)?.('failed')
@@ -2747,6 +3159,8 @@ function grantAndTrack(wc: WebContents, openPath?: string | null): void {
   // close guard must not still think the tab is dirty.
   wc.on('did-start-loading', () => {
     dirtyByWc.delete(wcId)
+    // the remounted renderer watches again once it has read its file
+    stopViewWatch(wcId)
   })
 }
 

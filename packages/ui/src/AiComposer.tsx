@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react'
 import { IconEnter, IconSend, IconStop } from './icons'
 import { useAiPanelPrefs } from './ai-panel-prefs-store'
+import { clipboardPictureIsRendering } from './clipboard-picture'
 import type { AiComposerSkills } from './use-composer-skills'
 import { useComposerPickers, type AiComposerDocs } from './use-doc-mention'
+import { useImeEnterGuard } from './ime-enter'
 
 // Keep in sync with the CSS `max-height` on `.ai-input-box textarea` (7 lines à 24px)
 const MAX_TEXTAREA_HEIGHT = 168
@@ -95,6 +97,7 @@ export function AiComposer({
   const innerRef = useRef<HTMLTextAreaElement | null>(null)
   const ref = textareaRef ?? innerRef
   const canSend = value.trim().length > 0 && !busy
+  const ime = useImeEnterGuard()
   const { spellcheck } = useAiPanelPrefs()
   const picker = useComposerPickers({ skills, docs, value, onChange, textareaRef: ref })
 
@@ -131,14 +134,21 @@ export function AiComposer({
           picker.track(e.target)
         }}
         onSelect={(e) => picker.track(e.currentTarget)}
-        onCompositionStart={picker.onCompositionStart}
-        onCompositionEnd={picker.onCompositionEnd}
+        onCompositionStart={() => {
+          picker.onCompositionStart()
+          ime.handleCompositionStart()
+        }}
+        onCompositionEnd={(e) => {
+          picker.onCompositionEnd(e)
+          ime.handleCompositionEnd()
+        }}
         onBlur={picker.onBlur}
         onKeyDown={(e) => {
           // an open skill or document list takes ↑/↓/Enter/Tab/Esc first; its Esc never stops a run
           if (picker.onKeyDown(e)) return
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
+            if (ime.isImeConfirm(e.nativeEvent)) return
             if (canSend) onSend()
             else if (busy && onQueue) onQueue()
           } else if (e.key === 'Escape' && busy) {
@@ -147,14 +157,16 @@ export function AiComposer({
           }
         }}
         onPaste={(e) => {
-          const files = Array.from(e.clipboardData.files)
+          const text = e.clipboardData.getData('text/plain')
+          const files = clipboardPictureIsRendering(e.clipboardData.getData('text/html'), text)
+            ? []
+            : Array.from(e.clipboardData.files)
           if (files.length > 0) {
             if (!onPasteFiles) return
             e.preventDefault()
             onPasteFiles(files)
             return
           }
-          const text = e.clipboardData.getData('text/plain')
           if (text && onPasteText?.(text)) e.preventDefault()
         }}
       />

@@ -45,7 +45,7 @@ In the AI panel of the Docs, Sheets, Slides, Hangul, HTML and mind map editors y
 
 ## Rollback and safety
 
-- The Docs panel keeps a **version list**: one snapshot per turn, roll back to any of them, and the rollback itself is Ctrl+Z-able. Snapshots survive reopening the document.
+- A turn in which the AI changed the document gets a **Changes made to the document: N** card under its reply, and the changed places are marked in yellow on the document. The marks are only on screen — they are never saved, printed or exported — and they go away when you send the next request or press **Hide marks**. **Undo these changes** takes the whole turn back at once. In Docs, Markdown, HTML, Slides, Mind Map and Diagram, undoing an earlier turn also undoes the turns after it; in Hangul, Sheets, PDF and EPUB only the last turn can be undone, and only if the document was not edited after it. When it cannot be undone, use the editor's own Undo (Ctrl+Z).
 - AI edits go through the same editing pipeline as manual ones (undoable, save-gated) — nothing bypasses your save confirmation.
 
 ## Hiding a selection from the AI

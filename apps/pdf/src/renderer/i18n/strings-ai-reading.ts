@@ -20,6 +20,7 @@ import { he } from './ai-reading/he'
 import { hi } from './ai-reading/hi'
 import { zhTW } from './ai-reading/zh-TW'
 import { vi } from './ai-reading/vi'
+import { tr } from './ai-reading/tr'
 
 /** Copy for the AI window: suggested questions, paragraph citations and the overview (reading assistant) */
 export const aiReadingStrings = defineStrings({
@@ -44,4 +45,5 @@ export const aiReadingStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

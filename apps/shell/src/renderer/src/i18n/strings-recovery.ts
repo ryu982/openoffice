@@ -20,6 +20,7 @@ import { he } from './recovery/he'
 import { hi } from './recovery/hi'
 import { zhTW } from './recovery/zh-TW'
 import { vi } from './recovery/vi'
+import { tr } from './recovery/tr'
 
 /**
  * The Home screen's launch recovery list (documents with unsaved content
@@ -47,6 +48,7 @@ export const recoveryListStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type RecoveryListStringKey = keyof typeof zh

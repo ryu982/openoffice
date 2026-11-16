@@ -415,6 +415,7 @@ export const th = {
   ribbonLangHebrew: 'ภาษาฮีบรู',
   ribbonLangHindi: 'ภาษาฮินดี',
   ribbonLangVietnamese: 'ภาษาเวียดนาม',
+  ribbonLangTurkish: 'ตุรกี',
   ribbonNewComment: 'ข้อคิดเห็นใหม่',
   ribbonCommentsPane: 'บานหน้าต่างข้อคิดเห็น',
   ribbonCommentsPaneTip: 'แสดง/ซ่อนบานหน้าต่างข้อคิดเห็น',

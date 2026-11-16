@@ -4,6 +4,7 @@
  * the find pane.
  */
 import type { ReactNode } from 'react'
+import { useImeEnterGuard } from '@genoffice/ui'
 import { useI18n } from '../i18n/locale'
 import { IconBold, IconItalic, IconRedo, IconReplace, IconUndo } from './icons'
 
@@ -147,6 +148,7 @@ export function ReplaceRow(p: {
   onReplaceAll(): void
 }) {
   const { t } = useI18n()
+  const ime = useImeEnterGuard()
   return (
     <div className="epub-replace-row">
       <input
@@ -157,9 +159,13 @@ export function ReplaceRow(p: {
         aria-label={t('editReplaceWith')}
         disabled={p.disabled}
         onChange={(e) => p.onChange(e.target.value)}
+        onCompositionStart={ime.handleCompositionStart}
+        onCompositionEnd={ime.handleCompositionEnd}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault()
+            // the Enter that confirms a Hangul/IME candidate must not replace the match
+            if (ime.isImeConfirm(e.nativeEvent)) return
             p.onReplace()
           }
         }}

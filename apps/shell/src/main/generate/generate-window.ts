@@ -32,10 +32,20 @@ import {
 import { GENERATE_HOME_CHANNELS } from '../../shared/generate-home-channels'
 import { generateText } from '../../renderer/src/i18n/strings-generate'
 import { setGenerateTabIdResolver } from './handoff'
-import { convertSource, markdownRedactionNotice, type ConvertedDocument } from './convert'
+import {
+  convertedFileOf,
+  convertSource,
+  markdownRedactionNotice,
+  type ConvertedDocument,
+} from './convert'
 import { inspectMaterial, SUPPORTED_MATERIAL_EXTS } from './materials'
 import { createOpenMaterials, type OpenMaterialsDeps } from './open-materials'
-import { GenerateSession, type MaterialRef } from './session'
+import {
+  GenerateSession,
+  type GenerateEditor,
+  type GenerateEditorAnswer,
+  type MaterialRef,
+} from './session'
 import { generateTitleBarOverlay } from './title-bar'
 import type { NewDocumentOpener } from '../projects/new-documents'
 
@@ -58,6 +68,23 @@ export interface GenerateWindowDeps {
    * it, the window offers no conversion.
    */
   openConvertedTab?(doc: ConvertedDocument, opener: NewDocumentOpener | null): void
+  /**
+   * Before "make" while the new document's editor is off (editor choice spec
+   * 7.3): [Turn on and open] [Cancel], or with `withFileOnly` also [Create
+   * the file only]. Without it, "make" never asks.
+   */
+  askEditor?(
+    editor: GenerateEditor,
+    withFileOnly: boolean,
+    source?: string,
+  ): Promise<GenerateEditorAnswer>
+  /** whether AI features are on; the AI "make" is refused while they are off */
+  aiOn?(): boolean
+  /**
+   * "Create the file only": write the bytes under a free name like `fileName`
+   * where new documents go, show it in its folder, answer its path
+   */
+  saveConvertedFile?(fileName: string, bytes: Uint8Array): Promise<string>
   /** every starred file in a Starred-view group */
   starredGroupPaths(group: string): string[]
   /** the shell tab id behind a webContents, for the run-started records */
@@ -171,8 +198,24 @@ function sessionFor(d: GenerateWindowDeps, refs: MaterialRef[], kind?: AiTargetK
               convertSource(kind, path, { untitled: generateText(d.lang(), 'untitled') }),
             openConvertedTab: (doc: ConvertedDocument) => d.openConvertedTab!(doc, opener),
             redactionNotice: (path: string) => markdownRedactionNotice(path),
+            ...(d.saveConvertedFile
+              ? {
+                  saveConvertedFile: async (doc: ConvertedDocument) => {
+                    const untitled = generateText(d.lang(), 'untitled')
+                    const file = await convertedFileOf(doc.content, doc.sources[0] ?? '', untitled)
+                    await d.saveConvertedFile!(file.fileName, file.bytes)
+                  },
+                }
+              : {}),
           }
         : {}),
+      ...(d.askEditor
+        ? {
+            askEditor: (editor: GenerateEditor, withFileOnly: boolean, source?: string) =>
+              d.askEditor!(editor, withFileOnly, source),
+          }
+        : {}),
+      ...(d.aiOn ? { aiOn: () => d.aiOn!() } : {}),
       push: pushState,
       close: () => closeGenerateWindow(),
       newId: () => randomUUID(),

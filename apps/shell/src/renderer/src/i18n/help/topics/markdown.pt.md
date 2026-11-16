@@ -37,6 +37,7 @@ Menu Arquivo, tudo local e tudo pergunta onde colocar o resultado:
 
 - **Exportar como Word…** e **Exportar como PDF…** escrevem um .docx ou .pdf a sério.
 - **Exportar como ODT…** grava um .odt (texto OpenDocument) pela mesma conversão da exportação para Word; se algo mudar ou se perder no caminho, você vê a lista e confirma antes.
+- **Exportar como documento HWP…** grava um documento HWP (.hwp ou .hwpx) com a mesma conversão; títulos, listas e tabelas chegam como tais ao documento HWP, e uma tabela longa continua na página seguinte. Se algo não puder ser levado, você vê a lista e confirma antes.
 - **Exportar como imagens…** escreve um PNG por página numa pasta que escolher.
 - **Converter e abrir no Docs** converte para .docx e abre-o no separador Docs incorporado aqui na aplicação — não é uma entrega a nada na nuvem, e a cópia convertida fica numa pasta de cache que é limpa ao fim de cerca de uma semana.
 

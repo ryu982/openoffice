@@ -495,6 +495,7 @@ export const es = {
   appGridlinesHidden: 'Líneas de cuadrícula ocultas.',
   appGridlinesShown: 'Líneas de cuadrícula mostradas.',
   appShowingFormulas: 'Mostrando fórmulas — vuelva a alternar para ver los valores.',
+  appShowingFormulasActive: 'Mostrando fórmulas',
   appShowingValues: 'Mostrando los valores calculados.',
   appTraceNoFormula: 'Rastrear precedentes: la celda activa no tiene fórmula.',
   appTraceNoRefs: 'Rastrear precedentes: esta fórmula no tiene referencias de celda.',
@@ -594,6 +595,9 @@ export const es = {
     'La exportación a CSV requiere el libro completamente cargado — espere a que termine la carga.',
   appCsvExportTooLarge: 'La hoja es demasiado grande para exportarla como CSV.',
   appCsvExportCanceled: 'Exportación a CSV cancelada.',
+  appOdsExported: 'Se exportó {path}.',
+  appOdsExportCanceled: 'Exportación a ODS cancelada.',
+  appOdsExportFailed: 'La exportación a ODS falló.',
   appCsvExported: 'Se exportó {path}.',
   appCsvExportedActiveOnly:
     'Los archivos CSV solo contienen una hoja — se exportó la hoja activa «{name}» a {path}.',
@@ -631,6 +635,10 @@ export const es = {
     'La hoja de estilos de este libro carece de estructura básica; los cambios de estilo no se pueden guardar.',
   appSaveErrPackageGuard:
     'Guardar cambiaría la estructura del paquete del libro — se canceló para proteger el archivo.',
+  appSaveErrSheetNotFound:
+    'No se encontró en el libro una hoja a la que hace referencia este guardado: se detuvo el guardado y el archivo quedó como estaba.',
+  appSaveErrSheetNameReused:
+    'Una hoja nueva usa el nombre anterior de una hoja que cambió de nombre, así que no se puede guardar. Dé por ahora otro nombre a la hoja nueva, guarde y luego cámbiele el nombre. El archivo quedó como estaba.',
   appSaveErrChartUnsupported:
     'Este tipo de gráfico no admite esa edición; guardado cancelado — deshaga el cambio del gráfico.',
   appSaveErrMoveOverlap:
@@ -741,6 +749,13 @@ export const es = {
   appSaveAs: 'Guardar como',
   appUndo: 'Deshacer',
   appRedo: 'Rehacer',
+  appQuickAccessCustomize: 'Personalizar la barra de herramientas de acceso rápido',
+  appQuickAccessHint:
+    'Pulse Alt y un número para ejecutar el botón que ocupa esa posición contando desde la izquierda.',
+  appQuickAccessMoveEarlier: 'Mover hacia delante',
+  appQuickAccessMoveLater: 'Mover hacia atrás',
+  appQuickAccessReset: 'Restablecer valores predeterminados',
+  appQuickAccessFull: 'La barra admite hasta 10 botones.',
   appUnsavedEditOne: '● {count} edición sin guardar',
   appUnsavedEditMany: '● {count} ediciones sin guardar',
   appSavedState: 'Guardado',
@@ -1204,6 +1219,8 @@ export const es = {
   appRefreshAll: 'Actualizar todo',
   appWorkbookNoPivot: 'No hay tablas dinámicas en este libro.',
   appRefreshAllTitle: 'Actualizar todas las tablas dinámicas',
+  appQueriesConnections: 'Consultas y conexiones',
+  appQueriesConnectionsTitle: 'Mostrar las consultas y conexiones de datos del libro',
   appErrorCheckingDetail: 'Buscar valores de error en la hoja',
   appErrorsFound: '{count} errores — en {cell}: {value}',
   appCheckingErrors: 'Buscando errores en toda la hoja…',
@@ -1604,4 +1621,9 @@ export const es = {
   appSpellUnavailable: 'La corrección ortográfica no está disponible en esta ventana.',
   appSpellReplaceAll: 'Reemplazar todo por «{suggestion}»',
   appSpellChangedAll: 'Se corrigieron {count} celdas de «{word}».',
+
+  // ── ODS import ──
+  appOdsImportNotice:
+    'El ODS se abrió como una copia xlsx. Al guardar se escribirá un archivo xlsx.',
+  appOdsFormulasDropped: 'En {count} fórmulas solo se conservaron los valores.',
 } satisfies Record<keyof typeof zh, string>

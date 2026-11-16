@@ -91,8 +91,6 @@ export const es = {
   aiStopGeneration: 'Detener generación',
   aiStop: 'Detener',
   aiSend: 'Enviar',
-  aiSnapshotsTitle: 'Instantáneas de versión',
-  aiRollback: 'Revertir',
   aiStarterPolishTitle: 'Mejorar el título y el texto de esta diapositiva',
   aiStarterTighten: 'Hacer más concisas las viñetas de esta diapositiva',
   aiStarterProofread: 'Revisar y corregir las erratas de toda la presentación',
@@ -245,6 +243,11 @@ export const es = {
   aiTplFontsNotice:
     'Las fuentes de la plantilla vienen incluidas en esta aplicación. Otros programas, como PowerPoint, pueden mostrar una fuente distinta.',
   aiTplOpenFonts: 'Abrir carpeta de fuentes',
+  aiTplFontsAuto: 'Fuentes: elige la IA',
+  aiTplFontsOne: 'Fuentes: {font}',
+  aiTplFontsTwo: 'Fuentes: títulos {title}, texto {body}',
+  aiTplFontsTemplate: 'Fuentes: las de la plantilla elegida',
+  aiTplFontsChange: 'Cambiar',
   aiTplDesc_coral:
     'Crema y rosa anaranjado sobre un fondo casi negro, con titulares enormes y estrechos.',
   aiTplDesc_blue_professional:

@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` and `media` use what is set up in the app under Settings ▸ AI ▸ Advanced:
 
 - `search` always works. It uses the free search by default, or the search provider whose key you selected.
-- `image` needs an image provider key. In this version a subscription does not generate images.
+- `image` follows the image generation choice in Settings. With the default, ChatGPT plan (Codex program), it draws with your ChatGPT plan through the Codex program, but only when you have allowed subscriptions for automatic calls (**off by default**; see [Connecting a coding agent](help://mcp)). Otherwise it uses an image provider key you set up. `--model` is used when that route offers the model; otherwise the command answers with the models you can use. Pictures given with `--ref` work on both routes.
 - `media` on a picture uses a key provider when one is set up. It uses your Claude or Codex subscription only when you have allowed that, and that is **off by default**; [Connecting a coding agent](help://mcp) explains the switch and its limits.
 - `media` on video or audio needs a key provider that supports video.
 
