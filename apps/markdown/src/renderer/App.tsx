@@ -9,6 +9,7 @@ import {
   AiMark,
   ImageViewer,
   aiPanelInitiallyOpen,
+  createZoomWheelClassifier,
   effectiveAiPanelOpen,
   onAiRailClick,
   presentationKeyOf,
@@ -86,6 +87,7 @@ import type { ExportFormat, SaveMode } from '../shared/ipc'
 import { uiOp } from './editor/ops'
 import { hasRedactionIn } from './editor/Redaction'
 import { appendMarkdownAtEnd, joinNoteAppends } from './note-append'
+import { nextWheelZoom } from './wheel-zoom'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
@@ -1187,13 +1189,17 @@ export default function App() {
   }, [doSave, printDoc, zoomIn, zoomOut, openFind, toggleSource, loadFromPath, sourceMode, t])
 
   // Chromium reports trackpad pinch as ctrl+wheel. Also support Cmd/Ctrl+scroll
-  // while the pointer is over the document canvas.
+  // while the pointer is over the document canvas. A mouse-wheel notch steps
+  // ten points; only a pinch scales with the delta.
   useEffect(() => {
+    const zoomWheel = createZoomWheelClassifier()
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return
       if (!(event.target as HTMLElement | null)?.closest?.('.editor-scroll')) return
       event.preventDefault()
-      setZoom((value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value - event.deltaY * 0.6)))
+      const intent = zoomWheel.feed(event, event.timeStamp)
+      if (!intent) return
+      setZoom((value) => nextWheelZoom(value, intent, event.deltaY, MIN_ZOOM, MAX_ZOOM))
     }
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)

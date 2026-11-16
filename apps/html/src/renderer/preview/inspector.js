@@ -1136,13 +1136,20 @@
   window.addEventListener('keypress', keepEditKey, true)
   window.addEventListener('keyup', keepEditKey, true)
   // Chromium reports trackpad pinch as ctrl+wheel; the frame swallows wheel events, so relay it.
+  // The host tells a mouse-wheel notch from a pinch, so it needs the delta's unit and the key too.
   // Browse mode (present views) has no zoom control: leave the event alone there.
   document.addEventListener(
     'wheel',
     (e) => {
       if (mode !== 'inspect' || (!e.ctrlKey && !e.metaKey)) return
       e.preventDefault()
-      post({ type: 'gx:zoom', delta: e.deltaY })
+      post({
+        type: 'gx:zoom',
+        delta: e.deltaY,
+        mode: e.deltaMode,
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+      })
     },
     { passive: false, capture: true },
   )

@@ -261,6 +261,7 @@ import {
   Dropdown,
   aiPanelInitiallyOpen,
   aiSubscriptionText,
+  createZoomWheelClassifier,
   effectiveAiPanelOpen,
   onAiRailClick,
   rememberAiPanelOpen,
@@ -331,6 +332,7 @@ import {
   openingFitMode,
 } from './view-config'
 import type { PageSize, FitMode, DefaultFitMode } from './view-config'
+import { nextWheelScale } from './wheel-zoom'
 import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
@@ -8494,6 +8496,9 @@ export default function App() {
 
   // Ctrl/⌘ + wheel zoom (native listener: React's wheel is passive and can't preventDefault)
   const queuedScaleRef = useRef<number | null>(null)
+  // kept across renders: the wheel effect below re-subscribes on every render,
+  // and a fresh classifier would forget the gesture it is in the middle of
+  const [zoomWheel] = useState(createZoomWheelClassifier)
   useLayoutEffect(() => {
     queuedScaleRef.current = null
   }, [scale])
@@ -8528,10 +8533,13 @@ export default function App() {
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       if (e.deltaY === 0) return
+      // a mouse-wheel notch steps ten points; only a trackpad pinch scales with the delta
+      const intent = zoomWheel.feed(e, e.timeStamp)
+      if (!intent) return
       // Accumulate against the queued scale so a fast pinch loses no ticks between renders
       const committed = layoutRef.current.scale
       const current = queuedScaleRef.current ?? committed
-      const next = clampScale(current - e.deltaY * 0.006)
+      const next = nextWheelScale(current, intent, e.deltaY, MIN_SCALE, MAX_SCALE)
       if (next === current) return
       if (next === committed) {
         // nets out to no change: the queue must still be overridden, else an intermediate

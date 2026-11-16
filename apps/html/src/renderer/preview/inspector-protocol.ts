@@ -145,8 +145,11 @@ export type FromInspectorBody =
         | 'moveUp'
         | 'moveDown'
     }
-  /** ctrl/meta + wheel inside the frame (trackpad pinch); the host owns the zoom level */
-  | { type: 'gx:zoom'; delta: number }
+  /**
+   * ctrl/meta + wheel inside the frame (a mouse-wheel notch or a trackpad pinch); the host owns
+   * the zoom level and tells the two apart from the delta, its unit (`mode`) and the key held
+   */
+  | { type: 'gx:zoom'; delta: number; mode?: number; ctrl?: boolean; meta?: boolean }
   | { type: 'gx:navigateBlocked'; href: string }
   | { type: 'gx:markClick'; sid: number }
   /** a resize handle or a sideways image slide was released: the frame already shows these inline styles */

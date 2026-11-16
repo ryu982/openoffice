@@ -34,6 +34,7 @@ Markdown 에디터다. 일반 `.md` 파일 위에서 TipTap 블록 편집기를 
 ## 이 모듈의 방식
 
 - **발표 모드는 문서만 남긴다.** F5는 HTML 전체화면으로 열고 리본·AI 창·개요/백링크 패널·상태 표시줄을 숨긴다. 원문 보기(`sourceViewOpen`)가 열려 있었으면 닫았다가 발표가 끝날 때 다시 연다. 발표 중에는 편집기를 읽기 전용으로 둔다(`editor.setEditable(false)`). Esc·F5로 끝나며, OS에서 전체화면이 풀려도 같은 복원을 한다. `.txt`·`.json`처럼 블록 편집기가 없는 파일은 발표하지 않는다. 키 판정은 `@genoffice/ui`의 `presentationKeyOf` 하나다.
+- **Ctrl+휠 확대는 마우스 휠 한 칸에 10%p다.** `@genoffice/ui`의 `createZoomWheelClassifier`가 휠 한 칸과 터치패드 핀치를 가르고, 다음 배율은 `wheel-zoom.ts`의 `nextWheelZoom`이 정한다(핀치는 움직인 만큼 이어서 바뀐다). 휠 값에 배율을 곱하던 예전 식은 Windows 휠 한 칸(100)에 60%p를 뛰었다. `wheel-zoom.ts`의 `nextWheelZoom`은 HTML 편집기의 같은 이름 함수와 내용이 같다.
 - 링크는 `window.open`으로 열고, 그 창구는 메인이 `shell.openExternal`로 넘긴다. 편집 중에는 Ctrl/Cmd+클릭, 발표(F5)처럼 읽기 전용일 때는 그냥 클릭이다(`linkOpen.ts`의 `externalLinkTarget`이 http·https·mailto만 통과시킨다). 앵커의 기본 이동은 막는다. 편집 중에 링크를 그냥 처음 클릭하면 Ctrl/⌘+클릭 안내를 한 번 띄운다(`linkOpenHint`).
 - 메인 코드는 shell 번들에 들어간다(`../../../markdown/src/main/markdown-main`을 상대 경로로 import한다). `src/main`을 고친 뒤에는 shell을 다시 빌드한다.
 - 경로는 뷰별로 허가된 것만 다룬다. 새 창을 만들 때 `grantAndTrack`으로 열 파일을 등록한다.

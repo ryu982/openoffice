@@ -16,6 +16,7 @@ import {
   type FindPanelStrings,
   type FindTarget,
   aiPanelInitiallyOpen,
+  createZoomWheelClassifier,
   effectiveAiPanelOpen,
   onAiRailClick,
   presentationKeyOf,
@@ -105,6 +106,7 @@ import { adoptImageRewrites } from './document/image-rewrites'
 import { deriveAutoFileName, deriveNameFromPrompt, derivePageTitleName } from './document/auto-name'
 import { runGuardedPrint } from './print-guard'
 import { startRecoveryCopies } from './recovery-copy'
+import { frameWheelOf, nextWheelZoom, type ZoomWheel } from './wheel-zoom'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
 
 type LoadStatus = 'loading' | 'ready' | 'error'
@@ -183,6 +185,16 @@ export default function App() {
   /** Present → Fullscreen: the presenting view also takes the whole screen */
   const [presentFull, setPresentFull] = useState(false)
   const [zoom, setZoom] = useState(100)
+  // One classifier for both wheel sources (the stage chrome and the frame's
+  // relay): a mouse-wheel notch steps ten points, only a pinch scales with the delta.
+  const [zoomWheel] = useState(createZoomWheelClassifier)
+  const wheelZoom = useCallback(
+    (wheel: ZoomWheel, now: number) => {
+      const intent = zoomWheel.feed(wheel, now)
+      if (intent) setZoom((z) => nextWheelZoom(z, intent, wheel.deltaY, MIN_ZOOM, MAX_ZOOM))
+    },
+    [zoomWheel],
+  )
   const [autoSave, setAutoSave] = useAutoSavePref('htmlapp.autoSave', window.htmlApi)
   const [findTarget, setFindTarget] = useState<FindTarget | null>(null)
   const [findFocus, setFindFocus] = useState<FindFocusRequest>({ field: 'find', nonce: 0 })
@@ -950,9 +962,12 @@ export default function App() {
           return
         case 'gx:textEditCancel':
           return
-        case 'gx:zoom':
-          if (canvasModeRef.current !== 'present') setZoom((z) => clampZoom(z - msg.delta * 0.6))
+        case 'gx:zoom': {
+          const wheel = frameWheelOf(msg)
+          // the frame's clock is not this one: time the gesture by when the relay arrives
+          if (wheel && canvasModeRef.current !== 'present') wheelZoom(wheel, performance.now())
           return
+        }
         case 'gx:keyCommand': {
           if (canvasModeRef.current === 'present') {
             if (msg.command === 'escape') setCanvasModeState('edit')
@@ -1031,6 +1046,7 @@ export default function App() {
       t,
       flushPending,
       openMathRef,
+      wheelZoom,
     ],
   )
 
@@ -1728,11 +1744,11 @@ export default function App() {
       if (canvasModeRef.current === 'present') return
       if (!(event.target as HTMLElement | null)?.closest?.('.preview-stage')) return
       event.preventDefault()
-      setZoom((z) => clampZoom(z - event.deltaY * 0.6))
+      wheelZoom(event, event.timeStamp)
     }
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [wheelZoom])
 
   // autosave: every 30s and on window blur; untitled documents wait for an explicit first save
   useEffect(() => {
