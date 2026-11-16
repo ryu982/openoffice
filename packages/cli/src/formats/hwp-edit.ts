@@ -34,6 +34,7 @@ type HwpDocument = InstanceType<Engine['HwpDocument']>
 /** Tools of the in-app AI that need the app's window, the network or a model: not ops here. */
 const NOT_HEADLESS: Record<string, string> = {
   read_url: 'reads a web page; use `ieumoffice read-url`',
+  web_search: 'searches the web; use `ieumoffice search`',
   image_search: 'searches the web for pictures',
   generate_image: 'asks an image model',
   insert_image: 'pictures come from the chat or the web in the app',
@@ -259,20 +260,49 @@ const HWP_GROUPS: { name: string; summary: string; ops: string[] }[] = [
       'find_text',
       'list_tables',
       'read_table',
+      'check_layout',
       'list_fields',
       'list_notes',
+      'list_equations',
       'read_style',
+      'read_note_settings',
+      'read_page_setup',
+      'read_page_layout',
+      'read_formatting',
+      'list_paragraph_looks',
     ],
   },
   {
     name: 'text',
     summary: 'text is found by what it says; a text that occurs more than once needs occurrence',
-    ops: ['replace_text', 'replace_all', 'insert_paragraphs', 'delete_paragraph'],
+    ops: [
+      'replace_text',
+      'replace_all',
+      'insert_paragraphs',
+      'delete_paragraph',
+      'insert_equations',
+      'edit_equation',
+    ],
   },
   {
     name: 'format',
     summary: 'only the properties given change',
-    ops: ['format_text', 'format_paragraph', 'create_style', 'edit_style'],
+    ops: [
+      'format_text',
+      'format_paragraph',
+      'format_look',
+      'create_style',
+      'edit_style',
+      'style_paragraphs',
+      'set_page_setup',
+      'set_page_number',
+      'set_columns',
+      'insert_break',
+      'set_page_border',
+      'resize_picture',
+      'set_header_footer',
+      'set_note_settings',
+    ],
   },
   {
     name: 'tables',
@@ -287,6 +317,7 @@ const HWP_GROUPS: { name: string; summary: string; ops: string[] }[] = [
       'merge_cells',
       'split_cell',
       'format_cells',
+      'insert_title_box',
     ],
   },
   {
@@ -463,7 +494,15 @@ export async function saveHwpSession(
   } catch {
     // a tab that cannot be measured is written as the engine wrote it (as in the app)
   }
-  const fixed = mods.saveFixes.applySaveFixes(bytes, format, tabs, session.base)
+  // the preview of the document as it is now (decision 0146): the text, and with no screen
+  // to draw the page on, the blank picture rather than the opened file's
+  let preview: { text: string; image: null } = { text: '', image: null }
+  try {
+    preview = { text: session.surface.savePreview().text, image: null }
+  } catch {
+    // a blank preview, never the stale one
+  }
+  const fixed = mods.saveFixes.applySaveFixes(bytes, format, tabs, session.base, preview)
   bytes = fixed.bytes
   if (!mods.savePlan.bytesMatchFormat(bytes, format)) {
     throw new CliError(

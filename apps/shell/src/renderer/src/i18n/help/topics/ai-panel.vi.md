@@ -45,7 +45,7 @@ Trong bảng AI của trình soạn thảo Docs, Sheets, Slides, Hangul, HTML v�
 
 ## Quay lui và an toàn
 
-- Bảng của Docs giữ một **danh sách phiên bản**: mỗi lượt một ảnh chụp, quay lui về bất kỳ ảnh nào, và bản thân thao tác quay lui cũng quay lui được bằng Ctrl+Z. Ảnh chụp vẫn còn sau khi mở lại tài liệu.
+- Lượt nào AI đã sửa tài liệu sẽ có thẻ **Thay đổi trong tài liệu: N** dưới câu trả lời, và những chỗ đã sửa được đánh dấu màu vàng trên tài liệu. Dấu này chỉ hiện trên màn hình — không bao giờ được lưu, in hay xuất ra — và sẽ mất khi bạn gửi yêu cầu tiếp theo hoặc bấm **Ẩn đánh dấu**. **Hoàn tác các thay đổi này** lấy lại cả lượt đó trong một lần. Trong Docs, Markdown, HTML, Slides, sơ đồ tư duy và trình vẽ sơ đồ, hoàn tác một lượt trước đó cũng hoàn tác các lượt sau nó; trong Hangul, Sheets, PDF và EPUB chỉ hoàn tác được lượt cuối cùng, và chỉ khi tài liệu chưa được sửa sau lượt đó. Khi không hoàn tác được, hãy dùng Hoàn tác của chính trình soạn thảo (Ctrl+Z).
 - Các chỉnh sửa của AI đi qua đúng quy trình chỉnh sửa như chỉnh sửa thủ công (hoàn tác được, phải qua xác nhận lưu của bạn) — không có gì lách qua bước xác nhận lưu.
 
 ## Ẩn vùng chọn khỏi AI

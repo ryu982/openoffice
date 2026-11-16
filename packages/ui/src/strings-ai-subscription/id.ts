@@ -17,6 +17,8 @@ export const id = {
   cardErrNeedsUpdatePath: 'File yang dijalankan aplikasi ini:',
   cardErrNeedsUpdateWindows:
     'Memperbarui {provider} di dalam WSL (Ubuntu) atau di folder lain tidak mengubah file ini. Jalankan {command} di Windows PowerShell.',
+  claudeDesktopNote:
+    'Aplikasi desktop Claude bukan Claude Code yang dijalankan aplikasi ini. Claude Code adalah program terpisah yang dipakai di terminal, jadi memasang atau memperbarui aplikasi desktop tidak mengubahnya.',
   cardErrTimeout: 'Program {provider} tidak menjawab tepat waktu. Periksa lagi sebentar lagi.',
   cardErrFailed: 'Terjadi masalah saat memeriksa {provider}. Periksa lagi.',
   actionInstall: 'Pasang',
@@ -52,6 +54,8 @@ export const id = {
   errSignedOut: 'Sesi masuk {provider} sudah berakhir. Masuk lagi untuk melanjutkan.',
   errRateLimit: 'Batas langganan {provider} sudah habis.',
   errRateLimitReset: 'Batas langganan {provider} sudah habis. Batas diatur ulang pada {time}.',
+  errChatGptAppLimit:
+    'Aplikasi ini sudah menghabiskan penggunaan ChatGPT yang bisa dipakainya. Batas itu bisa batas seluruh paket Anda atau batas yang ditetapkan untuk aplikasi ini. Periksa di ChatGPT pada Pengaturan → Penggunaan.',
   errUnsafeTools:
     'Program {provider} dimulai dengan alat bawaannya masih aktif, sehingga proses dihentikan demi keamanan.',
   errMeteredNotAccepted:
@@ -114,7 +118,7 @@ export const id = {
   stepLogin: 'Masuk',
   stepReady: 'Terhubung',
   installReturnNote:
-    'Setelah pemasangan di jendela itu selesai, kembali ke sini. Aplikasi akan memeriksa lagi dengan sendirinya.',
+    'Selama mengunduh, jendela itu mungkin tidak menampilkan apa pun selama beberapa menit. Biarkan tetap terbuka. Setelah pemasangan selesai, kembali ke sini. Aplikasi akan memeriksa lagi dengan sendirinya.',
   loginHowNote:
     'Browser akan terbuka saat Anda menekannya. Masuk dengan akun {vendor} Anda dan tekan Izinkan; koneksi akan selesai dengan sendirinya.',
   signingInStalledNote:
@@ -152,6 +156,16 @@ export const id = {
     'Halaman masuk ChatGPT akan terbuka di browser Anda. Masuk lalu izinkan aplikasi ini memakai paket ChatGPT Anda; koneksi akan tersambung sendiri.',
   chatgptLoginUnfinishedNote:
     'Proses masuk belum selesai. Tekan lagi untuk memulai dari awal. Koneksi memerlukan izin Anda untuk memakai paket ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Anda sudah masuk ke ChatGPT, tetapi aplikasi ini tidak mendapat izin memakai paket Anda. Tekan lagi dan izinkan pemakaian paket di halaman persetujuan. Jika sudah Anda izinkan, mungkin OpenAI tidak menyediakan pemakaian ini untuk akun Anda (misalnya akun yang dikelola perusahaan atau sekolah) atau paket Anda. Dalam hal itu, Anda bisa terhubung dengan program Codex.',
+  chatgptLoginDeniedNote:
+    'Anda sudah masuk di browser, tetapi OpenAI tidak menerima koneksi ini, atau jawabannya tidak dapat diperiksa. Pastikan tanggal dan jam PC ini benar, lalu tekan lagi untuk memulai dari awal.',
+  chatgptLoginNetworkNote:
+    'Proses masuk tidak dapat diselesaikan: OpenAI tidak dapat dihubungi, atau browser tidak terbuka. Periksa koneksi internet (termasuk jaringan kantor, VPN, atau proxy), lalu tekan lagi.',
+  chatgptLoginWorkspacePolicyNote:
+    'Akun ChatGPT ini termasuk ruang kerja yang dikelola perusahaan atau sekolah, dan OpenAI tidak mengizinkan aplikasi memakai paket ChatGPT ruang kerja. Admin ruang kerja tidak punya pengaturan untuk mengizinkan aplikasi ini, jadi masuk lagi tidak akan membantu. Masuk dengan akun ChatGPT pribadi (Go, Plus, atau Pro), atau sambungkan lewat kartu Codex.',
+  chatgptLoginNotAllowedNote:
+    'Anda tidak mengizinkan aplikasi ini memakai paket ChatGPT Anda, atau browser kembali dari proses masuk dengan kegagalan. Tekan lagi, masuk, lalu izinkan di halaman persetujuan.',
   chatgptSigningInNote:
     'Masuk dengan akun ChatGPT Anda di browser yang terbuka, lalu izinkan aplikasi ini memakai paket Anda. Koneksi akan tersambung sendiri.',
   chatgptPlanNote:
@@ -161,4 +175,18 @@ export const id = {
   browserPageDoneBody: 'Anda dapat menutup tab ini dan kembali ke aplikasi.',
   browserPageFailedTitle: 'Koneksi tidak berhasil',
   browserPageFailedBody: 'Kembali ke aplikasi dan coba lagi.',
+  cardOff: 'Dimatikan di aplikasi ini',
+  offNote:
+    'Aplikasi ini tidak menjalankan program {provider} dan tidak memeriksa statusnya. Login {provider} di PC ini dan pemakaiannya di terminal tetap seperti semula.',
+  offElsewhereNote: 'Anda bisa memakainya lagi di Pengaturan → AI.',
+  offSwitchNote:
+    '"Jangan pakai di aplikasi ini" membiarkan login {provider} di PC ini dan hanya menghentikan aplikasi ini. Keluar berlaku untuk seluruh PC.',
+  actionTurnOff: 'Jangan pakai di aplikasi ini',
+  actionTurnOn: 'Pakai lagi',
+  connectOffTitle: '{provider} dimatikan di aplikasi ini',
+  connectOffBody:
+    'Tekan "Pakai lagi" pada kartu {provider} di Pengaturan → AI, atau pilih AI lain.',
+  errOffInApp:
+    '{provider} dimatikan di aplikasi ini, jadi tidak ada yang dijalankan. Anda bisa memakainya lagi di Pengaturan → AI.',
+  guideBadgeOff: 'Dimatikan',
 } satisfies Record<keyof typeof zh, string>

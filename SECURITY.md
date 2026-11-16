@@ -3,7 +3,7 @@
 ## Reporting a Vulnerability
 
 Please report suspected vulnerabilities privately via GitHub's
-[private vulnerability reporting](https://github.com/pblsketch/openoffice/security/advisories/new)
+[private vulnerability reporting](https://github.com/pblsketch/ieumoffice/security/advisories/new)
 on this repository. Do not open public issues for security reports. IeumOffice
 is maintained by volunteers, so reports are handled on a best-effort basis.
 
@@ -20,8 +20,13 @@ build provenance attestation, so you can check that it was made from this
 repository's source by its own workflow:
 
 ```
-gh attestation verify IeumOffice-Setup-<version>.exe --repo pblsketch/openoffice
+gh attestation verify IeumOffice-Setup-<version>.exe --repo pblsketch/ieumoffice
 ```
+
+The repository was renamed from `pblsketch/openoffice` on 2026-11-08. The
+attestation of a file released before that (0.12.11 and earlier) names the
+old repository; if it does not match the new name, verify it with
+`--repo pblsketch/openoffice`.
 
 The installer is not code-signed, so Windows shows an "unknown publisher"
 warning the first time you run it.
@@ -162,11 +167,21 @@ AI-HTML-to-pptx conversion runs inside the slides renderer, never in a hidden
 window. The HTML app's DOCX export and the docs altChunk conversion drive their
 windows exclusively through `executeJavaScript` under a watchdog timeout
 (`Promise.race` against a fixed timeout, then `destroy()`), so a page whose
-scripts never yield cannot strand the hidden window. HTML→DOCX
-conversion renders the page with scripts enabled and does not sanitize the
-markup before conversion — the output is a document, not a sandbox escape;
-report it as a vulnerability if you find a way from the converted page into
-the main process.
+scripts never yield cannot strand the hidden window.
+
+The HTML in those two conversions is not only AI output: an altChunk is
+whatever the author of a `.docx` put in it, and the HTML app exports files the
+user may have received from anyone. Both render from a `file://` page, so the
+hidden window (decision 0142) lives in an in-memory session of its own where
+every request outside the caller's allowlist is cancelled (the altChunk window
+may load its own chunk file and nothing else; the HTML export also allows the
+document folder's `html-asset://` and the http(s) the preview loads), the page
+cannot navigate itself, and permission requests and downloads are refused. An
+altChunk page additionally carries a CSP that blocks its scripts and every
+external fetch, as Word does not run them either. The markup is not sanitized
+before conversion. Report it as a vulnerability if a converted page can read a
+local file other than its own, reach a URL outside its allowlist, or get from
+the page into the main process.
 
 ## Out of Scope
 

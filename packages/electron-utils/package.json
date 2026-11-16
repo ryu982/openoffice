@@ -7,9 +7,14 @@
   "description": "Shared helpers for the Electron main processes (no Electron dependency, pure TS)",
   "exports": {
     ".": "./src/index.ts",
+    "./ai-activity": "./src/ai-activity.ts",
+    "./ai-create-guard": "./src/ai-create-guard.ts",
     "./ai-run-guard": "./src/ai-run-guard.ts",
+    "./app-choice": "./src/app-choice.ts",
+    "./app-choice-bridge": "./src/app-choice-bridge.ts",
     "./atomic-write": "./src/atomic-write.ts",
     "./drop-open": "./src/drop-open.ts",
+    "./editor-entrance": "./src/editor-entrance.ts",
     "./doc-attach-bridge": "./src/doc-attach-bridge.ts",
     "./doc-attach-channels": "./src/doc-attach-channels.ts",
     "./drive-ai-bridge": "./src/drive-ai-bridge.ts",
@@ -18,10 +23,17 @@
     "./outbound-channels": "./src/outbound-channels.ts",
     "./project-folder-bridge": "./src/project-folder-bridge.ts",
     "./generated-images": "./src/generated-images.ts",
+    "./mcp-tools-bridge": "./src/mcp-tools-bridge.ts",
+    "./mcp-tools-channels": "./src/mcp-tools-channels.ts",
+    "./numbered-export-paths": "./src/numbered-export-paths.ts",
     "./font-store": "./src/font-store.ts",
     "./office-encryption": "./src/office-encryption.ts",
     "./headless-export": "./src/headless-export.ts",
+    "./print-cups": "./src/print-cups.ts",
+    "./print-arranged": "./src/print-arranged.ts",
     "./print-job": "./src/print-job.ts",
+    "./print-layout-bridge": "./src/print-layout-bridge.ts",
+    "./print-layout-channels": "./src/print-layout-channels.ts",
     "./print-window": "./src/print-window.ts",
     "./remote-image": "./src/remote-image.ts",
     "./fetch-image-bytes": "./src/fetch-image-bytes.ts",
@@ -48,6 +60,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@genoffice/print-layout": "*",
     "parse5": "^8.0.1",
     "undici": "^6.29.0"
   }

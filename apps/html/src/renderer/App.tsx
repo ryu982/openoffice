@@ -65,7 +65,8 @@ import {
   type EditQueueItem,
 } from './ai/edit-queue'
 import { buildProjection } from './ai/redact'
-import { Breadcrumb, type NodeState } from './components/Breadcrumb'
+import { changedElements } from './ai/change-marks'
+import { ALT_KEY, Breadcrumb, type NodeState } from './components/Breadcrumb'
 import {
   Ribbon,
   type PresentKind,
@@ -76,6 +77,7 @@ import {
 import { AiMark, CropDialog, CutoutDialog, type ImageDialogLabels } from '@genoffice/ui'
 import { FloatToolbar } from './components/FloatToolbar'
 import { RedactDialog } from './components/RedactDialog'
+import { useAiVisible } from './ai-visibility'
 import { useMathExtension } from './extensions/math/useMathExtension'
 import { redactClearPlan, redactMarkPlan, type RedactPlan } from './document/redact-edit'
 import {
@@ -105,6 +107,7 @@ import { withPendingEdits } from './document/pending-edits'
 import { adoptImageRewrites } from './document/image-rewrites'
 import { deriveAutoFileName, deriveNameFromPrompt, derivePageTitleName } from './document/auto-name'
 import { runGuardedPrint } from './print-guard'
+import { HtmlPrintDialog } from './PrintDialog'
 import { startRecoveryCopies } from './recovery-copy'
 import { frameWheelOf, nextWheelZoom, type ZoomWheel } from './wheel-zoom'
 import type { ExportFormat, SaveMode } from '../shared/ipc'
@@ -209,9 +212,20 @@ export default function App() {
   const aiPanelOpen = effectiveAiPanelOpen(aiOpen, paneRole)
   // the sidebar switch is a soft hide; it closes the panel when it turns off
   const aiSidebarEnabled = useAiSidebarEnabled(setAiOpen)
+  // Settings › Editors and AI: while AI is off no AI part of this editor is drawn
+  // (panel, ribbon entries, Ask AI, withholding); turning it back on brings them back
+  const aiOn = useAiVisible()
+  const aiOnRef = useRef(aiOn)
+  aiOnRef.current = aiOn
   const [aiPreset, setAiPreset] = useState<AiPreset | null>(null)
   const [editQueue, setEditQueue] = useState<EditQueueItem[]>([])
   const [askMode, setAskMode] = useState<AskMode | null>(null)
+  // AI turned off: the queued AI edits go with the panel, and so does an open Ask AI
+  useEffect(() => {
+    if (aiOn) return
+    setEditQueue((queue) => (queue.length ? [] : queue))
+    setAskMode(null)
+  }, [aiOn])
   const [selectedSid, setSelectedSid] = useState<number | null>(null)
   const [selectedState, setSelectedState] = useState<NodeState>('static')
   /** elements selected alongside selectedSid (shift / ctrl+click, rubber band): delete,
@@ -356,6 +370,42 @@ export default function App() {
     mapSourceRef.current = textRef.current
     return next
   }, [])
+
+  /** the marks of the AI's last changes are on the page (the card offers to take them off) */
+  const [aiMarksShown, setAiMarksShown] = useState(false)
+  /** an AI change since the marks were last cleared took text out: no mark shows it */
+  const aiUnmarkedRef = useRef(false)
+  /**
+   * The source pane holds the marks (mapped through later edits); the preview
+   * shows them as boxes over the elements they touched. The boxes are the
+   * frame's own overlay nodes: never part of the source, a save, an export or a print.
+   */
+  const postAiMarks = useCallback(() => {
+    const ranges = editorRef.current?.aiRanges() ?? []
+    if (ranges.length === 0 || canvasModeRef.current === 'present') {
+      previewRef.current?.post({ type: 'gx:clearHighlight' })
+      return
+    }
+    const { sids } = changedElements(getMap(), textRef.current, ranges)
+    const tokens = getComputedStyle(document.documentElement)
+    previewRef.current?.post({
+      type: 'gx:highlight',
+      sids,
+      fill: tokens.getPropertyValue('--color-ai-changed-bg').trim() || undefined,
+      line: tokens.getPropertyValue('--color-ai-changed-line').trim() || undefined,
+    })
+  }, [getMap])
+  /** after anything that can add, move or drop marks: the card and the preview follow */
+  const syncAiMarks = useCallback(() => {
+    const shown = (editorRef.current?.aiRanges().length ?? 0) > 0
+    if (!shown) aiUnmarkedRef.current = false
+    setAiMarksShown(shown)
+    postAiMarks()
+  }, [postAiMarks])
+  const clearAiMarks = useCallback(() => {
+    editorRef.current?.clearHighlights()
+    syncAiMarks()
+  }, [syncAiMarks])
 
   useEffect(() => {
     let cancelled = false
@@ -556,10 +606,11 @@ export default function App() {
 
   const onEditorChange = useCallback(
     (next: string) => {
-      editorRef.current?.clearHighlights()
       commitText(next, true)
+      // typing in the source takes the marks off, as before
+      clearAiMarks()
     },
-    [commitText],
+    [commitText, clearAiMarks],
   )
 
   /** compile + apply one batch; manual batches are not highlighted and count as user edits for AI staleness */
@@ -576,9 +627,11 @@ export default function App() {
         ? editor.applyPatches(compiled.patches, !manual)
         : compiled.patches.map((p) => [p.from, p.from + p.text.length] as [number, number])
       commitText(applyPatches(base, compiled.patches), manual)
+      if (!manual && ranges.some(([a, b]) => b <= a)) aiUnmarkedRef.current = true
+      syncAiMarks()
       return { ok: true, ranges }
     },
-    [commitText, getMap],
+    [commitText, getMap, syncAiMarks],
   )
 
   const flushStylesRef = useRef<(() => void) | null>(null)
@@ -605,8 +658,10 @@ export default function App() {
       // a new page, not an edit of the one on screen: it opens at the top
       frameScrollRef.current = null
       commitText(pinned, false)
+      aiUnmarkedRef.current = false
+      syncAiMarks()
     },
-    [commitText, flushPending],
+    [commitText, flushPending, syncAiMarks],
   )
 
   /** apply a toolbar/inspector batch; the selection follows the edited element (or clears when it is gone) */
@@ -814,6 +869,8 @@ export default function App() {
     previewRef.current?.post({ type: 'gx:mark', marks })
   }, [getMap])
   useEffect(postMarks, [editQueue, canvasMode, postMarks])
+  // presenting hides the marks of the AI's changes, as it hides the queue pins
+  useEffect(postAiMarks, [canvasMode, postAiMarks])
 
   const onInspectorMessage = useCallback(
     (msg: FromInspector) => {
@@ -845,6 +902,8 @@ export default function App() {
             previewRef.current?.post({ type: 'gx:beginTextEdit', sid })
           editAfterLoadRef.current = null
           postMarks()
+          // the reloaded copy has no boxes yet: the marks of the AI's changes go back on
+          postAiMarks()
           return
         }
         case 'gx:markClick': {
@@ -999,8 +1058,9 @@ export default function App() {
               'clear',
             )
           else if (msg.command === 'escape') selectSid(null)
-          else if (msg.command === 'askAi') setAskMode({ kind: 'new' })
-          else if (msg.command === 'bold') wrapSelectionRef.current('strong')
+          else if (msg.command === 'askAi') {
+            if (aiOnRef.current) setAskMode({ kind: 'new' })
+          } else if (msg.command === 'bold') wrapSelectionRef.current('strong')
           else if (msg.command === 'italic') wrapSelectionRef.current('em')
           else if (msg.command === 'parent' && e.parentSid !== null) {
             const parent = map.bySid.get(e.parentSid)
@@ -1038,6 +1098,7 @@ export default function App() {
     [
       getMap,
       postMarks,
+      postAiMarks,
       postPaper,
       runManual,
       selectSid,
@@ -1500,6 +1561,12 @@ export default function App() {
           defaultName: provisionalNameRef.current ?? undefined,
           auto,
         })
+        if (result.ok && 'path' in result && result.exported) {
+          // Save As › PDF, Word or ODT wrote a copy: the page keeps its path,
+          // its unsaved edits and its assets (the main process opened the copy)
+          setSaveState('idle')
+          return true
+        }
         if (result.ok && 'path' in result) {
           const adopted = adoptImageRewrites(textAtSave, textRef.current, result.imageRewrites)
           if (adopted.liveText !== textRef.current) {
@@ -1612,6 +1679,27 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t is not referentially stable
   }, [])
 
+  // Shell menu Print / ⌘P / the tab menu open the print dialog first (decision
+  // 0141). All pages with nothing changed there is runPrint as before.
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const openPrintDialog = useCallback(() => {
+    // the system dialog of a print already under way is modal: no second print
+    if (statusRef.current !== 'ready' || printingRef.current) return
+    setPrintDialogOpen(true)
+  }, [])
+  const closePrintDialog = useCallback(() => setPrintDialogOpen(false), [])
+  const printDocumentText = useCallback(() => {
+    flushPending()
+    return serializeDocText({ text: textRef.current, envelope: envelopeRef.current })
+  }, [flushPending])
+  const printSuggestedName = useCallback(
+    () =>
+      pathRef.current?.replace(/^.*[/\\]/, '').replace(/\.html?$/i, '') ||
+      deriveAutoFileName(textRef.current) ||
+      '',
+    [],
+  )
+
   // Headless export mode (--headless-export): this renderer lives in a hidden
   // window whose only job is to run the File menu's PDF or Word export against
   // a path the CLI chose, then report back so the main process can quit.
@@ -1677,13 +1765,15 @@ export default function App() {
     const offExport = window.htmlApi.onExportRequest((format) => void runExport(format))
     // Shell menu Print / ⌘P. The menu owns the accelerator, so this subscription
     // is the only route the keystroke takes; without it ⌘P did nothing at all.
-    const offPrint = window.htmlApi.onPrintRequest(() => void runPrint())
+    const offPrint = window.htmlApi.onPrintRequest(openPrintDialog)
     const offTheme = window.htmlApi.onThemeChanged(() => {
       // let main.tsx flip data-theme first
       window.setTimeout(() => {
         previewRef.current?.post({ type: 'gx:theme', dark: isDarkTheme() })
         // the desk between the sheets is a chrome colour
         if (pageSetupRef.current) postPaper()
+        // so are the marks of the AI's changes
+        postAiMarks()
       }, 0)
     })
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1735,7 +1825,18 @@ export default function App() {
       offTheme()
       window.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [doSave, runExport, runPrint, cycleView, zoomIn, zoomOut, flushPending, openFind, postPaper])
+  }, [
+    doSave,
+    runExport,
+    openPrintDialog,
+    cycleView,
+    zoomIn,
+    zoomOut,
+    flushPending,
+    openFind,
+    postPaper,
+    postAiMarks,
+  ])
 
   // pinch / ctrl+wheel over the stage chrome around the frame; wheel inside the frame arrives as gx:zoom
   useEffect(() => {
@@ -1843,7 +1944,13 @@ export default function App() {
         derivePageTitleName(text) || provisionalNameRef.current || deriveAutoFileName(text)
       if (name) void doSave('save', name)
     },
-    clearHighlights: () => editorRef.current?.clearHighlights(),
+    clearHighlights: clearAiMarks,
+    changedPlaces: () => {
+      const ranges = editorRef.current?.aiRanges() ?? []
+      if (ranges.length === 0 || aiUnmarkedRef.current) return undefined
+      const { sids, complete } = changedElements(getMap(), textRef.current, ranges)
+      return complete && sids.length > 0 ? sids.length : undefined
+    },
     onBriefConfirmed: (brief) => {
       briefRef.current = brief
     },
@@ -1979,38 +2086,41 @@ export default function App() {
       />
 
       <div className="app-main">
-        <div
-          className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
-            !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
-          }`}
-        >
-          {!aiPanelOpen && aiSidebarEnabled && (
-            <button
-              className="ai-rail"
-              data-tip={t('aiOpenAssistant')}
-              aria-label={t('aiOpenAssistant')}
-              onClick={() => onAiRailClick(paneRole, aiOpen, setAiOpen, requestFocus)}
-            >
-              <AiMark size={18} />
-            </button>
-          )}
-          {/* stays mounted while collapsed: an in-flight run, its snapshots and the loop context survive */}
-          <AiPanel
-            deps={aiDeps}
-            filePath={path}
-            preset={aiPreset}
-            onGenerateHandoff={() => setAiOpen(true)}
-            templateDocument={templateDocument}
-            onSkillHandoff={() => setAiOpen(true)}
-            editQueue={editQueue}
-            onQueueEditInstruction={queueUpdate}
-            onQueueRemove={queueRemove}
-            onQueueClear={() => setEditQueue([])}
-            onQueueFocus={queueFocus}
-            onQueueConsume={queueConsume}
-            onCollapse={() => setAiOpen(false)}
-          />
-        </div>
+        {aiOn && (
+          <div
+            className={`ai-dock${aiPanelOpen ? '' : ' collapsed'}${
+              !aiSidebarEnabled && !aiPanelOpen ? ' ai-dock-off' : ''
+            }`}
+          >
+            {!aiPanelOpen && aiSidebarEnabled && (
+              <button
+                className="ai-rail"
+                data-tip={t('aiOpenAssistant')}
+                aria-label={t('aiOpenAssistant')}
+                onClick={() => onAiRailClick(paneRole, aiOpen, setAiOpen, requestFocus)}
+              >
+                <AiMark size={18} />
+              </button>
+            )}
+            {/* stays mounted while collapsed: an in-flight run, its snapshots and the loop context survive */}
+            <AiPanel
+              deps={aiDeps}
+              filePath={path}
+              preset={aiPreset}
+              onGenerateHandoff={() => setAiOpen(true)}
+              templateDocument={templateDocument}
+              onSkillHandoff={() => setAiOpen(true)}
+              editQueue={editQueue}
+              onQueueEditInstruction={queueUpdate}
+              onQueueRemove={queueRemove}
+              onQueueClear={() => setEditQueue([])}
+              onQueueFocus={queueFocus}
+              onQueueConsume={queueConsume}
+              onCollapse={() => setAiOpen(false)}
+              marksShown={aiMarksShown}
+            />
+          </div>
+        )}
         <div className="app-content">
           {findTarget && (
             <FindPanel
@@ -2110,7 +2220,7 @@ export default function App() {
                       onReplaceImage={replaceImage}
                       onCropImage={() => void openPictureDialog('crop')}
                       onCutoutImage={() => void openPictureDialog('cutout')}
-                      canAskAi={askTarget !== null}
+                      canAskAi={aiOn && askTarget !== null}
                       onAskAi={askAi}
                       tag={selectedEntry.tag}
                       onMove={moveSelected}
@@ -2165,7 +2275,7 @@ export default function App() {
                 onChange={onEditorChange}
                 onCursor={onCursor}
                 onBeforeReplace={flushPending}
-                onRedact={onRedactSelection}
+                onRedact={aiOn ? onRedactSelection : undefined}
               />
             </div>
           </div>
@@ -2174,8 +2284,16 @@ export default function App() {
             <div className="status-left">
               {notice ? (
                 <span className="status-item status-notice">{notice}</span>
+              ) : !path ? (
+                <span className="status-item status-hint">{t('previewNeedsSave')}</span>
               ) : (
-                !path && <span className="status-item status-hint">{t('previewNeedsSave')}</span>
+                // the crumbs row that carries this hint is not shown over the preview alone
+                view === 'preview' &&
+                canvasMode === 'edit' && (
+                  <span className="status-item status-hint">
+                    {t('inspectHint', { alt: ALT_KEY })}
+                  </span>
+                )
               )}
             </div>
             <div className="status-right">
@@ -2232,7 +2350,7 @@ export default function App() {
           </footer>
         </div>
       </div>
-      {askTarget && askMode && canvasMode !== 'present' && (
+      {aiOn && askTarget && askMode && canvasMode !== 'present' && (
         <AiAskPopover
           key={askMode.kind === 'edit' ? askMode.qid : 'new'}
           target={askTarget}
@@ -2275,6 +2393,16 @@ export default function App() {
           image={pictureDialog.image}
           onApply={(png) => void applyPictureBytes(pictureDialog.sid, pictureDialog.src, png)}
           onCancel={() => setPictureDialog(null)}
+        />
+      )}
+      {printDialogOpen && (
+        <HtmlPrintDialog
+          api={window.htmlApi}
+          documentText={printDocumentText}
+          suggestedName={printSuggestedName}
+          onPlainPrint={() => void runPrint()}
+          onClose={closePrintDialog}
+          onNotice={setNotice}
         />
       )}
     </div>

@@ -12,6 +12,13 @@ import type { WorkbookOperation } from '@genoffice/xlsx-gateway/domain/workbook-
 import type { ApplyOutcome } from '@genoffice/xlsx-gateway/domain/workbook.types'
 
 import { columnLabel } from '@genoffice/xlsx-gateway/domain/cell-address'
+import type { PrintLayoutErrorCode, PrintLayoutOptions } from '@genoffice/print-layout/plan'
+import {
+  printLayoutIssueText,
+  type PrintLabelSpecStore,
+  type PrintLayoutPreviewRequest,
+  type PrintLayoutProgress,
+} from '@genoffice/ui'
 import {
   isSheetRemoved,
   journalSize,
@@ -21,12 +28,13 @@ import {
   type PageSetupJournalState,
 } from './edit-journal'
 import type { HeaderFooterResult } from './HeaderFooterDialog'
-import { t } from './i18n/locale'
+import { getLang, t } from './i18n/locale'
 import { effectivePageBreaks } from './page-break-preview'
 import { COLOR_SCHEMES, FONT_SCHEMES, rethemeStyles, THEME_PRESETS } from './themes'
+import { settleFormulas } from './formula-settle'
 import { startFullLoad } from './full-load'
 import { fitsFullLoad, workbookCellCounts } from './load-budget'
-import { loadVisibleRange } from './univer-sync'
+import { ensureSheetFileState, loadVisibleRange } from './univer-sync'
 import {
   layoutSheetPrint,
   PrintError,
@@ -385,6 +393,11 @@ async function sheetPrintDocument(
   withVisuals: boolean,
 ): Promise<SheetPrintDocument> {
   const sheetId = worksheet.getSheetId()
+  // A sheet the viewport never visited has no captured file state, so its
+  // page setup (and manual breaks) would print with the defaults instead of
+  // the file's. Index it on demand; when that does not finish in time, the
+  // defaults print as before.
+  if (state) await ensureSheetFileState(state, sheetId, ctx.lazyWorkbookRef)
   const journal = { ...(state?.editJournal.pageSetup.get(sheetId) ?? {}), ...overrides }
   const fileSetup = state?.sheetFilePageSetups.get(sheetId) ?? null
   const fileSheet = state?.file.sheets.find((sheet) => sheet.id === sheetId)
@@ -443,7 +456,50 @@ export interface PrintPreviewHost {
   /// Persists one dialog setting as a Page Layout command (`orientation:landscape`).
   applySetting(rest: string): void
   setMessage(message: string): void
+  /// The shared layout panel's route (any option on): the request `print`
+  /// sends becomes the print job, arranged in main. The in-app printer and
+  /// copies carry over; copies always print as whole sets. Null: the user
+  /// stopped the job, nothing was sent.
+  printArranged(
+    job: PrintJob,
+    output: PrintOutputSettings,
+    options: PrintLayoutOptions,
+  ): Promise<string | null>
+  /// Each arranged face as a PNG for the panel's result preview.
+  previewArranged(
+    job: PrintJob,
+    pages: PrintOutputSettings['pages'],
+    options: PrintLayoutOptions,
+    context: Parameters<PrintLayoutPreviewRequest>[1],
+  ): Promise<Uint8Array[]>
+  /// Asks where, then saves the arranged PDF. Null: the user stopped the job.
+  saveArrangedPdf(
+    job: PrintJob,
+    pages: PrintOutputSettings['pages'],
+    options: PrintLayoutOptions,
+  ): Promise<string | null>
+  /// Stops this window's running layout job.
+  cancelArranged(): Promise<void>
+  /// Faces done of the running layout job; returns the unsubscribe.
+  onArrangedProgress(listener: (progress: PrintLayoutProgress) => void): () => void
+  readonly labelSpecStore: PrintLabelSpecStore
 }
+
+type LayoutFailure =
+  { ok: false; aborted: true } | { ok: false; error: string; code?: PrintLayoutErrorCode }
+
+/// A failed layout job as the error the dialog shows: the layout's own text
+/// when it names a cause, else the plain failure text.
+function layoutFailure(result: Exclude<LayoutFailure, { aborted: true }>, fallback: string): Error {
+  return new PrintError(
+    result.code === undefined
+      ? fallback
+      : printLayoutIssueText(getLang(), { code: result.code, message: result.error }),
+  )
+}
+
+const isAborted = (result: LayoutFailure): result is { ok: false; aborted: true } =>
+  'aborted' in result
 
 /// null (after a status message) when the workbook is not ready to print.
 export function createPrintPreviewHost(ctx: PageLayoutContext): PrintPreviewHost | null {
@@ -543,6 +599,54 @@ export function createPrintPreviewHost(ctx: PageLayoutContext): PrintPreviewHost
     },
     applySetting: (rest) => handlePageLayoutCommand(ctx, rest),
     setMessage: ctx.setMessage,
+    async printArranged(job, output, options) {
+      const result = await window.desktopApi.printLayout.print({
+        options,
+        editor: printRequest(job.documents, job.fileName, include(output.pages)),
+        job: { deviceName: output.deviceName, copies: output.copies, collate: true },
+      })
+      if (result.ok) return result.canceled ? t('appPrintCanceled') : t('appPrintSent')
+      if (isAborted(result)) return null
+      throw layoutFailure(result, t('appPrintFailed'))
+    },
+    async previewArranged(job, pages, options, context) {
+      const bridge = window.desktopApi.printLayout
+      const stop = () => void bridge.cancel()
+      context.signal.addEventListener('abort', stop, { once: true })
+      const unsubscribe = bridge.onProgress(context.onProgress)
+      try {
+        const result = await bridge.preview({
+          options,
+          editor: printRequest(job.documents, job.fileName, include(pages)),
+        })
+        if (result.ok) return result.faces.map((face) => face.png)
+        if (isAborted(result)) throw new DOMException('The preview was canceled', 'AbortError')
+        throw layoutFailure(result, t('appPrintFailed'))
+      } finally {
+        unsubscribe()
+        context.signal.removeEventListener('abort', stop)
+      }
+    },
+    async saveArrangedPdf(job, pages, options) {
+      const result = await window.desktopApi.printLayout.savePdf({
+        options,
+        editor: printRequest(job.documents, job.fileName, include(pages)),
+      })
+      if (result.ok) {
+        return 'path' in result ? t('appPdfExported', { path: result.path }) : t('appPdfCanceled')
+      }
+      if (isAborted(result)) return null
+      throw layoutFailure(result, t('appPdfExportFailed'))
+    },
+    cancelArranged: () => window.desktopApi.printLayout.cancel(),
+    onArrangedProgress: (listener) => window.desktopApi.printLayout.onProgress(listener),
+    labelSpecStore: {
+      load: () => window.desktopApi.printLayout.getLabelSpec(),
+      async save(spec) {
+        const result = await window.desktopApi.printLayout.setLabelSpec(spec)
+        if (!result.ok) throw new Error(result.error)
+      },
+    },
   }
 }
 
@@ -588,8 +692,9 @@ async function loadWorkbookForPrint(
   return true
 }
 
-/// File → Print: loads a streamed workbook first, then opens the Print
-/// dialog's host; null (after a status message) when it cannot be opened.
+/// File → Print: loads a streamed workbook and settles its formulas first,
+/// then opens the Print dialog's host; null (after a status message) when it
+/// cannot be opened.
 export async function openPrintPreviewHost(
   ctx: PageLayoutContext,
 ): Promise<PrintPreviewHost | null> {
@@ -605,6 +710,8 @@ export async function openPrintPreviewHost(
     })
     if (!loaded) return null
   }
+  await settleFormulas(ctx.univerRef.current)
+  if (ctx.lazyWorkbookRef.current !== state) return null
   return createPrintPreviewHost(ctx)
 }
 
@@ -621,8 +728,10 @@ async function activeSheetPrintPayload(
   }
   const state = ctx.lazyWorkbookRef.current
   if (state && !(await loadWorkbookForPrint(ctx, state, messages))) return null
+  await settleFormulas(ctx.univerRef.current)
 
-  // The load awaited: take the sheet again, it may have changed meanwhile.
+  // The load and the formula pass awaited: take the sheet again, it may have
+  // changed meanwhile.
   const worksheet = activeSheet()
   if (!worksheet) {
     ctx.setMessage(t('appActiveSheetUnavailable'))
@@ -635,56 +744,6 @@ async function activeSheetPrintPayload(
   const document = await sheetPrintDocument(ctx, state, worksheet, {}, null, new Date(), true)
   if (ctx.lazyWorkbookRef.current !== state || activeSheet()?.getSheetId() !== sheetId) return null
   return printRequest([document], `${document.fileName}.pdf`)
-}
-
-/// A cold load reaches preloadComplete before the formula engine's first pass
-/// lands in the model, so an export right after it prints formula cells
-/// empty. Force one calculation pass, wait for its end (bounded) and then let
-/// the model absorb the results (also bounded) — calculationEnd alone was not
-/// enough on a cold start.
-const FORMULA_SETTLE_TIMEOUT_MS = 30_000
-
-async function settleFormulasBeforePrint(ctx: PageLayoutContext): Promise<void> {
-  const runtime = ctx.univerRef.current
-  const workbook = runtime?.univerAPI.getActiveWorkbook()
-  if (!runtime || !workbook) return
-  /** formula cells of the whole workbook whose computed value has not landed */
-  const pendingFormulas = (): number => {
-    const snapshot = workbook.getSnapshot() as unknown as {
-      sheets?: Record<
-        string,
-        {
-          cellData?: Record<string, Record<string, { f?: unknown; v?: unknown }> | undefined>
-        }
-      >
-    } | null
-    let pending = 0
-    for (const sheet of Object.values(snapshot?.sheets ?? {})) {
-      for (const row of Object.values(sheet?.cellData ?? {})) {
-        for (const cell of Object.values(row ?? {})) {
-          if (cell?.f && (cell.v === undefined || cell.v === null)) pending += 1
-        }
-      }
-    }
-    return pending
-  }
-  if (pendingFormulas() === 0) return
-  const formula = runtime.univerAPI.getFormula()
-  const ended = new Promise<void>((resolve) => {
-    const disposable = formula.calculationEnd(() => {
-      disposable?.dispose()
-      resolve()
-    })
-  })
-  formula.executeCalculation()
-  await Promise.race([
-    ended,
-    new Promise<void>((resolve) => setTimeout(resolve, FORMULA_SETTLE_TIMEOUT_MS)),
-  ])
-  const deadline = Date.now() + FORMULA_SETTLE_TIMEOUT_MS
-  while (Date.now() < deadline && pendingFormulas() > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-  }
 }
 
 /// Every visible, non-removed sheet laid out in order: the headless export's
@@ -713,7 +772,7 @@ async function workbookPrintPayload(
   if (ctx.lazyWorkbookRef.current !== state) return null
 
   ctx.setMessage(messages.preparing)
-  await settleFormulasBeforePrint(ctx)
+  await settleFormulas(ctx.univerRef.current)
 
   const activeId = current.getActiveSheet()?.getSheetId()
   const sheets = current
@@ -738,8 +797,13 @@ async function workbookPrintPayload(
 /// the main process to render the PDF (hidden window + save dialog).
 /// `outPath` (headless export only) skips the dialog and prints every visible
 /// sheet after the formula engine has settled; resolves true when a PDF was
-/// written.
-export async function handleExportPdf(ctx: PageLayoutContext, outPath?: string): Promise<boolean> {
+/// written. `saveAsPath` (Save As › PDF) is the path the Save As dialog just
+/// returned: the active sheet goes there without a second dialog.
+export async function handleExportPdf(
+  ctx: PageLayoutContext,
+  outPath?: string,
+  saveAsPath?: string,
+): Promise<boolean> {
   try {
     const messages = {
       notLoaded: t('appPdfNeedsFullLoad'),
@@ -753,6 +817,7 @@ export async function handleExportPdf(ctx: PageLayoutContext, outPath?: string):
     const result = await window.desktopApi.exportPdf({
       ...payload,
       ...(outPath ? { outPath } : {}),
+      ...(saveAsPath ? { saveAsPath } : {}),
     })
     ctx.setMessage(
       result.canceled ? t('appPdfCanceled') : t('appPdfExported', { path: result.path }),

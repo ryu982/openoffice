@@ -493,6 +493,7 @@ export const pt = {
   appGridlinesHidden: 'Linhas de grade ocultas.',
   appGridlinesShown: 'Linhas de grade exibidas.',
   appShowingFormulas: 'Exibindo fórmulas — alterne novamente para ver os valores.',
+  appShowingFormulasActive: 'Exibindo fórmulas',
   appShowingValues: 'Exibindo valores calculados.',
   appTraceNoFormula: 'Rastrear Precedentes: a célula ativa não tem fórmula.',
   appTraceNoRefs: 'Rastrear Precedentes: esta fórmula não tem referências de células.',
@@ -592,6 +593,9 @@ export const pt = {
     'A exportação de CSV requer a pasta de trabalho totalmente carregada — aguarde o carregamento terminar.',
   appCsvExportTooLarge: 'A planilha é grande demais para exportar como CSV.',
   appCsvExportCanceled: 'Exportação de CSV cancelada.',
+  appOdsExported: '{path} exportado.',
+  appOdsExportCanceled: 'Exportação para ODS cancelada.',
+  appOdsExportFailed: 'Falha ao exportar em ODS.',
   appCsvExported: '{path} exportado.',
   appCsvExportedActiveOnly:
     'Arquivos CSV contêm apenas uma planilha — a planilha ativa “{name}” foi exportada para {path}.',
@@ -629,6 +633,10 @@ export const pt = {
     'A folha de estilos desta pasta de trabalho não tem a estrutura básica; as alterações de estilo não podem ser salvas.',
   appSaveErrPackageGuard:
     'Salvar mudaria a estrutura do pacote da pasta de trabalho — cancelado para proteger o arquivo.',
+  appSaveErrSheetNotFound:
+    'Uma planilha referida por este salvamento não foi encontrada na pasta de trabalho — o salvamento foi interrompido e o arquivo ficou como estava.',
+  appSaveErrSheetNameReused:
+    'Uma nova planilha usa o nome antigo de uma planilha renomeada, por isso não é possível salvar. Dê outro nome à nova planilha por enquanto, salve e depois renomeie-a. O arquivo ficou como estava.',
   appSaveErrChartUnsupported:
     'Este tipo de gráfico não suporta essa edição; salvamento cancelado — desfaça a alteração do gráfico.',
   appSaveErrMoveOverlap:
@@ -738,6 +746,13 @@ export const pt = {
   appSaveAs: 'Salvar Como',
   appUndo: 'Desfazer',
   appRedo: 'Refazer',
+  appQuickAccessCustomize: 'Personalizar a Barra de Ferramentas de Acesso Rápido',
+  appQuickAccessHint:
+    'Pressione Alt e um número para executar o botão nessa posição, contando a partir da esquerda.',
+  appQuickAccessMoveEarlier: 'Mover para o início',
+  appQuickAccessMoveLater: 'Mover para o fim',
+  appQuickAccessReset: 'Restaurar padrão',
+  appQuickAccessFull: 'A barra comporta até 10 botões.',
   appUnsavedEditOne: '● {count} edição não salva',
   appUnsavedEditMany: '● {count} edições não salvas',
   appSavedState: 'Salvo',
@@ -772,7 +787,7 @@ export const pt = {
   appAddChartElement: 'Adicionar Elemento de Gráfico',
   appAddChartElementTitle: 'Títulos, rótulos de dados, legenda',
   appQuickLayout: 'Layout Rápido',
-  appQuickLayoutTitle: 'Layouts predefinidos de legenda + rótulos',
+  appQuickLayoutTitle: 'Layouts padrão de legenda + rótulos',
   appChangeColors: 'Alterar Cores',
   appRecolorSlices: 'Recolorir cada fatia',
   appRecolorSeries: 'Recolorir cada série',
@@ -1200,6 +1215,8 @@ export const pt = {
   appRefreshAll: 'Atualizar Tudo',
   appWorkbookNoPivot: 'Nenhuma tabela dinâmica nesta pasta de trabalho.',
   appRefreshAllTitle: 'Atualizar todas as tabelas dinâmicas',
+  appQueriesConnections: 'Consultas e conexões',
+  appQueriesConnectionsTitle: 'Listar as consultas e conexões de dados da pasta de trabalho',
   appErrorCheckingDetail: 'Verificar valores de erro na planilha',
   appErrorsFound: '{count} erros — em {cell}: {value}',
   appCheckingErrors: 'Procurando erros na planilha inteira…',
@@ -1504,7 +1521,7 @@ export const pt = {
   appNotePictureUnavailable: 'Não é possível exibir esta imagem.',
   appNotePicturesToggle: 'Imagens das anotações',
   appNoteInsertPicture: 'Inserir imagem',
-  appNotePictureInserted: 'Imagem adicionada à nota em {cell}. Salve para gravá-la no ficheiro.',
+  appNotePictureInserted: 'Imagem adicionada à nota em {cell}. Salve para gravá-la no arquivo.',
   appNotePictureRemoved: 'Imagem removida da nota em {cell}.',
   appNotePictureRemove: 'Remover imagem',
   appCommentsPaneTitle: 'Comentários',
@@ -1552,9 +1569,9 @@ export const pt = {
   appVisualSizeProperties: 'Tamanho e propriedades…',
   appVisualHyperlink: 'Hiperligação…',
   appVisualDelete: 'Eliminar',
-  appVisualArranged: 'Objeto atualizado — guarde com ⌘S.',
+  appVisualArranged: 'Objeto atualizado — salve com ⌘S.',
   appVisualCopied: 'Objeto copiado.',
-  appVisualPasted: 'Objeto colado — guarde com ⌘S.',
+  appVisualPasted: 'Objeto colado — salve com ⌘S.',
   appVisualNoCopy: 'Este objeto não pode ser copiado.',
   appVisualSelectTwo: 'Shift+clique para selecionar pelo menos dois objetos a alinhar.',
   appVisualSelectThree: 'Shift+clique para selecionar pelo menos três objetos a distribuir.',
@@ -1600,4 +1617,8 @@ export const pt = {
   appSpellUnavailable: 'A verificação ortográfica não está disponível nesta janela.',
   appSpellReplaceAll: 'Substituir tudo por "{suggestion}"',
   appSpellChangedAll: 'Corrigidas {count} células de "{word}".',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'O ODS foi aberto como uma cópia xlsx. Salvar gravará um arquivo xlsx.',
+  appOdsFormulasDropped: 'Em {count} fórmulas, apenas os valores foram mantidos.',
 } satisfies Record<keyof typeof zh, string>

@@ -48,11 +48,24 @@ describe('tab keyboard shortcuts', () => {
     expect(tabShortcutOf(key({ key: 'a', control: true }))).toBeNull()
   })
 
+  it('opens Settings with Ctrl+, on Windows and Linux, leaving ⌘, to the macOS app menu', () => {
+    expect(tabShortcutOf(key({ key: ',', control: true }), 'win32')).toBe('settings')
+    expect(tabShortcutOf(key({ key: ',', control: true }), 'linux')).toBe('settings')
+    // the app menu's accelerator takes ⌘, on macOS
+    expect(tabShortcutOf(key({ key: ',', meta: true }), 'darwin')).toBeNull()
+    expect(tabShortcutOf(key({ key: ',', control: true }), 'darwin')).toBeNull()
+    // Ctrl+Shift+, shrinks the font in Word, Sheets and Slides
+    expect(tabShortcutOf(key({ key: ',', control: true, shift: true }), 'win32')).toBeNull()
+    expect(tabShortcutOf(key({ key: ',', control: true, alt: true }), 'win32')).toBeNull()
+    expect(tabShortcutOf(key({ key: ',' }), 'win32')).toBeNull()
+  })
+
   it('is wired into the shell window and every tab view', () => {
     const source = readFileSync(new URL('../src/main/index.ts', import.meta.url), 'utf8')
     expect(source).toContain("contents.on('before-input-event'")
     expect(source).toContain('handleTabShortcut(input')
     expect(source).toContain('manager.cycleTab(direction)')
+    expect(source).toContain("openSettings: () => openHomeSettings({ section: 'general' })")
     // registered before the shell window exists, so its webContents is covered
     expect(source.indexOf('installTabShortcuts()')).toBeLessThan(
       source.indexOf('  createShellWindow()'),
@@ -65,8 +78,10 @@ function host(overrides: Partial<TabShortcutHost> = {}): TabShortcutHost {
     isShellContents: () => true,
     hasTab: () => false,
     activeKind: () => 'docs',
+    kindOf: () => undefined,
     cycle: vi.fn(),
     closeActive: vi.fn(),
+    openSettings: vi.fn(),
     ...overrides,
   }
 }
@@ -95,6 +110,32 @@ describe('handling a tab shortcut', () => {
     expect(handleTabShortcut(key({ key: 'w', control: true }), 1, home)).toBe(false)
     expect(home.closeActive).not.toHaveBeenCalled()
   })
+
+  it.runIf(process.platform !== 'darwin')(
+    'opens Settings from the strip, Home and document tabs, but not the Word tab',
+    () => {
+      const shell = host()
+      expect(handleTabShortcut(key({ key: ',', control: true }), 1, shell)).toBe(true)
+      expect(shell.openSettings).toHaveBeenCalledTimes(1)
+
+      const sheets = host({
+        isShellContents: () => false,
+        hasTab: () => true,
+        kindOf: () => 'sheets',
+      })
+      expect(handleTabShortcut(key({ key: ',', control: true }), 4, sheets)).toBe(true)
+      expect(sheets.openSettings).toHaveBeenCalledTimes(1)
+
+      // Ctrl+, is subscript in the Word tab
+      const word = host({ isShellContents: () => false, hasTab: () => true, kindOf: () => 'docs' })
+      expect(handleTabShortcut(key({ key: ',', control: true }), 5, word)).toBe(false)
+      expect(word.openSettings).not.toHaveBeenCalled()
+
+      const detached = host({ isShellContents: () => false, hasTab: () => false })
+      expect(handleTabShortcut(key({ key: ',', control: true }), 9, detached)).toBe(false)
+      expect(detached.openSettings).not.toHaveBeenCalled()
+    },
+  )
 
   it('reports nothing for a key it does not own', () => {
     const shell = host()

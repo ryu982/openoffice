@@ -2,13 +2,15 @@
 
 ## Mở cài đặt
 
-Hàng ở góc dưới bên trái của Trang chủ mở bảng cài đặt (hàng đó ghi "Kết nối AI" cho đến khi có một AI được kết nối). Bảng đó có năm mục: Tài khoản, AI, Chung, Tích hợp và Giới thiệu.
+Hàng ở góc dưới bên trái của Trang chủ mở bảng cài đặt (dòng bên dưới cho biết đã có AI được kết nối hay chưa). Bảng đó có năm mục: Tài khoản, AI, Chung, Tích hợp và Giới thiệu.
+
+Bạn cũng có thể mở từ bất kỳ thẻ nào bằng **⌘,** (Ctrl+, trên Windows và Linux), trên Mac bằng **Cài đặt…** trong menu ứng dụng (menu mang tên ứng dụng, ở bên trái thanh menu), hoặc trên Windows và Linux bằng **Menu (☰) ▸ Cài đặt…**. Trong thẻ Word, ⌘, (Ctrl+,) là chỉ số dưới, nên hãy mở từ menu.
 
 **Tài khoản** cho biết tình trạng các kết nối Claude, ChatGPT và Codex của bạn, còn **Quản lý kết nối** dẫn tới mục AI. AI có các bài riêng: [Kết nối gói đăng ký](help://subscription) và [Mô hình AI và cài đặt](help://ai-models).
 
 ## Ngôn ngữ
 
-- Cài đặt có **21 ngôn ngữ giao diện**: tiếng Anh, Trung giản thể, Nhật, Hàn, Pháp, Đức, Tây Ban Nha, Thái, Indonesia, Nga, Ả Rập, Bồ Đào Nha, Ý, Ba Lan, Séc, Hà Lan, Mã Lai, Hebrew, Hindi, Trung Quốc Phồn thể, Việt.
+- Cài đặt có **22 ngôn ngữ giao diện**: tiếng Anh, Trung giản thể, Nhật, Hàn, Pháp, Đức, Tây Ban Nha, Thái, Indonesia, Nga, Ả Rập, Bồ Đào Nha, Ý, Ba Lan, Séc, Hà Lan, Mã Lai, Hebrew, Hindi, Trung Quốc Phồn thể, Việt, tiếng Thổ Nhĩ Kỳ.
 - Việc đổi có hiệu lực ngay và được ghi nhớ; dải menu gốc được dựng lại theo ngôn ngữ đó.
 
 ## Chủ đề
@@ -22,8 +24,22 @@ Sáng / Tối / Theo hệ thống. Khi chọn Theo hệ thống, giao diện bá
 - **Tự động lưu tất cả tài liệu** bật AutoSave theo mặc định trong mọi trình soạn thảo; bạn vẫn có thể tắt nó cho một cửa sổ.
 - **Vị trí lưu** kèm nút **Thay đổi**, và **Ứng dụng mặc định cho tài liệu Office** để nhận .docx / .xlsx / .pptx về cho GenOffice.
 - **Định dạng lưu cho tài liệu HWP mới** chọn HWP hay HWPX được ưu tiên khi lưu tài liệu mới lần đầu. Tài liệu đã mở vẫn được lưu theo định dạng của nó.
+- **Phông chữ trang chiếu AI** đặt phông chữ AI dùng cho bản trình bày mới khi yêu cầu của bạn không nêu phông nào. Chọn Tự động, Không chân, Có chân hoặc Tiêu đề có chân, và đổi riêng phông không chân và phông có chân. Mẫu thiết kế bạn chọn dùng phông riêng của nó, còn các trang thêm vào bản trình bày dùng phông khác sẽ theo bản trình bày đó.
 
 GenOffice không thu thập hay gửi số liệu thống kê sử dụng, nên không có công tắc nào cho việc đó.
+
+## Trình soạn thảo và AI
+
+Tại đây bạn chọn những trình soạn thảo mình dùng và có dùng AI hay không. Danh sách này cũng hiện một lần ở hai nơi khác: bước **Chọn trình soạn thảo bạn dùng** trong màn hình chào mừng khi khởi chạy lần đầu, và một cửa sổ hiện một lần ở Trang chủ cho những ai đã dùng GenOffice trước khi có thiết lập này. Ban đầu mọi thứ đều bật, nên nếu để nguyên thì không có gì thay đổi. Thay đổi có hiệu lực ngay trong mọi cửa sổ đang mở.
+
+- **Trình soạn thảo**: Word, Excel, PowerPoint, PDF, Công cụ PDF, Markdown và văn bản, HTML, Sơ đồ tư duy, Sơ đồ, HWP (Hangul) và Sách điện tử (EPUB). Công cụ PDF được bật tắt riêng với trình soạn thảo PDF. Phải giữ ít nhất một trình soạn thảo đang bật.
+- **Trình soạn thảo đã tắt** biến mất khỏi các danh sách tài liệu mới: thẻ ở Trang chủ, menu **+** trên thanh thẻ, Tệp ▸ Mới và danh sách ứng dụng mặc định. Tài liệu đang mở vẫn mở, và bản sao khôi phục vẫn được giữ.
+- **Khi mở tệp của trình soạn thảo đã tắt** (nhấp đúp, kéo thả, Tệp ▸ Mở, tệp gần đây), bạn được hỏi chọn **Bật và mở** hay **Hủy**. Mở nhiều tệp của nó cùng lúc thì chỉ hỏi một lần.
+- **Các tính năng khác sẽ mở kết quả trong trình soạn thảo đã tắt**, chẳng hạn chuyển PDF sang định dạng đó, sẽ hỏi trước khi bắt đầu: **Bật và mở**, **Chỉ tạo tệp** (tệp được tạo và hiện trong thư mục, trình soạn thảo vẫn tắt) hoặc **Hủy**.
+- **Khi tắt tính năng AI**, các bảng AI, nút và menu AI, bảng hỏi ở Trang chủ, cửa sổ tác tử và các lời nhắc kết nối AI đều biến mất, và các thẻ Tài khoản, AI, Kỹ năng rời khỏi phần cài đặt. GenOffice không khởi chạy chương trình AI nào từ màn hình của nó. Thông tin đăng nhập, khóa, kỹ năng và cài đặt vẫn được giữ và trở lại khi bạn bật AI lại. Nếu AI vẫn đang làm việc, bạn sẽ được hỏi trước có muốn **Dừng và tắt** không.
+- Dòng lệnh, MCP và hướng dẫn này hoạt động như nhau dù trình soạn thảo hay AI đang bật hay tắt.
+
+Ngay cả khi AI đang bật, AI cũng không tạo tài liệu mới cho trình soạn thảo đã tắt mà nhắc bạn bật trình soạn thảo đó tại đây.
 
 ## AI ▸ Nâng cao
 
@@ -45,7 +61,7 @@ Cài đặt có thể đăng ký GenOffice làm ứng dụng xử lý .docx / .x
 ## Thông báo bên thứ ba và cập nhật
 
 - Trợ giúp ▸ Thông báo của bên thứ ba: danh mục giấy phép nguồn mở đầy đủ đi kèm ứng dụng.
-- Menu (☰) ▸ Kiểm tra bản cập nhật (trên Mac là Trợ giúp ▸ Kiểm tra bản cập nhật): kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt.
+- Menu (☰) ▸ Kiểm tra bản cập nhật (trên Mac là Trợ giúp ▸ Kiểm tra bản cập nhật): kích hoạt một lần kiểm tra thủ công; nếu có bản mới sẽ nhắc cài đặt. Trên Mac, lệnh này cũng có trong menu ứng dụng, ngay dưới mục Giới thiệu GenOffice.
 
 ## Tích hợp MCP (dành cho người dùng nâng cao / ứng dụng AI)
 

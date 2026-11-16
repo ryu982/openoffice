@@ -30,6 +30,7 @@ export const ja = {
   darkView: 'ダーク表示',
   toc: '目次',
   tocEmpty: 'この本には目次がありません',
+  sideResize: 'パネルの幅を調整',
   statusChapter: '第 {n}/{total} 章',
   prevChapter: '前の章',
   nextChapter: '次の章',

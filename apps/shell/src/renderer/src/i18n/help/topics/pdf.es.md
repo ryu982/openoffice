@@ -6,6 +6,8 @@ El editor de PDF tiene cinco pestañas en la cinta de opciones: **Inicio / Anota
 
 - Barra lateral izquierda: **Miniaturas** (haga clic para saltar, el intervalo visible aparece resaltado) o **Esquema** (los marcadores, cuando existen).
 - Zoom: el control de proporción de la esquina inferior derecha; ctrl+rueda ajusta el zoom por pasos.
+- Zoom al abrir: **Al abrir**, en la pestaña Vista, elige la vista inicial de un PDF recién abierto: ajustar al ancho, ajustar a la página o un zoom del 50 % al 200 %. Un PDF cuyo zoom cambió usted se vuelve a abrir con ese zoom.
+- Mover la vista: active la **Herramienta Mano** (pestañas Inicio y Vista) y arrastre para mover la página en cualquier dirección. Mientras está activa, arrastrar no selecciona texto y un clic simple sigue abriendo los enlaces. Arrastrar con el botón central (rueda) pulsado mueve la vista sin la herramienta. Esc u otra herramienta la desactiva. Sin texto seleccionado, H la activa o la desactiva.
 - Rotación: por página o de todas las páginas desde el menú Páginas; las rotaciones se vuelven a escribir al guardar.
 - Búsqueda: ctrl+F en texto completo, con todas las coincidencias resaltadas.
 - PDF cifrados: una solicitud de contraseña (en su propia ventana pequeña) los abre; la contraseña solo se usa en esta sesión. Puede editar y guardar un documento así; al guardar se conserva su contraseña. **Anotar → Proteger** establece, cambia o quita la contraseña y lo que pueden hacer los lectores.
@@ -18,7 +20,7 @@ Pruébelo en cualquier párrafo:
 
 ![La barra de anotación tras seleccionar texto](img/pdf-highlight.png)
 
-2. Elija **Resaltar** (la muestra amarilla abre una paleta de colores), **Subrayar** o **Tachar**; **Preguntar a la IA** envía la selección junto con su pregunta al panel de IA.
+2. Elija uno de los tres colores de **Resaltar**, o **Subrayar**, **Ondulado** o **Tachar**. Para cambiar un color de resaltado, haga clic derecho sobre él y elija otro. Tras subrayar, ondular o tachar, se abre una fila de colores en la barra: haga clic en otro color para cambiarlo; la próxima marca también usará ese color. **Preguntar a la IA** envía la selección junto con su pregunta al panel de IA.
 3. Para deshacer una anotación, vuelva a seleccionar el mismo fragmento arrastrándolo y haga clic en el botón activo de la barra (un conmutador al estilo de Word), o selecciónelo y pulse Supr.
 
 Referencia:
@@ -69,6 +71,7 @@ Seis herramientas: **Dibujar, Rectángulo, Elipse, Flecha, Nota**, más **Censur
 ## Operaciones de página (Páginas)
 
 - **Girar / eliminar / reordenar**: arrastre las miniaturas para reordenar; la eliminación pide confirmación.
+- **Varias páginas a la vez**: haga clic en las miniaturas con Ctrl o Mayús pulsado para seleccionar varias páginas. Supr las elimina; Ctrl+C, Ctrl+X y Ctrl+V las copian, las cortan y las pegan. Las páginas copiadas también se pueden pegar en otra pestaña de PDF, y lo pegado se guarda en el archivo de inmediato. Si las miniaturas están cerradas, el botón del borde izquierdo del área de páginas las vuelve a abrir.
 - **Importar páginas**: arrastre páginas desde otro PDF. **Insertar página en blanco** añade una página vacía.
 - **Reemplazar páginas** cambia un intervalo por páginas de otro documento; **Recortar páginas** recorta los bordes, con una opción para aplicarlo a todas las páginas.
 - **Tamaño de página** reescala todas las páginas a un mismo tamaño de papel; **Invertir orden** da la vuelta al documento de principio a fin.
@@ -80,7 +83,9 @@ Seis herramientas: **Dibujar, Rectángulo, Elipse, Flecha, Nota**, más **Censur
 ## Exportación e impresión
 
 - **Exportar como Word… / PowerPoint… / Excel…** en el menú Archivo, o los mismos tres desde **Convertir PDF** en la cinta — todo local, sin subir nada. El .pptx sale con una diapositiva por página y el .xlsx con una hoja de cálculo por página. Cada uno pregunta dónde guardarlo.
-- **Imprimir**: el orden y las rotaciones actuales a través del cuadro de diálogo del sistema; admite intervalos de páginas.
+- **PDF a HWP**, en **Convertir PDF** de la cinta, convierte el PDF en un documento HWP en una pestaña HWP nueva. Elija **Importar** (가져오기) en la ventana de importación de PDF que muestra la pestaña; el documento se crea en esa pestaña, y el primer guardado pregunta dónde poner el .hwp o el .hwpx. El PDF queda como estaba, y la conversión se hace en este equipo. Si el texto entra como párrafos que fluyen por las páginas o como cuadros de texto fijos se elige en las opciones (환경 설정) de la pestaña HWP, apartado de importación de PDF.
+- La misma conversión también se inicia desde una pestaña HWP. Elija un PDF con **Archivo** ▸ **Importar PDF…** y se abrirá una pestaña HWP nueva con la misma ventana de importación de PDF. El documento de la pestaña donde se usó el menú queda como estaba.
+- **Imprimir**: el orden y las rotaciones actuales a través del cuadro de diálogo del sistema. Puede imprimir un intervalo de páginas o las páginas elegidas en las miniaturas, y elegir en **Disposición de páginas** varias páginas por hoja, folleto, escala de grises y más.
 
 ## Guardar
 
@@ -127,6 +132,9 @@ Pulse **E** o **T**, o las fichas de explicar y traducir del cuadro **Preguntar 
 - **Traducir esta página** (o **Traducir el resto** si ya hay una parte hecha) envía la página con un solo clic mientras usa una suscripción; junto al botón figura el nombre de la IA a la que va. En una conexión que cobra por uso, el primer clic en una pestaña pregunta antes «cobrará por esto · Traducir / Cancelar».
 - Haga doble clic en un párrafo traducido para editarlo. Los párrafos editados se guardan como texto sin formato y se usan tal cual en los archivos PDF, Markdown y EPUB traducidos. **Volver a traducir** en un párrafo envía solo ese párrafo y pregunta antes si lo había editado.
 - Al pasar el ratón sobre un párrafo traducido se recuadra su lugar en la página original. El ancho y el tamaño de letra de la columna se pueden ajustar. **Traducir todas las páginas…** abre la ventana **Traducir documento**, cuyo formato **Solo guardar (sin archivo)** conserva la traducción sin escribir ningún archivo.
+- Los párrafos traducidos de nuevo quedan enlazados frase por frase. Al pasar el ratón por una frase traducida se resalta esa frase en la página original, y al pasarlo por una frase original se ilumina su traducción. Donde la frase no se encuentra en la página, y en los párrafos traducidos antes o editados por usted, el enlace sigue siendo por párrafo.
+- La barra sobre la columna cambia entre **Traducción** y **Explicación sencilla**. La explicación sencilla reescribe el texto con palabras cotidianas y frases cortas, para niños, personas mayores o quienes aprenden el idioma; los hechos, las cifras y los nombres se mantienen. La elección se recuerda y cambiar no envía nada. Mientras se muestra la explicación, los botones de página y de párrafo y la edición actúan sobre ella.
+- En la explicación sencilla, **Explicar todas las páginas de forma sencilla…** abre la ventana **Traducir documento** con el modo **Explicación sencilla**. Una explicación es más larga que el original, así que no puede ser un PDF traducido; se escribe en Markdown o EPUB. Con **Original y luego explicación** activado, cada párrafo original va seguido de su explicación; desactivado, el archivo solo lleva la explicación. El idioma es al principio el de la interfaz y puede ser el del propio documento.
 
 ## Resaltado con IA
 

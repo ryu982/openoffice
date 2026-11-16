@@ -20,6 +20,7 @@ import { he } from './pdf-tools/he'
 import { hi } from './pdf-tools/hi'
 import { zhTW } from './pdf-tools/zh-TW'
 import { vi } from './pdf-tools/vi'
+import { tr } from './pdf-tools/tr'
 
 /**
  * The PDF tools window. Sharded per language; `zh` defines the key set. The
@@ -48,6 +49,7 @@ export const pdfToolsStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type PdfToolsStringKey = keyof typeof zh

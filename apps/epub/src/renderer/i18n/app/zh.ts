@@ -28,6 +28,7 @@ export const zh = {
   darkView: '深色阅读',
   toc: '目录',
   tocEmpty: '这本书没有目录',
+  sideResize: '调整窗格宽度',
   statusChapter: '第 {n}/{total} 章',
   prevChapter: '上一章',
   nextChapter: '下一章',

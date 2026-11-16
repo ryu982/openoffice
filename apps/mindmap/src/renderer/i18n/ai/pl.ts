@@ -36,10 +36,6 @@ export const pl = {
   aiRetry: 'Ponów',
   aiCopyReplyTitle: 'Kopiuj odpowiedź',
   aiRegenerateTitle: 'Wygeneruj ponownie',
-  aiTurnsTitle: 'Cofnij turę AI',
-  aiRollback: 'Przywróć',
-  aiRollbackIncomplete:
-    'Części tej tury nie udało się cofnąć: historia cofania mapy nie sięga już tak daleko.',
   aiUnknownError: 'Żądanie AI nie powiodło się, spróbuj ponownie',
   aiTimeoutError: 'Przekroczono czas odpowiedzi AI',
   aiCreditsExhausted: 'Brak kredytów — doładuj u swojego dostawcy AI',

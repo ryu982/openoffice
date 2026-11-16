@@ -4,14 +4,18 @@
 
 ## 맡은 범위
 
-- 루프: `AgentLoop`(`src/loop.ts`). 대화 이력, 턴 반복, 도구 인자 검증(`missingRequiredFields`, `invalidArgumentFields`, `coerceArgumentFields`), 이력 압축, 실패한 실행의 되돌림.
+- 루프: `AgentLoop`(`src/loop.ts`). 대화 이력, 턴 반복, 도구 인자 검증(`missingRequiredFields`, `invalidArgumentFields`, `coerceArgumentFields`: 숫자 칸의 숫자 문자열과 참·거짓 칸의 `"true"`·`"false"`는 고쳐 받는다), 스킬이 제 규칙을 얹는 스키마 걷기(`walkArgumentFields`: 호출의 입력을 도구 스키마와 나란히, 안쪽 값까지 걸으며 콜백이 돌려준 값으로 바꾼다. 스스로는 고치지도 거절하지도 않고 루프는 부르지 않는다), 이력 압축, 실패한 실행의 되돌림.
 - skill 계약: `AgentSkill`과 `composeSkills`(`src/skill.ts`). 에디터 하나의 능력(system prompt 구역, 도구 목록, 턴마다 붙는 문맥, 도구 실행기)을 묶는 단위다.
 - 전송 계약 `AgentTransport`(`src/types.ts`)와 그 IPC 구현 `createIpcTransport`(`src/electron-transport.ts`). 렌더러에서 돌며, 메인 프로세스가 보낸 스트림 조각(`IpcStreamChunk`)을 루프의 콜백으로 옮긴다.
 - 도구 없이 답 본문이 곧 결과물인 요청 `streamText`(`src/stream-text.ts`), 별표 파일 묶음을 읽는 `createKnowledgeBaseSkill`(`src/knowledge-base-skill.ts`).
 - "AI에게 보이지 않게" 규칙의 공통 부분: 자리 표시 `{{label}}`의 생성·검사(`src/redact-core.ts`), 문서 범위의 모델용 글 만들기와 저장 식별자 `REDACT_NS`·`REDACT_PREFIX`·`REDACT_EL`(`src/redact-range.ts`).
-- 사용자 스킬 능력 `createUserSkillsSkill`·`createBridgedUserSkillsSkill`(`src/user-skills-skill.ts`, 결정 0048): 스스로 쓰기 목록을 지시문에 넣는 구역(`autoSkillsSection`, 설명 300자·100개 상한)과 앱이 정의하고 앱이 실행하는 도구 셋 `use_skill`·`read_skill_file`·`propose_skill`. 스킬 글은 창의 다리(`window.aiOfficeUserSkills`)로 읽고, 스크립트는 실행하지 않으며, `propose_skill`은 카드를 띄울 뿐 파일을 쓰지 않는다.
+- 사용자 스킬 능력 `createUserSkillsSkill`·`createBridgedUserSkillsSkill`(`src/user-skills-skill.ts`, 결정 0048): 스스로 쓰기 목록을 지시문에 넣는 구역(`autoSkillsSection`, 설명 300자·100개 상한)과 앱이 정의하고 앱이 실행하는 도구 셋 `use_skill`·`read_skill_file`·`propose_skill`. 스킬 글은 창의 다리(`window.aiOfficeUserSkills`)로 읽고, 스크립트는 실행하지 않으며, `propose_skill`은 카드를 띄울 뿐 파일을 쓰지 않는다. 영어 이름은 꼭 받고, 사람이 쓰는 언어의 제목도 받는다(결정 0128). 능력에 `editor`를 주면 다른 편집기용 스킬을 목록에서 빼고 `use_skill`·`read_skill_file`에서 거절한다. 그 편집기로 쓰는 곳을 좁힌 스킬은 목록 앞에 따로 묶여 "새 작업물 전체를 만드는 요청이면 첫 도구 호출은 `use_skill`"이라는 머리말(`EDITOR_SKILLS_HEADING`) 아래에 실린다(결정 0136). 머리말과 `use_skill` 도구 설명의 그 문장은 실제 구독으로 맞춘 것이니, 고치면 네 편집기에서 다시 확인한다.
+- 스킬의 쓰는 곳(`src/skill-editors.ts`, 하위 경로 `@genoffice/agent-core/skill-editors`, 가져오는 것 없음, 결정 0122): 편집기 이름 목록 `SKILL_EDITORS`, 적힌 값 읽기 `skillEditorsOf`(모르는 이름은 버리고, 아는 이름이 없으면 모든 편집기), 설정의 선택 읽기 `skillEditorsChoiceOf`, 쓰는 곳 정하기 `skillEditorScope`, 판정 `skillUsedIn`, 이름이 같은 켜진 스킬에 밀렸는지 `skillStandsBack`(뒷단이 정해 둔 `shadowedBy`를 읽는다. 이긴 스킬이 쓰이지 않는 편집기에서는 밀리지 않는다). 목록·도구·설정 화면·뒷단이 모두 이것을 쓴다.
 - 드라이브에서 읽은 내용이 대화에 들어간 뒤의 바깥 호출 차단: `isOutboundCall`·`DRIVE_OUTBOUND_BLOCKED`(`src/drive-skill.ts`). 바깥 도구 목록 `OUTBOUND_TOOLS`(여기에 `read_url`도 있다)는 `src/outbound.ts`에 있다.
 - 인터넷 도구 스위치와 주소 확인(결정 0062): `guardOutbound`·`fetchedAddresses`·`addressInConversation`(`src/outbound-guard.ts`). `composeWithDrive`가 드라이브 차단 바깥에 씌운다. 창의 다리(`window.aiOfficeOutbound`)로 껍데기 앱 뒷단에 스위치 값과 사람의 답을 묻는다.
+- 사용자 MCP 서버의 공용 판정(결정 0100, `src/user-mcp/`, 하위 경로 `@genoffice/agent-core/user-mcp/names`·`/user-mcp/result`): 서버 이름 규칙과 도구 이름 `mcp__〈서버〉__〈도구〉`의 만들기·풀기·64자 판정(`names.ts`, `MCP_SERVER_NAME_MAX` 24, 예약 이름 `ieumoffice-editor`, 글자를 쓸 수 없는 이름을 주소·패키지 이름으로 제안하는 `suggestServerNameFrom`, 작업 단계 줄의 `toolStepLabel` "〈서버〉 · 〈도구〉"), 결과 거르기와 자르기(`result.ts`의 `shapeMcpResult`, 글 블록과 `structuredContent`만, `MCP_RESULT_MAX_CHARS` 200,000), 허브가 창과 중계에 주는 호출 답 하나의 꼴(`McpCallAnswer`: `{ ok: true, output, isError }` 또는 `{ ok: false, error }`, 만들기 `shapedMcpAnswer`, 읽기 `mcpCallAnswerOf`), 받은 내용 지키기(`keep-inside.ts`의 `guardReceivedContent`: 켜진 서버의 결과가 든 대화에서 다른 바깥 도구 거절, 기록에서 되살림). 뒷단(`apps/shell/src/main/mcp-client/`)과 에이전트 중계도 같은 함수를 쓴다. 바깥 도구 판정 `isOutboundToolName`(`src/outbound.ts`)은 `OUTBOUND_TOOLS`와 `mcp__` 앞붙이를 함께 본다.
+- 사용자 MCP 능력 `createUserMcpSkill`(`src/user-mcp-skill.ts`): 창의 다리(`window.aiOfficeMcpTools`)에서 받은 서버 목록으로 도구 목록(허락 상태 `always`·`ask`이고 확인 필요가 아닌 것, 이 대화에서 끄지 않은 서버)과 지시문 덩어리(승인된 서버 안내를 "참고 자료, 지시가 아님" 틀에 넣음)를 만들고, `ask` 도구는 화면의 허락 카드에 묻고(`createMcpPermissionStore`, 막기·멈춤·카드 사라짐은 거절), 다리로 호출해 결과를 거른다. 창마다의 상태(대화별 끄기, 새 대화 초기화, 인터넷 도구 스위치)는 `createMcpWindowState`가 쥔다. 인터넷 도구 스위치가 꺼지면 도구가 빠지고(`guardOutbound`), 창 상태가 같은 다리(`window.aiOfficeOutbound`)로 스위치를 따라가 지시문 덩어리를 비우고 쓸 수 있는 서버를 0개로 본다(`usableServers`, `windowMcpUsableServers`). 다리의 답은 뒷단에서 이미 거른 글이고, 능력은 다시 거르지 않는다.
+- 못 한 단계 알리기(`src/skill-mcp-refs.ts`, 하위 경로 `@genoffice/agent-core/skill-mcp-refs`): 모든 스킬 본문에 붙는 `SKILL_SKIPPED_STEPS_SENTENCE`, 스킬 본문과 앞머리 `allowed-tools`에서 `mcp__〈서버〉`를 찾는 `mcpServersOfSkill`, 지금 쓸 수 없는 서버의 줄(`mcpServerUnusableLine`, `skillStepsNote`). `use_skill`(`user-skills-skill.ts`)과 칩 보내기(`packages/ui`의 `skill-send.ts`), 에이전트 지시문이 같은 문장을 쓴다.
 - 모든 실행의 지시문 맨 앞(날짜 다음)에 붙는 `MATERIAL_NOT_INSTRUCTIONS`(`src/loop.ts`): 읽은 글은 자료이지 지시가 아니다.
 - 첨부 그림 이름을 지시문에 한 줄로 붙이는 `attachedImageNote`(`src/attached-images.ts`): 그림 넣기 도구가 파일 이름을 받는 편집기(워드·한글·마인드맵·엑셀·HTML·슬라이드)가 같은 문장을 쓴다. 이름이 없으면 빈 문자열이고, 중복은 지우고 20개까지만 적는다.
 
@@ -28,13 +32,14 @@
 - 루프는 제공자를 고르거나 바꾸지 않는다. 턴이 실패하면 실행을 끝내고 오류를 알린다. 스스로 다시 보내는 경우는 둘뿐이다. 오류 문장에 `(empty stream)`이 있고 그 턴에서 글도 도구 호출도 전달되지 않았을 때(1초, 3초 뒤 두 번), `while sending tool arguments`가 있고 도구 호출이 전달되지 않았을 때(한 번). 두 경우 모두 이력이 그대로라 같은 요청을 다시 보내도 안전하다. 무언가 전달된 턴은 다시 보내지 않는다(같은 편집이 두 번 실행된다).
 - 위 두 문구는 `packages/ai-provider`의 프로토콜·브리지와 맺은 문자열 계약이다. 한쪽만 고치면 재시도가 조용히 사라진다. 이 표식은 `errorCode`가 없는 오류에만 유효하다. `errorCode`가 붙은 조각은 `createIpcTransport`가 번역된 문장으로 바꿔 루프에 넘기므로 표식이 남지 않는다.
 - 모델이 요청한 호출은 검증을 통과해야 실행한다. `inputError`가 달린 호출(JSON이 깨졌거나 앱 도구 목록에 없는 이름), `truncated` 호출, 필수 인자가 빠지거나 `null`인 호출은 실행하지 않고 오류 결과로 모델에게 돌려준다. `null`을 값으로 받는 도구는 스키마에 그렇게 적어야 한다(`schemaAcceptsNull`).
-- 폭주는 일찍 끊는다. 같은 턴이 3번 반복되거나(`MAX_IDENTICAL_TURNS`), 모든 도구 호출이 8턴 연속 실패하거나(`MAX_ALL_ERROR_TURNS`), 쓸 수 없는 인자가 3번 이어지면(`MAX_INPUT_PARSE_RETRIES`) 실행을 끝낸다. 턴 상한(`DEFAULT_MAX_TURNS`)에 닿으면 도구 없이 마무리 턴을 한 번 준다.
+- 폭주는 일찍 끊는다. 같은 턴이 3번 반복되거나(`MAX_IDENTICAL_TURNS`), 모든 도구 호출이 8턴 연속 실패하거나(`MAX_ALL_ERROR_TURNS`), 쓸 수 없는 인자가 3번 이어지면(`MAX_INPUT_PARSE_RETRIES`) 실행을 끝낸다. 이 셋은 `onError`의 둘째 인자로 멈춘 까닭(`AgentRunStop`)을 준다(결정 0135): 어느 규칙인지, 쓸 수 없던 까닭(`truncated`·`unparseable`·`missing`·`invalid`)이 그 연속 안에서 몇 번이었는지, 그 호출이 부른 도구 이름(스킬 목록에 없는 이름은 `unknown`), 실행한 호출 수, 문서를 바꿨는지. 모델이나 문서의 글은 넣지 않는다. 제공자·네트워크 오류에는 둘째 인자가 없다. 턴 상한(`DEFAULT_MAX_TURNS`)에 닿으면 도구 없이 마무리 턴을 한 번 준다.
 - 실패한 실행은 그 사용자 메시지부터 이력에서 걷어 낸다(`rollbackFailedRun`). 남겨 두면 실패한 지시가 다음 실행에서 사용자 모르게 다시 수행된다. 도구만 실행하고 글이 없는 턴은 `COMPLETED_VIA_TOOLS_TEXT`로 채운다(빈 assistant 내용은 다음 턴을 깨뜨린다).
 - `ToolExecution.display`는 화면 전용이다. 모델에게 가는 메시지에 섞지 않는다.
 - 전송은 모르는 조각 종류를 받아도 실행을 죽이지 않는다(이 빌드보다 새 메인 프로세스와 함께 돌 수 있다). 조각이 오면 침묵 감시만 다시 건다.
 - `IPC_STREAM_SILENCE_TIMEOUT_MS`(240초)는 메인 프로세스의 유휴 제한(180초)보다 길어야 한다. 메인 쪽의 번역된 시간 초과 문장이 먼저 도착하게 하기 위해서다. 로컬 서버는 300~600초를 기다릴 수 있으므로, 첫 조각이 오기 전까지 5초마다 `ping`을 보내 침묵 감시를 다시 건다. 응답 헤더만 온 때에 ping을 멈추면 안 된다.
 - `REDACT_NS`, `REDACT_PREFIX`, `REDACT_EL`의 값을 바꾸지 않는다. 저장된 docx·pptx 안에 쓰이는 XML 네임스페이스와 접두사라서, 바꾸면 이미 가려 둔 범위(원본 GenOffice로 만든 것 포함)를 읽지 못해 그 내용이 다시 모델에게 보인다. 값에 다른 회사 주소가 들어 있어도 문서 데이터이므로 그대로 둔다.
 - `redact-range.ts`의 함수는 throw하지 않는다. 모르는 노드는 그대로 통과시킨다. 여기서 예외가 나면 호출자의 예비 경로가 가려지지 않은 원문을 보내게 된다.
+- 사용자 MCP 도구는 승인된 정의로만 목록에 올린다. "확인 필요"(정의가 바뀜)인 도구를 올리거나 서버가 지금 알리는 설명을 모델에 넘기지 않는다. `ask` 도구는 사람이 허락하기 전에 다리를 부르지 않고, 카드가 사라지거나 실행이 멈추면 거절로 끝낸다. 받은 내용 지키기는 드라이브 차단·`guardOutbound`보다 안쪽에 씌운다(결정 0100).
 - 사용자 메시지는 이력에 들어가기 전에 `sanitizeAgentPayload`를 거친다(실수로 붙여 넣은 키·비밀번호를 가린다). 이 호출을 우회해 이력에 직접 넣지 않는다.
 
 ## 이 모듈의 방식
@@ -42,12 +47,13 @@
 - 에디터는 skill을 만들고 `composeSkills`로 합쳐 루프에 준다. 합친 skill의 `tools`와 `systemPrompt`는 getter라 접근할 때마다 다시 계산된다. 하위 skill이 연결 상태에 따라 도구 목록을 바꿀 수 있고, 루프는 모델 요청 직전마다 목록을 읽는다. 도구 이름은 전체에서 유일해야 한다(겹치면 예외).
 - 루프는 취소·초기화 뒤에 도착하는 옛 콜백을 `generation` 번호로 걸러 낸다. 전송 콜백 안에서 루프 상태를 건드리는 코드를 추가하면 같은 검사를 넣는다.
 - 첫 번째로 문서를 바꾸는 도구 직전에 `captureSnapshot`을 한 번 부른다. 패널의 "되돌리기"가 이 스냅샷을 쓴다. 도구는 `ToolExecution.mutated`로 문서를 바꿨는지 알린다.
-- `verifyResponse`는 마지막 글이 실제 실행된 도구와 맞는지 skill이 검사하는 자리다("선택했습니다"라고 썼는데 선택 도구가 성공하지 않은 경우 등). 교정 턴은 실행당 한 번만 허용되므로 오탐의 비용은 턴 하나다.
+- `verifyResponse`는 마지막 글이 실제 실행된 도구와 맞는지 skill이 검사하는 자리다("선택했습니다"라고 썼는데 선택 도구가 성공하지 않은 경우 등). 교정 턴은 실행당 한 번만 허용되므로 오탐의 비용은 턴 하나다. 문서를 다시 재야 하는 검사는 답을 `Promise`로 늦게 줄 수 있다. 루프는 그 답을 기다리고, 기다리는 동안 대화가 초기화되면 버리고, 멈춤이 눌렸으면 교정 턴을 열지 않는다.
 - 오류 문장의 우선순위는 `createIpcTransport`에 있다. `errorText(cause)`가 값을 주면 그것, 아니면 종류별 옛 콜백(`creditsErrorText` 등), 아니면 조각에 실린 문장, 마지막이 `unknownErrorText()`다. 구조화된 원인은 `onStreamError`로 `onError` 직전에 한 번 더 전달된다. 패널은 이것으로 "막힌 실행" 알림을 그린다.
 - 구독 사용량(`subscription-usage`)과 입력 축소(`input-truncated`)는 루프를 거치지 않고 전송의 `onSubscriptionUsage`·`onInputTruncated` 옵션으로 패널에 바로 간다.
 - 가림 규칙은 "표식에 대한 규칙"이다. 모델용 지시문은 에디터가 넘긴 명세(`PlaceholderSpec`)로 `placeholderInstruction`이 조립하고, 답에 표식이 빠지거나 쪼개졌는지는 `checkPlaceholders`가 본다. 에디터마다 지시문을 따로 쓰지 않는다(다섯 벌이 서로 달라졌던 것을 하나로 모은 것이다). 표식 없이 무언가를 숨기는 에디터(통계에서 뺀 셀 등)는 그 에디터가 책임진다.
 - `streamText`는 큰 결과물(페이지 전체 등)을 도구 인자가 아닌 글로 받는다. 도구 인자는 JSON이 끝날 때까지 서버가 붙잡고 있어 중간 게이트웨이의 유휴 제한에 걸리기 때문이다.
 - `streamText`의 진행 알림(`onProgress`)은 첫 조각에 바로, 그 뒤로는 `progressIntervalMs`(기본 120ms)에 한 번 이하로 간다. 추출 함수가 받은 글 전체를 돌기 때문에 조각마다 부르면 글 길이의 제곱이 된다. 결과를 돌려주기 직전에 남은 알림을 먼저 보내므로, 받는 쪽은 지금처럼 마지막 상태까지 본다. 상한을 넘긴 조각은 알리지 않는다.
+- `undoDoubledEscapes`(`doubled-escapes.ts`, 따로 `@genoffice/agent-core/doubled-escapes`로도 가져온다)는 모델이 줄바꿈을 두 번 이스케이프해 보낸 글(역슬래시+n 두 글자)을 되돌린다. 조건은 셋이다. 진짜 줄바꿈이 하나도 없어야 하고, 모든 역슬래시가 `\n`·`\r`·`\t`·`\"` 중 하나여야 하고, `C:\` 같은 드라이브 경로가 없어야 한다. 편집기가 문서에 새로 쓰는 평문 인자에만 쓴다. 찾을 글, HTML, 수식, 코드에는 쓰지 않는다. 한글·워드·마인드맵 편집기가 쓴다.
 
 ## 로컬 AI (결정 0067)
 

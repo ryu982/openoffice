@@ -18,7 +18,7 @@
   --accent-dark: #c3b3f2;
   --accent-soft: rgba(168, 147, 232, 0.2);
   --mm-on-accent: #1e1e1e;
-  --mm-on-danger: #ffffff;
+  --mm-on-danger: #1e1e1e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,7 +27,7 @@
     --accent-dark: #c3b3f2;
     --accent-soft: rgba(168, 147, 232, 0.2);
     --mm-on-accent: #1e1e1e;
-    --mm-on-danger: #ffffff;
+    --mm-on-danger: #1e1e1e;
   }
 }
 
@@ -114,7 +114,9 @@ html.genoffice-popover-open .ribbon-tabs {
 .ribbon-body {
   display: flex;
   align-items: stretch;
-  padding: 4px 12px 6px;
+  /* no padding at the end: the AI entry carries it, so it is the same when the entry is stuck there */
+  padding-block: 4px 6px;
+  padding-inline: 12px 0;
   height: 42px;
   box-sizing: border-box;
   overflow-x: auto;
@@ -291,10 +293,18 @@ html.genoffice-popover-open .ribbon-tabs {
   font-size: 12.5px;
 }
 
+/* the AI entry: at the far end, and still there when the row is wider than the window
+   (the buttons before it scroll under it) */
 .mm-tools-end {
+  position: sticky;
+  inset-inline-end: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   margin-inline-start: auto;
+  white-space: nowrap;
+  padding-inline: 8px 12px;
+  background: var(--surface);
 }
 
 /* ---- notices ---- */
@@ -376,6 +386,57 @@ html.genoffice-popover-open .ribbon-tabs {
   outline-offset: 2px;
 }
 
+/*
+ * The grip a selected topic's box is widened or narrowed by (map/topic-resize.ts):
+ * a short bar on its outer edge, the left one on the left side of the map.
+ */
+.mm-card .map-container me-root me-tpc.selected {
+  position: relative;
+}
+
+.mm-card .map-container me-tpc.selected::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 4px;
+  height: min(18px, 70%);
+  border-radius: 2px;
+  background: var(--accent);
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+
+.mm-card .map-container .lhs me-tpc.selected::after {
+  right: auto;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.mm-card .map-container[data-mm-resize],
+.mm-card .map-container[data-mm-resize] * {
+  cursor: ew-resize !important;
+}
+
+/*
+ * A topic the last AI run added or changed (map/ai-marks.ts): the shared mark,
+ * laid over the topic so its own fill stays. Screen only: the export copy
+ * drops the class.
+ */
+.mm-card .map-container me-tpc.mm-ai-changed {
+  position: relative;
+}
+
+.mm-card .map-container me-tpc.mm-ai-changed::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 6px;
+  background: var(--color-ai-changed-bg);
+  box-shadow: inset 0 -2px 0 var(--color-ai-changed-line);
+  pointer-events: none;
+}
+
 /* the topic a picture dragged from the desktop would land on */
 .mm-card .map-container .mm-picture-drop-target {
   outline: 2px dashed var(--accent);
@@ -384,6 +445,51 @@ html.genoffice-popover-open .ribbon-tabs {
 
 .mm-card .map-container #input-box {
   outline: 2px solid var(--accent);
+}
+
+/*
+ * A selected boundary (map/controller.ts): a sharp rim of the app's accent on
+ * both sides of its outline (a wider path drawn under it, map/relations.ts)
+ * and around the chip of its title.
+ */
+.mm-card .map-container .mm-boundaries g.selected {
+  outline: none;
+}
+
+.mm-card .map-container .mm-boundaries g.selected > .mm-boundary-ring {
+  stroke: var(--accent);
+  stroke-linejoin: round;
+}
+
+.mm-card .map-container .mm-boundaries g.selected > .mm-boundary-chip {
+  stroke: var(--accent);
+  stroke-width: 1.5px;
+}
+
+.mm-card .map-container .mm-boundaries .mm-boundary-shape,
+.mm-card .map-container .mm-boundaries .mm-boundary-chip,
+.mm-card .map-container .mm-boundaries .mm-boundary-title {
+  cursor: pointer;
+}
+
+/* the title of a boundary is typed in a box as wide as a topic's; an empty
+   title still shows a box to type in */
+.mm-card .map-container #input-box[data-type='boundary'] {
+  position: absolute;
+  min-width: 4em;
+  max-width: 30em;
+  padding: 0 4px;
+}
+
+/* while the format painter holds a format, every press on the map puts it on */
+.mm-card .map-container[data-mm-painter],
+.mm-card .map-container[data-mm-painter] * {
+  cursor: copy !important;
+}
+
+/* a summary's title is typed in a box as wide as the one it is drawn in (map.css), not the library's narrower one */
+.mm-card .map-container #input-box[data-type='summary'] {
+  max-width: 30em !important;
 }
 
 .mm-card .map-container me-parent me-tpc .show {
@@ -509,8 +615,9 @@ html.genoffice-popover-open .ribbon-tabs {
 
 /* ---- the theme panel beside the map ---- */
 
+/* the theme, format and note panels are one width */
 .mm-theme-panel {
-  flex: 0 0 268px;
+  flex: 0 0 288px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -563,6 +670,22 @@ html.genoffice-popover-open .ribbon-tabs {
   gap: 16px;
   padding: 12px 12px 14px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* the lists of a panel are as tall and as round as its buttons */
+.mm-theme-panel .gs-dd-btn {
+  height: 30px;
+  padding: 0 8px;
+  border-color: var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+
+/* off the way the panel's buttons are off */
+.mm-theme-panel .gs-dd-btn:disabled {
+  opacity: 0.4;
 }
 
 .mm-theme-note {
@@ -659,7 +782,7 @@ html.genoffice-popover-open .ribbon-tabs {
 
 .mm-theme-hint {
   margin: 0 2px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 11.5px;
   line-height: 1.5;
 }
@@ -825,7 +948,7 @@ html.genoffice-popover-open .ribbon-tabs {
 .mm-modal-hint {
   margin: 6px 0 14px;
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .mm-modal-hint.error {
@@ -835,6 +958,29 @@ html.genoffice-popover-open .ribbon-tabs {
 /* an address that is kept but will not be opened: said plainly, not as a mistake */
 .mm-modal-hint.warn {
   color: var(--text-primary);
+}
+
+/* the link dialog's "fetch a preview": what ticking it does is said right under it */
+.mm-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -6px 0 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mm-modal-check input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.mm-modal-check-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .mm-field {
@@ -1010,4 +1156,410 @@ textarea.mm-field {
   color: var(--text-secondary);
   font-size: 12.5px;
   line-height: 1.6;
+}
+
+/* ---- the text format panel beside the map (it shares the theme panel's frame) ---- */
+
+.mm-format-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.mm-format-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* buttons with a picture on them (bold…, alignment, shapes, line ends): one grid of eight
+   across the panel, so every row of them lines up with the others and the longest fits in one */
+.mm-format-cells {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.mm-format-cells .mm-format-button {
+  width: auto;
+}
+
+.mm-format-font,
+.mm-format-case {
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.mm-format-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mm-format-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* a format in force is marked the way the app marks everything it has selected */
+.mm-format-button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.mm-format-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-format-size-input {
+  width: 64px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.mm-format-size-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* a colour: one row showing the colour in force; the palette opens below it */
+.mm-color {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  anchor-name: --mm-color;
+  anchor-scope: --mm-color;
+}
+
+.mm-color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mm-color-field:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.mm-color-field[aria-expanded='true'],
+.mm-color-field:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.mm-color-field:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* the frame is the panel's; the colour in it is the map's */
+.mm-color-swatch {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+  border-radius: 4px;
+}
+
+/* no colour of its own (automatic, or the items differ): an empty frame */
+.mm-color[data-color-state='auto'] .mm-color-swatch,
+.mm-color[data-color-state='mixed'] .mm-color-swatch {
+  border-style: dashed;
+  border-color: var(--text-tertiary);
+}
+
+/* no fill: a frame struck through */
+.mm-color[data-color-state='none'] .mm-color-swatch {
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.75px),
+    var(--text-tertiary) calc(50% - 0.75px),
+    var(--text-tertiary) calc(50% + 0.75px),
+    transparent calc(50% + 0.75px)
+  );
+}
+
+.mm-color-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mm-color-caret {
+  flex: 0 0 auto;
+  display: flex;
+  color: var(--text-dim);
+}
+
+/* fixed and anchored like the lists, so the panel's scrolling never clips the palette;
+   it opens above the row when there is no room below */
+.mm-color-pop {
+  position: fixed;
+  position-anchor: --mm-color;
+  top: calc(anchor(bottom) + 4px);
+  left: anchor(left);
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+  position-visibility: anchors-visible;
+  z-index: 80;
+}
+
+/* a boundary's fill: the colour, and "no fill" beside it */
+.mm-format-fill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-format-fill .mm-color {
+  flex: 1 1 120px;
+}
+
+/* a section for each kind of item: text, the line of a branch, a relationship, a summary, a boundary */
+.mm-format-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mm-format-section + .mm-format-section {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mm-format-section-title {
+  margin: 0 2px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* "Text" | "Line" above a topic's format: one group at a time */
+.mm-format-tabs {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.mm-format-tab {
+  flex: 1 1 0;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mm-format-tab:hover:not(.on) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+/* the group shown is marked the way the app marks what it has selected */
+.mm-format-tab.on {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.mm-format-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* "copy format" and "clear format", and the other buttons with a word on them */
+.mm-format-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mm-format-action {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.mm-format-action svg {
+  flex: 0 0 auto;
+  margin-left: -4px;
+}
+
+.mm-format-action:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* the painter holding a format, a fill of none: marked the way the app marks what it has selected */
+.mm-format-action.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.mm-format-action[data-painter='sticky'] {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.mm-format-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* "mixed", "other shape", and why the shape cannot be picked in this layout */
+.mm-format-state {
+  margin: 0 2px 6px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.mm-format-width,
+.mm-format-pattern {
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.mm-pattern-sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- the line switches of the theme panel ---- */
+
+.mm-theme-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mm-theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mm-theme-switch:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.mm-theme-switch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mm-theme-switch-track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--border-strong, var(--border));
+  transition: background 0.15s;
+}
+
+.mm-theme-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: left 0.15s;
+}
+
+.mm-theme-switch.on .mm-theme-switch-track {
+  background: var(--accent);
+}
+
+.mm-theme-switch.on .mm-theme-switch-knob {
+  left: 14px;
+}
+
+/* ---- the menu on a boundary ---- */
+
+.mm-boundary-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 140px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.mm-boundary-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.mm-boundary-menu-item:hover {
+  background: var(--hover);
 }

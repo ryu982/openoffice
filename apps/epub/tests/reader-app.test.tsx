@@ -325,6 +325,68 @@ describe('reading a book', () => {
     expect(container.querySelector('.epub-toc-entry.active')?.textContent).toBe('Notes')
   })
 
+  it('lets the left pane be resized by dragging or the arrow keys, and keeps the width', async () => {
+    localStorage.removeItem('epub-side-width')
+    const fake = fakeApi(OPEN)
+    await mount(fake)
+    await until(() => frame() !== null, 'the chapter frame')
+    const main = () => container.querySelector('.epub-main') as HTMLElement
+    const width = () => main().style.getPropertyValue('--epub-side-width')
+    const handle = container.querySelector('.epub-side-resizer') as HTMLElement
+    expect(handle.getAttribute('role')).toBe('separator')
+    expect(handle.getAttribute('aria-label')).toBe('Resize pane')
+    expect(width()).toBe('260px')
+
+    // jsdom lays nothing out: the pane starts at x = 0, so the width is the pointer's x
+    await act(async () => {
+      handle.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 260 }),
+      )
+    })
+    expect(main().classList.contains('epub-side-resizing')).toBe(true)
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 340 }))
+      window.dispatchEvent(new MouseEvent('pointerup', { clientX: 340 }))
+    })
+    expect(width()).toBe('340px')
+    expect(main().classList.contains('epub-side-resizing')).toBe(false)
+    expect(localStorage.getItem('epub-side-width')).toBe('340')
+
+    // never narrower than the minimum, never wider than half the window
+    await act(async () => {
+      handle.dispatchEvent(
+        new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 340 }),
+      )
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 20 }))
+      window.dispatchEvent(new MouseEvent('pointerup', { clientX: 20 }))
+    })
+    expect(width()).toBe('180px')
+    await act(async () => {
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
+    })
+    expect(width()).toBe('196px')
+    await act(async () => {
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'End' }))
+    })
+    expect(width()).toBe(`${Math.round(window.innerWidth * 0.5)}px`)
+    await act(async () => {
+      handle.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    })
+    expect(width()).toBe('260px')
+
+    // the find pane shares the width; with no pane there is no handle
+    await act(async () => {
+      handle.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
+    })
+    await act(async () => fake.emit.menu('find'))
+    await settle()
+    expect(container.querySelector('.epub-side[data-pane="search"]')).not.toBeNull()
+    expect(width()).toBe('276px')
+    await click(container.querySelector('.epub-side-close'))
+    expect(container.querySelector('.epub-side')).toBeNull()
+    expect(container.querySelector('.epub-side-resizer')).toBeNull()
+  })
+
   it('changes the view settings through the main process, for the screen only', async () => {
     const fake = fakeApi(OPEN)
     await mount(fake)

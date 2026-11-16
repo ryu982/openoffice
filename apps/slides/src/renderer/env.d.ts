@@ -2,6 +2,7 @@
 import type { SlidesApi } from '../shared/ipc'
 import type { ProjectApi, ProjectFolderApi } from '@genoffice/project-store'
 import type { SplitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import type { AppChoiceSource } from '@genoffice/ui'
 
 declare global {
   interface Window {
@@ -11,6 +12,8 @@ declare global {
     projectApi: ProjectApi
     /** absent when the preload predates the split-pane bridge (or outside the shell) */
     aiOfficeSplit?: SplitPaneBridge
+    /** Settings' editor choice and AI switch, read-only here; absent outside the shell */
+    aiOfficeEditorChoice?: AppChoiceSource
   }
 }
 

@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` und `media` verwenden, was in der App unter Einstellungen ▸ KI ▸ Erweitert eingerichtet ist:
 
 - `search` funktioniert immer. Der Befehl nutzt standardmäßig die kostenlose Suche oder den Suchanbieter, dessen Schlüssel Sie ausgewählt haben.
-- `image` braucht den Schlüssel eines Bildanbieters. In dieser Version erzeugt ein Abonnement keine Bilder.
+- `image` folgt der Auswahl für die Bildgenerierung in den Einstellungen. Mit der Voreinstellung ChatGPT-Tarif (Codex-Programm) zeichnet es mit Ihrem ChatGPT-Tarif über das Codex-Programm, aber nur, wenn Sie Abonnements für automatische Aufrufe erlaubt haben (**standardmäßig aus**; siehe [Einen Coding-Agenten anbinden](help://mcp)). Sonst verwendet es den Schlüssel eines eingerichteten Bildanbieters. `--model` wird verwendet, wenn dieser Weg das Modell anbietet; sonst antwortet der Befehl mit den Modellen, die Sie verwenden können. Bilder aus `--ref` funktionieren auf beiden Wegen.
 - `media` nutzt für ein Bild einen Anbieter mit Schlüssel, wenn einer eingerichtet ist. Ihr Claude- oder Codex-Abonnement nutzt der Befehl nur, wenn Sie das erlaubt haben, und das ist **standardmäßig aus**; [Einen Coding-Agenten anbinden](help://mcp) erklärt den Schalter und seine Grenzen.
 - `media` braucht für Video oder Audio einen Anbieter mit Schlüssel, der Video unterstützt.
 

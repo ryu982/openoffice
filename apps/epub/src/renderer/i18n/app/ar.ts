@@ -30,6 +30,7 @@ export const ar = {
   darkView: 'العرض الداكن',
   toc: 'المحتويات',
   tocEmpty: 'لا يحتوي هذا الكتاب على فهرس',
+  sideResize: 'تغيير عرض اللوحة',
   statusChapter: 'الفصل {n}/{total}',
   prevChapter: 'الفصل السابق',
   nextChapter: 'الفصل التالي',

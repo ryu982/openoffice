@@ -82,7 +82,6 @@ export const hi = {
   aiCopied: 'कॉपी हो गया',
   aiRegenerateTitle: 'फिर से जनरेट करें',
   aiSnapshotsTitle: 'संस्करण स्नैपशॉट',
-  aiRollback: 'रोलबैक',
   aiScopeSelected: '{count} अनुच्छेद चयनित',
   aiScopeEmptyDoc: 'खाली दस्तावेज़',
   aiScopeCursor: 'कर्सर पर',
@@ -197,4 +196,7 @@ export const hi = {
   aiMindMapReset: 'दृश्य रीसेट करें',
   aiMindMapExpand: 'शाखा खोलें',
   aiMindMapCollapse: 'शाखा समेटें',
+  aiMindMapToggleLayout: 'लेआउट बदलें',
+  aiMindMapLayoutTopDown: 'ऊपर से नीचे वाले लेआउट पर स्विच करें',
+  aiMindMapLayoutLeftRight: 'बाएँ से दाएँ वाले लेआउट पर स्विच करें',
 } satisfies Record<keyof typeof zh, string>

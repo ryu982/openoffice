@@ -4,10 +4,70 @@
  * Protocol (device metrics, network idle, screenshots), so the export sees
  * the document exactly as the preview does: scripts on, assets through
  * html-asset://, no preload and no Node.
+ *
+ * The page is hostile: an HTML chunk inside a downloaded .docx, or an HTML
+ * file someone sent. Loaded from file://, Electron would let its scripts read
+ * other local files, so every window lives in an in-memory session apart from
+ * the app's, where only what its caller allows may load (`allowRequest`), the
+ * page cannot navigate itself anywhere, and permissions, downloads and
+ * non-proxied WebRTC are refused.
  */
-import { BrowserWindow } from 'electron'
-import type { Debugger, WebContents } from 'electron'
+import { BrowserWindow, session as electronSession } from 'electron'
+import type { Debugger, Session, WebContents } from 'electron'
 import type { BrowserDriver, ScreenshotOptions, Viewport } from '../driver'
+
+export interface ElectronDriverIsolation {
+  /** Whether the page may load this URL (the document itself included).
+   *  Anything refused is cancelled before it leaves the session. */
+  allowRequest(url: string): boolean
+  /** Scheme handlers the page needs in its session (custom schemes are
+   *  registered per session, so the default session's handlers do not apply). */
+  protocols?: Readonly<Record<string, (request: Request) => Response | Promise<Response>>>
+}
+
+/** Loads every window needs whatever the caller allows: the blank page the
+ *  driver starts on, and in-page data the document already carries. */
+function alwaysAllowed(url: string): boolean {
+  return url === 'about:blank' || url.startsWith('data:') || url.startsWith('blob:')
+}
+
+/** In memory only, used by nothing but these windows. One session for all of
+ *  them (Electron never frees a partition), each window under its own policy. */
+const ISOLATED_PARTITION = 'html2docx-isolated'
+const policyByWebContents = new Map<number, ElectronDriverIsolation>()
+const configuredSessions = new WeakSet<Session>()
+
+function isolatedSession(isolation: ElectronDriverIsolation): Session {
+  const ses = electronSession.fromPartition(ISOLATED_PARTITION, { cache: false })
+  if (!configuredSessions.has(ses)) {
+    configuredSessions.add(ses)
+    ses.setSpellCheckerEnabled(false)
+    ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+    ses.setPermissionCheckHandler(() => false)
+    ses.setDevicePermissionHandler(() => false)
+    ses.on('will-download', (event) => event.preventDefault())
+    // a request no window of ours made (a worker, the session itself) has no policy: refused
+    ses.webRequest.onBeforeRequest((details, callback) => {
+      const policy =
+        details.webContentsId === undefined
+          ? undefined
+          : policyByWebContents.get(details.webContentsId)
+      const allowed = !!policy && (alwaysAllowed(details.url) || policy.allowRequest(details.url))
+      callback({ cancel: !allowed })
+    })
+  }
+  // a scheme served here is still refused to windows whose policy does not allow it
+  for (const [scheme, handler] of Object.entries(isolation.protocols ?? {})) {
+    if (!ses.protocol.isProtocolHandled(scheme)) ses.protocol.handle(scheme, handler)
+  }
+  return ses
+}
+
+/** Whatever one conversion's page stored must not reach the next one. */
+function forgetWindow(ses: Session, webContentsId: number): void {
+  policyByWebContents.delete(webContentsId)
+  if (policyByWebContents.size === 0) void ses.clearStorageData().catch(() => {})
+}
 
 const NETWORK_QUIET_MS = 500
 const POLL_MS = 100
@@ -23,21 +83,35 @@ export class ElectronBrowserDriver implements BrowserDriver {
     private readonly cdp: Debugger,
   ) {}
 
-  static async create(viewport: Viewport): Promise<ElectronBrowserDriver> {
+  static async create(
+    viewport: Viewport,
+    isolation: ElectronDriverIsolation,
+  ): Promise<ElectronBrowserDriver> {
+    const ses = isolatedSession(isolation)
     const win = new BrowserWindow({
       show: false,
       width: viewport.width,
       height: viewport.height,
       webPreferences: {
+        session: ses,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
         backgroundThrottling: false,
+        spellcheck: false,
+        navigateOnDragDrop: false,
       },
     })
+    const wc = win.webContents
+    const webContentsId = wc.id
+    policyByWebContents.set(webContentsId, isolation)
+    wc.once('destroyed', () => forgetWindow(ses, webContentsId))
     try {
-      const wc = win.webContents
       wc.setWindowOpenHandler(() => ({ action: 'deny' }))
+      // only the driver moves the page (loadURL does not raise these); a
+      // script, link, form or meta refresh stays where it is
+      wc.on('will-navigate', (event) => event.preventDefault())
+      wc.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')
       // nobody can answer a beforeunload prompt in a hidden window
       wc.on('will-prevent-unload', (event) => event.preventDefault())
       // a fresh window has no renderer yet and CDP commands would wait for one

@@ -46,6 +46,14 @@ const tUpd = createI18n({
     updInstall: 'Khởi động lại & Cài đặt',
     updLater: 'Nhắc tôi sau',
   },
+  tr: {
+    updTitle: 'Yazılım Güncellemesi',
+    updHeadline: 'Yeni bir sürüm var',
+    updDesc:
+      'Bu güncelleme performans iyileştirmeleri ve hata düzeltmeleri içeriyor. Şimdi güncellemenizi öneririz.',
+    updInstall: 'Yeniden Başlat ve Yükle',
+    updLater: 'Daha Sonra Hatırlat',
+  },
   ja: {
     updTitle: 'ソフトウェアアップデート',
     updHeadline: '新しいバージョンがあります',

@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const es = {
+  appLegacyDocImported:
+    'El archivo .{ext} se abrió como una copia .docx convertida. El original no cambia; al guardar se escribe un nuevo archivo .docx.',
   appScTitle: 'Atajos de teclado',
   appScFilter: 'Buscar atajo',
   appScNone: 'No hay atajos coincidentes',
@@ -55,6 +57,7 @@ export const es = {
     'Este documento contiene texto vertical (se muestra horizontal por ahora; el guardado no se ve afectado)',
   appNewDocCreated:
     'Documento en blanco creado. Describa el contenido que desea generar en el panel de IA de la izquierda',
+  appNewDocCreatedNoAi: 'Documento en blanco creado.',
   appNewFailed: 'Error al crear el documento: {error}',
   appSaveFailed: 'Error al guardar: {error}',
   appAutoSavedAt: 'Guardado automáticamente ({time})',
@@ -97,6 +100,9 @@ export const es = {
   appPrintRangeAll: 'Todas las páginas',
   appPrintRangeCurrent: 'Página actual',
   appPrintRangeCustom: 'Intervalo personalizado',
+  appPrintRangeSelection: 'Selección',
+  appPrintSelectionPreparing: 'Paginando la selección…',
+  appPrintSelectionFailed: 'No se pudo paginar la selección: {error}',
   appPrintRangeHint: 'p. ej. 1,3,5-8',
   appPrintPageCount: '{n} páginas',
   appPrintNoPages: 'No hay páginas para imprimir',
@@ -356,6 +362,9 @@ export const es = {
   appAiBadgeTip: 'Usa IA',
   appTranslate: 'Traducir',
   appTranslateTo: 'Traducir al {lang}',
+  appEasyWords: 'Explicar con palabras sencillas',
+  appEasyWordsPrompt:
+    'Explica el texto seleccionado en español para que lo entienda también quien necesita un texto fácil (niños, personas mayores o quienes están aprendiendo español). Usa palabras cotidianas y frases cortas, y conserva todos los datos, cifras y condiciones. No modifiques el documento: «{text}»',
   redactMenuLabel: 'Ocultar la selección a la IA',
   redactDialogDesc:
     'Las palabras siguen en el documento y en el archivo; el modelo solo ve el marcador. Ponle un nombre para que sepa qué representa.',
@@ -386,6 +395,7 @@ export const es = {
   appLangHindi: 'hindi',
   appLangTraditionalChinese: 'chino tradicional',
   appLangVietnamese: 'vietnamita',
+  appLangTurkish: 'turco',
   appWrapTextMenu: 'Ajustar texto',
   appViewImage: 'Ver imagen',
   appSaveImageAs: 'Guardar imagen como…',
@@ -588,4 +598,10 @@ export const es = {
   appMergeSourceLoaded: '{name} cargado ({n} registros)',
   appMergeWritten: '{n} documentos escritos',
   appMergeNothingToWrite: 'No hay nada que escribir',
+  appExportingHwp: 'Exportando documento HWP…',
+  appExportedHwp: 'Documento HWP exportado: {path}',
+  appExportHwpFailed: 'Error al exportar a HWP: {error}',
+  appExportHwpCanceled: 'Exportación a HWP cancelada',
+  appExportHwpReadback:
+    'Este documento no se pudo escribir exactamente como .hwp. Pruebe a guardarlo como .hwpx.',
 } satisfies Record<keyof typeof zh, string>

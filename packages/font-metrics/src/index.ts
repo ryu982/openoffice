@@ -1,5 +1,6 @@
-export { advanceWidths, type AdvanceStyle } from './advance'
+export { advanceWidths, fileAdvanceWidths, type AdvanceStyle } from './advance'
 export { findFontCovering, findSystemFont, isFamilyInstalled, isTruetype } from './font-locate'
 export { configureMetricsCache, familyVerticalMetrics, type FaceVerticalMetrics } from './metrics'
 export { familyInfoFor, type FamilyInfo } from './family-info'
-export { configureExtraFontDirs } from './sfnt'
+export { appleFontAssetRoots, configureExtraFontDirs } from './sfnt'
+export { isWoff2, woff2ToSfnt } from './woff2'

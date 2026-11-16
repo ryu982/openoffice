@@ -12,10 +12,12 @@
 | 收起／展开功能区——所有编辑器通用   | ⌥⌘R   | Ctrl+F1         |
 | 紧凑功能区——仅 Docs                | ⌥⌘K   | Ctrl+Alt+K      |
 | 打开「键盘快捷键」表——仅 Word      | ⌘/    | Ctrl+/          |
+| 打开设置 — 除 Word 外的所有标签页  | ⌘,    | Ctrl+,          |
 
 - **F1 打开的是本手册**，不是快捷键表。它属于应用程序菜单，所以在 Word、Sheets、Slides、PDF 或 Home 标签页中都能用。
 - **切换功能区用 `Ctrl+F1`，macOS 上用 `⌥⌘R`。** 单按 `F1` 不会有任何反应——F1 是手册，功能区组合键刻意不与它共用。macOS 上也接受 `Ctrl+F1`，不过 Office for Mac 实际使用的是 `⌥⌘R`。
 - **「键盘快捷键」表只有 Word 有**（`⌘/`）。它列出的正是下面那张 Word 表。其他编辑器都没有。
+- **`⌘,` 打开设置**（Windows 和 Linux 上为 `Ctrl+,`），与大多数 Mac 应用一致。在 Word 标签页中这个组合键仍是下标，因此在 Mac 上请从应用菜单打开，在 Windows 和 Linux 上从 菜单（☰） ▸ 设置… 打开。
 
 ![Word 自带的「键盘快捷键」面板：左侧是操作，右侧是组合键，按文件、编辑、文本、段落、插入、审阅、视图分组](img/word-shortcuts.png)
 
@@ -290,6 +292,7 @@ Excel 的筛选快捷键 Ctrl+Shift+L 在 Windows 或 Linux 上不做任何事�
 | 用鼠标滚轮缩放                                    | ⌘ + 滚轮 | Ctrl + 滚轮     |
 | 在单元格中显示或隐藏公式                          | ⌘`       | Ctrl+`          |
 | 展开或收起公式栏                                  | ⌘⇧U      | Ctrl+Shift+U    |
+| 按位置运行快速访问工具栏按钮（第 1 至第 10 个）   |          | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -615,23 +618,25 @@ GenOffice HTML 在实时预览旁边显示代码编辑器。作用于页面元�
 
 ### 编辑
 
-| 操作       | macOS       | Windows / Linux              |
-| ---------- | ----------- | ---------------------------- |
-| 撤销       | ⌃Z          | Ctrl+Z                       |
-| 重做       | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| 删除当前行 | ⌃Y          | Ctrl+Y                       |
-| 剪切       | ⌃X          | Ctrl+X                       |
-| 复制       | ⌃C          | Ctrl+C                       |
-| 粘贴       | ⌃V          | Ctrl+V                       |
-| 删除       | ⌃E          | Ctrl+E                       |
-| 全选       | ⌃A          | Ctrl+A                       |
-| 复制格式   | ⌥C          | Alt+C                        |
-| 查找       | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| 查找和替换 | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| 查找下一个 | ⌃L          | Ctrl+L                       |
-| 向上查找   | ⌃Q, L       | Ctrl+Q, L                    |
-| 定位       | ⌥G          | Alt+G                        |
-| 比较文档   | ⌥⇧V         | Alt+Shift+V                  |
+| 操作         | macOS       | Windows / Linux              |
+| ------------ | ----------- | ---------------------------- |
+| 撤销         | ⌃Z          | Ctrl+Z                       |
+| 重做         | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 删除当前行   | ⌃Y          | Ctrl+Y                       |
+| 剪切         | ⌃X          | Ctrl+X                       |
+| 复制         | ⌃C          | Ctrl+C                       |
+| 粘贴         | ⌃V          | Ctrl+V                       |
+| 删除         | ⌃E          | Ctrl+E                       |
+| 全选         | ⌃A          | Ctrl+A                       |
+| 复制格式     | ⌥C          | Alt+C                        |
+| 查找         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 查找和替换   | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 查找下一个   | ⌃L          | Ctrl+L                       |
+| 向上查找     | ⌃Q, L       | Ctrl+Q, L                    |
+| 定位         | ⌥G          | Alt+G                        |
+| 移到文档开头 | ⌃⇞          | Ctrl+PageUp                  |
+| 移到文档末尾 | ⌃⇟          | Ctrl+PageDown                |
+| 比较文档     | ⌥⇧V         | Alt+Shift+V                  |
 
 ### 字符格式
 
@@ -757,3 +762,5 @@ GenOffice HTML 在实时预览旁边显示代码编辑器。作用于页面元�
 | 转到主页标签页（表格外） | ⇧⌘H   | Ctrl+Shift+H    |
 
 写成 `Ctrl+N,T` 的按键表示先按 Ctrl+N 再松开，然后按 T。`F5 → S` 表示先用 F5 选定单元格块，再按 S。`Ctrl+1 … Ctrl+0` 指文档的第一至第十个样式；`Ctrl+Alt+1 … Ctrl+Alt+0` 也会应用相同的样式。 选中单元格块时，`Ctrl+Shift+S`（macOS 上为 `⇧⌘S`）为块求和；其他情况下该键为另存为。
+
+用鼠标时与 Hangul 相同:双击选中一个词,三击选中整个段落,双击后按住拖动则按词扩展选区。编辑页眉、页脚或脚注时也一样。复制单元格块(`Ctrl+C`)会同时复制单元格文字和表格本身,粘贴到正文中会重新生成同样的表格。只把光标放在另一个表格的单元格中再粘贴,会打开 Paste Cells 对话框:可以从该单元格开始覆盖(超出表格的单元格会被舍弃),或在上方、下方、左侧、右侧插入。

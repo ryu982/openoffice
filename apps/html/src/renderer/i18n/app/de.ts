@@ -48,6 +48,11 @@ export const de = {
   saveFailedStatus: 'Speichern fehlgeschlagen',
   exportFailed: 'Export fehlgeschlagen',
   printFailed: 'Druck fehlgeschlagen: {error}',
+  printRangeEmpty:
+    'Dieses Dokument hat {count} Seiten. Geben Sie Seitenzahlen innerhalb dieser Seiten ein.',
+  printPagesFailed: 'Die zu druckenden Seiten konnten nicht gezählt werden: {error}',
+  printLayoutSaved: 'Das angeordnete Ergebnis wurde als PDF gespeichert.',
+  printLayoutSaveFailed: 'Das PDF konnte nicht gespeichert werden: {error}',
   exportHtmlSkipped:
     'Exportiert, aber {count} Ressource(n) konnten nicht eingebettet werden (z. B. {first})',
   viewPreview: 'Vorschau',
@@ -83,7 +88,8 @@ export const de = {
   slideThumbGo: 'Zu Folie {n} wechseln',
   previewNeedsSave:
     'Relative Bilder und Stile erscheinen in der Vorschau, sobald die Datei gespeichert ist',
-  inspectHint: 'Element in der Vorschau anklicken zum Auswählen, Doppelklick zum Textbearbeiten',
+  inspectHint:
+    'Element in der Vorschau anklicken zum Auswählen, Doppelklick zum Textbearbeiten, Umschalt+Klick oder {alt}+Ziehen für mehrere',
   nodeDynamic:
     'Dieses Element wurde vom Seitenskript erzeugt und existiert nicht im Quelltext; über Quelltext oder KI bearbeiten',
   nodeDynamicShort: 'skriptgeneriert',

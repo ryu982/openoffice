@@ -12,10 +12,12 @@
 | 收合／展開功能區——所有編輯器通用         | ⌥⌘R   | Ctrl+F1         |
 | 緊湊功能區——僅 Docs                      | ⌥⌘K   | Ctrl+Alt+K      |
 | 開啟「鍵盤快速鍵」表——僅 Word            | ⌘/    | Ctrl+/          |
+| 開啟設定 — Word 以外的所有分頁           | ⌘,    | Ctrl+,          |
 
 - **F1 開啟的是本手冊**，不是快速鍵表。它屬於應用程式選單，所以在 Word、Sheets、Slides、PDF 或 Home 標籤頁中都能用。
 - **切換功能區用 `Ctrl+F1`，macOS 上用 `⌥⌘R`。** 只按 `F1` 不會有任何反應——F1 是手冊，功能區組合鍵刻意不與它共用。macOS 上也接受 `Ctrl+F1`，不過 Office for Mac 實際使用的是 `⌥⌘R`。
 - **「鍵盤快速鍵」表只有 Word 有**（`⌘/`）。它列出的正是下面那張 Word 表。其他編輯器都沒有。
+- **`⌘,` 開啟設定**（Windows 和 Linux 上為 `Ctrl+,`），與大多數 Mac 應用程式一致。在 Word 分頁中這個組合鍵仍是下標，因此在 Mac 上請從應用程式選單開啟，在 Windows 和 Linux 上從 選單（☰） ▸ 設定… 開啟。
 
 ![Word 自帶的「鍵盤快速鍵」面板：左側是操作，右側是組合鍵，按檔案、編輯、文字、段落、插入、審閱、檢視分組](img/word-shortcuts.png)
 
@@ -290,6 +292,7 @@ Excel 的篩選快速鍵 Ctrl+Shift+L 在 Windows 或 Linux 上不做任何事�
 | 使用滑鼠滾輪縮放                                      | ⌘ + 滾輪 | Ctrl + 滾輪     |
 | 在儲存格中顯示或隱藏公式                              | ⌘`       | Ctrl+`          |
 | 展開或收合公式列                                      | ⌘⇧U      | Ctrl+Shift+U    |
+| 依位置執行快速存取工具列按鈕（第 1 至第 10 個）       |          | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -615,23 +618,25 @@ GenOffice HTML 在即時預覽旁邊顯示程式碼編輯器。作用於頁面�
 
 ### 編輯
 
-| 操作       | macOS       | Windows / Linux              |
-| ---------- | ----------- | ---------------------------- |
-| 復原       | ⌃Z          | Ctrl+Z                       |
-| 重做       | ⌃⇧Z         | Ctrl+Shift+Z                 |
-| 刪除目前列 | ⌃Y          | Ctrl+Y                       |
-| 剪下       | ⌃X          | Ctrl+X                       |
-| 複製       | ⌃C          | Ctrl+C                       |
-| 貼上       | ⌃V          | Ctrl+V                       |
-| 刪除       | ⌃E          | Ctrl+E                       |
-| 全選       | ⌃A          | Ctrl+A                       |
-| 複製格式   | ⌥C          | Alt+C                        |
-| 尋找       | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
-| 尋找及取代 | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
-| 尋找下一個 | ⌃L          | Ctrl+L                       |
-| 向上尋找   | ⌃Q, L       | Ctrl+Q, L                    |
-| 移至       | ⌥G          | Alt+G                        |
-| 比較文件   | ⌥⇧V         | Alt+Shift+V                  |
+| 操作         | macOS       | Windows / Linux              |
+| ------------ | ----------- | ---------------------------- |
+| 復原         | ⌃Z          | Ctrl+Z                       |
+| 重做         | ⌃⇧Z         | Ctrl+Shift+Z                 |
+| 刪除目前列   | ⌃Y          | Ctrl+Y                       |
+| 剪下         | ⌃X          | Ctrl+X                       |
+| 複製         | ⌃C          | Ctrl+C                       |
+| 貼上         | ⌃V          | Ctrl+V                       |
+| 刪除         | ⌃E          | Ctrl+E                       |
+| 全選         | ⌃A          | Ctrl+A                       |
+| 複製格式     | ⌥C          | Alt+C                        |
+| 尋找         | ⌃F / ⌃Q, F  | Ctrl+F / Ctrl+Q, F           |
+| 尋找及取代   | ⌃F2 / ⌃Q, A | Ctrl+H / Ctrl+F2 / Ctrl+Q, A |
+| 尋找下一個   | ⌃L          | Ctrl+L                       |
+| 向上尋找     | ⌃Q, L       | Ctrl+Q, L                    |
+| 移至         | ⌥G          | Alt+G                        |
+| 移到文件開頭 | ⌃⇞          | Ctrl+PageUp                  |
+| 移到文件結尾 | ⌃⇟          | Ctrl+PageDown                |
+| 比較文件     | ⌥⇧V         | Alt+Shift+V                  |
 
 ### 字元格式
 
@@ -757,3 +762,5 @@ GenOffice HTML 在即時預覽旁邊顯示程式碼編輯器。作用於頁面�
 | 移至首頁分頁（表格外） | ⇧⌘H   | Ctrl+Shift+H    |
 
 寫成 `Ctrl+N,T` 的按鍵表示先按 Ctrl+N 再放開，然後按 T。`F5 → S` 表示先用 F5 選取儲存格區塊，再按 S。`Ctrl+1 … Ctrl+0` 指文件的第一至第十個樣式；`Ctrl+Alt+1 … Ctrl+Alt+0` 也會套用相同的樣式。 選取儲存格區塊時，`Ctrl+Shift+S`（macOS 上為 `⇧⌘S`）是區塊加總；其他情況下該鍵為另存新檔。
+
+使用滑鼠時與 Hangul 相同:按兩下選取一個詞,按三下選取整個段落,按兩下後按住拖曳則以詞為單位擴大選取。編輯頁首、頁尾或註腳時也一樣。複製儲存格區塊(`Ctrl+C`)會同時複製儲存格文字和表格本身,貼到本文中會重新產生同樣的表格。只把游標放在另一個表格的儲存格中再貼上,會開啟 Paste Cells 對話方塊:可以從該儲存格開始覆寫(超出表格的儲存格會捨棄),或插入到上方、下方、左側、右側。

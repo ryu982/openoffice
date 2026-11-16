@@ -45,6 +45,10 @@ export const cs = {
   saveFailedStatus: 'Uložení se nezdařilo',
   exportFailed: 'Export se nezdařil',
   printFailed: 'Tisk se nezdařil: {error}',
+  printRangeEmpty: 'Tento dokument má {count} stran. Zadejte čísla stran v tomto rozsahu.',
+  printPagesFailed: 'Strany k tisku se nepodařilo spočítat: {error}',
+  printLayoutSaved: 'Uspořádaný výsledek byl uložen jako PDF.',
+  printLayoutSaveFailed: 'PDF se nepodařilo uložit: {error}',
   exportHtmlSkipped: 'Exportováno, ale {count} zdrojů se nepodařilo vložit (např. {first})',
   viewPreview: 'Náhled',
   viewSplit: 'Rozdělit',
@@ -67,7 +71,8 @@ export const cs = {
   slideThumbs: 'Snímky',
   slideThumbGo: 'Přejít na snímek {n}',
   previewNeedsSave: 'Relativní obrázky a styly se v náhledu zobrazí po uložení souboru',
-  inspectHint: 'Klepnutím na prvek v náhledu ho vyberete, poklepáním upravíte text',
+  inspectHint:
+    'Klepnutím na prvek v náhledu ho vyberete, poklepáním upravíte text, Shift+klepnutím nebo tažením s {alt} vyberete více prvků',
   nodeDynamic:
     'Tento prvek vytvořil skript stránky a nemá zdroj; upravte ho přes zdrojový kód nebo AI',
   nodeDynamicShort: 'vytvořeno skriptem',

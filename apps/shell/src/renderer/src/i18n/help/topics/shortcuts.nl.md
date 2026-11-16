@@ -12,10 +12,12 @@ Elke editor heeft een eigen toetsenindeling en slechts een paar werken overal. D
 | Lint in- of uitklappen — elke editor                     | ⌥⌘R   | Ctrl+F1         |
 | Lint compact — alleen Docs                               | ⌥⌘K   | Ctrl+Alt+K      |
 | Het blad Sneltoetsen openen — alleen Word                | ⌘/    | Ctrl+/          |
+| Instellingen openen — elk tabblad behalve Word           | ⌘,    | Ctrl+,          |
 
 - **F1 opent deze handleiding**, niet het sneltoetsenblad. De toets hoort bij het toepassingsmenu en werkt dus vanuit Word, Sheets, Slides, PDF of het tabblad Home.
 - **De linttoets is `Ctrl+F1`, of `⌥⌘R` op macOS.** Een kale `F1` doet niets — F1 is de handleiding, en de linttoets deelt die toets bewust niet. `Ctrl+F1` werkt ook op macOS, maar `⌥⌘R` is de toets die Office voor Mac gebruikt.
 - **Het blad Sneltoetsen bestaat alleen in Word** (`⌘/`). Het toont precies de Word-tabel hieronder. Geen enkele andere editor heeft er een.
+- **`⌘,` opent de instellingen** (`Ctrl+,` op Windows en Linux), zoals in de meeste Mac-apps. In een Word-tabblad blijft de toetscombinatie subscript; open de instellingen daar via het app-menu op een Mac, of via Menu (☰) ▸ Instellingen… op Windows en Linux.
 
 ![Het blad Sneltoetsen van Word zelf: de actie links, de sneltoets rechts, gegroepeerd per Bestand, Bewerken, Tekstopmaak, Alinea-opmaak, Invoegen, Controleren en hulpmiddelen, Weergave](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ De sneltoets voor filteren van Excel, Ctrl+Shift+L, doet niets op Windows of Lin
 
 ### Venster
 
-| Actie                                                            | macOS        | Windows / Linux |
-| ---------------------------------------------------------------- | ------------ | --------------- |
-| De werkmap opslaan                                               | ⌘S           | Ctrl+S          |
-| Opslaan als                                                      | ⇧⌘S          | Ctrl+Shift+S    |
-| Een werkmap openen                                               | ⌘O           | Ctrl+O          |
-| Afdrukken                                                        | ⌘P           | Ctrl+P          |
-| De werkmap sluiten (macOS) / De app afsluiten (Windows en Linux) | ⌘W           | Ctrl+Q          |
-| De gebruikershandleiding openen                                  | F1           | F1              |
-| Inzoomen                                                         | ⌘=           | Ctrl+=          |
-| Zoomen met het muiswiel                                          | ⌘ + scrollen | Ctrl + scrollen |
-| Formules in de cellen tonen of verbergen                         | ⌘`           | Ctrl+`          |
-| De formulebalk uitvouwen of inklappen                            | ⌘⇧U          | Ctrl+Shift+U    |
+| Actie                                                                           | macOS        | Windows / Linux |
+| ------------------------------------------------------------------------------- | ------------ | --------------- |
+| De werkmap opslaan                                                              | ⌘S           | Ctrl+S          |
+| Opslaan als                                                                     | ⇧⌘S          | Ctrl+Shift+S    |
+| Een werkmap openen                                                              | ⌘O           | Ctrl+O          |
+| Afdrukken                                                                       | ⌘P           | Ctrl+P          |
+| De werkmap sluiten (macOS) / De app afsluiten (Windows en Linux)                | ⌘W           | Ctrl+Q          |
+| De gebruikershandleiding openen                                                 | F1           | F1              |
+| Inzoomen                                                                        | ⌘=           | Ctrl+=          |
+| Zoomen met het muiswiel                                                         | ⌘ + scrollen | Ctrl + scrollen |
+| Formules in de cellen tonen of verbergen                                        | ⌘`           | Ctrl+`          |
+| De formulebalk uitvouwen of inklappen                                           | ⌘⇧U          | Ctrl+Shift+U    |
+| Een knop op de werkbalk Snelle toegang uitvoeren op positie (1e tot en met 10e) |              | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Deze toetsen werken zolang het tabblad HWP/HWPX vooraan staat en het document fo
 | Volgende zoeken        | ⌃L          | Ctrl+L                       |
 | Achterwaarts zoeken    | ⌃Q, L       | Ctrl+Q, L                    |
 | Ga naar                | ⌥G          | Alt+G                        |
+| Begin van document     | ⌃⇞          | Ctrl+PageUp                  |
+| Einde van document     | ⌃⇟          | Ctrl+PageDown                |
 | Documenten vergelijken | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Teken
@@ -757,3 +762,5 @@ Ze werken alleen als de cursor in een lege tabelcel staat. Er zijn aparte toetse
 | Naar het tabblad Start (buiten een tabel) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Een toets als `Ctrl+N,T` betekent: druk op Ctrl+N, laat los en druk dan op T. `F5 → S` betekent: selecteer met F5 een celblok en druk dan op S. `Ctrl+1 … Ctrl+0` staan voor de eerste tot en met tiende stijl van het document; `Ctrl+Alt+1 … Ctrl+Alt+0` passen dezelfde stijlen toe. Met een celblok geselecteerd is `Ctrl+Shift+S` (op macOS `⇧⌘S`) de bloksom; daarbuiten slaat die toets op onder een nieuwe naam.
+
+Met de muis werkt het zoals in Hangul: dubbelklikken selecteert een woord, driemaal klikken de hele alinea, en dubbelklikken, ingedrukt houden en slepen breidt de selectie per woord uit. Dat werkt ook tijdens het bewerken van een koptekst, voettekst of voetnoot. Een celblok kopiëren (`Ctrl+C`) kopieert de tekst van de cellen en de tabel zelf, dus plakken in de lopende tekst maakt dezelfde tabel opnieuw. Plakken met alleen de cursor in een cel van een andere tabel opent het venster Paste Cells: overschrijven vanaf die cel (cellen buiten de tabel vervallen) of de cellen boven, onder, links of rechts invoegen.

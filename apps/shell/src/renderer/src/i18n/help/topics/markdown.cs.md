@@ -37,6 +37,7 @@ Nabídka Soubor, všechno místní a všechno se ptá, kam výsledek uložit:
 
 - **Exportovat jako Word…** a **Exportovat jako PDF…** zapíšou skutečný .docx nebo .pdf.
 - **Exportovat jako ODT…** zapíše .odt (text OpenDocument) stejným převodem jako export do Wordu; pokud se při něm něco změní nebo vypadne, uvidíte seznam a nejdřív to potvrdíte.
+- **Exportovat jako dokument HWP…** zapíše stejným převodem dokument HWP (.hwp nebo .hwpx); nadpisy, seznamy a tabulky se do dokumentu HWP přenesou jako takové a dlouhá tabulka pokračuje na další stránce. Pokud něco přenést nelze, nejprve uvidíte seznam a potvrdíte ho.
 - **Exportovat jako obrázky…** zapíše jeden PNG na každou stránku do složky, kterou vyberete.
 - **Převést a otevřít v Docs** převede na .docx a otevře ho ve vestavěné kartě Docs tady v aplikaci — nejde o předání do cloudu a převedená kopie žije v cache složce, která se po asi týdnu uklidí.
 

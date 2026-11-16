@@ -10,9 +10,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  aiVisible,
   projectPanelText,
   templateDocumentOf,
   presentationKeyOf,
+  useAppChoice,
   useAutoSavePref,
   useSplitPaneFocusPing,
   type TemplateDocument,
@@ -23,18 +25,24 @@ import { mapStrings } from './i18n/map-strings'
 import type { StringKey } from './i18n/locale'
 import { linkFromInput, linkInputKind } from './document/link-input'
 import { newMap, type OpenFailure, type OpenNotices, openMapBytes } from './document/open'
-import { openCopiedMap, seededMap } from './document/open'
+import { importedMap, openCopiedMap, seededMap } from './document/open'
 import { useRecoveryCopies } from './document/recovery-copies'
 import type { DocumentSession, SheetTab } from './document/session'
 import { deleteSheetAfterConfirm } from './document/sheet-actions'
 import { thumbnailForSave } from './document/thumbnail'
 import { saveMapIntoProject } from './document/save-into-project'
 import { useMapExport } from './export/use-map-export'
+import { MapPrintDialog } from './export/PrintDialog'
 import { MapController, type MapHost, type TopicRequest } from './map/controller'
 import { usePictureDrop } from './map/use-picture-drop'
+import { applyLinkPreview, type LinkPreviewOutcome } from './map/link-preview'
 import { Toolbar } from './components/Toolbar'
 import { SheetTabs } from './components/SheetTabs'
 import { ThemePanel } from './components/ThemePanel'
+import { FormatPanel } from './components/FormatPanel'
+import { formatModel } from './components/format-model'
+import { noticeText } from './components/map-notices'
+import { BoundaryMenu } from './components/BoundaryMenu'
 import { NotePanel, type NotePanelHandle } from './components/NotePanel'
 import { MindmapAiDock, useMindmapAi } from './ai/AiDock'
 import { useMapHandoff } from './ai/use-handoff'
@@ -43,6 +51,7 @@ import {
   type ConfirmRequest,
   Notice,
   TopicFieldDialog,
+  type TopicField,
   type TopicFieldRequest,
 } from './components/dialogs'
 import type { MindmapMenuCommand, SaveMode } from '../shared/ipc'
@@ -62,6 +71,14 @@ const AUTO_SAVE_INTERVAL_MS = 30_000
 /** Labels are typed in one field, separated by a comma: the plain one, the full-width one or the ideographic one. */
 const LABEL_SEPARATORS = /[,\uFF0C\u3001]/
 const TOAST_MS = 4000
+/** whether "fetch a preview" was ticked the last time a web link was put on a topic */
+const LINK_PREVIEW_PREF = 'mindmapapp.linkPreview'
+const LINK_PREVIEW_TEXT: Record<LinkPreviewOutcome, StringKey> = {
+  done: 'linkPreviewDone',
+  'title-only': 'linkPreviewTitleOnly',
+  nothing: 'linkPreviewNothing',
+  failed: 'linkPreviewFailed',
+}
 
 /** true while the keyboard is in a text field or in a title being typed on the map */
 function typingInText(): boolean {
@@ -87,6 +104,13 @@ export default function App() {
   /** why a new map could not be saved into its project folder (spec 6); shown until the next save */
   const [projectSaveProblem, setProjectSaveProblem] = useState<string | null>(null)
   const [themeOpen, setThemeOpen] = useState(false)
+  /** the format panel beside the map */
+  const [formatOpen, setFormatOpen] = useState(false)
+  /** the menu asked for on a boundary: which one, and where */
+  const [boundaryMenu, setBoundaryMenu] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  )
+  const closeBoundaryMenu = useCallback(() => setBoundaryMenu(null), [])
   /** F5: the map alone, shell chrome covered by HTML fullscreen */
   const [presenting, setPresenting] = useState(false)
   const [noteOpen, setNoteOpen] = useState(
@@ -143,7 +167,7 @@ export default function App() {
 
   // ---- what a map on screen needs from the screen around it ----
 
-  const openField = useCallback((field: TopicRequest, topicId: string) => {
+  const openField = useCallback((field: TopicField, topicId: string) => {
     const active = [...controllers.current.values()].find((candidate) => candidate.topic(topicId))
     const topic = active?.topic(topicId)
     if (!topic) return
@@ -175,6 +199,9 @@ export default function App() {
       },
       onRequest: (field, topicId) => openTopicFieldRef.current(field, topicId),
       onStateChange: () => setMapTick((tick) => tick + 1),
+      // a boundary that could not be made, a format that cannot go there: said on the status line
+      onNotice: (notice) => say(noticeText(notice)),
+      onBoundaryMenu: (id, at) => setBoundaryMenu({ id, x: at.x, y: at.y }),
     }),
     [ask, say],
   )
@@ -192,14 +219,19 @@ export default function App() {
         if (pending) {
           const file = await window.mindmapApi.openFile(pending)
           const started = performance.now()
-          // a restored recovery copy opens with unsaved changes; without its file it is untitled
+          // a restored recovery copy opens with unsaved changes; without its file it is
+          // untitled, and so is a map imported from a .mm, which is never written
           const result =
-            file.status !== 'ok'
-              ? file
-              : file.restored
-                ? await openCopiedMap({ bytes: file.bytes })
-                : await openMapBytes(file.bytes)
-          if (file.status === 'ok' && file.restored === 'untitled') openedPath = null
+            file.status === 'import'
+              ? await importedMap(file.bytes, file.title, translate('importedPicture'))
+              : file.status !== 'ok'
+                ? file
+                : file.restored
+                  ? await openCopiedMap({ bytes: file.bytes })
+                  : await openMapBytes(file.bytes)
+          if (file.status === 'import' || (file.status === 'ok' && file.restored === 'untitled')) {
+            openedPath = null
+          }
           // how long the engine took over the file, for measuring large maps
           performance.measure('mindmap:open', { start: started, end: performance.now() })
           if (cancelled) return
@@ -342,6 +374,9 @@ export default function App() {
     saving: () => savingRef.current,
   })
 
+  // AI turned off in Settings takes the AI button, panel and rail away; turned on, they come back
+  const aiOn = aiVisible(useAppChoice(window.aiOfficeEditorChoice))
+
   // the AI panel works on the map through the same session and controllers (T12)
   const ai = useMindmapAi({ session, controllers, activeKey, setActiveKey, path, flush: flushAll })
 
@@ -357,11 +392,13 @@ export default function App() {
 
   // a request the shell handed over to this new map: taken once, run through the panel (T16)
   const handoff = useMapHandoff({
-    ready: status === 'ready',
+    // with AI off a handed-over request is not taken: there is no panel to run it
+    ready: status === 'ready' && aiOn,
     untitled: path === null,
     openPanel: () => {
       closeNote()
       setThemeOpen(false)
+      setFormatOpen(false)
       ai.setOpen(true)
     },
   })
@@ -388,6 +425,10 @@ export default function App() {
           }),
     [status, path, flushAll],
   )
+
+  // export, print and the preview picture a save writes (export/use-map-export.ts)
+  const exporter = useMapExport({ session, controllers, activeKey, path, flushAll, say })
+  const exportAs = exporter.exportAs
 
   // ---- saving ----
 
@@ -420,6 +461,13 @@ export default function App() {
           setProjectSaveProblem(null)
           return true
         }
+        if (result.ok && 'export' in result) {
+          // Save As picked an export type: that copy is written by the export,
+          // to the path picked. The map keeps its file and stays unsaved.
+          setSaveState('idle')
+          exportAs(result.export.format, result.export.path)
+          return false
+        }
         // a sibling copy holding the disk version is not a failure: an
         // automatic save is deferred silently and a declined overwrite keeps
         // the map dirty, exactly like the other editors' guard
@@ -435,7 +483,7 @@ export default function App() {
         savingRef.current = false
       }
     },
-    [flushAll, recovery],
+    [flushAll, recovery, exportAs],
   )
 
   /**
@@ -694,9 +742,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [doSave, runCommand])
 
-  // export, print and the preview picture a save writes (export/use-map-export.ts)
-  const exporter = useMapExport({ session, controllers, activeKey, path, flushAll, say })
-
   // ---- sheets ----
 
   const selectSheet = (key: string): void => {
@@ -747,13 +792,21 @@ export default function App() {
     }
   }
 
-  // ---- labels, notes, links ----
+  // ---- labels, notes, links, pictures ----
 
-  /** Labels and links are modal; a note belongs in the side panel, where it stays while the map is used. */
+  /**
+   * Labels and links are modal; a note belongs in the side panel, where it
+   * stays while the map is used. A picture is chosen in the file window.
+   */
   const openTopicField = (field: TopicRequest, topicId: string): void => {
+    if (field === 'picture') {
+      pictureDrop.choose(topicId)
+      return
+    }
     if (field === 'note') {
       setThemeOpen(false)
       ai.setOpen(false)
+      setFormatOpen(false)
       if (noteOpen) noteRef.current?.focus()
       else setNoteOpen(true)
       return
@@ -768,15 +821,37 @@ export default function App() {
     else say('selectTopicFirst')
   }
 
-  const submitField = (value: string): boolean => {
+  const submitField = (value: string, options?: { preview: boolean }): boolean => {
     const map = controller
     if (!map || !fieldRequest) return true
     const { field, topicId } = fieldRequest
     if (field === 'label') return map.setLabels(topicId, value.split(LABEL_SEPARATORS))
     if (field === 'note') return map.setNote(topicId, value)
     // Any address is kept; the controller turns down only a reference into the file.
-    return map.setLink(topicId, linkFromInput(value))
+    const address = linkFromInput(value)
+    const taken = map.setLink(topicId, address)
+    if (taken && options) {
+      localStorage.setItem(LINK_PREVIEW_PREF, options.preview ? '1' : '0')
+      if (options.preview && address) fetchLinkPreview(topicId, address, map.mind.newTopicName)
+    }
+    return taken
   }
+
+  /** The page behind a link, read once because the person asked for it in the dialog (decision 0099). */
+  const fetchLinkPreview = (topicId: string, address: string, newTopicName: string): void => {
+    say('linkPreviewLoading')
+    void applyLinkPreview(ai.host, topicId, address, {
+      read: (url) => window.mindmapApi.readLinkPreview(url),
+      newTopicName,
+    }).then(
+      (outcome) => say(LINK_PREVIEW_TEXT[outcome]),
+      () => say('linkPreviewFailed'),
+    )
+  }
+
+  /** "fetch a preview" starts ticked as it was left, but never over a picture the topic already shows */
+  const previewDefault = (topicId: string): boolean =>
+    localStorage.getItem(LINK_PREVIEW_PREF) === '1' && !controller?.topic(topicId)?.hasPicture
 
   // computed on every render: `t` is a new function each time and must not be a hook dependency
   const statusText =
@@ -823,7 +898,10 @@ export default function App() {
         layoutExact={controller?.layoutExact ?? true}
         pickingRelationship={picking}
         themeOpen={themeOpen}
+        formatOpen={formatOpen}
+        textFormat={controller?.textFormat() ?? null}
         aiOpen={ai.open}
+        aiOn={aiOn}
         noteOpen={noteOpen}
         onSave={() => void doSave('save')}
         onSaveAs={() => void doSave('saveAs')}
@@ -839,14 +917,27 @@ export default function App() {
         onSummary={() => {
           if (!controller?.addSummary()) say('selectTopicFirst')
         }}
+        // a boundary turned down is told by the controller (onNotice)
+        onBoundary={() => controller?.addBoundary()}
         onNote={() => requestField('note')}
         onLabel={() => requestField('label')}
         onLink={() => requestField('link')}
+        onPicture={() => requestField('picture')}
         onLayout={(layout: ViewLayout) => controller?.setLayout(layout)}
         onToggleTheme={() => {
           closeNote()
           ai.setOpen(false)
+          setFormatOpen(false)
           setThemeOpen((open) => !open)
+        }}
+        onToggleFormat={(key) => {
+          if (!controller?.toggleTextFormat(key)) say('selectTopicFirst')
+        }}
+        onToggleFormatPanel={() => {
+          closeNote()
+          ai.setOpen(false)
+          setThemeOpen(false)
+          setFormatOpen((open) => !open)
         }}
         onFoldAll={() => runCommand('fold-all')}
         onUnfoldAll={() => runCommand('unfold-all')}
@@ -856,14 +947,22 @@ export default function App() {
         onToggleAi={() => {
           closeNote()
           setThemeOpen(false)
+          setFormatOpen(false)
           ai.setOpen(!ai.open)
         }}
         onExport={exporter.exportAs}
         onMakeFromDocument={() => window.mindmapApi.makeFromDocument?.()}
       />
 
-      {(notices.preserved > 0 || notices.unknownTheme || picking) && (
+      {(notices.preserved > 0 || notices.unknownTheme || notices.imported || picking) && (
         <div className="mm-notices">
+          {notices.imported && (
+            <Notice
+              kind="imported"
+              text={t('noticeImported')}
+              onClose={() => setNotices((current) => ({ ...current, imported: false }))}
+            />
+          )}
           {notices.preserved > 0 && (
             <Notice
               kind="preserved"
@@ -889,7 +988,8 @@ export default function App() {
       )}
 
       <main className="mm-stage">
-        {/* the theme panel and the AI panel dock at this element's end side, one open at a time */}
+        {/* the side panels dock at this element's end side and the AI panel on the side
+            chosen in Settings (ai/ai-panel.css); one of them open at a time */}
         <div
           className="mm-card"
           aria-label={t('appName')}
@@ -915,8 +1015,29 @@ export default function App() {
             themeId={controller.themeId}
             written={controller.themeWritten}
             disabled={!controller}
+            lines={controller.lineSettings}
             onPick={pickTheme}
+            onTapered={(on) => controller.setTapered(on)}
+            onRainbow={(on) => controller.setRainbow(on)}
             onClose={() => setThemeOpen(false)}
+          />
+        )}
+        {formatOpen && (
+          <FormatPanel
+            model={controller ? formatModel(controller) : { kind: 'none' }}
+            format={controller?.textFormat() ?? null}
+            editing={controller?.editingText ?? false}
+            painter={controller?.formatPainter ?? { active: false, sticky: false, kind: null }}
+            onToggle={(key) => controller?.toggleTextFormat(key)}
+            onFormat={(format) => controller?.formatText(format)}
+            onBranchLine={(change) => controller?.setBranchLine(change)}
+            onRelationship={(change) => controller?.setRelationshipStyle(change)}
+            onCurveAuto={() => controller?.resetRelationshipCurve()}
+            onSummary={(change) => controller?.setSummaryStyle(change)}
+            onBoundary={(change) => controller?.setBoundaryStyle(change)}
+            onClear={() => controller?.clearFormat()}
+            onPainter={() => controller?.toggleFormatPainter()}
+            onClose={() => setFormatOpen(false)}
           />
         )}
         {noteOpen && (
@@ -928,20 +1049,23 @@ export default function App() {
             onClose={closeNote}
           />
         )}
-        <MindmapAiDock
-          ai={ai}
-          filePath={path}
-          request={handoff.request}
-          onRunStart={handoff.onRunStart}
-          templateDocument={templateDocument}
-          onSkillHandoff={() => {
-            closeNote()
-            setThemeOpen(false)
-            ai.setOpen(true)
-          }}
-          // a map a create flow handed over goes into the panel's project once made (spec 6)
-          onHandedRunDone={() => void saveIntoProject()}
-        />
+        {aiOn && (
+          <MindmapAiDock
+            ai={ai}
+            filePath={path}
+            request={handoff.request}
+            onRunStart={handoff.onRunStart}
+            templateDocument={templateDocument}
+            onSkillHandoff={() => {
+              closeNote()
+              setThemeOpen(false)
+              setFormatOpen(false)
+              ai.setOpen(true)
+            }}
+            // a map a create flow handed over goes into the panel's project once made (spec 6)
+            onHandedRunDone={() => void saveIntoProject()}
+          />
+        )}
       </main>
 
       <footer className="mm-foot">
@@ -966,13 +1090,32 @@ export default function App() {
         </button>
       </footer>
 
+      {boundaryMenu && (
+        <BoundaryMenu
+          x={boundaryMenu.x}
+          y={boundaryMenu.y}
+          onRemove={() => controller?.removeBoundary(boundaryMenu.id)}
+          onClose={closeBoundaryMenu}
+        />
+      )}
       {confirm && <ConfirmDialog request={confirm} onAnswer={answer} />}
+      {exporter.printing.job && (
+        <MapPrintDialog
+          lang={lang}
+          job={exporter.printing.job}
+          printLayout={window.mindmapApi.printLayout}
+          onPlainPrint={exporter.printing.printPlain}
+          onSaved={() => say('exportDone')}
+          onClose={exporter.printing.close}
+        />
+      )}
       {fieldRequest && (
         <TopicFieldDialog
           key={`${fieldRequest.field}:${fieldRequest.topicId}`}
           request={fieldRequest}
           onSubmit={submitField}
           linkKind={linkInputKind}
+          previewDefault={previewDefault(fieldRequest.topicId)}
           onClose={() => setFieldRequest(null)}
         />
       )}

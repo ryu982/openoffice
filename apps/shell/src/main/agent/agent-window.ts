@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import type { SkillProposal } from '@genoffice/agent-core'
 import type {
@@ -10,6 +10,7 @@ import type {
 } from '@genoffice/electron-utils/user-skills-channels'
 import { productName, type Lang } from '@genoffice/i18n'
 import { safeExternalUrl } from '@genoffice/electron-utils'
+import { aiFeaturesOn } from '@genoffice/electron-utils/app-choice'
 import type { AgentSessionEvent } from '@genoffice/ai-provider/agent-session'
 import type { AiSubscriptionProviderId, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import {
@@ -19,6 +20,7 @@ import {
   AGENT_PROVIDERS,
   AGENT_WARNING_VERSION,
   agentProjectPrefsPatch,
+  agentStartFailureCode,
   normalizeAgentPrefs,
   withRecentFolder,
   type AgentAllowScope,
@@ -30,6 +32,7 @@ import {
   type AgentProjectPrefs,
   type AgentProjectSkillsView,
   type AgentProvider,
+  type AgentStartFailure,
   type AgentStartResponse,
   type AgentTemplateAsIs,
   type AgentTemplateBlank,
@@ -38,14 +41,17 @@ import {
 import { readAgentProjectPref, writeAgentProjectPref } from '../app-settings'
 import { AGENT_HOME_OPEN_CHANNEL } from '../../shared/agent-home-channel'
 import { agentText } from '../../renderer/src/i18n/strings-agent'
+import { appendCrashLog, CRASH_LOG_FILE } from '../crash-log'
 import {
   agentProtectedPaths,
   createAgentManager,
   openableProjectFile,
+  type AgentManager,
   type AgentManagerDeps,
   type AgentMcpSession,
 } from './agent-sessions'
 import type { AgentSkillToolHooks } from './agent-mcp'
+import { startAgentMcpRelays, type AgentRelayHub } from './agent-mcp-relay'
 import {
   agentSkillProposalOf,
   agentTemplateCandidates,
@@ -76,8 +82,13 @@ export type AgentTemplatePreviewOpener = (
 
 export interface AgentWindowDeps extends Omit<
   AgentManagerDeps,
-  'emit' | 'language' | 'statuses' | 'startAppMcp'
+  'emit' | 'language' | 'statuses' | 'startAppMcp' | 'startRelays'
 > {
+  /**
+   * the hub of the person's MCP servers; each session opens a relay per server that is on
+   * (user MCP spec 9). Absent or null: sessions get no relay
+   */
+  userMcp?: (() => AgentRelayHub | null) | undefined
   /**
    * start a session's own MCP server with the window's skill tools; absent when
    * the app has no editors to offer
@@ -121,7 +132,10 @@ function appSettingsPath(userData: string): string {
   return join(userData, 'app-settings.json')
 }
 
-function readProjectPrefsOf(d: AgentWindowDeps, folder: string): AgentProjectPrefs {
+function readProjectPrefsOf(
+  d: Pick<AgentWindowDeps, 'readProjectPrefs' | 'userData'>,
+  folder: string,
+): AgentProjectPrefs {
   return d.readProjectPrefs
     ? d.readProjectPrefs(folder)
     : readAgentProjectPref(appSettingsPath(d.userData), folder)
@@ -335,6 +349,7 @@ export function agentConnections(
     const status = statuses[provider]
     if (blocked.includes(provider)) out[provider] = 'blocked'
     else if (!status || status.state === 'checking') out[provider] = 'checking'
+    else if (status.state === 'off') out[provider] = 'off'
     else if (status.state === 'ready') out[provider] = 'ready'
     else if (
       status.state === 'metered' &&
@@ -345,6 +360,61 @@ export function agentConnections(
     } else out[provider] = 'unavailable'
   }
   return out
+}
+
+export async function startAgentForWindow(
+  d: Pick<AgentWindowDeps, 'readPrefs' | 'writePrefs' | 'readProjectPrefs' | 'userData'>,
+  m: Pick<AgentManager, 'start'>,
+  owner: number,
+  request: unknown,
+): Promise<AgentStartResponse> {
+  const value = (request && typeof request === 'object' ? request : {}) as Record<string, unknown>
+  const provider = value.provider as AgentProvider
+  const mode = value.mode as AgentMode
+  const folder = typeof value.folder === 'string' ? value.folder : ''
+  const failed = (failure: AgentStartFailure): AgentStartResponse => ({ ok: false, failure })
+  // AI features turned off (editor choice spec 8.3): the window is closing, nothing starts
+  if (!aiFeaturesOn()) return failed({ reason: 'stopped' })
+  if (!AGENT_PROVIDERS.includes(provider) || !AGENT_MODES.includes(mode)) {
+    return failed({ reason: 'invalid-request' })
+  }
+  if (AGENT_BLOCKED_PROVIDERS.includes(provider)) return failed({ reason: 'provider-blocked' })
+  const prefs = d.readPrefs()
+  // the warning is a precondition the main process checks, not only the window
+  if (prefs.warningAccepted < AGENT_WARNING_VERSION) return failed({ reason: 'not-accepted' })
+  // the folder's remembered Codex choices, read here rather than taken from the window
+  let codex: ReturnType<typeof agentCodexStartChoices>
+  try {
+    codex = agentCodexStartChoices(provider, readProjectPrefsOf(d, folder))
+  } catch {
+    return failed({ reason: 'bad-folder' })
+  }
+  const result = await m.start(owner, { provider, mode, projectRoot: folder, codex })
+  if (!result.ok) {
+    if (result.cause !== undefined) {
+      const { failure } = result
+      appendCrashLog(join(d.userData, CRASH_LOG_FILE), {
+        kind: 'agent-start',
+        program: provider,
+        reason: agentStartFailureCode(failure),
+        cause: result.cause,
+        ...(failure.reason === 'program-problem' && failure.problem.type === 'exited'
+          ? { exitCode: failure.problem.exitCode }
+          : {}),
+      })
+    }
+    return failed(result.failure)
+  }
+  d.writePrefs(withRecentFolder({ ...prefs, provider, mode }, folder))
+  return {
+    ok: true,
+    sessionId: result.sessionId,
+    skills: result.skills,
+    ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
+    ...(result.instructionsTruncated
+      ? { instructionsTruncated: result.instructionsTruncated }
+      : {}),
+  }
 }
 
 function ownerOf(event: IpcMainInvokeEvent): number | null {
@@ -366,10 +436,11 @@ function registerIpc(): void {
 
   ipcMain.handle(AGENT_CHANNELS.getTheme, () => deps?.theme() ?? 'system')
 
-  // Home opens the window; nothing else may
+  // Home opens the window; nothing else may, and not while AI features are off
   ipcMain.handle(AGENT_HOME_OPEN_CHANNEL, (event) => {
     const home = deps?.parentWindow()
     if (!home || home.isDestroyed() || event.sender !== home.webContents) return
+    if (!aiFeaturesOn()) return
     openAgentWindow()
   })
 
@@ -440,34 +511,10 @@ function registerIpc(): void {
     AGENT_CHANNELS.start,
     async (event, request: unknown): Promise<AgentStartResponse> => {
       const owner = ownerOf(event)
-      if (owner === null || !deps || !manager) return { ok: false, reason: 'start-failed' }
-      const value = (request && typeof request === 'object' ? request : {}) as Record<
-        string,
-        unknown
-      >
-      const provider = value.provider as AgentProvider
-      const mode = value.mode as AgentMode
-      const folder = typeof value.folder === 'string' ? value.folder : ''
-      if (!AGENT_PROVIDERS.includes(provider) || !AGENT_MODES.includes(mode)) {
-        return { ok: false, reason: 'start-failed' }
+      if (owner === null || !deps || !manager) {
+        return { ok: false, failure: { reason: 'invalid-request' } }
       }
-      if (AGENT_BLOCKED_PROVIDERS.includes(provider))
-        return { ok: false, reason: 'provider-blocked' }
-      const prefs = deps.readPrefs()
-      // the warning is a precondition the main process checks, not only the window
-      if (prefs.warningAccepted < AGENT_WARNING_VERSION)
-        return { ok: false, reason: 'not-accepted' }
-      // the folder's remembered Codex choices, read here rather than taken from the window
-      let codex: ReturnType<typeof agentCodexStartChoices>
-      try {
-        codex = agentCodexStartChoices(provider, readProjectPrefsOf(deps, folder))
-      } catch {
-        return { ok: false, reason: 'bad-folder' }
-      }
-      const result = await manager.start(owner, { provider, mode, projectRoot: folder, codex })
-      if (!result.ok) return { ok: false, reason: result.reason, kind: result.kind }
-      deps.writePrefs(withRecentFolder({ ...prefs, provider, mode }, folder))
-      return { ok: true, sessionId: result.sessionId, skills: result.skills }
+      return startAgentForWindow(deps, manager, owner, request)
     },
   )
 
@@ -475,7 +522,7 @@ function registerIpc(): void {
     const owner = ownerOf(event)
     if (owner === null || !manager || typeof sessionId !== 'string' || typeof text !== 'string')
       return false
-    if (!text.trim()) return false
+    if (!text.trim() || !aiFeaturesOn()) return false
     try {
       await manager.send(owner, sessionId, text)
       return true
@@ -598,8 +645,21 @@ function registerIpc(): void {
 export function configureAgentWindow(next: AgentWindowDeps): void {
   deps = next
   const startAppMcp = next.startAppMcp
+  const userMcp = next.userMcp
   manager = createAgentManager({
     ...next,
+    startRelays: userMcp
+      ? async (session, ask) => {
+          const hub = userMcp()
+          if (!hub) return { relays: [], keepResultsInside: [], stop: async () => undefined }
+          return startAgentMcpRelays({
+            hub,
+            ask,
+            caller: `agent:${session.sessionId}`,
+            version: app.getVersion(),
+          })
+        }
+      : undefined,
     statuses: () => next.statuses(),
     language: () => next.lang(),
     startAppMcp: startAppMcp
@@ -667,6 +727,14 @@ export function openAgentWindow(): void {
   } else {
     void next.loadFile(join(__dirname, '../renderer/agent.html'))
   }
+}
+
+/**
+ * AI features were turned off: the window closes, and its sessions end with it
+ * (editor choice spec 8.1)
+ */
+export function closeAgentWindow(): void {
+  if (win && !win.isDestroyed()) win.close()
 }
 
 /** The app is quitting: every session ends with it */

@@ -4,7 +4,7 @@
 
 ## 맡은 범위
 
-- 언어: `Lang`·`LANGS`(21개), 로캘 문자열을 지원 언어로 옮기는 `normalizeLang`, `<html lang>` 값 `htmlLang`, 오른쪽에서 왼쪽으로 쓰는 언어 판정 `isRtlLang`·`htmlDir`(`src/index.ts`).
+- 언어: `Lang`·`LANGS`(22개), 로캘 문자열을 지원 언어로 옮기는 `normalizeLang`, `<html lang>` 값 `htmlLang`, 오른쪽에서 왼쪽으로 쓰는 언어 판정 `isRtlLang`·`htmlDir`(`src/index.ts`).
 - 사전 규칙과 번역기: `LangDicts`, `defineStrings`, `createI18n`, 자리 표시 채우기 `format`.
 - 단축키 표기 변환: 사전에 Mac 표기로 적힌 단축키를 Windows/Linux에서 `Ctrl+…` 형태로 바꾸는 `macShortcutsToWin`·`platformShortcuts`.
 - 메인 프로세스용 현재 언어 보관소: `getUiLang`·`setUiLang`·`onUiLangChange`.
@@ -37,7 +37,8 @@
 - `useI18n()`이 돌려주는 `t`는 참조가 고정되지 않는다. 훅의 의존성 배열에 넣지 않고, 키를 저장해 두었다가 렌더링할 때 번역한다.
 - 메인 프로세스의 현재 언어는 프로세스에 하나다. shell과 에디터들의 메인 코드가 한 번들에서 돌기 때문에 모듈 변수 하나로 충분하다. 렌더러는 이 보관소를 읽지 않고 IPC로 언어를 받는다. 초기값은 `zh`이므로 앱이 시작할 때 `setUiLang(normalizeLang(...))`을 불러야 한다.
 - `normalizeLang`은 번체 중국어 변형(`zh-TW`, `zh-HK`, `zh-Hant`)을 일반 `zh` 접두사보다 먼저 가려내고, 옛 코드 `in`·`iw`를 `id`·`he`로 읽고, 모르는 값은 `en`으로 보낸다. 언어 코드 뒤에는 `-`나 `_` 경계가 있어야 한다.
-- 언어를 추가하는 일은 이 파일만의 변경이 아니다. `Lang`, `LANGS`, `HTML_LANGS`(여기까지는 타입이 강제한다)에 더해 저장소의 모든 사전 조각, 메인 프로세스의 인라인 사전, 도움말의 모든 항목 파일이 그 언어를 가져야 한다.
+- 언어를 추가하는 일은 이 파일만의 변경이 아니다. `Lang`, `LANGS`, `HTML_LANGS`(여기까지는 타입이 강제한다)에 더해 저장소의 모든 사전 조각, 메인 프로세스의 인라인 사전, 도움말의 모든 항목 파일이 그 언어를 가져야 한다. 마지막으로 더한 언어는 튀르키예어(`tr`, 결정 0130)다.
+- 언어를 더할 때 확인할 것: ① `tests/i18n.test.ts`의 `LANGS` 목록(언어 목록을 고정하는 유일한 시험) ② 모든 워크스페이스의 형 검사(빠진 사전 조각) ③ `npm run check:help-langs`(도움말) ④ `npm run check:lang-count`(문서에 적힌 언어 수와 시험의 숫자 고정) ⑤ 번역 목표 언어 표(`pdf-structure`·`epub-engine`의 `translate/language.ts`, 워드의 `translate-langs.ts`) ⑥ 저장소 밖의 하네스(사용자 스킬·메모)에 적힌 언어 수.
 
 ## 테스트
 

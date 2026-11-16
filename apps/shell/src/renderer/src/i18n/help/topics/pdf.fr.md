@@ -6,6 +6,8 @@ L’éditeur PDF a cinq onglets de ruban : **Accueil / Annoter / Édition / Page
 
 - Barre latérale gauche : les **Vignettes** (cliquez pour sauter, la plage visible est mise en évidence) ou les **Signets** (le sommaire, lorsqu’il existe).
 - Zoom : le contrôle de ratio en bas à droite ; ctrl+molette règle le zoom par crans.
+- Zoom à l’ouverture : **À l’ouverture**, dans l’onglet Affichage, choisit la vue de départ d’un PDF que l’on ouvre : ajuster à la largeur, ajuster à la page, ou un zoom de 50 % à 200 %. Un PDF dont vous avez changé le zoom vous-même se rouvre à ce zoom.
+- Déplacer l'affichage : activez l'**Outil Main** (onglets Accueil et Affichage) et faites glisser pour déplacer la page dans tous les sens. Tant qu'il est actif, le glissement ne sélectionne pas de texte et un simple clic suit toujours un lien. Glisser avec le bouton du milieu (molette) enfoncé déplace l'affichage sans l'outil. Échap ou un autre outil le désactive. Sans texte sélectionné, H l'active ou le désactive.
 - Rotation : page par page ou pour toutes les pages depuis le menu Pages ; les rotations sont réécrites à l’enregistrement.
 - Recherche : ctrl+F en texte intégral, toutes les occurrences sont mises en évidence.
 - PDF chiffrés : une demande de mot de passe (dans sa propre petite fenêtre) permet de les ouvrir ; le mot de passe ne sert que pour cette session. Vous pouvez modifier et enregistrer un tel document ; l’enregistrement conserve son mot de passe. **Annoter → Protéger** définit, change ou retire le mot de passe et ce que les lecteurs peuvent faire.
@@ -18,7 +20,7 @@ Essayez sur n’importe quel paragraphe :
 
 ![La barre d’annotation après la sélection de texte](img/pdf-highlight.png)
 
-2. Choisissez **Surligner** (la pastille jaune ouvre une palette de couleurs), **Souligner** ou **Barrer** ; **Demander à l’IA** envoie la sélection avec votre question au panneau IA.
+2. Choisissez l’une des trois couleurs de **Surligner**, ou **Souligner**, **Ondulé** ou **Barrer**. Pour changer une couleur de surlignage, faites un clic droit dessus et choisissez-en une autre. Après un soulignement, un trait ondulé ou un barré, une rangée de couleurs s’ouvre sur la barre : cliquez sur une autre couleur pour la changer ; la suivante utilisera aussi cette couleur. **Demander à l’IA** envoie la sélection avec votre question au panneau IA.
 3. Pour annuler une annotation, sélectionnez de nouveau le même passage par glissement et cliquez sur le bouton actif de la barre (un interrupteur à la Word), ou sélectionnez-le et appuyez sur Suppr.
 
 Référence :
@@ -69,6 +71,7 @@ Six outils : **Dessin, Rectangle, Ellipse, Flèche, Note**, plus le **Caviarder 
 ## Opérations sur les pages (Pages)
 
 - **Rotation / suppression / réorganisation** : faites glisser les vignettes pour réorganiser ; la suppression demande confirmation.
+- **Plusieurs pages à la fois** : cliquez sur les vignettes en maintenant Ctrl ou Maj pour sélectionner plusieurs pages. Suppr les supprime ; Ctrl+C, Ctrl+X et Ctrl+V les copient, les coupent et les collent. Les pages copiées se collent aussi dans un autre onglet PDF, et un collage est enregistré aussitôt dans le fichier. Si les vignettes sont fermées, le bouton sur le bord gauche de la zone des pages les rouvre.
 - **Importer des pages** : faites venir des pages depuis un autre PDF. **Insérer une page vierge** ajoute une page vide.
 - **Remplacer les pages** échange une plage contre des pages venant d’ailleurs ; **Rogner les pages** rogne les bords, avec une option pour l’appliquer à toutes les pages.
 - **Taille de page** redimensionne toutes les pages à un même format de papier ; **Inverser l’ordre** retourne le document de bout en bout.
@@ -80,7 +83,9 @@ Six outils : **Dessin, Rectangle, Ellipse, Flèche, Note**, plus le **Caviarder 
 ## Export et impression
 
 - **Exporter en Word… / PowerPoint… / Excel…** dans le menu Fichier, ou les trois mêmes depuis **Convertir le PDF** dans le ruban — tout est local, sans téléversement. Le .pptx donne une diapositive par page et le .xlsx une feuille de calcul par page. Chacun demande où l’enregistrer.
-- **Imprimer** : l’ordre et les rotations courants via la boîte de dialogue du système ; plages de pages prises en charge.
+- **PDF en HWP**, dans **Convertir le PDF** du ruban, transforme le PDF en document HWP dans un nouvel onglet HWP. Choisissez **Importer** (가져오기) dans la fenêtre d'importation PDF que l'onglet affiche ; le document est créé dans cet onglet, et le premier enregistrement demande où placer le .hwp ou le .hwpx. Le PDF lui-même reste tel quel, et la conversion se fait sur ce PC. Le choix entre un texte en paragraphes qui suivent les pages ou en zones de texte fixes se fait dans les options (환경 설정) de l'onglet HWP, rubrique importation PDF.
+- La même conversion se lance aussi depuis un onglet HWP. Choisissez un PDF avec **Fichier** ▸ **Importer un PDF…** : un nouvel onglet HWP s'ouvre avec la même fenêtre d'importation PDF. Le document de l'onglet où le menu a été utilisé reste tel quel.
+- **Imprimer** : l’ordre et les rotations courants via la boîte de dialogue du système. Vous pouvez imprimer une plage de pages ou les pages choisies dans les miniatures, et choisir dans **Mise en page** plusieurs pages par feuille, livret, niveaux de gris, etc.
 
 ## Enregistrement
 
@@ -127,6 +132,9 @@ Appuyez sur **E** ou **T**, ou sur les puces d’explication et de traduction de
 - **Traduire cette page** (ou **Traduire le reste** si une partie est faite) envoie la page d’un seul clic quand vous utilisez un abonnement ; le nom de l’IA destinataire figure à côté du bouton. Sur une connexion facturée à l’usage, le premier clic dans un onglet demande d’abord « facturera ce service · Traduire / Annuler ».
 - Double-cliquez sur un paragraphe traduit pour le modifier. Les paragraphes modifiés sont conservés en texte brut et repris tels quels dans les fichiers PDF, Markdown et EPUB traduits. **Retraduire** sur un paragraphe n’envoie que celui-ci et demande confirmation si vous l’avez modifié.
 - Survoler un paragraphe traduit entoure son emplacement dans la page source. La largeur et la taille du texte de la colonne sont réglables. **Traduire toutes les pages…** ouvre la fenêtre **Traduire le document**, dont le format **Conserver seulement (aucun fichier)** garde la traduction sans écrire de fichier.
+- Les paragraphes nouvellement traduits sont reliés phrase par phrase. Survoler une phrase traduite surligne cette phrase sur la page source, et survoler une phrase source met en évidence sa traduction. Là où la phrase est introuvable sur la page, ainsi que pour les paragraphes traduits auparavant ou modifiés par vous, le lien reste par paragraphe.
+- La barre au-dessus de la colonne passe de **Traduction** à **Explication simple**. L’explication simple réécrit le texte avec des mots de tous les jours et des phrases courtes, pour les enfants, les personnes âgées ou celles qui apprennent la langue ; les faits, les nombres et les noms restent tels quels. Le choix est mémorisé, et changer n’envoie rien. Tant que l’explication est affichée, les boutons de page et de paragraphe et la modification s’appliquent à elle.
+- En explication simple, **Expliquer toutes les pages simplement…** ouvre la fenêtre **Traduire le document** avec le mode **Explication simple**. Une explication est plus longue que l’original et ne peut donc pas devenir un PDF traduit ; elle s’écrit en Markdown ou en EPUB. Avec **Original puis explication**, chaque paragraphe d’origine est suivi de son explication ; désactivé, le fichier ne contient que l’explication. La langue est d’abord celle de l’interface et peut être celle du document.
 
 ## Surlignage IA
 

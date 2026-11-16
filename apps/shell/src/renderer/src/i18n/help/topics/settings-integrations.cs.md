@@ -2,13 +2,15 @@
 
 ## Otevření nastavení
 
-Řádek vlevo dole na domovské stránce otevře panel nastavení (dokud není připojena žádná AI, ukazuje Připojit AI). Má pět částí: Účet, AI, Obecné, Integrace a O aplikaci.
+Řádek vlevo dole na domovské stránce otevře panel nastavení (řádek pod ním ukazuje, zda je připojena AI). Má pět částí: Účet, AI, Obecné, Integrace a O aplikaci.
+
+Otevřít je můžete také z libovolné karty zkratkou **⌘,** (Ctrl+, ve Windows a Linuxu), na Macu položkou **Nastavení…** v nabídce aplikace (nabídka s názvem aplikace vlevo na řádku nabídek) a ve Windows a Linuxu přes **Nabídka (☰) ▸ Nastavení…**. Na kartě Word je ⌘, (Ctrl+,) dolní index, proto je tam otevřete z nabídky.
 
 **Účet** ukazuje, jak jsou na tom vaše připojení Claude, ChatGPT a Codex, a **Spravovat připojení** vás zavede do části AI. AI má vlastní kapitoly: [Připojení předplatného](help://subscription) a [Modely AI a nastavení](help://ai-models).
 
 ## Jazyk
 
-- Nastavení nabízí **21 jazyků rozhraní**: angličtina, zjednodušená čínština, japonština, korejština, francouzština, němčina, španělština, thajština, indonéština, ruština, arabština, portugalština, italština, polština, čeština, nizozemština, malajština, hebrejština, hindština, tradiční čínština, vietnamština.
+- Nastavení nabízí **22 jazyků rozhraní**: angličtina, zjednodušená čínština, japonština, korejština, francouzština, němčina, španělština, thajština, indonéština, ruština, arabština, portugalština, italština, polština, čeština, nizozemština, malajština, hebrejština, hindština, tradiční čínština, vietnamština, turečtina.
 - Změna působí okamžitě a zůstává zachována; nativní pruh nabídek se znovu sestaví v novém jazyce.
 
 ## Motiv
@@ -22,8 +24,22 @@ Světlý / Tmavý / Podle systému. Volba Podle systému sleduje vzhled operačn
 - **Automaticky ukládat všechny dokumenty** zapne ve výchozím stavu automatické ukládání v každém editoru; pro jedno okno ho můžete i nadále vypnout.
 - **Umístění pro ukládání** s tlačítkem **Změnit** a **Výchozí aplikace pro dokumenty Office**, aby GenOffice přebíral .docx / .xlsx / .pptx.
 - **Formát ukládání nových dokumentů HWP** určuje, zda se při prvním uložení nového dokumentu nabídne nejprve HWP, nebo HWPX. Otevřené dokumenty si zachovávají svůj formát.
+- **Písma snímků s AI** určuje písma, která AI použije v nové prezentaci, když žádost žádné neuvádí. Vyberte Automaticky, Bezpatkové, Patkové nebo Patkové nadpisy a zvlášť změňte bezpatkové a patkové písmo. Zvolená šablona návrhu používá vlastní písma a stránky přidané do prezentace v jiných písmech se řídí touto prezentací.
 
 GenOffice neshromažďuje ani neodesílá statistiky používání, takže pro ně není žádný přepínač.
+
+## Editory a AI
+
+Tady vybíráte, které editory používáte a zda chcete používat AI. Stejný seznam se navíc jednou objeví na dvou dalších místech: v kroku **Vyberte editory** uvítacích obrazovek při prvním spuštění a v okně, které se jednou ukáže na domovské stránce těm, kdo GenOffice používali už před zavedením tohoto nastavení. Na začátku je vše zapnuté, takže když nic nezměníte, nic se nezmění. Změna platí hned ve všech otevřených oknech.
+
+- **Editory**: Word, Excel, PowerPoint, PDF, Nástroje PDF, Markdown a text, HTML, Myšlenková mapa, Diagram, HWP (hangul) a E-kniha (EPUB). Nástroje PDF se zapínají odděleně od editoru PDF. Aspoň jeden editor musí zůstat zapnutý.
+- **Vypnutý editor** zmizí ze seznamů nových dokumentů: z karet domovské stránky, z nabídky **+** na liště karet, z Soubor ▸ Nový a ze seznamu výchozích aplikací. Dokumenty, které už jsou otevřené, zůstanou otevřené a záložní kopie pro obnovení se zachovají.
+- **Při otevření souboru vypnutého editoru** (dvojklik, přetažení, Soubor ▸ Otevřít, nedávné soubory) se zobrazí volba **Zapnout a otevřít** nebo **Zrušit**. Když otevřete několik jeho souborů najednou, zeptá se jen jednou.
+- **Jiné funkce, které by svůj výsledek otevřely ve vypnutém editoru**, například převod PDF do jeho formátu, se zeptají před začátkem: **Zapnout a otevřít**, **Jen vytvořit soubor** (soubor se vytvoří a ukáže ve složce, editor zůstane vypnutý) nebo **Zrušit**.
+- **Když jsou funkce AI vypnuté**, zmizí panely AI, tlačítka a nabídky AI, panel dotazů na domovské stránce, okno agenta i výzvy k připojení AI a z nastavení zmizí karty Účet, AI a Dovednosti. GenOffice ze svých obrazovek nespouští žádný program AI. Přihlášení, klíče, dovednosti a nastavení zůstanou a po opětovném zapnutí AI se vrátí. Pokud ještě běží práce AI, nejdřív se zeptá, zda chcete **Zastavit a vypnout**.
+- Příkazový řádek, MCP a tato příručka fungují stejně, ať jsou editory a AI zapnuté, nebo ne.
+
+Ani se zapnutou AI nevytváří AI nové dokumenty pro vypnutý editor; požádá vás, abyste ho zapnuli zde.
 
 ## AI ▸ Pokročilé
 
@@ -45,7 +61,7 @@ Nastavení může zaregistrovat GenOffice jako aplikaci pro soubory .docx / .xls
 ## Informace o softwaru třetích stran a aktualizace
 
 - Nápověda ▸ Informace o softwaru třetích stran: úplný přehled licencí open source dodávaných s aplikací.
-- Nabídka (☰) ▸ Zkontrolovat aktualizace… (na počítači Mac Nápověda ▸ Zkontrolovat aktualizace…): spustí ruční kontrolu; novější verze vyzve k instalaci.
+- Nabídka (☰) ▸ Zkontrolovat aktualizace… (na počítači Mac Nápověda ▸ Zkontrolovat aktualizace…): spustí ruční kontrolu; novější verze vyzve k instalaci. Na Macu je příkaz také v nabídce aplikace, hned pod položkou O aplikaci GenOffice.
 
 ## Integrace MCP (pro pokročilé uživatele a klienty AI)
 

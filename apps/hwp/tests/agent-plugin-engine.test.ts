@@ -24,22 +24,24 @@ const GUIDE = '이곳을 마우스로 누르고 내용을 입력하세요.'
  * A small document built with the engine itself:
  *   제목 / 첫째 문단입니다. / 둘째 문단입니다. / [2×2 table: 구분 내용 대상 업체] / 끝 문단입니다.
  */
-function openEditor(options: { fields?: boolean; endsWithTable?: boolean } = {}) {
+function openEditor(options: { fields?: boolean; endsWithTable?: boolean; blank?: boolean } = {}) {
   let doc = HwpDocument.createEmpty()
   doc.createBlankDocument()
   // the empty fourth paragraph is where the table goes
-  const lines = ['제목', '첫째 문단입니다.', '둘째 문단입니다.', '']
-  if (!options.endsWithTable) lines.push('끝 문단입니다.')
+  const lines = options.blank ? [] : ['제목', '첫째 문단입니다.', '둘째 문단입니다.', '']
+  if (!options.endsWithTable && !options.blank) lines.push('끝 문단입니다.')
   lines.forEach((line, index) => {
     if (index > 0) doc.splitParagraph(0, index - 1, doc.getParagraphLength(0, index - 1))
     if (line) doc.insertText(0, index, 0, line)
   })
-  doc.pasteHtml(
-    0,
-    3,
-    0,
-    '<table><tr><td>구분</td><td>내용</td></tr><tr><td>대상</td><td>업체</td></tr></table>',
-  )
+  if (!options.blank) {
+    doc.pasteHtml(
+      0,
+      3,
+      0,
+      '<table><tr><td>구분</td><td>내용</td></tr><tr><td>대상</td><td>업체</td></tr></table>',
+    )
+  }
   if (options.fields) {
     // two fields nobody named, each inside a line of a form: both carry the guide text as
     // their name. A third line ends in a field.
@@ -211,6 +213,30 @@ describe('adding paragraphs', () => {
     expect(editor.lines().slice(-3)).toEqual(['끝 문단입니다.', '붙임 1부.', '끝.'])
   })
 
+  it('writes the first one into the empty paragraph of a new document', () => {
+    // a new document is one empty paragraph: "end" used to add after it, which left an
+    // empty first line above everything the assistant wrote
+    const editor = openEditor({ blank: true })
+    const before = editor.plugin.foreignChanges()
+    expect(
+      editor.plugin.insertParagraphs('', null, 'end', ['제목', '본문 하나', '', '본문 둘']),
+    ).toMatchObject({ ok: true, count: 4, place: { sec: 0, para: 0, offset: 0, length: 2 } })
+    const doc = editor.doc()
+    expect(doc.getParagraphCount(0)).toBe(4)
+    expect([0, 1, 2, 3].map((para) => doc.getParagraphLength(0, para))).toEqual([2, 5, 0, 4])
+    expect(editor.lines()).toEqual(['제목', '본문 하나', '본문 둘'])
+    // one step back gives the empty document again
+    expect(editor.plugin.undo(1, before)).toMatchObject({ ok: true, undone: 1 })
+    expect(editor.doc().getParagraphCount(0)).toBe(1)
+    // a document that only ends in an empty paragraph keeps that paragraph as a line
+    const written = openEditor()
+    written.plugin.insertParagraphs('', null, 'end', [''])
+    written.plugin.insertParagraphs('', null, 'end', ['끝.'])
+    const last = written.doc().getParagraphCount(0) - 1
+    expect(written.doc().getParagraphLength(0, last - 1)).toBe(0)
+    expect(written.doc().getParagraphLength(0, last)).toBe(2)
+  })
+
   it('adds them after a table that ends the document, and leaves the table whole', () => {
     // the last paragraph holds nothing but the table: splitting it would move the table
     const editor = openEditor({ endsWithTable: true })
@@ -335,16 +361,25 @@ describe('adding a table', () => {
     expect(editor.reopened()).toContain('신청서 <제출>')
   })
 
-  it('gives the cells the font of the paragraph beside it and lines around them', () => {
-    const editor = openEditor()
-    // the second paragraph in 16pt: the table put after it should not come out in 10pt
-    editor
-      .doc()
-      .applyCharFormat(0, 1, 0, editor.doc().getParagraphLength(0, 1), '{"fontSize":1600}')
-    editor.plugin.insertTable('첫째 문단', null, 'after', [['항목', '기한']])
-    const cell = JSON.parse(editor.doc().getCellCharPropertiesAt(0, 2, 0, 1, 0, 0))
+  it('gives the cells the font of the body text, not of the line beside it, and lines around them', () => {
+    const enlarge = (doc: ReturnType<ReturnType<typeof openEditor>['doc']>, para: number) =>
+      doc.applyCharFormat(0, para, 0, doc.getParagraphLength(0, para), '{"fontSize":1600}')
+    const heading = openEditor()
+    // the line the table goes after is 16pt, as a heading would be; the body is 10pt
+    enlarge(heading.doc(), 1)
+    heading.plugin.insertTable('첫째 문단', null, 'after', [['항목', '기한']])
+    const small = JSON.parse(heading.doc().getCellCharPropertiesAt(0, 2, 0, 1, 0, 0))
+    expect(small.fontSize).toBe(1000)
+    expect(JSON.parse(heading.doc().getCellParaPropertiesAt(0, 2, 0, 1, 0)).alignment).toBe('left')
+
+    const large = openEditor()
+    for (let para = 0; para < large.doc().getParagraphCount(0); para++) {
+      if (large.doc().getParagraphLength(0, para) > 0) enlarge(large.doc(), para)
+    }
+    large.plugin.insertTable('첫째 문단', null, 'after', [['항목', '기한']])
+    const cell = JSON.parse(large.doc().getCellCharPropertiesAt(0, 2, 0, 1, 0, 0))
     expect(cell.fontSize).toBe(1600)
-    const props = JSON.parse(editor.doc().getCellProperties(0, 2, 0, 0))
+    const props = JSON.parse(large.doc().getCellProperties(0, 2, 0, 0))
     expect(JSON.stringify(props)).toMatch(/border/i)
     // a row high enough for one line of that size (16pt × 1.6 + margins), in 1/100 pt
     expect(props.height).toBeGreaterThan(2500)
@@ -709,6 +744,23 @@ describe('adding a picture', () => {
         'png',
       ),
     ).toThrow(/not a PNG/)
+    expect(editor.steps()).toBe(steps)
+  })
+
+  it('refuses an occurrence of 0 for its anchor instead of taking the first', () => {
+    const editor = openEditor()
+    const steps = editor.steps()
+    const result = editor.plugin.insertPicture(
+      '첫째 문단',
+      0,
+      'after',
+      PNG.toString('base64'),
+      240,
+      1,
+      1,
+      'png',
+    )
+    expect(result).toMatchObject({ ok: false, reason: 'no_such_occurrence' })
     expect(editor.steps()).toBe(steps)
   })
 })

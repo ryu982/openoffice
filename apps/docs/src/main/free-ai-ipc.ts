@@ -8,6 +8,7 @@
 import { ipcMain, shell } from 'electron'
 import type { BrowserWindow, IpcMainInvokeEvent, WebContents } from 'electron'
 import { safeExternalUrl } from '@genoffice/electron-utils'
+import { aiFeaturesOn } from '@genoffice/electron-utils/app-choice'
 import { createI18n, getUiLang } from '@genoffice/i18n'
 import {
   FREE_AI_IPC_CHANNELS,
@@ -84,6 +85,8 @@ export function registerFreeAiIpc(deps: FreeAiIpcDeps): void {
   ipcMain.handle(
     FREE_AI_IPC_CHANNELS.connect,
     async (event, input: unknown): Promise<FreeAiConnectResult> => {
+      // no key is tried and no sign-in started while AI features are off (editor choice spec 8.3)
+      if (!aiFeaturesOn()) return { ok: false, reason: 'invalid' }
       const provider = providerOf(input)
       if (provider === 'gemini') {
         return save('gemini', await connectGemini((input as { apiKey?: unknown }).apiKey))
@@ -132,6 +135,8 @@ export function registerFreeAiIpc(deps: FreeAiIpcDeps): void {
   ipcMain.handle(
     FREE_AI_IPC_CHANNELS.quota,
     async (_event, input: unknown): Promise<FreeAiQuota | null> => {
+      // the remaining requests are not asked for while AI features are off (spec 8.3)
+      if (!aiFeaturesOn()) return null
       // Gemini has no endpoint that tells the remaining free requests
       if (providerOf(input) !== 'openrouter') return null
       return openRouterFreeQuota(deps.readSettings().providers.openrouter?.apiKey ?? '')

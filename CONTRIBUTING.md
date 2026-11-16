@@ -7,7 +7,7 @@ repository.
 ## How changes land here
 
 Development happens in this repository,
-[pblsketch/openoffice](https://github.com/pblsketch/openoffice). Pull requests,
+[pblsketch/ieumoffice](https://github.com/pblsketch/ieumoffice). Pull requests,
 issues and feature requests are all handled here.
 
 IeumOffice is a modified version of GenOffice (see
@@ -121,6 +121,7 @@ CI also runs the repository check scripts:
 npm run check:theme-colors      # no raw colors in changed renderer CSS (see CLAUDE.md)
 npm run check:english-comments  # no Chinese text in code comments or docs
 npm run check:help-langs        # every language of the in-app manual matches the English structure
+npm run check:lang-count        # no doc or test states a language count other than LANGS
 npm run check:skill-version     # a changed skills/*/SKILL.md body bumps its metadata.version
 npm run check:no-genspark       # nothing tied to the removed vendor's services is back (allowlist in the tool)
 ```
@@ -219,7 +220,7 @@ default (Parallel's free Search MCP, then DuckDuckGo).
   for Korean readers, [README.md](README.md) and
   [docs/releasing.ko.md](docs/releasing.ko.md), are the exception;
   [README.en.md](README.en.md) is the English README.
-- The UI has 21 languages (`LANGS` in `packages/i18n/src/index.ts`). A new or
+- The UI has 22 languages (`LANGS` in `packages/i18n/src/index.ts`). A new or
   changed UI string has to exist in all of them, as a real translation rather
   than a copy of the English text.
 - Never read, copy or store subscription login material (`~/.codex/auth.json`,

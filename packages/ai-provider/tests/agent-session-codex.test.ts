@@ -23,6 +23,7 @@ import {
   startCodexAgentSession,
   type AgentSessionEvent,
   type CodexSandboxProbeResult,
+  type CodexAgentDeps,
   type CodexAgentSessionOptions,
 } from '../src/agent-session'
 import type { SubscriptionProgram } from '../src/subscription'
@@ -124,6 +125,7 @@ async function start(
   handlers: Record<string, Handler>,
   overrides: Partial<CodexAgentSessionOptions> = {},
   probe: CodexSandboxProbeResult = 'contained',
+  deps: Partial<CodexAgentDeps> = {},
 ) {
   const events: AgentSessionEvent[] = []
   const spawnCalls: Array<{ command: string; args: string[]; options: SpawnOptions }> = []
@@ -144,6 +146,7 @@ async function start(
       server = new FakeCodex(handlers)
       return server
     },
+    ...deps,
   })
   return { run, events, spawnCalls, killTree, probeSandbox, server: () => server }
 }
@@ -190,12 +193,16 @@ describe('the launch and the thread', () => {
       'skills.include_instructions=false',
       'web_search="disabled"',
     ])
+    // the chat process alone also starts with Codex's image tool off; agent mode does not inherit it
     expect(codexAppServerLaunchArgs()).toEqual([
       'app-server',
       ...CODEX_CONFIG_OVERRIDES.flatMap((override) => ['-c', override]),
+      '-c',
+      'features.image_generation=false',
       '--listen',
       'stdio://',
     ])
+    expect(codexAgentLaunchArgs()).not.toContain('features.image_generation=false')
   })
 
   it('opens the network of the profile only when commands may reach the internet', () => {
@@ -254,6 +261,18 @@ describe('the launch and the thread', () => {
       (dir) => !dir.toLowerCase().includes('missing'),
     )
     expect(dirs).toEqual(['C:\\Python314', 'C:\\Program Files\\nodejs'])
+  })
+
+  it('keeps a PATH folder whose name starts with ".." out when it is in a protected folder or the project', () => {
+    const dirs = codexAgentReadableDirs(
+      ['C:\\Users\\me\\.codex\\..bin', 'C:\\Users\\me\\Project\\..tools', 'C:\\Python314'].join(
+        ';',
+      ),
+      options(),
+      'win32',
+      () => true,
+    )
+    expect(dirs).toEqual(['C:\\Python314'])
   })
 
   it('switches user MCP servers off and adds the app one with its token', () => {
@@ -503,6 +522,104 @@ describe('starting a session', () => {
   })
 })
 
+describe('paths Codex reads as patterns', () => {
+  it('does not start, before the sandbox check or Codex, when a path of the profile has [ ] * or ?', async () => {
+    for (const overrides of [
+      { projectRoot: 'C:\\Users\\me\\Project [draft]', openDocuments: [] },
+      { openDocuments: ['C:\\Users\\me\\Desktop\\[final] report.hwp'] },
+      { protectedPaths: ['C:\\Users\\me [x]\\.codex'] },
+      { skillBundleDir: 'C:\\Temp\\skills?' },
+    ] satisfies Array<Partial<CodexAgentSessionOptions>>) {
+      const { run, spawnCalls, probeSandbox } = await start(baseHandlers(), overrides)
+      await expect(run).rejects.toMatchObject({ problem: { type: 'unsupported-path' } })
+      expect(probeSandbox).not.toHaveBeenCalled()
+      expect(spawnCalls).toHaveLength(0)
+    }
+  })
+
+  it('does not start on macOS either, where no sandbox check comes first', async () => {
+    const { run, spawnCalls } = await start(
+      baseHandlers(),
+      {
+        projectRoot: '/Users/me/Project',
+        openDocuments: ['/Users/me/Desktop/[final] report.hwp'],
+        protectedPaths: ['/Users/me/.codex'],
+        sessionDir: '/tmp/session-2',
+      },
+      'contained',
+      { platform: 'darwin', baseEnv: { PATH: '/usr/bin:/bin' } },
+    )
+    await expect(run).rejects.toMatchObject({ problem: { type: 'unsupported-path' } })
+    expect(spawnCalls).toHaveLength(0)
+  })
+
+  it('leaves a PATH folder with such a name out of the folders commands may read', () => {
+    const dirs = codexAgentReadableDirs(
+      ['C:\\Tools[1]', 'C:\\Python314', 'C:\\What?'].join(';'),
+      options(),
+      'win32',
+      () => true,
+    )
+    expect(dirs).toEqual(['C:\\Python314'])
+  })
+})
+
+describe('why a session did not start', () => {
+  it('names the step Codex refused, with its error code, and ends the process', async () => {
+    const { run, killTree } = await start(
+      baseHandlers({
+        'thread/start': (fake, _params, id) => {
+          fake.send({ id, error: { code: -32600, message: 'invalid profile at /Users/me' } })
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'refused', step: 'thread/start', code: -32600 },
+    })
+    expect(killTree).toHaveBeenCalled()
+  })
+
+  it('names Codex ending before the session was set up, with its exit code', async () => {
+    const { run } = await start(
+      baseHandlers({
+        initialize: (fake) => {
+          fake.stderr.write('error: unknown configuration key\n')
+          fake.exit(2)
+          return undefined
+        },
+      }),
+    )
+    await expect(run).rejects.toMatchObject({ problem: { type: 'exited', exitCode: 2 } })
+  })
+
+  it('names the step Codex did not answer in time', async () => {
+    const { run } = await start(
+      baseHandlers({ 'thread/start': () => undefined }),
+      {},
+      'contained',
+      { threadStartTimeoutMs: 5 },
+    )
+    await expect(run).rejects.toMatchObject({
+      problem: { type: 'no-answer', step: 'thread/start' },
+    })
+  })
+
+  it('says when no model is set and Codex lists none', async () => {
+    const { run } = await start(baseHandlers({ 'model/list': () => ({ data: [] }) }))
+    await expect(run).rejects.toMatchObject({ problem: { type: 'no-model' } })
+  })
+
+  it('keeps the run errors Codex itself reports', async () => {
+    const { run } = await start(
+      baseHandlers({ 'account/read': () => ({ requiresOpenaiAuth: true }) }),
+    )
+    const error = await run.catch((failure: unknown) => failure)
+    expect(error).toMatchObject({ kind: 'signed-out' })
+    expect(error).not.toHaveProperty('problem')
+  })
+})
+
 describe('the tools of the app server at the start', () => {
   it('starts when the app server lists only the session tools', async () => {
     const { run } = await start(
@@ -620,6 +737,46 @@ describe('a running session', () => {
       input: [{ type: 'text', text: 'list the folder', text_elements: [] }],
     })
     session.stop()
+  })
+
+  it('names a configured level on every turn when the model takes it, reading the list once', async () => {
+    const listed = {
+      data: [
+        {
+          id: 'gpt-x',
+          isDefault: true,
+          supportedReasoningEfforts: [{ reasoningEffort: 'high', description: '' }],
+        },
+      ],
+    }
+    const turns = async (effort: string | undefined, model = '') => {
+      const { run, server } = await start(baseHandlers({ 'model/list': () => listed }), {
+        effort,
+        model,
+      })
+      const session = await run
+      await session.send('one')
+      await session.send('two').catch(() => undefined)
+      const received = server().received
+      session.stop()
+      return {
+        lists: received.filter((message) => message.method === 'model/list').length,
+        efforts: received
+          .filter((message) => message.method === 'turn/start')
+          .map((message) => (message.params as { effort?: unknown }).effort),
+        thread: received.find((message) => message.method === 'thread/start')!.params,
+      }
+    }
+    const high = await turns('high')
+    expect(high.lists).toBe(1)
+    expect(high.efforts[0]).toBe('high')
+    expect(JSON.stringify(high.thread)).not.toContain('effort')
+    // a configured model reads the list only for the level
+    expect((await turns('high', 'gpt-x')).lists).toBe(1)
+    expect((await turns(undefined, 'gpt-x')).lists).toBe(0)
+    // a level the model does not take, or no level, is left out
+    expect((await turns('low')).efforts[0]).toBeUndefined()
+    expect((await turns(undefined)).efforts[0]).toBeUndefined()
   })
 
   it('asks the person about a command that needs approval, and answers Codex', async () => {
@@ -833,5 +990,149 @@ describe('a running session', () => {
     session.stop()
     expect(killTree).toHaveBeenCalledTimes(1)
     expect(events.filter((event) => event.type === 'ended')).toHaveLength(1)
+  })
+})
+
+describe('relays of the person’s MCP servers (user MCP spec 9)', () => {
+  const RELAYS = [
+    { name: 'law', url: 'http://127.0.0.1:4100/mcp', token: 'relay-tok', tools: ['search'] },
+  ]
+
+  it('adds each relay with its session token and approve mode, over a same-named user server', () => {
+    const params = codexAgentThreadParams(
+      options({
+        appMcp: { url: 'http://127.0.0.1:3093/mcp', token: 'tok' },
+        userMcpRelays: RELAYS,
+      }),
+      'gpt-x',
+      { github: { enabled: false }, law: { enabled: false } },
+    )
+    expect((params.config as any).mcp_servers).toEqual({
+      github: { enabled: false },
+      law: {
+        url: 'http://127.0.0.1:4100/mcp',
+        http_headers: { Authorization: 'Bearer relay-tok' },
+        default_tools_approval_mode: 'approve',
+      },
+      'ieumoffice-editor': {
+        url: 'http://127.0.0.1:3093/mcp',
+        http_headers: { Authorization: 'Bearer tok' },
+        default_tools_approval_mode: 'approve',
+      },
+    })
+  })
+
+  it('never lets a relay take the app server name', () => {
+    const params = codexAgentThreadParams(
+      options({
+        userMcpRelays: [{ name: 'ieumoffice-editor', url: 'http://x/mcp', token: 'r', tools: [] }],
+      }),
+      'gpt-x',
+      {},
+    )
+    expect((params.config as any).mcp_servers).toEqual({})
+  })
+
+  it('answers the tool approvals of a relay as of the app server, and declines others', () => {
+    const approval = {
+      serverName: 'law',
+      mode: 'form',
+      _meta: { codex_approval_kind: 'mcp_tool_call' },
+    }
+    expect(codexElicitationAnswer(approval, RELAYS).action).toBe('accept')
+    expect(codexElicitationAnswer(approval).action).toBe('decline')
+    expect(codexElicitationAnswer({ ...approval, serverName: 'github' }, RELAYS).action).toBe(
+      'decline',
+    )
+    expect(codexElicitationAnswer({ ...approval, mode: 'url' }, RELAYS).action).toBe('decline')
+  })
+
+  it('counts a relay tool it did not list as extra, by bare or qualified name', () => {
+    expect(
+      codexAppMcpExtraTools(
+        {
+          data: [
+            { name: 'law', tools: { search: {}, mcp__law__search: {}, delete_all: {} } },
+            { name: 'other', tools: { anything: {} } },
+          ],
+        },
+        RELAYS,
+      ),
+    ).toEqual(['delete_all'])
+  })
+
+  it('starts with the relay attached, and asks Codex with the relay over the user server', async () => {
+    const { run, server } = await start(
+      baseHandlers({
+        'config/read': () => ({
+          config: { mcp_servers: { github: { command: 'x' }, law: { command: 'y' } } },
+        }),
+        'mcpServerStatus/list': () => ({
+          data: [
+            { name: 'github', runtimeStatus: 'disabled', tools: {} },
+            { name: 'law', runtimeStatus: 'ready', tools: { search: {} } },
+          ],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    const session = await run
+    const thread = server().received.find((m) => m.method === 'thread/start')
+    expect(thread?.params.config.mcp_servers.law).toEqual({
+      url: 'http://127.0.0.1:4100/mcp',
+      http_headers: { Authorization: 'Bearer relay-tok' },
+      default_tools_approval_mode: 'approve',
+    })
+    session.stop()
+  })
+
+  it('refuses a thread whose relay lists a tool it did not list, or another server', async () => {
+    const extra = await start(
+      baseHandlers({
+        'mcpServerStatus/list': () => ({
+          data: [{ name: 'law', runtimeStatus: 'ready', tools: { search: {}, delete_all: {} } }],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    await expect(extra.run).rejects.toMatchObject({ kind: 'unsafe-tools' })
+    const foreign = await start(
+      baseHandlers({
+        'mcpServerStatus/list': () => ({
+          data: [{ name: 'github', runtimeStatus: 'ready', tools: {} }],
+        }),
+      }),
+      { userMcpRelays: RELAYS },
+    )
+    await expect(foreign.run).rejects.toMatchObject({ kind: 'unsafe-tools' })
+  })
+
+  it('lets a relay start during the session, and stops on any other server', async () => {
+    const starting = (name: string) => (fake: FakeCodex) => {
+      setImmediate(() =>
+        fake.send({
+          method: 'mcpServer/startupStatus/updated',
+          params: { name, status: 'starting' },
+        }),
+      )
+      return { turn: { id: 'tu1' } }
+    }
+    const relay = await start(baseHandlers({ 'turn/start': starting('law') }), {
+      userMcpRelays: RELAYS,
+    })
+    const ok = await relay.run
+    await ok.send('x')
+    await tick()
+    expect(relay.events.some((event) => event.type === 'error')).toBe(false)
+    ok.stop()
+    const other = await start(baseHandlers({ 'turn/start': starting('github') }), {
+      userMcpRelays: RELAYS,
+    })
+    const stopped = await other.run
+    await stopped.send('x')
+    await tick()
+    expect(other.events).toContainEqual(
+      expect.objectContaining({ type: 'error', kind: 'unsafe-tools' }),
+    )
   })
 })

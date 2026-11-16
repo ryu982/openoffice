@@ -4,44 +4,59 @@ Een vaardigheid is een set werkinstructies voor de AI. Leg iets wat je steeds op
 
 ## Vaardigheden aan- en uitzetten
 
-**Instellingen ▸ Vaardigheden** toont de vaardigheden op deze pc, gegroepeerd naar herkomst. Vaardigheden worden bij hun naam getoond, zoals codeeragents dat doen. Met het zoekvak bovenaan vind je er een op naam of beschrijving.
+**Instellingen ▸ Vaardigheden** toont de vaardigheden op deze pc, gegroepeerd naar herkomst. Vaardigheden worden bij hun naam getoond, zoals codeeragents dat doen. Met het zoekvak bovenaan vind je er een op naam of beschrijving. Een eigen vaardigheid met een titel toont die titel in deze lijst, in de `/`-lijst en op chips, met de naam klein ernaast. U kunt ook op de titel zoeken. Een naam die de app heeft bedacht (`skill-…`) staat niet naast de titel.
 
 | Herkomst                   | Wat erin staat                                                          | In het begin |
 | -------------------------- | ----------------------------------------------------------------------- | ------------ |
-| **Ingebouwd**              | De 5 vaardigheden die met GenOffice meekomen                            | Aan          |
+| **Ingebouwd**              | De vaardigheden die met GenOffice meekomen                              | Aan          |
 | **Mijn vaardigheden**      | Vaardigheden die je hebt toegevoegd of gemaakt (`~/.ieumoffice/skills`) | Aan          |
 | **Claude-vaardighedenmap** | De vaardigheden in `~/.claude/skills`                                   | Uit          |
 | **Claude-plug-ins**        | De vaardigheden van geïnstalleerde Claude-plug-ins                      | Uit          |
 | **Codex-vaardighedenmap**  | De vaardigheden in `~/.agents/skills`                                   | Uit          |
 
 - Met de schakelaar zet je een vaardigheid aan of uit. Dezelfde instelling geldt voor het AI-paneel van elke editor, voor Ask AI op Start en voor het agentvenster.
-- Kies voor een vaardigheid die aanstaat **AI beslist** of **Alleen bij aanroepen**. In het begin staat AI beslist ingesteld. Met Alleen bij aanroepen wordt de vaardigheid alleen gebruikt als je hem zelf aanroept.
-- Vaardigheden uit verschillende bronnen kunnen dezelfde naam hebben. Het herkomstlabel op elke rij maakt het verschil duidelijk.
-- In het menu met meer opties staan **Inhoud bekijken**, **Bewerken** (alleen mijn vaardigheden), **Exporteren (zip)** (alleen mijn vaardigheden) en **Map openen**.
-- **Naar prullenbak** verplaatst een van mijn vaardigheden naar de prullenbak van het systeem, waaruit je hem kunt terugzetten.
+- Kies voor een vaardigheid die aanstaat **AI beslist** of **Alleen bij aanroepen**. In het begin staat AI beslist ingesteld. Met Alleen bij aanroepen wordt de vaardigheid alleen gebruikt als je hem zelf aanroept. Bij een vaardigheid die uitstaat blijft deze keuze gedimd staan, zodat je haar kunt instellen voordat je de vaardigheid weer inschakelt.
+- Vaardigheden uit verschillende bronnen kunnen dezelfde naam hebben. Het herkomstlabel op elke rij maakt het verschil duidelijk. Als twee vaardigheden met dezelfde naam allebei aan staan, staat er maar één in de `/`-lijst en wordt alleen die gebruikt: de eerste in de volgorde Mijn vaardigheden, Ingebouwd, Claude-vaardighedenmap, Codex-vaardighedenmap, Claude-plug-ins. In de rij van de andere staat welke vaardigheid in plaats daarvan wordt gebruikt.
+- In het menu met meer opties staan **Inhoud bekijken**, **Bewerken** (alleen mijn vaardigheden), **Exporteren (zip)** (alleen mijn vaardigheden) en **Map openen**. Ingebouwde vaardigheden hebben geen **Map openen**. **Waar gebruikt** opent meteen de plek waar je de editors kiest waarin de vaardigheid wordt gebruikt.
+- Mijn vaardigheden staan in de map `~/.ieumoffice/skills`. In Windows is dat `C:\Users\<gebruikersnaam>\.ieumoffice\skills`. **Map openen** in het menu met meer opties opent de map van de vaardigheid.
+- **Naar prullenbak** verplaatst een van mijn vaardigheden naar de prullenbak van het systeem, waaruit je hem kunt terugzetten. Staat een vaardigheid met dezelfde naam uit een andere bron uit, dan toont de bevestiging een aangevinkt vakje om haar weer in te schakelen. Vink het uit om haar uit te laten.
 - Een ingebouwde vaardigheid wordt verborgen in plaats van verwijderd: kies **Verbergen**. **Weer tonen** onderaan de lijst haalt hem terug zoals hij in het begin was.
 - Wil je een ingebouwde vaardigheid of een vaardigheid uit een ander programma aanpassen, kies dan **Kopiëren naar mijn vaardigheden**. De kopie verschijnt bij mijn vaardigheden en het origineel gaat uit.
 - Exporteer je een vaardigheid met een sjabloon, dan gaat het sjabloondocument ook mee in de zip. Controleer vóór het exporteren dat het document geen persoonsgegevens bevat.
+- **Meerdere exporteren** boven aan de pagina zet de vaardigheden die je aanvinkt in één zip-bestand, een map per vaardigheid. Wie de zip krijgt, voegt die toe zoals elke andere vaardigheids-zip en kan kiezen welke vaardigheden eruit te installeren.
 
 ## Een vaardigheid toevoegen
 
 1. Klik in **Instellingen ▸ Vaardigheden** op **Toevoegen**.
-2. Kies **Uit een map**, **Uit een zip-bestand** of **Via een GitHub-link**. Voor GitHub vul je het adres van een openbare repository of `owner/repo` in en klik je op **Zoeken**.
-3. Bekijk de gevonden vaardigheden in het voorbeeld. Je ziet het aantal en de grootte van de bestanden, of er scripts in zitten, de webadressen in de tekst en het licentiebestand.
+2. Kies **Uit een map**, **Uit een zip-bestand**, **Uit geplakte tekst** of **Via een GitHub-link**. Voor geplakte tekst plak je de hele `SKILL.md`, vanaf de eerste regel `---`, en klik je op **Voorbeeld**. Voor GitHub vul je het adres van een openbare repository, `owner/repo` of de pagina van een vaardigheid op skills.sh in en klik je op **Zoeken**.
+3. Bekijk de gevonden vaardigheden in het voorbeeld. Je ziet het aantal en de grootte van de bestanden, of er scripts in zitten, de webadressen in de tekst, het licentiebestand en de regels om te lezen voordat je installeert. **Inhoud bekijken** onder een vaardigheid opent de tekst van `SKILL.md` en de tekstbestanden, zodat je ze kunt lezen voordat je installeert.
 4. Vink alleen de vaardigheden aan die je wilt installeren en klik op **Installeren**. Geïnstalleerde vaardigheden staan meteen aan.
 
 Onder het voorbeeld staat altijd: "Installeer alleen vaardigheden uit bronnen die je vertrouwt. Een vaardigheid geeft de AI instructies en kan in het agentvenster scripts uitvoeren". Lees een vaardigheid uit een onbekende bron door voordat je hem installeert.
 
-- Staat er bij mijn vaardigheden al een met dezelfde naam, kies dan op die rij **Vervangen** of **Overslaan**.
+- Staat er bij mijn vaardigheden al een met dezelfde naam, kies dan op die rij **Vervangen** of **Overslaan**. **Vervangen** houdt de instellingen van de vaardigheid ongewijzigd: aan of uit, AI beslist / Alleen bij aanroepen en waar ze wordt gebruikt.
+- Je kunt het zip-bestand van een vaardigheid of een `SKILL.md`-bestand ook op een willekeurig GenOffice-venster neerzetten. **Instellingen ▸ Vaardigheden** opent dan met hetzelfde voorbeeld. Een zip telt als vaardigheid als `SKILL.md` op het hoogste niveau staat of elke map op het hoogste niveau er een bevat; bij elke andere zip die je los neerzet, meldt **Instellingen ▸ Vaardigheden** "Geen vaardigheden gevonden". Een `SKILL.md`-bestand komt alleen binnen: zet een vaardigheid met meer bestanden in een zip.
+- **Regels om te lezen voordat je installeert** zijn regels die de AI vragen eerdere instructies te negeren, iets voor je verborgen te houden of instructies van een extern adres te halen, en `../`-paden die buiten de vaardigheidsmap wijzen. Bij elke regel staan het bestand en het regelnummer. Ze houden de installatie niet tegen, en een vaardigheid zonder zulke regels is daarom nog niet veilig.
 - Bij het downloaden van GitHub maakt GenOffice alleen verbinding met `github.com`, `api.github.com` en `codeload.github.com`, en stuurt het geen aanmeldgegevens mee. Is het archief te groot of komt het niet door de veiligheidscontroles, dan wordt er niets geïnstalleerd.
-- **Nieuwe vaardigheid** opent een lege editor waarin je zelf de naam, beschrijving en instructies schrijft.
+- De pagina van een vaardigheid op skills.sh (`https://skills.sh/owner/repo/skill`) wordt gelezen als die vaardigheid in de GitHub-repository `owner/repo`. GenOffice maakt geen verbinding met skills.sh.
+- **Nieuwe vaardigheid** opent een lege editor waarin je zelf de naam, beschrijving en instructies schrijft. Het veld **Titel** bovenaan neemt een titel in elke taal; de naam wordt vanuit de titel ingevuld en u kunt hem wijzigen. Heeft een ingeschakelde vaardigheid uit een andere bron dezelfde naam, dan wordt u dat vóór het opslaan gevraagd, en bij het opslaan wordt die vaardigheid uitgezet. Als de titel geen Latijnse letters of cijfers bevat, wordt de naam ingevuld als `skill-` met een paar tekens. De naam wordt gebruikt door andere programma’s en door de aanroep met `/`, dus die kan zo blijven.
 
 ## Op updates controleren
 
 - Bij een vaardigheid die van GitHub is geïnstalleerd, zoekt **Controleren op updates** in het menu met meer opties naar nieuwe inhoud. Er wordt alleen contact met GitHub gemaakt als je erop klikt.
 - Is er niets veranderd, dan staat er "Actueel". Is er wel iets veranderd, bekijk dan de gewijzigde bestanden en het voorbeeld en klik op **Bijwerken**.
 - Heb je de vaardigheid na het installeren zelf bewerkt, dan verschijnt ook "Je eigen wijzigingen gaan verloren".
-- Bijwerken houdt de aan/uit-stand van de vaardigheid en de keuze tussen AI beslist en Alleen bij aanroepen ongewijzigd.
+- Bijwerken houdt de aan/uit-stand van de vaardigheid, de keuze tussen AI beslist en Alleen bij aanroepen en waar ze wordt gebruikt ongewijzigd.
+
+## Teruggaan naar een eerdere versie
+
+Als je een van je eigen vaardigheden bewerkt, er een andere met dezelfde naam overheen installeert of ze bijwerkt, blijft de versie van daarvoor bewaard. Ze gaat niet naar de prullenbak.
+
+- **Eerdere versies** onderaan **Inhoud bekijken** of **Bewerken** toont de bewaarde versies, de nieuwste eerst, met wanneer en waarom elke versie is bewaard en hoe groot ze is.
+- **Verschillen bekijken** laat zien welke regels van `SKILL.md` zouden terugkomen, welke zouden verdwijnen en welke andere bestanden zouden veranderen.
+- **Terug naar deze versie** zet de bestanden van die versie precies terug zoals ze waren. De huidige versie blijft ook bewaard, dus je kunt ernaar terug. Of de vaardigheid aan staat en wanneer ze wordt gebruikt, blijft zoals je het had ingesteld.
+- Bewaarde versies blijven tot je ze verwijdert. **Verwijderen** verwijdert er één definitief.
+- De versies staan in de map `~/.ieumoffice/skill-history`. **Naar prullenbak** bij een vaardigheid verplaatst ook de bewaarde versies ervan naar de prullenbak.
 
 ## Een vaardigheid aanroepen in het AI-paneel
 
@@ -66,11 +81,21 @@ Onder het voorbeeld staat altijd: "Installeer alleen vaardigheden uit bronnen di
 
 1. Zeg in het AI-paneel bijvoorbeeld "Sla wat we net gedaan hebben op als vaardigheid" of "Maak een vaardigheid die verslagen in onze huisstijl schrijft".
 2. De AI haalt de stappen en regels eruit die het herhalen waard zijn en toont een kaart **Nieuwe vaardigheid**. Waarden die alleen deze keer gebruikt zijn, zoals namen en datums, blijven buiten de instructies.
-3. Controleer en bewerk de naam, beschrijving en instructies op de kaart. De naam is wat de lijst met vaardigheden toont en wat je na `/` typt: Engelse kleine letters, cijfers en koppeltekens.
+3. Controleer en bewerk de naam, beschrijving en instructies op de kaart. De naam is wat de lijst met vaardigheden toont en wat je na `/` typt: Engelse kleine letters, cijfers en koppeltekens. In het veld **Titel** boven de naam staat de titel die de lijst toont, in elke taal.
 4. Klik op **Opslaan**. De nieuwe vaardigheid wordt aan mijn vaardigheden toegevoegd, gaat aan en staat meteen in de lijst van `/`.
 
 - Er wordt geen bestand geschreven tot je op **Opslaan** klikt. Klik je op **Annuleren**, dan bewaart het gesprek hem alleen als "Niet-opgeslagen voorstel voor een vaardigheid".
 - Je kunt ook vragen een bestaande vaardigheid aan te passen, bijvoorbeeld "Pas de notulenvaardigheid aan aan hoe wij het doen". De kaart heet dan **Vaardigheid wijzigen**. Een van mijn vaardigheden wordt overschreven met **Vervangen**; een ingebouwde vaardigheid of een uit een ander programma wordt als kopie bij mijn vaardigheden opgeslagen en het origineel gaat uit.
+
+## Kiezen waar een skill wordt gebruikt
+
+Een skill die maar bij één soort document past, zoals dia’s opmaken of een spreadsheet opruimen, kan alleen in het AI-paneel van die editor verschijnen. In de andere editors worden de `/`-lijst en de lijst met skills die de AI zelf gebruikt korter, zodat de AI vaker de juiste skill kiest.
+
+- Open bij een van mijn skills **Bewerken** en kies onder **Waar gebruikt** **Alle editors** of **Alleen deze editors**. De gekozen editors worden in het bestand van de skill geschreven en gaan mee als u de skill exporteert of naar een ander programma brengt. **Alleen deze editors** begint zonder aangevinkte editors; **Alles selecteren** en **Alles wissen** wijzigen ze allemaal tegelijk.
+- Bij een ingebouwde skill of een skill van een ander programma wijzigt u het onder **Waar gebruikt** in **Inhoud bekijken**. Dit wordt alleen in de instellingen van deze pc bewaard; het bestand van de skill blijft gelijk.
+- Een skill die niet in alle editors wordt gebruikt, laat dat zien in zijn rij, bijvoorbeeld "Gebruikt in: Presentatie".
+- Als de AI een skill maakt die maar bij één formaat past, stelt hij ook voor waar die wordt gebruikt; anders blijft het alle editors. Vóór het opslaan kunt u het op de kaart wijzigen onder **Waar gebruikt**.
+- AI vragen op de startpagina en het agentvenster gebruiken alle ingeschakelde skills, waar ze ook voor zijn ingesteld.
 
 ## Een document als sjabloon toevoegen
 
@@ -85,6 +110,7 @@ Maak je een vaardigheid in het AI-paneel van een editor, dan kan het huidige doc
 - Een vaardigheid met een sjabloon toont **Met sjabloon** in de lijst.
 - Roep hem aan als chip en verstuur: een kopie van het sjabloon opent als nieuw naamloos document en de AI in dat tabblad gaat verder met je verzoek. In het oorspronkelijke paneel blijven "Er wordt in een nieuw tabblad met de sjabloon gewerkt" en **Naar het tabblad** staan.
 - Kiest de AI zelf een vaardigheid met sjabloon, dan opent er niet meteen een tabblad. Het gesprek toont in plaats daarvan de knop **Nieuw document openen met deze sjabloon**.
+- Roep je hem aan in een document dat al inhoud heeft, dan vraagt hij eerst waar hij moet werken in plaats van meteen een tabblad te openen. **In dit document doen** past het huidige document aan volgens de vaardigheid, zonder nieuw tabblad (het sjabloonbestand wordt niet geopend). **Nieuw document uit de sjabloon (dit document bijvoegen)** opent de kopie van de sjabloon in een nieuw tabblad en stuurt het huidige document als bijlage naar het AI-paneel van dat tabblad. Om het bij te voegen moet het huidige document opgeslagen zijn. Is het nooit opgeslagen of zijn er niet-opgeslagen wijzigingen, dan zegt het paneel dat, en **Openen zonder bijlage** opent de kopie zonder. Ook de knop die verschijnt als de AI zelf een vaardigheid met sjabloon gebruikt, voegt een document met inhoud bij. De Markdown- en PDF-editor accepteren geen bijlagen, dus een sjabloon die daar opent krijgt niets bijgevoegd.
 - Waar het nieuwe document komt, kies je meestal de eerste keer dat je het opslaat. De Markdown- en HTML-editor slaan zoals altijd op in de standaardmap. Het sjabloonbestand zelf blijft zoals het was.
 
 ## Vaardigheden met scripts
@@ -95,15 +121,25 @@ Maak je een vaardigheid in het AI-paneel van een editor, dan kan het huidige doc
 
 ## Ingebouwde vaardigheden
 
-| Vaardigheid       | Wat hij doet                                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| `meeting-minutes` | Maakt van vergaderaantekeningen notulen met de besluiten en actiepunten                                    |
-| `internal-comms`  | Schrijft mededelingen, nieuwsbrieven, voortgangsrapporten, veelgestelde vragen en andere interne berichten |
-| `humanizer`       | Zoekt formuleringen die naar AI klinken en maakt ze natuurlijk                                             |
-| `copy-editing`    | Loopt een Engelse tekst die je hebt geschreven na en maakt hem duidelijker en bondiger                     |
-| `find-skills`     | Zoekt in het agentvenster de vaardigheden die je nodig hebt en stelt voor ze te installeren                |
+| Vaardigheid                   | Wat hij doet                                                                                                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `meeting-minutes`             | Maakt van vergaderaantekeningen notulen met de besluiten en actiepunten                                                                                                                                                        |
+| `internal-comms`              | Schrijft mededelingen, nieuwsbrieven, voortgangsrapporten, veelgestelde vragen en andere interne berichten                                                                                                                     |
+| `humanizer`                   | Zoekt formuleringen die naar AI klinken en maakt ze natuurlijk                                                                                                                                                                 |
+| `copy-editing`                | Loopt een Engelse tekst die je hebt geschreven na en maakt hem duidelijker en bondiger                                                                                                                                         |
+| `find-skills`                 | Zoekt in het agentvenster de vaardigheden die je nodig hebt en stelt voor ze te installeren                                                                                                                                    |
+| `administration-report`       | Brengt een rapport in lijn met de richtlijn van het Koreaanse ministerie van Binnenlandse Zaken: lopende tekst, vaste nummering, overal beschikbare lettertypen, eenvoudige tabellen                                           |
+| `administration-report-draft` | Schrijft een bestuurlijk rapport vanaf nul in het formaat van het ministerie: secties, nummering Ⅰ·1·가, lopende tekst, tabelkoppen en overal beschikbare lettertypen                                                          |
+| `docx`                        | Werkt alleen in het agentvenster. Voert scripts uit om .docx-bestanden in de projectmap te maken, te bewerken en te lezen. Op deze pc moeten Python en andere programma’s zijn geïnstalleerd                                   |
+| `pptx`                        | Werkt alleen in het agentvenster. Voert scripts uit om .pptx-bestanden in de projectmap te maken, te bewerken en te lezen. Op deze pc moeten Python en andere programma’s zijn geïnstalleerd                                   |
+| `xlsx`                        | Werkt alleen in het agentvenster. Voert scripts uit om .xlsx-bestanden in de projectmap te maken en te bewerken en de formules opnieuw te berekenen. Op deze pc moeten Python en andere programma’s zijn geïnstalleerd         |
+| `pdf`                         | Werkt alleen in het agentvenster. Voert scripts uit om .pdf-bestanden in de projectmap te lezen, samen te voegen en te splitsen en formulieren in te vullen. Op deze pc moeten Python en andere programma’s zijn geïnstalleerd |
+| `hwp-document`                | Schrijft een nieuw .hwp- of .hwpx-document vanaf nul: kiest de opbouw voor een rapport, plan, mededeling, officiële brief of notulen, schrijft in documentstijl en controleert het resultaat                                   |
+| `mindmap`                     | Bouwt een mindmap uit een onderwerp of materiaal: drie tot zeven evenwichtige hoofdtakken, korte titels met de details in notities en aan het eind een controle van de structuur                                               |
+| `diagram`                     | Tekent een duidelijk diagram: kiest het passende type, houdt één richting aan, korte labels en weinig kleuren, en controleert op overlappingen en losse vormen                                                                 |
+| `html-document`               | Maakt een HTML-document dat prettig leest op het scherm en netjes afdrukt: legt eerst lezer, lengte en papier vast en controleert daarna de pagina’s en de inhoud                                                              |
 
-`copy-editing` is gemaakt voor Engelse marketingteksten. `find-skills` werkt alleen in het agentvenster.
+`copy-editing` is gemaakt voor Engelse marketingteksten. `find-skills` werkt alleen in het agentvenster. In **Inhoud bekijken** van een ingebouwde vaardigheid staat de beschrijving in de taal van de interface; de instructies zijn de tekst die de AI krijgt, getoond zoals die is geschreven (in het Engels). `docx`, `pptx`, `xlsx` en `pdf` werken alleen in het agentvenster; ze voeren scripts uit, dus op deze pc moeten Python en andere programma’s zijn geïnstalleerd. `hwp-document`, `mindmap`, `diagram` en `html-document` worden elk alleen gebruikt in de editor waarvoor ze zijn geschreven.
 
 ## In het agentvenster
 

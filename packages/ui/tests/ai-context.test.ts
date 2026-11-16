@@ -20,8 +20,7 @@ const NON_LATIN: readonly Lang[] = ['zh', 'ja', 'ko', 'th', 'ru', 'ar', 'he', 'h
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('AI_CONTEXT_STRINGS', () => {
-  it('covers all 21 ui languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('covers every UI language', () => {
     expect(Object.keys(AI_CONTEXT_STRINGS).sort()).toEqual([...LANGS].sort())
   })
 

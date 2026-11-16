@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import {
@@ -8,8 +9,10 @@ import {
 } from '@genoffice/electron-utils/project-folder-bridge'
 import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-channels'
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
+import { createPrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
 import { SPLIT_PANE_BRIDGE_KEY, splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 import type { AiStreamChunk } from '@genoffice/ai-provider'
 import { SUBSCRIPTION_IPC_CHANNELS } from '@genoffice/ai-provider/browser'
 import type { Lang } from '@genoffice/i18n'
@@ -24,11 +27,12 @@ import {
   installDropOpenBridge,
 } from '@genoffice/electron-utils/drop-open'
 import { AI_CHANNELS, HWP_CHANNELS } from '../shared/ipc'
-import type { HwpApi, PreviewAction, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
+import type { HwpApi, PreviewAction, PrintJob, PrintMode, SaveMode, UiTheme } from '../shared/ipc'
 import type { SubscriptionApi } from '../shared/subscription-api'
 import {
   SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
+  SUBSCRIPTION_USAGE_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionStatusMapOf,
 } from '../shared/subscription-api'
@@ -84,6 +88,11 @@ const aiSubscription: SubscriptionApi = {
     ipcRenderer.on(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
     return () => ipcRenderer.removeListener(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
   },
+  onUsage(handler) {
+    const listener = (_event: unknown, usage: unknown) => handler(Array.isArray(usage) ? usage : [])
+    ipcRenderer.on(SUBSCRIPTION_USAGE_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(SUBSCRIPTION_USAGE_CHANNEL, listener)
+  },
   async openInstallHelp(provider) {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
   },
@@ -119,7 +128,13 @@ const api: HwpApi = {
     ipcRenderer.on(HWP_CHANNELS.previewRequest, listener)
     return () => ipcRenderer.removeListener(HWP_CHANNELS.previewRequest, listener)
   },
-  printPages: (job) => ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
+  printPages: (job, options) =>
+    options
+      ? ipcRenderer.invoke(HWP_CHANNELS.printPages, job, options)
+      : ipcRenderer.invoke(HWP_CHANNELS.printPages, job),
+  printLayout: createPrintLayoutBridge<PrintJob>(ipcRenderer, 'hwp'),
+  consumeHeadlessExport: () => ipcRenderer.invoke(HWP_CHANNELS.consumeHeadlessExport),
+  headlessExportDone: (result) => ipcRenderer.send(HWP_CHANNELS.headlessExportDone, result),
   onCloseSaveRequest: (handler) => {
     const listener = () => handler()
     ipcRenderer.on(HWP_CHANNELS.closeSaveRequest, listener)
@@ -173,6 +188,10 @@ const api: HwpApi = {
   readAttachment: (path, offset, maxChars) =>
     ipcRenderer.invoke(HWP_CHANNELS.filesRead, path, offset, maxChars),
   readAttachmentImage: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadImage, path),
+  readAttachmentDocument: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadDocument, path),
+  importAttachmentAsDocument: (path, request) =>
+    ipcRenderer.invoke(HWP_CHANNELS.filesImportDocument, path, request),
+  noteAiRunStop: (stop) => ipcRenderer.send(HWP_CHANNELS.aiRunStop, stop),
   analyzeMedia: (op) => ipcRenderer.invoke(HWP_CHANNELS.analyzeMedia, op),
   getPathForFile: (file) => webUtils.getPathForFile(file),
   // the drop bridge's rules, for drops it cannot hear: paths come from the dropped files
@@ -230,6 +249,7 @@ const api: HwpApi = {
   aiStream: (request) => ipcRenderer.invoke(AI_CHANNELS.stream, request),
   aiStreamCancel: (requestId) => ipcRenderer.invoke(AI_CHANNELS.streamCancel, requestId),
   readUrl: (url, offset) => ipcRenderer.invoke(AI_CHANNELS.readUrl, url, offset),
+  webSearch: (query, maxResults) => ipcRenderer.invoke(AI_CHANNELS.webSearch, query, maxResults),
   imageSearch: (query, maxResults) =>
     ipcRenderer.invoke(AI_CHANNELS.imageSearch, query, maxResults),
   generateImage: (op) => ipcRenderer.invoke(HWP_CHANNELS.aiGenerateImage, op),
@@ -243,9 +263,17 @@ const api: HwpApi = {
 }
 
 contextBridge.exposeInMainWorld('hwpApi', api)
+// Whether AI is on (Settings › Editors and AI): this screen only reads and follows it
+const appChoice = appChoiceBridge()
+contextBridge.exposeInMainWorld(APP_CHOICE_BRIDGE_KEY, {
+  get: appChoice.get,
+  onChange: appChoice.onChange,
+})
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
 contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for this editor's AI: list and call approved tools (the shell checks each)
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button

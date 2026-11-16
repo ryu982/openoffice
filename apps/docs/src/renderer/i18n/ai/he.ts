@@ -79,7 +79,6 @@ export const he = {
   aiCopied: 'הועתק',
   aiRegenerateTitle: 'יצירה מחדש',
   aiSnapshotsTitle: 'תמונות מצב של גרסאות',
-  aiRollback: 'שחזור',
   aiScopeSelected: 'נבחרו {count} פסקאות',
   aiScopeEmptyDoc: 'מסמך ריק',
   aiScopeCursor: 'במיקום הסמן',
@@ -192,4 +191,7 @@ export const he = {
   aiMindMapReset: 'איפוס תצוגה',
   aiMindMapExpand: 'הרחב ענף',
   aiMindMapCollapse: 'כווץ ענף',
+  aiMindMapToggleLayout: 'החלף פריסה',
+  aiMindMapLayoutTopDown: 'החלף לפריסה מלמעלה למטה',
+  aiMindMapLayoutLeftRight: 'החלף לפריסה משמאל לימין',
 } satisfies Record<keyof typeof zh, string>

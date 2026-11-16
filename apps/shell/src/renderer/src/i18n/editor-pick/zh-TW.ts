@@ -1,0 +1,30 @@
+import type { zh } from './zh'
+
+export const zhTW = {
+  pickTitle: '選擇要使用的編輯器',
+  pickBody: '關閉不用的編輯器和 AI，它們就會從畫面中消失。可隨時在「設定 → 編輯器與 AI」中變更。',
+  pickOneTimeTitle: '選擇要使用的編輯器和 AI',
+  pickOneTimeBody:
+    '現在可以關閉不用的編輯器和 AI。關閉的項目會從畫面中消失，已開啟的文件不會被關閉。之後可在「設定 → 編輯器與 AI」中變更。',
+  pickSave: '儲存',
+  pickClose: '關閉',
+  pickEditorsLabel: '編輯器',
+  pickAiName: 'AI 功能',
+  pickAiHint: 'AI 面板、AI 按鈕和 AI 連線提示',
+  pickLastEditor: '至少要保留一個編輯器開啟。',
+  pickOpenDocs: '有開啟的文件',
+  pickDoneAiOff: 'AI 已關閉。可隨時在「設定 → 編輯器與 AI」中重新開啟。',
+  settingsTabName: '編輯器與 AI',
+  itemDocs: 'Word',
+  itemSheets: 'Excel',
+  itemSlides: 'PowerPoint',
+  itemPdf: 'PDF',
+  itemPdfTools: 'PDF 工具',
+  itemPdfToolsHint: '合併、分割、壓縮等 PDF 作業',
+  itemMarkdown: 'Markdown 與文字',
+  itemHtml: 'HTML',
+  itemMindmap: '心智圖',
+  itemDiagram: '圖表',
+  itemHwp: 'HWP',
+  itemEpub: '電子書（EPUB）',
+} satisfies Record<keyof typeof zh, string>

@@ -43,6 +43,19 @@ describe('HWP operation lookup does not inherit object properties', () => {
     expect(r.code).toBe(1)
     expect(r.json().error).toBe('unsupported')
   })
+  it('refuses web_search and points at the search command', async () => {
+    const r = await apply('hwp', 'web_search')
+    expect(r.code).toBe(1)
+    expect(r.json().error).toBe('unsupported')
+    expect(r.json().message).toContain('ieumoffice search')
+    // an app-only tool is not offered as a supported op either
+    expect(r.json().detail.failures[0].supported ?? []).not.toContain('web_search')
+  })
+  it('leaves web_search out of the op reference', async () => {
+    const r = await run(['guide', 'hwp', '--json'], { env })
+    expect(r.code).toBe(0)
+    expect(r.stdout).not.toContain('web_search')
+  })
   it('keeps ordinary unknown operations unknown', async () => {
     const r = await apply('hwp', 'not_a_tool')
     expect(r.code).toBe(1)

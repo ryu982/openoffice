@@ -255,7 +255,7 @@ async function main(): Promise<void> {
     await shot(page, '04-after-write-map')
 
     // the newest turn back: the sheet it added goes
-    await page.locator('[data-action="ai-turn-undo"]').last().click()
+    await page.locator('[data-action="ai-changes-revert"]').last().click()
     await page.waitForTimeout(600)
     check(
       (await page.locator('.mm-sheet-host').count()) === 1,

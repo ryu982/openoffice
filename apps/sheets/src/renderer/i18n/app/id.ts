@@ -462,6 +462,7 @@ export const id = {
   appGridlinesHidden: 'Garis kisi disembunyikan.',
   appGridlinesShown: 'Garis kisi ditampilkan.',
   appShowingFormulas: 'Menampilkan rumus — alihkan lagi untuk melihat nilai.',
+  appShowingFormulasActive: 'Menampilkan rumus',
   appShowingValues: 'Menampilkan nilai hasil hitungan.',
   appTraceNoFormula: 'Lacak Presedan: sel aktif tidak memiliki rumus.',
   appTraceNoRefs: 'Lacak Presedan: rumus ini tidak memiliki referensi sel.',
@@ -555,6 +556,9 @@ export const id = {
     'Ekspor CSV memerlukan buku kerja termuat penuh — tunggu pemuatan selesai.',
   appCsvExportTooLarge: 'Lembar terlalu besar untuk diekspor sebagai CSV.',
   appCsvExportCanceled: 'Ekspor CSV dibatalkan.',
+  appOdsExported: '{path} diekspor.',
+  appOdsExportCanceled: 'Ekspor ODS dibatalkan.',
+  appOdsExportFailed: 'Ekspor ODS gagal.',
   appCsvExported: '{path} diekspor.',
   appCsvExportedActiveOnly:
     'File CSV hanya memuat satu lembar — lembar aktif “{name}” diekspor ke {path}.',
@@ -591,6 +595,10 @@ export const id = {
     'Stylesheet buku kerja ini tidak memiliki struktur dasar, jadi perubahan gaya tidak dapat disimpan.',
   appSaveErrPackageGuard:
     'Menyimpan akan mengubah struktur paket buku kerja — dibatalkan untuk melindungi file.',
+  appSaveErrSheetNotFound:
+    'Lembar yang dirujuk penyimpanan ini tidak ditemukan di buku kerja — penyimpanan dihentikan dan file tetap seperti semula.',
+  appSaveErrSheetNameReused:
+    'Lembar baru memakai nama lama dari lembar yang diganti namanya, jadi tidak dapat disimpan. Beri lembar baru nama lain untuk sementara, simpan, lalu ganti namanya. File tetap seperti semula.',
   appSaveErrChartUnsupported:
     'Jenis bagan ini tidak mendukung pengeditan tersebut; penyimpanan dibatalkan — urungkan perubahan bagan itu.',
   appSaveErrMoveOverlap:
@@ -700,6 +708,13 @@ export const id = {
   appSaveAs: 'Simpan Sebagai',
   appUndo: 'Urungkan',
   appRedo: 'Ulangi',
+  appQuickAccessCustomize: 'Sesuaikan Bilah Alat Akses Cepat',
+  appQuickAccessHint:
+    'Tekan Alt dan angka untuk menjalankan tombol pada posisi itu, dihitung dari kiri.',
+  appQuickAccessMoveEarlier: 'Pindahkan ke depan',
+  appQuickAccessMoveLater: 'Pindahkan ke belakang',
+  appQuickAccessReset: 'Kembalikan ke default',
+  appQuickAccessFull: 'Bilah alat memuat paling banyak 10 tombol.',
   appUnsavedEditOne: '● {count} pengeditan belum disimpan',
   appUnsavedEditMany: '● {count} pengeditan belum disimpan',
   appSavedState: 'Tersimpan',
@@ -1162,6 +1177,8 @@ export const id = {
   appRefreshAll: 'Refresh Semua',
   appWorkbookNoPivot: 'Tidak ada PivotTable di buku kerja ini.',
   appRefreshAllTitle: 'Segarkan semua PivotTable',
+  appQueriesConnections: 'Kueri & Koneksi',
+  appQueriesConnectionsTitle: 'Tampilkan kueri dan koneksi data buku kerja',
   appErrorCheckingDetail: 'Pindai nilai kesalahan di lembar',
   appErrorsFound: '{count} kesalahan — di {cell}: {value}',
   appCheckingErrors: 'Memindai kesalahan di seluruh lembar…',
@@ -1561,4 +1578,8 @@ export const id = {
   appSpellUnavailable: 'Pemeriksaan ejaan tidak tersedia di jendela ini.',
   appSpellReplaceAll: 'Ganti semua dengan "{suggestion}"',
   appSpellChangedAll: '{count} sel dengan "{word}" telah diperbaiki.',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'ODS dibuka sebagai salinan xlsx. Menyimpan akan menulis file xlsx.',
+  appOdsFormulasDropped: 'Pada {count} rumus, hanya nilainya yang dipertahankan.',
 } satisfies Record<keyof typeof zh, string>

@@ -12,7 +12,13 @@ import { dirname, join } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
-import { documentStats, formatCount, openDocumentInfo } from '../studio-plugin/document-info.mjs'
+import {
+  documentStats,
+  formatCount,
+  engineSlice,
+  openDocumentInfo,
+  textCounts,
+} from '../studio-plugin/document-info.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -162,6 +168,35 @@ describe('문서 통계의 수', () => {
     expect(stats.sheets).toBe(2)
   })
 
+  it('counts the same characters without layout when only the text is wanted (the status bar)', () => {
+    const doc = documentWithTable()
+    const full = documentStats(bridgeOf(doc) as never)
+    const reads: string[] = []
+    const watched = new Proxy(bridgeOf(doc), {
+      get(target, name: string) {
+        reads.push(name)
+        return target[name as keyof typeof target]
+      },
+    })
+    const text = documentStats(watched as never, { textOnly: true })
+    expect(text.chars).toBe(full.chars)
+    expect(text.charsNoSpace).toBe(full.charsNoSpace)
+    // no layout is asked for: lines and pages are the dialog's, and so are the pictures
+    expect(reads).not.toContain('getLineInfo')
+    expect(reads).not.toContain('getLineInfoInCell')
+    expect(reads).not.toContain('getDocumentInfo')
+    expect(reads).not.toContain('getControlImageMime')
+    expect(textCounts('가 나\t다\n')).toEqual({ chars: 5, charsNoSpace: 3 })
+  })
+
+  it("cuts a paragraph by the engine's characters, an emoji or 𠀀 being one", () => {
+    expect(engineSlice('웃음😀😀😀 끝𠀀말', 2, 6)).toBe('😀😀😀 ')
+    expect(engineSlice('웃음😀😀😀 끝𠀀말', 6, 9)).toBe('끝𠀀말')
+    // a text without such characters is cut as a string is
+    expect(engineSlice('신청서 끝.', 1, 3)).toBe('청서')
+    expect(engineSlice('신청서', 1, Infinity)).toBe('청서')
+  })
+
   it('shows the numbers the way the dialog does', () => {
     expect(formatCount(12345, true)).toBe('12,345')
     expect(formatCount(0, false)).toBe('0')
@@ -189,8 +224,10 @@ describe('문서 정보 대화 상자', () => {
       createBody(): HTMLElement {
         return globalThis.document.createElement('div')
       }
-      onConfirm() {
-        return true
+      // abstract in the studio: a dialog without its own onConfirm throws on the confirm button
+      declare onConfirm: () => void | boolean
+      hide() {
+        this.overlay.remove()
       }
       show() {
         const doc = globalThis.document
@@ -202,6 +239,10 @@ describe('문서 정보 대화 상자', () => {
         const primary = doc.createElement('button')
         primary.className = 'dialog-btn dialog-btn-primary'
         primary.textContent = '확인'
+        primary.addEventListener('click', () => {
+          const shouldClose = this.onConfirm()
+          if (shouldClose !== false) this.hide()
+        })
         const cancel = doc.createElement('button')
         cancel.className = 'dialog-btn'
         cancel.textContent = '취소'
@@ -258,6 +299,16 @@ describe('문서 정보 대화 상자', () => {
     expect(value('words')).toBe('2')
     expect(value('lines')).toBe('2')
     expect(value('pages')).toBe('3')
+  })
+
+  it('closes when 닫기 is pressed (#487)', () => {
+    globalThis.document = dom.window.document
+    dom.window.document.body.replaceChildren()
+    openDocumentInfo({ ModalDialog: dialogBase() }, { wasm } as never, true)
+    const close = dom.window.document.querySelector<HTMLButtonElement>('.dialog-btn-primary')
+    expect(close?.textContent).toBe('닫기')
+    close?.click()
+    expect(dom.window.document.querySelectorAll('.dialog-btn-primary').length).toBe(0)
   })
 
   it('does nothing without a dialog to build on', () => {

@@ -54,8 +54,8 @@ describe('AI chat retention', () => {
   })
 
   it('drops a snapshot as undefined, so the roll-back action cannot be offered', () => {
-    // the panel renders RollbackButton under `entry.snapshot &&`; a dropped
-    // snapshot must therefore be undefined, never a stale placeholder object
+    // the changes card offers the roll-back only while `entry.snapshot` is set; a
+    // dropped snapshot must therefore be undefined, never a stale placeholder object
     const bounded = boundChatHistory(transcript(20))
     const dropped = bounded.find((e) => e.text === 'answer 0')
     expect(dropped).toBeDefined()

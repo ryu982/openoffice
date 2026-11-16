@@ -6,6 +6,8 @@ De pdf-editor heeft vijf linttabs: **Start / Annoteren / Bewerken / Pagina's / B
 
 - Linkerzijbalk: **miniaturen** (klik om te springen, het zichtbare bereik is gemarkeerd) of **overzicht** (bladwijzers, indien aanwezig).
 - Zoom: de verhoudingsknop rechtsonder; ctrl+scrollwiel verandert de zoom in stappen.
+- Zoom bij openen: **Bij openen** op het tabblad Beeld kiest de beginweergave van een pdf die u opent: aan breedte aanpassen, aan pagina aanpassen of een zoom van 50% tot 200%. Een pdf waarvan u de zoom zelf hebt gewijzigd, opent weer met die zoom.
+- De weergave verplaatsen: zet het **Handje** aan (tabbladen Start en Beeld) en sleep om de pagina alle kanten op te verplaatsen. Zolang het aan staat, selecteert slepen geen tekst en opent een gewone klik nog steeds een koppeling. Slepen met de middelste knop (scrollwiel) ingedrukt verplaatst de weergave ook zonder het hulpmiddel. Esc of een ander hulpmiddel zet het uit. Als er geen tekst is geselecteerd, zet H het aan en uit.
 - Draaien: per pagina of voor alle pagina's via het menu Pagina's; draaiingen worden bij opslaan teruggeschreven.
 - Zoeken: ctrl+F op volledige tekst met alle treffers gemarkeerd.
 - Versleutelde pdf's: een wachtwoordvraag (in een eigen klein venster) opent ze; het wachtwoord wordt alleen voor deze sessie gebruikt. Zo'n document kunt u bewerken en opslaan; bij opslaan blijft het wachtwoord behouden. **Annoteren → Beveiligen** stelt het wachtwoord en wat lezers mogen in, wijzigt of verwijdert ze.
@@ -18,7 +20,7 @@ Probeer het op een willekeurige alinea:
 
 ![De annotatiebalk na het selecteren van tekst](img/pdf-highlight.png)
 
-2. Kies **markeren** (het gele monster opent een kleurenpalet), **onderstrepen** of **doorhalen**; **Vraag AI** stuurt de selectie met je vraag naar het AI-paneel.
+2. Kies een van de drie kleuren voor **markeren**, of **onderstrepen**, **golflijn** of **doorhalen**. Om een markeerkleur te wijzigen, klik je er met rechts op en kies je een nieuwe. Na onderstrepen, een golflijn of doorhalen opent er een rij kleuren op de balk: klik op een andere kleur om die te wijzigen, en de volgende markering krijgt ook die kleur. **Vraag AI** stuurt de selectie met je vraag naar het AI-paneel.
 3. Wil je een annotatie ongedaan maken, selecteer dan hetzelfde fragment opnieuw met slepen en klik op de al actieve knop op de balk (een schakelaar in Word-stijl), of selecteer het en druk op Verwijderen.
 
 Verwacht gedrag:
@@ -69,6 +71,7 @@ Zes gereedschappen: **inkt, rechthoek, ellips, pijl, notitie**, plus de **zwartm
 ## Paginabewerkingen (Pagina's)
 
 - **Draaien / verwijderen / herschikken**: sleep miniaturen om te herschikken; verwijderen vraagt bevestiging.
+- **Meerdere pagina’s tegelijk**: klik met Ctrl of Shift ingedrukt op miniaturen om meerdere pagina’s te selecteren. Delete verwijdert ze; Ctrl+C, Ctrl+X en Ctrl+V kopiëren, knippen en plakken ze. Gekopieerde pagina’s kunt u ook in een ander pdf-tabblad plakken, en het plakken wordt meteen in het bestand opgeslagen. Zijn de miniaturen gesloten, dan opent de knop aan de linkerrand van het paginagebied ze weer.
 - **Pagina's importeren**: haal pagina's op uit een andere pdf. **Lege pagina invoegen** voegt een lege pagina toe.
 - **Pagina's vervangen** wisselt een bereik in voor pagina's uit een ander bestand; **Pagina's bijsnijden** snijdt de randen bij, met een optie om dit op alle pagina's toe te passen.
 - **Paginaformaat** schaalt elke pagina naar één en hetzelfde papierformaat; **Volgorde omkeren** draait het document van einde tot begin.
@@ -80,7 +83,9 @@ Zes gereedschappen: **inkt, rechthoek, ellips, pijl, notitie**, plus de **zwartm
 ## Exporteren en afdrukken
 
 - **Exporteren als Word… / PowerPoint… / Excel…** in het menu Bestand, of dezelfde drie via **PDF converteren** in het lintmenu — alles lokaal, geen upload. De .pptx komt eruit met één dia per pagina en de .xlsx met één werkblad per pagina. Elk ervan vraagt waar het opgeslagen moet worden.
-- **Afdrukken**: huidige volgorde en draaiingen via het systeemvenster; paginabereiken worden ondersteund.
+- **PDF naar HWP** onder **PDF converteren** op het lint maakt van de PDF een HWP-document in een nieuw HWP-tabblad. Kies **Importeren** (가져오기) in het PDF-importvenster dat het tabblad toont; het document ontstaat in dat tabblad, en bij de eerste keer opslaan wordt gevraagd waar het .hwp- of .hwpx-bestand moet komen. De PDF zelf blijft zoals hij was, en de conversie gebeurt op deze pc. Of de tekst binnenkomt als alinea's die over de pagina's lopen of als vaste tekstvakken, kiest u in de opties (환경 설정) van het HWP-tabblad, onder PDF-import.
+- Dezelfde conversie start u ook vanuit een HWP-tabblad. Kies een PDF met **Bestand** ▸ **PDF importeren…**; er opent een nieuw HWP-tabblad met hetzelfde PDF-importvenster. Het document van het tabblad waarin het menu is gebruikt, blijft zoals het was.
+- **Afdrukken**: huidige volgorde en draaiingen via het systeemvenster. Je kunt een paginabereik of de in de miniaturen gekozen pagina's afdrukken, en onder **Pagina-indeling** meerdere pagina's per vel, een boekje, grijstinten en meer kiezen.
 
 ## Opslaan
 
@@ -127,6 +132,9 @@ Druk op **E** of **T**, of op de chips voor uitleggen en vertalen in het vak **V
 - **Deze pagina vertalen** (of **De rest vertalen** als een deel al klaar is) verstuurt de pagina met één klik zolang je een abonnement gebruikt; naast de knop staat naar welke AI het gaat. Bij een verbinding die per gebruik betaalt, vraagt de eerste klik in een tabblad eerst "brengt hiervoor kosten in rekening · Vertalen / Annuleren".
 - Dubbelklik op een vertaalde alinea om die te bewerken. Bewerkte alinea’s worden als platte tekst bewaard en ongewijzigd gebruikt in vertaalde pdf-, Markdown- en EPUB-bestanden. **Opnieuw vertalen** bij een alinea stuurt alleen die alinea en vraagt het eerst als je haar hebt bewerkt.
 - Beweeg je de muis over een vertaalde alinea, dan krijgt haar plek op de bronpagina een kader. Breedte en tekstgrootte van de kolom zijn instelbaar. **Alle pagina’s vertalen…** opent het venster **Document vertalen**, waarvan de indeling **Alleen bewaren (geen bestand)** de vertaling bewaart zonder een bestand te schrijven.
+- Nieuw vertaalde alinea’s zijn zin voor zin gekoppeld. Als u de muis op een vertaalde zin houdt, wordt die zin op de bronpagina gemarkeerd; op een bronzin licht de vertaling op. Waar de zin niet op de pagina te vinden is, en bij eerder vertaalde of door u bewerkte alinea’s, blijft de koppeling per alinea.
+- De balk boven de kolom wisselt tussen **Vertaling** en **Eenvoudige uitleg**. Een eenvoudige uitleg schrijft de tekst opnieuw met alledaagse woorden en korte zinnen, voor kinderen, ouderen of mensen die de taal leren; feiten, getallen en namen blijven zoals ze zijn. De keuze wordt onthouden, en wisselen verstuurt niets. Zolang de uitleg te zien is, werken de pagina- en alineaknoppen en het bewerken op de uitleg.
+- Bij de eenvoudige uitleg opent **Alle pagina’s eenvoudig uitleggen…** het venster **Document vertalen** met de soort **Eenvoudige uitleg**. Een uitleg is langer dan het origineel en kan dus geen vertaalde PDF worden; hij wordt als Markdown of EPUB geschreven. Met **Origineel en dan uitleg** aan volgt op elke oorspronkelijke alinea haar uitleg; uit bevat het bestand alleen de uitleg. De taal is eerst de taal van de interface en mag ook die van het document zijn.
 
 ## AI-markering
 

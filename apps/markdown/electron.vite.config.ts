@@ -23,7 +23,12 @@ export default defineConfig({
   main: {
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@genoffice/i18n', '@genoffice/electron-utils', '@genoffice/odt-engine'],
+        exclude: [
+          '@genoffice/i18n',
+          '@genoffice/electron-utils',
+          '@genoffice/odt-engine',
+          '@genoffice/print-layout',
+        ],
       }),
     ],
   },

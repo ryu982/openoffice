@@ -30,6 +30,7 @@ export const hi = {
   darkView: 'गहरा दृश्य',
   toc: 'विषय-सूची',
   tocEmpty: 'इस पुस्तक में विषय-सूची नहीं है',
+  sideResize: 'पैनल की चौड़ाई बदलें',
   statusChapter: 'अध्याय {n}/{total}',
   prevChapter: 'पिछला अध्याय',
   nextChapter: 'अगला अध्याय',

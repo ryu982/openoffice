@@ -12,7 +12,7 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 
 ## Reading
 
-- The **Contents** pane on the left shows the book's table of contents. Click an entry to go there. A book without one gets a list of its chapters.
+- The **Contents** pane on the left shows the book's table of contents. Click an entry to go there. A book without one gets a list of its chapters. Drag the pane's inner edge to change its width; double-click the edge to go back to the original width. The find pane uses the same width.
 - Each chapter scrolls up and down. Keep scrolling past the end of a chapter to go to the next one, or past its start to go back. The status line shows which chapter you are in.
 - The **View** tab changes the text size and line spacing and switches **Dark view** on and off. These settings change only the screen, never the book, and apply to every book.
 - The place where you stopped reading is remembered for each file, in the app's data folder and not in the book.
@@ -47,7 +47,7 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 ## AI panel
 
 - Ask about the book, have a chapter summarized, or have its text corrected or rewritten. The AI reads the book's contents and chapters and finds text in it.
-- Changes the AI makes appear at once, and one undo (Ctrl+Z) takes back everything it changed in that turn. The AI can make text bold or italic, but cannot add pictures, tables or chapters.
+- Changes the AI makes appear at once, the changed blocks are marked in yellow, and **Undo these changes** on the card under its reply takes back everything it changed in that turn (as long as the book was not edited after it). The AI can make text bold or italic, but cannot add pictures, tables or chapters.
 - The text of the book is material for the AI, not instructions to it.
 - Ask "Translate this book into French" and the AI opens the translation window with that language filled in. Nothing is sent until you press **Start**.
 - EPUB books can also be attached in the AI panel of the other editors, picked with `@`, and found by the file search on Home.
@@ -67,6 +67,7 @@ The e-book editor opens EPUB books (`.epub`) in a tab. You read the book, correc
 - What has been translated is kept. If you stop, choose **Export what is translated so far** (the rest stays in the original language) or **Continue later**. When you open a book with an unfinished translation, GenOffice offers to continue it. **Translate again from the start** first deletes the kept translation for that language.
 - Kept translations count under Settings ▸ General ▸ **Saved AI results**, together with those of PDF documents, and **Delete all** removes them too.
 - The same translation can also run from the [terminal commands](help://cli) as `ieumoffice epub translate`.
+- Choose **Plain language** under **Mode** to rewrite the book in easy words in the chosen language. The results are a **Plain-language book** and **Original followed by plain language**; their titles are marked as a plain-language version in that language, and their file names carry the mark in the screen language so they differ from a translation’s. The language starts as the screen language and may be the book’s own. The plain-language version is kept apart from translations, continuing it is offered on its own, and the terminal commands do not make it.
 
 ## Not supported yet
 

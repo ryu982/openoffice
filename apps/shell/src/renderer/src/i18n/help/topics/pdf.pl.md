@@ -6,6 +6,8 @@ Edytor PDF ma pięć kart na wstążce: **Narzędzia główne / Adnotacje / Edyc
 
 - Lewy pasek boczny: **miniatury** (kliknij, aby przejść, widoczny zakres wyróżniony) albo **spis treści** (zakładki, jeśli są).
 - Powiększenie: regulator współczynnika w prawym dolnym rogu; ctrl+kółko zmienia powiększenie stopniowo.
+- Powiększenie przy otwieraniu: opcja **Przy otwieraniu** na karcie Widok wybiera początkowy widok nowo otwieranego pliku PDF: dopasowanie do szerokości, dopasowanie do strony albo powiększenie od 50% do 200%. Plik PDF, w którym samodzielnie zmieniono powiększenie, otwiera się ponownie w tym powiększeniu.
+- Przesuwanie widoku: włącz **Narzędzie Rączka** (karty Narzędzia główne i Widok) i przeciągaj, aby przesuwać stronę w każdą stronę. Gdy jest włączone, przeciąganie nie zaznacza tekstu, a zwykłe kliknięcie nadal otwiera łącze. Przeciąganie z wciśniętym środkowym przyciskiem (kółkiem) przesuwa widok bez narzędzia. Esc lub wybór innego narzędzia je wyłącza. Gdy żaden tekst nie jest zaznaczony, H je włącza i wyłącza.
 - Obracanie: dla jednej strony lub wszystkich z menu Strony; obroty są zapisywane w pliku przy zapisie.
 - Wyszukiwanie: ctrl+F na pełnym tekście z podświetleniem wszystkich trafień.
 - Zaszyfrowane pliki PDF: otwiera je monit o haśle (we własnym małym oknie); hasło jest używane tylko w tej sesji. Taki dokument można edytować i zapisywać; zapis zachowuje hasło. **Adnotacje → Chroń** ustawia, zmienia lub usuwa hasło oraz to, co wolno czytelnikom.
@@ -18,7 +20,7 @@ Spróbuj na dowolnym akapicie:
 
 ![Pasek adnotacji po zaznaczeniu tekstu](img/pdf-highlight.png)
 
-2. Wybierz **wyróżnienie** (żółta próbka otwiera paletę kolorów), **podkreślenie** albo **przekreślenie**; **Zapytaj AI** wysyła zaznaczenie razem z Twoim pytaniem do panelu AI.
+2. Wybierz jeden z trzech kolorów **wyróżnienia** albo **podkreślenie**, **falistą** linię lub **przekreślenie**. Aby zmienić kolor wyróżnienia, kliknij go prawym przyciskiem i wybierz nowy. Po podkreśleniu, linii falistej lub przekreśleniu na pasku otwiera się rząd kolorów: kliknij inny kolor, aby go zmienić, a kolejne oznaczenie też będzie w tym kolorze. **Zapytaj AI** wysyła zaznaczenie razem z Twoim pytaniem do panelu AI.
 3. Aby cofnąć adnotację, zaznacz przeciągnięciem ten sam fragment i kliknij aktywny przycisk na pasku (przełącznik w stylu Worda), albo zaznacz go i naciśnij Usuń.
 
 Oczekiwane działanie:
@@ -69,6 +71,7 @@ Sześć narzędzi: **tusz, prostokąt, elipsa, strzałka, notatka**, a ponadto *
 ## Operacje na stronach (Strony)
 
 - **Obróć / usuń / zmień kolejność**: przeciągaj miniatury, aby zmienić kolejność; usuwanie wymaga potwierdzenia.
+- **Wiele stron naraz**: klikaj miniatury z wciśniętym Ctrl lub Shift, aby zaznaczyć kilka stron. Delete je usuwa; Ctrl+C, Ctrl+X i Ctrl+V kopiują, wycinają i wklejają. Skopiowane strony można też wkleić na innej karcie PDF, a wklejenie jest od razu zapisywane w pliku. Jeśli miniatury są zamknięte, otwiera je przycisk przy lewej krawędzi obszaru stron.
 - **Importuj strony**: wciągnij strony z innego pliku PDF. **Wstaw pustą stronę** dodaje pustą stronę.
 - **Zamień strony** podmienia cały zakres na strony skąd indziej; **Przytnij strony** przycina krawędzie, z opcją zastosowania tego do wszystkich stron.
 - **Rozmiar strony** skaluje wszystkie strony do jednego rozmiaru papieru; **Odwróć kolejność** odwraca dokument od końca do początku.
@@ -80,7 +83,9 @@ Sześć narzędzi: **tusz, prostokąt, elipsa, strzałka, notatka**, a ponadto *
 ## Eksport i drukowanie
 
 - **Eksportuj jako Word… / PowerPoint… / Excel…** w menu Plik albo te same trzy z **Konwertuj PDF** na wstążce — wszystko lokalnie, bez wysyłania na serwer. Plik .pptx wychodzi ze slajdem na stronę, a .xlsx z arkuszem na stronę. Każdy z nich pyta, gdzie zapisać.
-- **Drukuj**: bieżąca kolejność i obroty przez okno systemowe; obsługiwane są zakresy stron.
+- **PDF na HWP** w menu **Konwertuj PDF** na wstążce zamienia PDF w dokument HWP w nowej karcie HWP. Wybierz **Importuj** (가져오기) w oknie importu PDF, które pokaże karta; dokument powstaje w tej karcie, a pierwsze zapisanie pyta, gdzie umieścić plik .hwp lub .hwpx. Sam PDF zostaje bez zmian, a konwersja odbywa się na tym komputerze. To, czy tekst trafi jako akapity płynące przez strony, czy jako stałe pola tekstowe, wybiera się w opcjach (환경 설정) karty HWP, w sekcji importu PDF.
+- Tę samą konwersję można też rozpocząć z karty HWP. Wybierz PDF poleceniem **Plik** ▸ **Importuj PDF…**, a otworzy się nowa karta HWP z tym samym oknem importu PDF. Dokument karty, w której użyto menu, zostaje bez zmian.
+- **Drukuj**: bieżąca kolejność i obroty przez okno systemowe. Można wydrukować zakres stron lub strony zaznaczone w miniaturach, a w sekcji **Układ stron** wybrać kilka stron na arkusz, broszurę, skalę szarości i inne.
 
 ## Zapisywanie
 
@@ -127,6 +132,9 @@ Naciśnij **E** lub **T** albo żetony wyjaśnienia i tłumaczenia w polu **Zapy
 - **Przetłumacz tę stronę** (lub **Przetłumacz resztę**, gdy część jest gotowa) wysyła stronę jednym kliknięciem, gdy korzystasz z subskrypcji; obok przycisku widać nazwę docelowej AI. Przy połączeniu rozliczanym za użycie pierwsze kliknięcie na karcie najpierw pyta „pobierze za to opłatę · Przetłumacz / Anuluj”.
 - Kliknij dwukrotnie przetłumaczony akapit, aby go edytować. Edytowane akapity są przechowywane jako zwykły tekst i trafiają bez zmian do przetłumaczonych plików PDF, Markdown i EPUB. **Przetłumacz ponownie** przy akapicie wysyła tylko ten akapit i najpierw pyta, jeśli był edytowany.
 - Najechanie myszą na przetłumaczony akapit obrysowuje jego miejsce na stronie źródłowej. Szerokość kolumny i rozmiar tekstu można zmieniać. **Przetłumacz wszystkie strony…** otwiera okno **Przetłumacz dokument**, którego format **Tylko zachowaj (bez pliku)** zachowuje tłumaczenie bez zapisywania pliku.
+- Nowo przetłumaczone akapity są połączone zdanie po zdaniu. Najechanie na przetłumaczone zdanie zaznacza to zdanie na stronie oryginału, a najechanie na zdanie oryginału podświetla jego tłumaczenie. Tam, gdzie zdania nie da się znaleźć na stronie, oraz w akapitach przetłumaczonych wcześniej lub poprawionych przez Ciebie połączenie pozostaje akapitami.
+- Pasek nad kolumną przełącza między **Tłumaczenie** a **Proste wyjaśnienie**. Proste wyjaśnienie pisze tekst od nowa codziennymi słowami i krótkimi zdaniami, dla dzieci, osób starszych lub uczących się języka; fakty, liczby i nazwy zostają bez zmian. Wybór jest zapamiętywany, a przełączenie niczego nie wysyła. Gdy widać wyjaśnienie, przyciski strony i akapitu oraz edycja działają na nim.
+- W prostym wyjaśnieniu **Wyjaśnij prosto wszystkie strony…** otwiera okno **Przetłumacz dokument** z rodzajem **Proste wyjaśnienie**. Wyjaśnienie jest dłuższe od oryginału, więc nie może stać się przetłumaczonym PDF; zapisuje się je jako Markdown lub EPUB. Po włączeniu **Oryginał, potem wyjaśnienie** po każdym akapicie oryginału jest jego wyjaśnienie; po wyłączeniu plik zawiera tylko wyjaśnienie. Język to na początku język interfejsu; może to być też język dokumentu.
 
 ## Wyróżnianie przez AI
 

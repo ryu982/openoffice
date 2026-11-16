@@ -218,6 +218,16 @@ export const DOC_MENTION_STRINGS = defineStrings({
     reasonUnsaved: 'Tài liệu mới chưa lưu',
     more: 'Tìm thêm…',
   },
+  tr: {
+    listLabel: 'Belgeler',
+    groupPane: 'Diğer bölme',
+    groupOpen: 'Açık belgeler',
+    groupProject: 'Bu projedeki dosyalar',
+    groupRecent: 'Son belgeler',
+    reasonModified: 'Eklemek için kaydedin',
+    reasonUnsaved: 'Kaydedilmemiş yeni belge',
+    more: 'Daha fazlasını bul…',
+  },
 })
 
 export type DocMentionStringKey = keyof typeof zh

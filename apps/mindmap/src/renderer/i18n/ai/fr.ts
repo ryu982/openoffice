@@ -38,10 +38,6 @@ export const fr = {
   aiRetry: 'Réessayer',
   aiCopyReplyTitle: 'Copier la réponse',
   aiRegenerateTitle: 'Régénérer',
-  aiTurnsTitle: "Annuler un tour de l'IA",
-  aiRollback: 'Restaurer',
-  aiRollbackIncomplete:
-    "Une partie de ce tour n'a pas pu être annulée : l'historique d'annulation de la carte ne remonte plus aussi loin.",
   aiUnknownError: 'La requête IA a échoué, réessayez',
   aiTimeoutError: 'Délai de réponse IA dépassé',
   aiCreditsExhausted: 'Crédits épuisés — rechargez auprès de votre fournisseur d’IA',

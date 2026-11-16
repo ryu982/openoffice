@@ -36,10 +36,6 @@ export const th = {
   aiRetry: 'ลองใหม่',
   aiCopyReplyTitle: 'คัดลอกคำตอบ',
   aiRegenerateTitle: 'สร้างใหม่',
-  aiTurnsTitle: 'ย้อนกลับรอบของ AI',
-  aiRollback: 'ย้อนกลับ',
-  aiRollbackIncomplete:
-    'บางส่วนของรอบนั้นย้อนกลับไม่ได้ เพราะประวัติการเลิกทำของแผนผังย้อนไปได้ไม่ถึง',
   aiUnknownError: 'คำขอ AI ล้มเหลว โปรดลองอีกครั้ง',
   aiTimeoutError: 'การตอบกลับของ AI หมดเวลา',
   aiCreditsExhausted: 'เครดิตหมด — เติมได้ที่ผู้ให้บริการ AI ของคุณ',

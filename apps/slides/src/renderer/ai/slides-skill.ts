@@ -35,6 +35,8 @@ import { placeholderInstruction } from './redact'
 import { textForModel, redactLabelsOf } from './redact-view'
 import { redactGuardFor } from './redact-guard'
 import { isGenerationStopKind } from './generation-stop'
+import { deckTakesDefaultFonts } from './default-fonts'
+import type { SlidesAiFontRoles } from '@genoffice/ui/slides-ai-fonts'
 
 /**
  * Slides capability as an AgentSkill: deck outline context + three tools (read structure /
@@ -99,6 +101,8 @@ export type DeckProgressEvent =
 /** Panel/skill access point to the currently open deck (refs provided by App, stay fresh across renders). */
 export interface DeckAccess {
   getSlides(): RenderSlide[]
+  /** The fonts of Settings › General as title/body families; null for "auto" or when unavailable */
+  getAiDefaultFonts?(): Promise<SlidesAiFontRoles | null>
   getCurrent(): number
   getSelectedIds(): string[]
   /** Every page's review comments (index = slide index; pages without comments are empty arrays). */
@@ -173,6 +177,8 @@ export interface DeckAccess {
     skeleton?: string
     /** The style is a built-in design template, or a style saved from one: its devices override the ban rules they collide with */
     templateDevices?: boolean
+    /** Settings › General fonts, present only when they apply to this deck (default-fonts.ts) */
+    defaultFonts?: SlidesAiFontRoles
     signal?: AbortSignal
   }): Promise<{
     ok: boolean
@@ -192,6 +198,8 @@ export interface DeckAccess {
     topic: string
     questionnaire?: string
     styleHint?: string
+    /** Settings › General fonts, present only when they apply to this deck (default-fonts.ts) */
+    defaultFonts?: SlidesAiFontRoles
     signal?: AbortSignal
   }): Promise<{ ok: boolean; styleSkill?: string; error?: string; stopKind?: string }>
   /**
@@ -443,6 +451,11 @@ const TOOLS: AgentToolDef[] = [
           type: 'boolean',
           description:
             'Set true when the result must have a real transparent background (icons, logos, cutouts placed over slide content). The app strips the background automatically after generation; never rely on the prompt for transparency.',
+        },
+        model: {
+          type: 'string',
+          description:
+            'Image model name, only when the user named a model; the app uses it if the current image route offers it, otherwise it answers with the models it can use',
         },
       },
       required: ['prompt'],
@@ -1123,10 +1136,15 @@ function hiddenMediaTools(access: DeckAccess): Set<string> {
   return hidden
 }
 
+/** told whenever generate_image is hidden, so the model can point a ChatGPT plan user at the one path that draws */
+export const IMAGE_GEN_CHATGPT_NOTE =
+  'If the user uses a ChatGPT plan: making images needs the Codex program signed in with the same ChatGPT account (Settings > AI > Codex); the direct ChatGPT connection in the app cannot make images because OpenAI does not allow it. Tell the user this when they ask for an image.'
+
 function mediaToolsOffNote(hidden: Set<string>): string {
   if (hidden.size === 0) return ''
   const plural = hidden.size > 1
-  return `\n\nNote: ${[...hidden].join(' and ')} ${plural ? 'are' : 'is'} currently unavailable (no image/media provider is connected or set up in Settings). Do not call or promise ${plural ? 'them' : 'it'}; for imagery use image_search + insert_web_image instead.`
+  const chatgpt = hidden.has('generate_image') ? ` ${IMAGE_GEN_CHATGPT_NOTE}` : ''
+  return `\n\nNote: ${[...hidden].join(' and ')} ${plural ? 'are' : 'is'} currently unavailable (no image/media provider is connected or set up in Settings). Do not call or promise ${plural ? 'them' : 'it'}; for imagery use image_search + insert_web_image instead.${chatgpt}`
 }
 
 export function createSlidesSkill(access: DeckAccess): AgentSkill {
@@ -1785,7 +1803,8 @@ async function executeTool(
       return {
         output:
           `Image generated, URL: ${r.url}\n` +
-          'New imagery: insert it with insert_web_image. If this edits an existing slide picture (e.g. background removal), swap it in place with replace_image instead.',
+          'New imagery: insert it with insert_web_image. If this edits an existing slide picture (e.g. background removal), swap it in place with replace_image instead.' +
+          (r.note ? `\nNote: ${r.note}` : ''),
         mutated: false,
         summary: t('aiSumGenImage', {
           prompt: `${prompt.slice(0, 20)}${prompt.length > 20 ? '…' : ''}`,
@@ -2012,6 +2031,19 @@ async function executeTool(
       // otherwise the last style this window generated with.
       const selected = await selectedTemplateOf(access)
       const regenBasedOn = selected ? selected.basedOn : state?.lastStyleBasedOn
+      // Settings › General fonts as in generate_deck, judged on the pages the redo keeps
+      const regenSettingFonts =
+        !selected && access.getAiDefaultFonts
+          ? await access.getAiDefaultFonts().catch(() => null)
+          : null
+      const regenFonts =
+        regenSettingFonts &&
+        deckTakesDefaultFonts(
+          slides.filter((_, i) => i !== idx),
+          regenSettingFonts,
+        )
+          ? regenSettingFonts
+          : undefined
       const regenArgs = {
         pageIndex: idx + 1,
         totalPages: slides.length,
@@ -2026,6 +2058,7 @@ async function executeTool(
         canvasW: 1280,
         canvasH: 720,
         ...(regenBasedOn ? { templateDevices: true } : {}),
+        ...(regenFonts ? { defaultFonts: regenFonts } : {}),
         // the run's signal: Stop ends the redo, and its two attempts share one context check
         ...(signal ? { signal } : {}),
       }
@@ -2197,6 +2230,17 @@ async function executeTool(
         styleSkill = styleWithRequests(template.styleText, template.requests)
         templateSkeleton = template.layout
       }
+      // Settings › General fonts: never over a design template, and on append only to a
+      // deck that takes them (blank, or made in these fonts); a font the request names wins
+      const settingFonts =
+        !template && access.getAiDefaultFonts
+          ? await access.getAiDefaultFonts().catch(() => null)
+          : null
+      const defaultFonts =
+        settingFonts &&
+        (insertMode === 'replace' || deckTakesDefaultFonts(access.getSlides(), settingFonts))
+          ? settingFonts
+          : undefined
       // User clicked stop → checked inside each stage loop, abort as soon as possible (pages already landed are kept)
       const cancelled = () => signal?.aborted === true
       const cancelResult = (landed: number, totalPages: number) => ({
@@ -2221,6 +2265,7 @@ async function executeTool(
           topic: styleTopic,
           ...(style ? { styleHint: style } : {}),
           ...(context ? { questionnaire: context } : {}),
+          ...(defaultFonts ? { defaultFonts } : {}),
           ...(signal ? { signal } : {}),
         })
         if (sr.ok && sr.styleSkill) styleSkill = sr.styleSkill
@@ -2568,6 +2613,7 @@ async function executeTool(
           canvasH,
           ...(skeleton ? { skeleton } : {}),
           ...(template?.basedOn ? { templateDevices: true } : {}),
+          ...(defaultFonts ? { defaultFonts } : {}),
           ...(signal ? { signal } : {}),
         }
         const local = await tryGenerate(access.generatePageLocal!, pageArgs, pageIndex)

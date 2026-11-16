@@ -19,6 +19,11 @@ export interface OpenFileResult {
    * suggests this path (the original's folder and name).
    */
   saveAsDefaultPath?: string
+  /**
+   * The untitled copy was converted from a legacy Word file (`doc`, `dot`):
+   * the tab says so once, since the original stays as it was.
+   */
+  importedFrom?: string
 }
 
 /** Password-protected (ECMA-376 encrypted) docx: the renderer prompts for the
@@ -69,8 +74,9 @@ export interface MergeOutputFile {
   data: ArrayBuffer
 }
 
-/** where the merged documents go: one file for all records, or one per record */
-export type MergeOutputMode = 'single' | 'perRecord'
+/** where the merged documents go: one file for all records, one per record, a
+ * label sheet, or one envelope per record */
+export type MergeOutputMode = 'single' | 'perRecord' | 'labels' | 'envelopes'
 
 export interface MergeOutputRequest {
   mode: MergeOutputMode
@@ -101,9 +107,11 @@ import type {
 } from '@genoffice/ai-provider'
 import type { AiToolCapabilities, MediaToolErrorCode } from '@genoffice/ai-search'
 import type { HeadlessExportTarget } from '@genoffice/electron-utils/headless-export'
+import type { PrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
+import type { PageSize } from '@genoffice/print-layout/plan'
 import type { FaceVerticalMetrics } from '@genoffice/font-metrics'
 import type { AiPanelPrefs, FontFamilyInfo } from '@genoffice/ui'
-import type { DocFormat } from './open-file'
+import type { DocFormat, SaveAsKind } from './open-file'
 
 export type { FaceVerticalMetrics }
 
@@ -215,6 +223,7 @@ export type MenuCommand =
   | 'goto'
   | 'print'
   | 'export-pdf'
+  | 'export-hwp'
   | 'export-html'
   | 'export-markdown'
   | 'export-images'
@@ -315,8 +324,8 @@ export interface ZoteroRendererResponse {
  * MCP bridge: an editor command pushed from the shell main process into a docs
  * tab so an external agent drives the *visible* editor instead of writing a file
  * behind it. `insert_content` / `replace_blocks` / `apply_ops` / `insert_picture` /
- * `read_document` reuse the built-in agent's tool executors; `save_document` writes
- * the live document to an explicit path.
+ * `read_document` / `read_blocks` reuse the built-in agent's tool executors;
+ * `save_document` writes the live document to an explicit path.
  */
 export type McpEditorCommand =
   | 'insert_content'
@@ -324,6 +333,7 @@ export type McpEditorCommand =
   | 'apply_ops'
   | 'insert_picture'
   | 'read_document'
+  | 'read_blocks'
   | 'save_document'
 
 export interface McpCommandMessage {
@@ -393,12 +403,35 @@ export interface PdfInternalLink {
 
 export type PrintDuplex = 'simplex' | 'longEdge' | 'shortEdge'
 
+/** The word editor's part of an advanced print request: the job PDF as base64
+ *  fragments in page order, and the document name for the save dialog */
+export interface DocsPrintJobRequest {
+  parts: string[]
+  name?: string
+}
+
+/** A selection laid out for printing: its PDF and page sizes, or why not */
+export type PrintSelectionPdfResult =
+  { ok: true; base64: string; pages: PageSize[] } | { ok: false; error: string }
+
+/** A hidden export renderer's target; `untitled`: the document arrives as an
+ *  untitled copy (a printed selection), not as a file of its own */
+export type DocsHeadlessExportTarget = HeadlessExportTarget & { untitled?: boolean }
+
 /** job options from the in-app print dialog; deviceName null = system dialog, '' = OS default printer */
 export interface PrintJobOptions {
   deviceName: string | null
   copies?: number
   collate?: boolean
   duplex?: PrintDuplex
+}
+
+/** the document's own paper size in twips, read off the pagination preview's
+ * first sheet: the CUPS print route bakes printToPDF pages at this size
+ * instead of Chromium's Letter default. Optional — absent falls back. */
+export interface PrintPaper {
+  widthTwips: number
+  heightTwips: number
 }
 
 export interface PrinterInfo {
@@ -481,7 +514,7 @@ export interface DesktopApi {
   /** an untitled copy queued for this tab (a skill template's); one-shot, null when none */
   consumeDocCopy?(): Promise<OpenFileResult | null>
   /** Headless export mode: the path and format this hidden renderer must export, null in normal use */
-  consumeHeadlessExport(): Promise<HeadlessExportTarget | null>
+  consumeHeadlessExport(): Promise<DocsHeadlessExportTarget | null>
   /** Headless export mode: report the export outcome so the main process can quit */
   headlessExportDone(result: { ok: boolean; error?: string }): void
   /** AI create_document: build a new standalone file and open it in a new tab */
@@ -549,12 +582,16 @@ export interface DesktopApi {
   spellSetLanguages(langs: string[]): Promise<SpellLanguages>
   /** Save As, step one: the dialog offers Word (.docx) and ODT (.odt), the
    *  document's own `format` first; the picked extension is the format to write.
-   *  null = canceled */
+   *  With `offerExports` it also lists PDF, HTML, Markdown and page images
+   *  (`kind` other than docx/odt): that path is pre-authorized for the export,
+   *  which writes a copy and leaves the document as it is; page images also
+   *  carry the folder and temp PDF of the image export. null = canceled */
   pickSaveAsPath(
     defaultName: string,
     sourcePath: string | null,
     format: DocFormat,
-  ): Promise<{ path: string } | null>
+    offerExports?: boolean,
+  ): Promise<{ path: string; kind?: SaveAsKind; dir?: string; pdfPath?: string } | null>
   /** Save As, step two: write to the path step one returned (nothing else is
    *  accepted), docx or ODT bytes as its extension says. sourcePath: the
    *  document's current path — a docx write uses its desired next-save password
@@ -638,8 +675,14 @@ export interface DesktopApi {
   /** print the current window; ok=false without error = canceled.
    *  scale: print scale inverting the preview's print zoom (print-zoom.ts).
    *  job: printer/copies/duplex from the in-app dialog; a named printer ('' = OS
-   *  default) prints silently, null or omitted opens the system dialog */
-  print(scale?: number, job?: PrintJobOptions): Promise<{ ok: boolean; error?: string }>
+   *  default) prints silently, null or omitted opens the system dialog.
+   *  paper: the document's own page size in twips (the preview's first sheet),
+   *  used by the CUPS print route to size printToPDF's pages */
+  print(
+    scale?: number,
+    job?: PrintJobOptions,
+    paper?: PrintPaper,
+  ): Promise<{ ok: boolean; error?: string }>
   /** installed printers for the in-app print dialog */
   listPrinters(): Promise<PrinterInfo[]>
   /** render the document to PDF and ask where to save; size in twips.
@@ -657,12 +700,25 @@ export interface DesktopApi {
     html: string,
     outPath?: string,
   ): Promise<{ ok: boolean; path?: string; error?: string }>
+  /** the document's docx as a .hwp or .hwpx copy; main asks before writing a copy that loses
+   *  something. outPath is only honored when the Save As dialog chose that exact path */
+  exportHwp(
+    defaultName: string,
+    docx: ArrayBuffer,
+    outPath?: string,
+    passwordSet?: boolean,
+  ): Promise<HwpExportResult>
   exportMarkdown(
     defaultName: string,
     markdown: string,
     images: MarkdownImage[],
     outPath?: string,
   ): Promise<{ ok: boolean; path?: string; error?: string; imagesDropped?: number }>
+  /** Advanced print (decision 0141): preview, print and save the arranged job; the job PDF rides in `editor` */
+  printLayout: PrintLayoutBridge<DocsPrintJobRequest>
+  /** Print selection: lay out a .docx of the selected content in a hidden window as one
+   *  section (`sectPr`, null = the body's own) numbered from 1; the PDF comes back as base64 */
+  printSelectionPdf(docx: ArrayBuffer, sectPr: string | null): Promise<PrintSelectionPdfResult>
   /** Mixed paper-size export: produce a set of PDF bytes (base64) at given sizes per the current print layout */
   printPdfBuffer(
     pageWidthTwips: number,
@@ -733,7 +789,7 @@ export interface DesktopApi {
   }): Promise<{ text?: string; error?: string; errorCode?: MediaToolErrorCode; resetsAt?: number }>
   fetchImage(url: string): Promise<{ base64: string; mime: string } | null>
   /** AI image generation via the Codex subscription or a key image provider (see aiToolCapabilities) */
-  aiGenerateImage(op: { prompt: string; aspectRatio?: string }): Promise<{
+  aiGenerateImage(op: { prompt: string; aspectRatio?: string; model?: string }): Promise<{
     url?: string
     error?: string
     errorCode?: MediaToolErrorCode
@@ -801,3 +857,12 @@ export interface DesktopApi {
 
 /** mirrors VIEW_IMAGE_CHANNEL in @genoffice/electron-utils (kept literal so the preload stays free of main-only deps) */
 export const VIEW_IMAGE_CHANNEL = 'genoffice:view-image'
+
+/** docs:export-hwp: no error and no code = the user canceled */
+export interface HwpExportResult {
+  ok: boolean
+  path?: string
+  /** 'hwp-readback': the .hwp would not read back as written; a .hwpx can */
+  code?: 'not-docx' | 'hwp-readback' | 'failed' | 'unauthorized'
+  error?: string
+}

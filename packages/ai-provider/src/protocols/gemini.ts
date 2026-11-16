@@ -3,7 +3,7 @@ import { aiFetch } from '../fetch'
 import { httpBodyDetail } from '../http-error'
 import { opencodeSessionHeaders } from '../providers'
 import type { AiChatResponse, AiProviderConfig, AiTokenUsage } from '../types'
-import { createStreamWatchdog, type StreamWatchdog } from '../watchdog'
+import { AI_CHAT_RESPONSE_TIMEOUT_MS, createStreamWatchdog, type StreamWatchdog } from '../watchdog'
 import { toGeminiSchema } from './gemini-schema'
 import {
   endpointUrl,
@@ -20,17 +20,22 @@ import {
 
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
 
+interface GeminiUsage {
+  promptTokenCount?: unknown
+  candidatesTokenCount?: unknown
+  cachedContentTokenCount?: unknown
+}
+
 /** Merge a Gemini usageMetadata object into an accumulator (every stream chunk carries
  * one; the last chunk's counts are the turn's totals). */
-function mergeGeminiUsage(
-  target: AiTokenUsage,
-  usage: { promptTokenCount?: unknown; candidatesTokenCount?: unknown } | undefined,
-): void {
+function mergeGeminiUsage(target: AiTokenUsage, usage: GeminiUsage | undefined): void {
   if (!usage) return
   const input = usageCount(usage.promptTokenCount)
   const output = usageCount(usage.candidatesTokenCount)
+  const cached = usageCount(usage.cachedContentTokenCount)
   if (input !== undefined) target.inputTokens = input
   if (output !== undefined) target.outputTokens = output
+  if (cached !== undefined) target.cacheReadTokens = cached
 }
 
 // Gemini 3 rejects a model turn whose first functionCall lacks its thoughtSignature;
@@ -117,7 +122,7 @@ function emitGeminiJsonMessage(bodyText: string, cb: StreamCallbacks): void {
       finishReason?: string
     }>
     promptFeedback?: { blockReason?: string }
-    usageMetadata?: { promptTokenCount?: unknown; candidatesTokenCount?: unknown }
+    usageMetadata?: GeminiUsage
     error?: { message?: string } | string
   }>
   let emitted = false
@@ -164,6 +169,16 @@ export interface GeminiRequestOptions {
   omitTemperature?: boolean | undefined
 }
 
+/**
+ * How long a stream may stay silent after it delivered a function call before
+ * the turn is taken as done. Gemini sends each call whole; what follows it is
+ * a chunk with an empty text part and the finishReason. On the free tier that
+ * last chunk came 0.3 to 22 s after the call, and once 301 s (2026-11-15,
+ * gemini-4-hydrogen), which tripped the idle timeout and failed a turn whose
+ * call had already arrived.
+ */
+export const GEMINI_TAIL_AFTER_CALLS_MS = 30_000
+
 export async function streamGemini(
   config: AiProviderConfig,
   system: string,
@@ -174,7 +189,10 @@ export async function streamGemini(
   baseUrl = GEMINI_BASE_URL,
   options: GeminiRequestOptions = {},
 ): Promise<void> {
-  const wd = createStreamWatchdog(cb.signal)
+  // The response headers of streamGenerateContent come with the first chunk,
+  // so the connect phase waits for the model as a non-streaming call does: the
+  // free tier took 18 to 90 s to send it (2026-11-15, gemini-4-hydrogen).
+  const wd = createStreamWatchdog(cb.signal, AI_CHAT_RESPONSE_TIMEOUT_MS)
   return wd.guard(() =>
     geminiTurn(config, system, messages, tools, maxTokens, cb, baseUrl, wd, options),
   )
@@ -191,14 +209,22 @@ async function geminiTurn(
   wd: StreamWatchdog,
   options: GeminiRequestOptions,
 ): Promise<void> {
+  // ends the read when the stream goes silent after a call (GEMINI_TAIL_AFTER_CALLS_MS)
+  const tail = new AbortController()
+  let tailTimer: ReturnType<typeof setTimeout> | undefined
+  const armTail = () => {
+    clearTimeout(tailTimer)
+    tailTimer = setTimeout(() => tail.abort(), GEMINI_TAIL_AFTER_CALLS_MS)
+  }
   const onBytes = () => {
     wd.touch()
     cb.onActivity?.()
+    if (tailTimer !== undefined) armTail()
   }
   const url = endpointUrl(baseUrl, `models/${config.model}:streamGenerateContent`, '?alt=sse')
   const response = await aiFetch(url, {
     method: 'POST',
-    signal: wd.signal,
+    signal: AbortSignal.any([wd.signal, tail.signal]),
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': config.apiKey,
@@ -249,41 +275,49 @@ async function geminiTurn(
   let emitted = false
   let toolCallCount = 0
   const turnUsage: AiTokenUsage = {}
-  for await (const sse of sseDataEvents(response.body, onBytes)) {
-    // A truncated frame or a non-JSON keep-alive from a proxy skips that event
-    // rather than killing the turn.
-    if (sse.json === undefined) continue
-    const event = sse.json as {
-      candidates?: Array<{
-        content?: { parts?: GeminiPart[] }
-        finishReason?: string
-      }>
-      promptFeedback?: { blockReason?: string }
-      usageMetadata?: { promptTokenCount?: unknown; candidatesTokenCount?: unknown }
-      error?: { message?: string } | string
-    }
-    if (event.error) throw new Error(sseErrorText(event.error, 'Gemini stream error'))
-    if (event.promptFeedback?.blockReason) {
-      throw new Error(`Gemini blocked the prompt (${event.promptFeedback.blockReason})`)
-    }
-    // every chunk carries usageMetadata; later chunks supersede earlier ones
-    mergeGeminiUsage(turnUsage, event.usageMetadata)
-    const finishReason = event.candidates?.[0]?.finishReason
-    if (finishReason) sawFinish = true
-    if (finishReason === 'MAX_TOKENS') stopReason = 'max_tokens'
-    else if (finishReason && finishReason !== 'STOP') abnormalFinish = finishReason
-    for (const part of event.candidates?.[0]?.content?.parts ?? []) {
-      if (part.text) {
-        emitted = true
-        cb.onDelta(part.text)
+  try {
+    for await (const sse of sseDataEvents(response.body, onBytes)) {
+      // A truncated frame or a non-JSON keep-alive from a proxy skips that event
+      // rather than killing the turn.
+      if (sse.json === undefined) continue
+      const event = sse.json as {
+        candidates?: Array<{
+          content?: { parts?: GeminiPart[] }
+          finishReason?: string
+        }>
+        promptFeedback?: { blockReason?: string }
+        usageMetadata?: GeminiUsage
+        error?: { message?: string } | string
       }
-      // Gemini emits function calls whole, never as partial JSON
-      if (part.functionCall?.name) {
-        throwIfToolCountOverBudget(++toolCallCount, 'gemini')
-        emitted = true
-        cb.onToolCall(geminiToolCall(part))
+      if (event.error) throw new Error(sseErrorText(event.error, 'Gemini stream error'))
+      if (event.promptFeedback?.blockReason) {
+        throw new Error(`Gemini blocked the prompt (${event.promptFeedback.blockReason})`)
+      }
+      // every chunk carries usageMetadata; later chunks supersede earlier ones
+      mergeGeminiUsage(turnUsage, event.usageMetadata)
+      const finishReason = event.candidates?.[0]?.finishReason
+      if (finishReason) sawFinish = true
+      if (finishReason === 'MAX_TOKENS') stopReason = 'max_tokens'
+      else if (finishReason && finishReason !== 'STOP') abnormalFinish = finishReason
+      for (const part of event.candidates?.[0]?.content?.parts ?? []) {
+        if (part.text) {
+          emitted = true
+          cb.onDelta(part.text)
+        }
+        // Gemini emits function calls whole, never as partial JSON
+        if (part.functionCall?.name) {
+          throwIfToolCountOverBudget(++toolCallCount, 'gemini')
+          emitted = true
+          cb.onToolCall(geminiToolCall(part))
+          armTail()
+        }
       }
     }
+  } catch (e) {
+    // silence after a whole call ends the turn with that call; any other abort is a failure
+    if (!tail.signal.aborted) throw e
+  } finally {
+    clearTimeout(tailTimer)
   }
   // A safety/recitation stop that produced nothing, or a stream with no message
   // framing at all (gateway soft-failure), would otherwise look like an empty
@@ -294,7 +328,7 @@ async function geminiTurn(
   if (!emitted && !sawFinish) {
     throw new Error('Gemini returned no content (empty stream)')
   }
-  if (!sawFinish) {
+  if (!sawFinish && !tail.signal.aborted) {
     throw new Error('Gemini stream ended before a finishReason')
   }
   if (stopReason) cb.onStopReason?.(stopReason)

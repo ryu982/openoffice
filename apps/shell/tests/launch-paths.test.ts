@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { collectLaunchPaths } from '../src/main/launch-paths'
+import { LAUNCHABLE_EXTS, collectLaunchPaths } from '../src/main/launch-paths'
 
 describe('collectLaunchPaths', () => {
   it('collects supported argv files in order and removes duplicates', () => {
@@ -30,6 +30,24 @@ describe('collectLaunchPaths', () => {
     expect(
       collectLaunchPaths(['GenOffice.app', '/data/variants.tsv'], undefined, () => true),
     ).toEqual(['/data/variants.tsv'])
+  })
+
+  it('accepts an OpenDocument spreadsheet from argv or the second-instance payload', () => {
+    expect(LAUNCHABLE_EXTS).toContain('ods')
+    expect(
+      collectLaunchPaths(['IeumOffice.exe', 'C:/data/budget.ods'], undefined, () => true),
+    ).toEqual(['C:/data/budget.ods'])
+    expect(
+      collectLaunchPaths(['IeumOffice.exe'], { launchPaths: ['/data/BUDGET.ODS'] }, () => true),
+    ).toEqual(['/data/BUDGET.ODS'])
+    // an .ods next to an unsupported file is opened, not the fallback
+    expect(collectLaunchPaths(['IeumOffice.exe', 'x.rtf', 'y.ods'], undefined, () => true)).toEqual(
+      ['y.ods'],
+    )
+    // a path that is not on disk is not opened
+    expect(collectLaunchPaths(['IeumOffice.exe', '/budget.ods'], undefined, () => false)).toEqual(
+      [],
+    )
   })
 
   /**
@@ -81,6 +99,28 @@ describe('collectLaunchPaths', () => {
       collectLaunchPaths(['GenOffice.exe'], { launchPaths: ['/books/NOVEL.EPUB'] }, () => true),
     ).toEqual(['/books/NOVEL.EPUB'])
     expect(collectLaunchPaths(['GenOffice.exe', '/novel.epub'], undefined, () => false)).toEqual([])
+  })
+
+  it('accepts diagrams, draw.io pictures and Visio drawings, not plain pictures', () => {
+    const argv = [
+      'GenOffice.exe',
+      'C:\\maps\\flow.drawio',
+      '/maps/flow.dio',
+      '/maps/flow.drawio.svg',
+      '/maps/FLOW.DRAWIO.PNG',
+      '/maps/plan.vsdx',
+      '/maps/photo.png',
+    ]
+    expect(collectLaunchPaths(argv, undefined, () => true)).toEqual(argv.slice(1, 6))
+    expect(
+      collectLaunchPaths(['GenOffice.exe'], { launchPaths: ['/maps/flow.drawio'] }, () => true),
+    ).toEqual(['/maps/flow.drawio'])
+  })
+
+  it('accepts a FreeMind / Freeplane map, which no file association claims', () => {
+    const argv = ['GenOffice.exe', 'C:\\maps\\plan.mm', '/maps/PLAN.MM', '/maps/plan.mmap']
+    expect(collectLaunchPaths(argv, undefined, () => true)).toEqual(argv.slice(1, 3))
+    expect(LAUNCHABLE_EXTS).not.toContain('mm')
   })
 
   it('still drops a path nothing opens', () => {

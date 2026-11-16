@@ -17,8 +17,13 @@ const IMAGES_SYSTEM_PROMPT = `## Images
 - image_search finds real web images (returns direct imageUrl entries); generate_image creates an illustration with AI when no suitable real image exists or the user explicitly wants generated art.
 ${PLACEMENT_PROMPT}`
 
+/** Model-facing note while no image route can run; exported so tests pin the same text */
+export const IMAGE_GEN_OFF_NOTE =
+  '- generate_image is currently unavailable (no image provider: no Codex subscription connected and no image API key in Settings). Do not call or promise it; use image_search for imagery. If the user uses a ChatGPT plan: making images needs the Codex program signed in with the same ChatGPT account (Settings > AI > Codex); the direct ChatGPT connection in the app cannot make images because OpenAI does not allow it. Tell the user this when they ask for an image.'
+
 const IMAGES_SYSTEM_PROMPT_NO_GEN = `## Images
 - image_search finds real web images (returns direct imageUrl entries).
+${IMAGE_GEN_OFF_NOTE}
 ${PLACEMENT_PROMPT}`
 
 /**
@@ -73,6 +78,11 @@ export function createImageSkill(
             type: 'string',
             description: 'Aspect ratio like "1:1", "16:9", "4:3"; default 1:1',
           },
+          model: {
+            type: 'string',
+            description:
+              'Image model name, only when the user named a model; the app uses it if the current image route offers it, otherwise it answers with the models it can use',
+          },
         },
         required: ['prompt'],
       },
@@ -126,9 +136,11 @@ export function createImageSkill(
           return { output: 'prompt must not be empty', isError: true, summary: t('aiToolGenImage') }
         }
         const aspectRatio = String(call.input.aspectRatio ?? '').trim()
+        const model = String(call.input.model ?? '').trim()
         const result = await window.desktopApi.generateImage({
           prompt,
           ...(aspectRatio ? { aspectRatio } : {}),
+          ...(model ? { model } : {}),
         })
         if (!result.url) {
           return {
@@ -138,7 +150,9 @@ export function createImageSkill(
           }
         }
         return {
-          output: `Image generated: ${result.url}\nInsert it with propose_operations {op:"add_image", path:"${result.url}", ...}.`,
+          output:
+            `Image generated: ${result.url}\nInsert it with propose_operations {op:"add_image", path:"${result.url}", ...}.` +
+            (result.note ? `\nNote: ${result.note}` : ''),
           mutated: false,
           summary: t('aiToolGenImageDone'),
         }

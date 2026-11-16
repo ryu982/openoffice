@@ -7,8 +7,8 @@
 필요한 것: Node 22.12 이상(npm 10 이상), Rust(`cargo`), 설치 파일을 만들려면 Windows 10/11 SDK.
 
 ```bash
-git clone https://github.com/pblsketch/openoffice.git
-cd openoffice
+git clone https://github.com/pblsketch/ieumoffice.git
+cd ieumoffice
 export PATH="$HOME/.cargo/bin:$PATH"   # cargo가 PATH에 없을 때(Git Bash). 엑셀 처리 프로그램 빌드에 필요
 npm ci                                  # 잠금 파일 그대로 설치. 용량이 크다
 npm run fixtures                        # 테스트용 문서 만들기. 테스트보다 먼저
@@ -39,6 +39,7 @@ npm run licenses
 npm run check:theme-colors
 npm run check:english-comments
 npm run check:help-langs
+npm run check:lang-count
 npm run check:skill-version
 npm run check:no-genspark
 ```
@@ -103,13 +104,14 @@ cd apps/shell && npx vitest run tests/<파일>.test.ts   # 파일 하나만
 
 OpenRouter 무료 연결에서 고를 수 있는 모델은 `packages/ai-provider/src/free-ai.ts`의 `OPENROUTER_FREE_MODELS`다. 무료 모델은 예고 없이 생기고 사라지므로 두 단계로 살핀다.
 
-1. **목록 확인(매주, 자동).** `.github/workflows/free-models.yml`이 월요일 오전 9시에 OpenRouter의 공개 모델 목록과 비교한다. 키를 쓰지 않고 무료 요청도 쓰지 않는다. 앱이 보여 주는 모델이 사라졌거나 도구 호출 지원이 꺼졌으면, 또는 시험해 볼 새 무료 모델이 있으면 실행이 실패로 끝나고 실행 결과 요약에 보고서가 남는다. 실패한 예약 실행은 GitHub이 저장소 주인에게 메일로 알린다. 이 PC에서는 `npm run free-models:check`로 같은 보고서를 본다.
+1. **목록 확인(매주, 자동).** `.github/workflows/free-models.yml`이 월요일 오전 9시에 OpenRouter의 공개 모델 목록과 비교한다. 키를 쓰지 않고 무료 요청도 쓰지 않는다. 앱이 보여 주는 모델이 사라졌거나 도구 호출 지원이 꺼졌으면 실행이 실패로 끝나고 실행 결과 요약에 보고서가 남는다. 실패한 예약 실행은 GitHub이 저장소 주인에게 메일로 알린다. 시험해 볼 새 무료 모델은 같은 요약과 알림 줄에 남고 실행은 통과한다(결정 0138). 후보는 거의 매주 생겨서, 후보로도 실패하던 때에는 모델이 사라졌다는 실패가 그 사이에 묻혔다. 이 PC에서는 `npm run free-models:check`로 같은 보고서를 본다.
 2. **앱에서 시험(사람이).** `npm run build:all` 뒤 `npm run free-models:trial`. 후보마다 도구 하나짜리 짧은 요청을 보내고, 통과하면 빌드된 앱의 워드 편집기에서 두 요청(문단 넣기, 제목 바꾸고 요약 목록 넣기)을 시킨 뒤 결과를 표로 낸다. 모델 이름을 붙이면 그 모델만, `--listed`를 붙이면 앱이 지금 보여 주는 모델을 다시 시험한다.
 
-- 시험은 설치된 앱에 저장된 OpenRouter 키(`%APPDATA%/IeumOffice/ai-settings.json`)로 하고 그 키의 하루 무료 요청을 쓴다. 키는 화면에 찍히지 않는다. 모델 하나에 짧은 확인 1번, 앱 시험 약 12번이 든다. 남은 수가 모자라면 그 모델은 건너뛴다.
+- 시험은 설치된 앱에 저장된 OpenRouter 키(`%APPDATA%/IeumOffice/ai-settings.json`)로 하고 그 키의 하루 무료 요청을 쓴다. 키는 화면에 찍히지 않는다. 앱이 봉인한 키(결정 0063)는 이 저장소의 빌드(없으면 설치된 앱)를 `--reveal-ai-secrets`로 띄워 풀고, 그 프로세스와 앱 시험의 환경에만 둔다. 풀지 못하면 시험을 시작하지 않는다. 봉인된 글자를 키로 보내면 모든 후보가 401로 떨어진 것으로 적히기 때문이다. 모델 하나에 짧은 확인 1번, 앱 시험 약 12번이 든다. 남은 수가 모자라면 그 모델은 건너뛴다.
 - 통과한 모델은 실행기가 알려 주는 대로 `OPENROUTER_FREE_MODELS`에 더한다. 순서가 곧 새 연결의 기본 모델 순위이므로 맨 앞은 함부로 바꾸지 않는다.
 - 떨어진 모델은 실행기가 `tools/free-models-rejected.json`에 날짜·이유와 함께 적는다. 거기 있는 모델은 매주 확인에서 후보로 다시 나오지 않는다. 다시 시험하려면 그 줄을 지운다.
-- 앱이 보여 주는 모델이 사라졌다는 보고가 오면 목록에서 빼고 새 버전을 낸다. 새 버전이 나가기 전까지는 그 모델을 고른 사용자가 실패를 본다.
+- 앱의 선택기는 시험하지 않은 `:free` 모델도 시험된 모델 뒤에 보이고, 떨어진 모델만 뺀다(결정 0148). 앱은 떨어진 모델을 `packages/ai-provider/src/free-ai.ts`의 `OPENROUTER_REJECTED_FREE_MODELS`로 갖는다. JSON에 줄을 더하거나 지우면 그 상수도 같이 고친다. 다르면 `free-ai.test.ts`가 실패한다.
+- 앱이 보여 주는 모델이 사라졌다는 보고가 오면 목록에서 빼고 `RETIRED_MODELS`(`packages/ai-provider/src/providers.ts`)에 다음 모델로 가는 줄을 넣은 뒤 새 버전을 낸다. 그 전에도 앱은 OpenRouter 목록을 받으면 그 모델을 선택기에서 감추고, 그 모델로 연결된 사람을 남아 있는 첫 모델로 옮긴다(결정 0138). 이 동작이 없는 예전 판에서는 그 모델을 고른 사용자가 실패를 본다.
 
 ## Windows 설치 파일 만들기
 
@@ -172,6 +174,7 @@ GitHub Actions에서 만든다.
 2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-linux-x64`를 내려받는다. 안에 `IeumOffice-<버전>.AppImage`, `ieumoffice_<버전>_amd64.deb`, `ieumoffice-<버전>.x86_64.rpm`, `latest-linux.yml`(베타 버전 번호면 `beta-linux.yml`)이 있다.
 
 - 빌드는 앱 실행 파일, 엑셀 처리 프로그램, 터미널 명령어가 실행 가능하게 들어갔는지 검사하고, deb의 의존성이 Ubuntu 24.04(64비트 time_t 전환으로 `t64` 이름이 쓰이는 곳)에서도 풀리는지 확인한 뒤, 만든 앱을 Xvfb 아래에서 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
+- 엑셀 처리 프로그램은 빌드 기계의 glibc가 아니라 glibc 2.28 기준으로 링크한다(`cargo zigbuild`, 기준 값은 워크플로의 `LINUX_GLIBC_FLOOR`). 빌드는 묶음 안의 실행 파일과 라이브러리가 모두 이 기준 안의 glibc만 요구하는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 AppImage, deb, rpm, `latest-linux.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Linux 설치 파일"이다.
 - Linux(x64)에서 직접 만들 때(`rpm` 패키지가 설치되어 있어야 한다): `npm ci`, `npm run build:all`, `npm run dist:linux -w @genoffice/shell -- --publish never`.
 
@@ -202,10 +205,11 @@ npm run typecheck
 ```
 
 - 엔진 밖의 파일까지 고치는 커밋은 엔진 쪽 변경만 받는다. 화면 문구 파일, 껍데기 앱의 뒷단, AI 연결부에서 충돌이 나면 이 프로젝트의 것을 남긴다.
-- 원본이 화면 문구 키를 늘렸으면 21개 언어 모두에 들어왔는지 형 검사로 확인한다.
+- 원본이 화면 문구 키를 늘렸으면 22개 언어 모두에 들어왔는지 형 검사로 확인한다.
 - 옮긴 뒤 위의 검사 전체와, 건드린 엔진 패키지의 테스트를 돌린다.
-- `packages/pdf2docx`(결정 0058)와 `packages/docx-engine`(결정 0092)에는 원본과 다른 동작이 있다. 그 패키지의 `AGENTS.md` "원본과 다른 점"에 적힌 시험이 옮긴 뒤에도 통과하는지 본다. 충돌이 나면 그 목록의 동작을 남긴다. 원본이 같은 수정을 받아들였으면 그 항목을 지운다.
+- `packages/pdf2docx`(결정 0058)에는 원본과 다른 동작이 있다. `packages/docx-engine`(결정 0092)은 지금 원본과 같지만, 다시 고치게 되면 같은 절에 적는다. 그 패키지의 `AGENTS.md` "원본과 다른 점"에 적힌 시험이 옮긴 뒤에도 통과하는지 본다. 충돌이 나면 그 목록의 동작을 남긴다. 원본이 같은 수정을 받아들였으면 그 항목을 지운다.
 - `packages/pptx-engine`·`packages/pptx-ops`에도 원본과 다른 동작이 있다(결정 0094: 강조 색·문자 간격 쓰기, 도형 숨기기·이름). 두 패키지의 `AGENTS.md` "원본과 다른 점"의 시험으로 같은 확인을 한다.
+- `packages/xlsx-gateway`에도 원본과 다른 동작이 있다(결정 0112: 한셀 `styles.xml`의 호환 블록 보존). 같은 방식으로 그 패키지 `AGENTS.md` "원본과 다른 점"의 시험을 돌린다.
 
 ## 한글 엔진(rhwp) 다시 빌드하기
 
@@ -221,3 +225,22 @@ npm run test -w @genoffice/hwp                      # 엔진 시험(engine-layou
 - 패치는 `vendor/rhwp-core/patches/`에 번호 순으로 두고 `package.json`의 `rhwp.patches`에 적는다. 만드는 방법은 같은 태그를 받은 rhwp 사본에서 커밋한 뒤 `git format-patch`로 뽑는 것이다.
 - 패치 묶음이 바뀌면 `package.json`의 버전(`0.8.7-ieum.N`)을 올리고 `package-lock.json`의 같은 항목도 고친다.
 - 빌드에는 10분 남짓 걸린다. 빌드 뒤 `rhwp.js`·`rhwp.d.ts`가 npm의 같은 버전과 같은지, WASM에 이 PC의 사용자 폴더 경로가 없는지 본다(스크립트가 경로를 검사한다).
+
+## draw.io 판 올리기
+
+다이어그램 편집기가 싣는 draw.io는 저장소에 없다. 빌드(`npm run build -w @genoffice/diagram`, 개발 실행 포함)가 `vendor/drawio/drawio.json`에 적힌 판의 `draw.war`를 받아 해시를 확인하고, 뺄 목록을 적용하고, `js/extensions.min.js`에서 ELK·libavoid 구간을 잘라낸 뒤 `apps/diagram/out/drawio/`에 놓는다(결정 0103). 판은 v32.6.9로 시작했다. draw.io는 거의 매주 새 판을 내지만 따라 올리지 않는다. 올릴 까닭(고친 결함, 필요한 기능)이 있을 때 따로 일을 잡아 올린다. 자세한 절차와 목록은 `vendor/drawio/README.md`에 있다.
+
+```bash
+# 1. drawio.json의 version·url을 새 판으로 바꾸고, 새 draw.war의 sha256·size를 적는다
+node vendor/drawio/prepare.mjs        # 2. 받기 → 해시 확인 → 빼기 → 잘라내기. 잘라내기가 실패하거나 결과 해시가 다르면 멈춘다
+npm run licenses                      # 3. 싣는 파일이 inventory.json에 다 있고 모두 허용 목록 안인지
+npm run notices                       # 4. THIRD-PARTY-NOTICES.txt의 draw.io 절 확인
+npm run test -w @genoffice/diagram
+npm run build -w @genoffice/shell     # 5. 빌드한 앱에서 편집기 확인
+```
+
+- **잘라내기를 다시 본다.** 새 `js/extensions.min.js` 안에서 ELK(`js/elk/drawio-elk.min.js`)와 libavoid(`js/libavoid-js/libavoid.min.js`, `libavoid-routing.js`)가 각각 정확히 한 번, 독립 파일과 바이트로 같게 나와야 한다. 찾지 못하면 그 파일이 세 부품을 어떻게 담는지 보고 `drawio.json`의 `cut`을 고친다. 결과 해시가 다르다고 나오면, 잘린 것이 그 세 구간뿐인지 확인한 뒤 알려 준 값을 `cut[].sha256`에 적는다. 잘라내기는 저장소 주인이 승인한 예외 하나뿐이다. 다른 파일을 고치거나 자르는 길로 넓히지 않는다.
+- **라이선스 검사가 새 부품을 알리면** 라이선스를 직접 확인해 `vendor/drawio/inventory.json`에 적는다. 허용 목록 밖이면 `remove`로 뺀다. 빼서 열기·고치기·저장·내보내기·Mermaid 가운데 하나가 깨지면 멈추고 저장소 주인에게 묻는다. 판을 올린 뒤 아무 파일에도 걸리지 않는 항목이 남으면 검사가 실패하니 지운다.
+- `vendor/drawio/LICENSE`를 새 태그의 것으로 바꾼다.
+- **편집기를 손으로 확인한다.** 빌드한 앱에서 다이어그램을 열고 고치고 저장하고 다시 연다. PNG·SVG·PDF 내보내기, 인쇄, AI 창의 Mermaid 넣기, `.vsdx` 가져오기, 어두운 테마, 언어 바꾸기를 해 본다. 다이어그램 E2E(`e2e/diagram-*.spec.ts`)가 바깥 요청 0건을 본다. draw.io가 메뉴 동작 이름을 바꾸면 숨길 목록(`apps/diagram/src/shared/drawio-start.ts`)이 빠뜨릴 수 있으니, 메뉴에 바깥으로 가는 항목이 다시 보이지 않는지 본다.
+- 캐시는 `vendor/drawio/.cache/<판>/draw.war`다. 예전 판의 캐시는 지워도 된다.

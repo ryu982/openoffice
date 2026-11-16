@@ -27,7 +27,8 @@ export const imageCommand: CommandDef = {
   name: 'image',
   summary:
     'Generate an image from a prompt with the configured image provider and save it as a file.',
-  usage: 'image <prompt> [--out <file>] [--aspect 16:9] [--size 1k] [--ref <image>]... [--force]',
+  usage:
+    'image <prompt> [--out <file>] [--aspect 16:9] [--size 1k] [--ref <image>]... [--model <name>] [--force]',
   options: [
     {
       name: 'out',
@@ -52,7 +53,8 @@ export const imageCommand: CommandDef = {
     {
       name: 'model',
       value: 'name',
-      description: 'ignored (special-purpose image models are gone); detail.note says so',
+      description:
+        'used if the configured image route offers it; otherwise refused with the usable model names',
     },
     { name: 'force', description: 'overwrite an existing output file' },
   ],

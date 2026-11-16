@@ -1,0 +1,387 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pblsketch <239486537+pblsketch@users.noreply.github.com>
+Date: Sun, 8 Nov 2026 00:00:00 +0900
+Subject: [PATCH 35/35] fix(pdf): ToUnicode 범위 항목에서 PostScript 주석을
+ 건너뛴다
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+0044의 RangeEntries가 `%`부터 줄 끝까지의 주석을 건너뛰지 않아, 주석 안의 `<…>`와
+`[`를 다음 항목의 토큰으로 읽었다. 상위 PR edwardkim/rhwp#8922 검토에서 찾은 반례다.
+
+  beginbfrange
+  <01> <01> <0041> % source <01>
+  <02> <02> <0042>
+  endbfrange
+
+0044 전에는 01 → A, 02 → B인데 0044에서는 주석의 `<01>`과 다음 줄의 `<02> <02>`가
+범위 하나로 묶여 01 → U+0002, 02 → U+0003이 됐다. 주석이 `% [`나 `% <`이면 02가 빠졌다.
+
+- 문자열 밖의 `%`부터 CR 또는 LF까지를 공백으로 본다. 주석 안의 문자열과 대괄호는 어느
+  항목에도 속하지 않는다.
+- 주석이 낀 항목(항목의 문자열 사이, 여러 줄 배열 안)은 주석을 지운 문자열로 항목 해석
+  함수에 넘긴다. 주석이 없으면 전처럼 구역을 빌려 넘긴다.
+- `(…)` 리터럴 문자열도 문자열 하나로 센다. 그 안의 `%`는 주석이 아니고, 해석 함수는
+  16진 문자열만 읽으므로 그 항목은 0044 전처럼 아무것도 잇지 않는다. 0044는 괄호를 무시해
+  `<30> <30> (%) <31> <31> <0047>`의 0x31도 잃었다.
+- 회귀: 위 반례 셋과 정상 대조군을 LF·CR·CRLF로, 항목 사이·항목 안·배열 안의 주석,
+  notdefrange의 주석, 문자열 안의 `%`, 배열 안 주석의 예산 계상, 주석이 낀 실제 대형 범위의
+  거부. 예산 있는 API와 없는 API를 함께 본다.
+---
+ .../pdf_cmap_range_entries_across_lines.rs    | 143 ++++++++++++++++--
+ .../rhwp-pdf-import-backend/src/fonts/cmap.rs | 104 +++++++++++--
+ 2 files changed, 222 insertions(+), 25 deletions(-)
+
+diff --git a/tests/cases/pdf_cmap_range_entries_across_lines.rs b/tests/cases/pdf_cmap_range_entries_across_lines.rs
+index c2f29b4fc..8d36593e4 100644
+--- a/tests/cases/pdf_cmap_range_entries_across_lines.rs
++++ b/tests/cases/pdf_cmap_range_entries_across_lines.rs
+@@ -48,20 +48,25 @@ fn bfrange_array_wrapped_over_lines_maps_its_own_codes() {
+     }
+ }
+ 
+-/// A wrapped array still costs one entry per element, no more and no less.
++/// A wrapped array still costs one entry per element, no more and no less. A
++/// string in a comment inside the array is no element and costs nothing.
+ #[test]
+ fn wrapped_array_charges_one_entry_per_element() {
+-    let source = b"beginbfrange\n<01><04>[<0041><0042>\n<0043><0044>]\nendbfrange";
+-    for (cap, fits) in [(3, false), (4, true)] {
+-        let budget = ImportBudget::new(PdfImportLimits {
+-            cmap_entries: cap,
+-            ..PdfImportLimits::default()
+-        })
+-        .unwrap();
+-        let result = parse_tounicode_cmap_with_budget(source, &budget);
+-        assert_eq!(result.is_ok(), fits, "cap {cap}");
+-        if let Ok(cmap) = result {
+-            assert_eq!(cmap.get(&0x04).as_deref(), Some("D"));
++    for source in [
++        "beginbfrange\n<01><04>[<0041><0042>\n<0043><0044>]\nendbfrange",
++        "beginbfrange\n<01><04>[<0041><0042> % <0045>\n<0043><0044>]\nendbfrange",
++    ] {
++        for (cap, fits) in [(3, false), (4, true)] {
++            let budget = ImportBudget::new(PdfImportLimits {
++                cmap_entries: cap,
++                ..PdfImportLimits::default()
++            })
++            .unwrap();
++            let result = parse_tounicode_cmap_with_budget(source.as_bytes(), &budget);
++            assert_eq!(result.is_ok(), fits, "cap {cap} in {source:?}");
++            if let Ok(cmap) = result {
++                assert_eq!(cmap.get(&0x04).as_deref(), Some("D"), "{source:?}");
++            }
+         }
+     }
+ }
+@@ -140,7 +145,8 @@ fn stray_brackets_and_open_entries_map_nothing() {
+ }
+ 
+ /// The limit this patch stops tripping by mistake still holds for a range
+-/// that really is that large, on one line or across two.
++/// that really is that large, on one line or across two, with a comment
++/// between its strings or not.
+ #[test]
+ fn a_really_huge_range_is_still_rejected() {
+     for source in [
+@@ -148,6 +154,8 @@ fn a_really_huge_range_is_still_rejected() {
+         "beginbfrange\n<00000000>\n<FFFFFFFF> <0041>\nendbfrange",
+         "beginbfrange\n<00000000> <FFFFFFFF>\n[<0041>\n<0042>]\nendbfrange",
+         "beginnotdefrange\n<00000000>\n<FFFFFFFF>\n<0041>\nendnotdefrange",
++        "beginbfrange\n<00000000> % <00>\n<FFFFFFFF> <0041>\nendbfrange",
++        "beginnotdefrange\n<00000000> % [\n<FFFFFFFF> <0041>\nendnotdefrange",
+     ] {
+         let budget = default_budget();
+         let result = parse_tounicode_cmap_with_budget(source.as_bytes(), &budget);
+@@ -160,3 +168,112 @@ fn a_really_huge_range_is_still_rejected() {
+         );
+     }
+ }
++
++/// Parses `source` with and without a budget and checks both CMaps.
++fn assert_maps(source: &str, mapped: &[(u32, &str)], unmapped: &[u32]) {
++    let budget = default_budget();
++    let bounded = parse_tounicode_cmap_with_budget(source.as_bytes(), &budget).unwrap();
++    budget.check().unwrap();
++    let unbounded = parse_tounicode_cmap(source.as_bytes()).unwrap();
++    for cmap in [&bounded, &unbounded] {
++        for &(code, value) in mapped {
++            assert_eq!(
++                cmap.get(&code).as_deref(),
++                Some(value),
++                "code {code:#x} in {source:?}"
++            );
++        }
++        for &code in unmapped {
++            assert!(cmap.get(&code).is_none(), "code {code:#x} in {source:?}");
++        }
++    }
++}
++
++const LINE_ENDS: [&str; 3] = ["\n", "\r", "\r\n"];
++
++/// A `%` outside a string starts a comment that runs to the end of the line,
++/// and what is in it belongs to no entry. Reading its `<01>` took the next
++/// line's `<02> <02>` into a range of its own and mapped 0x01 to U+0002 and
++/// 0x02 to U+0003; a `[` or an open `<` in it dropped the entry after it.
++#[test]
++fn a_comment_after_an_entry_is_not_read() {
++    for comment in ["% source <01>", "% [comment", "% <comment", "%]", "%", ""] {
++        for eol in LINE_ENDS {
++            let source = format!(
++                "beginbfrange{eol}<01> <01> <0041> {comment}{eol}<02> <02> <0042>{eol}endbfrange"
++            );
++            assert_maps(&source, &[(0x01, "A"), (0x02, "B")], &[]);
++        }
++    }
++}
++
++/// A comment between entries, between the strings of one entry, or inside a
++/// destination array is white space, and the entry around it reads as if the
++/// comment were not there.
++#[test]
++fn a_comment_inside_an_entry_or_an_array_is_not_read() {
++    for eol in LINE_ENDS {
++        let source = [
++            "beginbfrange",
++            "% <00> <FF> <0058> a line of its own",
++            "<03> % <03> <0058>",
++            "<05> [<0043> % <0058> [ ]",
++            "<0044> % ] <0059>",
++            "<0045>] % <06> <06> <005A>",
++            "<10> % [",
++            "<11> % <0058>",
++            "<0061>",
++            "endbfrange",
++        ]
++        .join(eol);
++        assert_maps(
++            &source,
++            &[
++                (0x03, "C"),
++                (0x04, "D"),
++                (0x05, "E"),
++                (0x10, "a"),
++                (0x11, "b"),
++            ],
++            &[0x00, 0x06, 0x58, 0xFF],
++        );
++    }
++}
++
++/// `notdefrange` reads its entries with the same reader.
++#[test]
++fn a_comment_in_a_notdefrange_is_not_read() {
++    for eol in LINE_ENDS {
++        let source = [
++            "beginnotdefrange",
++            "<20> <21> <FFFD> % <22> <22> <0058>",
++            "<23> % [",
++            "<23> % <0058>",
++            "<FFFD>",
++            "endnotdefrange",
++        ]
++        .join(eol);
++        assert_maps(
++            &source,
++            &[(0x20, "\u{FFFD}"), (0x21, "\u{FFFD}"), (0x23, "\u{FFFD}")],
++            &[0x22],
++        );
++    }
++}
++
++/// A `%` inside a string is text, not a comment, so the entry after it on the
++/// same line is still read. This range form with a literal destination maps
++/// nothing, as before.
++#[test]
++fn a_percent_sign_in_a_string_starts_no_comment() {
++    assert_maps(
++        "beginbfrange\n<30> <30> (%) <31> <31> <0047>\nendbfrange",
++        &[(0x31, "G")],
++        &[0x30],
++    );
++    assert_maps(
++        "beginbfrange\n<30> <30> (a\\) (%) <b>) <31> <31> <0047>\nendbfrange",
++        &[(0x31, "G")],
++        &[0x30, 0x0B],
++    );
++}
+diff --git a/vendor/rhwp-pdf-import-backend/src/fonts/cmap.rs b/vendor/rhwp-pdf-import-backend/src/fonts/cmap.rs
+index 9cda599b1..b66407f21 100644
+--- a/vendor/rhwp-pdf-import-backend/src/fonts/cmap.rs
++++ b/vendor/rhwp-pdf-import-backend/src/fonts/cmap.rs
+@@ -26,6 +26,7 @@ use crate::cache::MutexExt;
+ use crate::error::Result;
+ use crate::import_limits::ImportBudget;
+ use regex::Regex;
++use std::borrow::Cow;
+ use std::collections::hash_map::DefaultHasher;
+ use std::collections::HashMap;
+ use std::hash::{Hash, Hasher};
+@@ -655,8 +656,8 @@ fn parse_tounicode_cmap_impl(data: &[u8], budget: Option<&ImportBudget>) -> Resu
+                 //     or: <srcCodeLo> <srcCodeHi> <dstString>
+                 for entry in range_entries(section, budget)? {
+                     let mappings = match budget {
+-                        Some(budget) => parse_bfrange_line_with_budget(entry, Some(budget)),
+-                        None => parse_bfrange_line(entry),
++                        Some(budget) => parse_bfrange_line_with_budget(&entry, Some(budget)),
++                        None => parse_bfrange_line(&entry),
+                     };
+                     if let Some(budget) = budget {
+                         budget.check()?;
+@@ -683,8 +684,8 @@ fn parse_tounicode_cmap_impl(data: &[u8], budget: Option<&ImportBudget>) -> Resu
+         // A notdefrange has no array form, so a bracketed entry is not one.
+         for entry in range_entries(section, budget)?.filter(|entry| !entry.ends_with(']')) {
+             let mappings = match budget {
+-                Some(budget) => parse_notdefrange_line_with_budget(entry, Some(budget)),
+-                None => parse_notdefrange_line(entry),
++                Some(budget) => parse_notdefrange_line_with_budget(&entry, Some(budget)),
++                None => parse_notdefrange_line(&entry),
+             };
+             if let Some(budget) = budget {
+                 budget.check()?;
+@@ -758,6 +759,13 @@ fn bf_sections_in_document_order<'a>(
+ /// 3.6 billion codes. Entries are therefore cut by token, the way pdf.js,
+ /// MuPDF, and Poppler read them, and each item holds exactly one entry
+ /// whatever lines it sits on.
++///
++/// A `%` outside a string starts a comment that runs to the end of the line
++/// (PostScript Language Reference, 3rd ed., §3.2.2). A comment is white space
++/// too: its strings and brackets belong to no entry, and an entry with a
++/// comment inside is handed on with the comment taken out. A literal string
++/// `(...)` is a string like `<...>`, so a `%` in it is text; the entry parsers
++/// read only hex strings, so an entry with one maps nothing, as before.
+ struct RangeEntries<'a> {
+     section: &'a str,
+     pos: usize,
+@@ -775,34 +783,40 @@ fn range_entries<'a>(
+ }
+ 
+ impl<'a> Iterator for RangeEntries<'a> {
+-    type Item = &'a str;
++    type Item = Cow<'a, str>;
+ 
+-    fn next(&mut self) -> Option<&'a str> {
++    fn next(&mut self) -> Option<Cow<'a, str>> {
+         let bytes = self.section.as_bytes();
+         let mut start = 0;
+-        // Hex strings read so far for this entry: `<lo>`, `<hi>`, then `<dst>`.
++        // Strings read so far for this entry: `<lo>`, `<hi>`, then `<dst>`.
+         let mut operands = 0;
+         // Inside the destination array of this entry.
+         let mut in_array = false;
+         // Inside a bracket that follows no `<lo> <hi>`; its strings belong to no entry.
+         let mut stray_array = false;
++        // A comment sits inside this entry.
++        let mut commented = false;
+ 
+         while self.pos < bytes.len() {
+             let at = self.pos;
+             match bytes[at] {
+-                b'<' => {
++                b'%' => {
++                    self.pos = comment_end(bytes, at);
++                    commented |= operands > 0;
++                },
++                b'<' | b'(' => {
+                     // An unterminated string ends the section.
+-                    let len = self.section[at..].find('>')?;
+-                    self.pos = at + len + 1;
++                    self.pos = string_end(bytes, at)?;
+                     if in_array || stray_array {
+                         continue;
+                     }
+                     if operands == 0 {
+                         start = at;
++                        commented = false;
+                     }
+                     operands += 1;
+                     if operands == 3 {
+-                        return Some(&self.section[start..self.pos]);
++                        return Some(self.entry(start, commented));
+                     }
+                 },
+                 b'[' => {
+@@ -820,7 +834,7 @@ impl<'a> Iterator for RangeEntries<'a> {
+                 b']' => {
+                     self.pos = at + 1;
+                     if in_array {
+-                        return Some(&self.section[start..self.pos]);
++                        return Some(self.entry(start, commented));
+                     }
+                     stray_array = false;
+                     operands = 0;
+@@ -832,6 +846,72 @@ impl<'a> Iterator for RangeEntries<'a> {
+     }
+ }
+ 
++impl<'a> RangeEntries<'a> {
++    /// The entry from `start` up to where the reader stands, without its comments.
++    fn entry(&self, start: usize, commented: bool) -> Cow<'a, str> {
++        let entry: &'a str = &self.section[start..self.pos];
++        if !commented {
++            return Cow::Borrowed(entry);
++        }
++        let bytes = entry.as_bytes();
++        let mut text = String::with_capacity(entry.len());
++        let mut copied = 0;
++        let mut pos = 0;
++        while pos < bytes.len() {
++            match bytes[pos] {
++                b'%' => {
++                    text.push_str(&entry[copied..pos]);
++                    // The line end stays, as the white space the comment was.
++                    pos = comment_end(bytes, pos);
++                    copied = pos;
++                },
++                // The entry was read to its end, so its strings are closed.
++                b'<' | b'(' => pos = string_end(bytes, pos).unwrap_or(bytes.len()),
++                _ => pos += 1,
++            }
++        }
++        text.push_str(&entry[copied..]);
++        Cow::Owned(text)
++    }
++}
++
++/// Where a comment that starts at `at` ends: at the next CR or LF, or at the end.
++fn comment_end(bytes: &[u8], at: usize) -> usize {
++    bytes[at..]
++        .iter()
++        .position(|&byte| byte == b'\r' || byte == b'\n')
++        .map_or(bytes.len(), |len| at + len)
++}
++
++/// Where the string that starts at `at`, `<...>` or `(...)`, ends, just past
++/// its closing byte; `None` if it is not closed. A literal string holds
++/// balanced parentheses, and `\` escapes the byte after it.
++fn string_end(bytes: &[u8], at: usize) -> Option<usize> {
++    if bytes[at] == b'<' {
++        return bytes[at..]
++            .iter()
++            .position(|&byte| byte == b'>')
++            .map(|len| at + len + 1);
++    }
++    let mut depth = 0usize;
++    let mut pos = at;
++    while pos < bytes.len() {
++        match bytes[pos] {
++            b'\\' => pos += 1,
++            b'(' => depth += 1,
++            b')' => {
++                depth -= 1;
++                if depth == 0 {
++                    return Some(pos + 1);
++                }
++            },
++            _ => {},
++        }
++        pos += 1;
++    }
++    None
++}
++
+ /// Extract sections between begin and end markers.
+ fn extract_sections<'a>(content: &'a str, begin: &str, end: &str) -> Vec<&'a str> {
+     let mut sections = Vec::new();

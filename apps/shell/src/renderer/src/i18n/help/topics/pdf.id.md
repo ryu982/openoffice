@@ -6,6 +6,8 @@ Editor PDF punya lima tab di pita: **Beranda / Anotasi / Edit / Halaman / Tampil
 
 - Bilah sisi kiri: **Gambar mini** (klik untuk melompat, rentang yang terlihat disorot) atau **Kerangka** (bookmark, jika ada).
 - Zoom: kendali rasio di kanan bawah; ctrl+roda mengubah tingkat zoom.
+- Zoom saat dibuka: **Saat dibuka** di tab Tampilan memilih tampilan awal PDF yang baru dibuka: sesuaikan lebar, sesuaikan halaman, atau zoom 50% sampai 200%. PDF yang zoomnya Anda ubah sendiri akan dibuka lagi dengan zoom itu.
+- Menggeser tampilan: aktifkan **Alat Tangan** (tab Beranda dan Tampilan) lalu seret untuk menggeser halaman ke segala arah. Selama aktif, menyeret tidak memilih teks dan klik biasa tetap membuka tautan. Menyeret sambil menahan tombol tengah (roda) menggeser tampilan tanpa alat ini. Esc atau memilih alat lain mematikannya. Saat tidak ada teks yang dipilih, tekan H untuk menyalakan atau mematikannya.
 - Rotasi: per halaman atau semua halaman dari menu Halaman; rotasi ditulis kembali saat menyimpan.
 - Cari: ctrl+F untuk mencari seluruh teks dengan semua hasil disorot.
 - PDF terenkripsi: akan muncul Kotak Dialog Kata Sandi (jendela kecil tersendiri) untuk membukanya; kata sandi hanya dipakai untuk sesi ini. Dokumen seperti ini dapat disunting dan disimpan; saat disimpan, kata sandinya tetap ada. **Anotasi → Lindungi** menetapkan, mengubah, atau menghapus kata sandi dan hal yang boleh dilakukan pembaca.
@@ -18,7 +20,7 @@ Coba pada paragraf mana pun:
 
 ![Bilah anotasi setelah memilih teks](img/pdf-highlight.png)
 
-2. Pilih **Sorot** (swatch kuning membuka palet warna), **Garis bawah** atau **Coret**; **Tanya AI** mengirim pilihan beserta pertanyaan Anda ke panel AI.
+2. Pilih salah satu dari tiga warna **Sorot**, atau **Garis bawah**, **Berombak**, atau **Coret**. Untuk mengganti warna sorotan, klik kanan warna itu lalu pilih warna baru. Setelah garis bawah, garis berombak, atau coretan, sebaris warna terbuka di bilah: klik warna lain untuk menggantinya, dan tanda berikutnya juga memakai warna itu. **Tanya AI** mengirim pilihan beserta pertanyaan Anda ke panel AI.
 3. Untuk membatalkan sebuah anotasi, seret-pilih ulang bagian yang sama lalu klik tombol aktif pada bilah itu (sakelar bergaya Word), atau pilih bagian itu dan tekan Delete.
 
 Catatan:
@@ -69,6 +71,7 @@ Enam alat: **Gambar, Persegi, Elips, Panah, Catatan**, ditambah **Redaksi area**
 ## Operasi halaman (Halaman)
 
 - **Putar / Hapus halaman / Ubah urutan**: seret gambar mini untuk mengubah urutan; penghapusan meminta konfirmasi.
+- **Beberapa halaman sekaligus**: klik gambar mini sambil menahan Ctrl atau Shift untuk memilih beberapa halaman. Delete menghapusnya; Ctrl+C, Ctrl+X, dan Ctrl+V menyalin, memotong, dan menempelkannya. Halaman yang disalin juga dapat ditempel ke tab PDF lain, dan hasil tempel langsung disimpan ke file. Jika gambar mini ditutup, tombol di tepi kiri area halaman membukanya kembali.
 - **Impor halaman**: tarik halaman dari PDF lain ke dalam dokumen. **Sisipkan halaman kosong** menambahkan satu halaman kosong.
 - **Ganti halaman** menukar sebuah rentang dengan halaman dari tempat lain; **Pangkas halaman** memotong tepinya, dengan opsi menerapkannya ke semua halaman.
 - **Ukuran halaman** menskalakan ulang setiap halaman ke satu ukuran kertas; **Balik urutan** membalik dokumen dari ujung ke ujung.
@@ -80,7 +83,9 @@ Enam alat: **Gambar, Persegi, Elips, Panah, Catatan**, ditambah **Redaksi area**
 ## Ekspor dan pencetakan
 
 - **Ekspor sebagai Word… / PowerPoint… / Excel…** di menu File, atau ketiganya dari **Konversi PDF** pada pita — semuanya lokal, tanpa unggahan. .pptx keluar dengan satu slide per halaman dan .xlsx dengan satu lembar kerja per halaman. Masing-masing menanyakan tempat penyimpanan.
-- **Cetak**: urutan dan rotasi saat ini melalui dialog sistem; rentang halaman didukung.
+- **PDF ke HWP** di **Konversi PDF** pada pita mengubah PDF menjadi dokumen HWP di tab HWP baru. Pilih **Impor** (가져오기) di jendela impor PDF yang muncul di tab; dokumen dibuat di tab itu, dan penyimpanan pertama menanyakan tempat untuk .hwp atau .hwpx. PDF aslinya tetap seperti semula, dan konversi berjalan di PC ini. Apakah teks masuk sebagai paragraf yang mengalir mengikuti halaman atau sebagai kotak teks tetap dipilih di opsi (환경 설정) tab HWP, bagian impor PDF.
+- Konversi yang sama juga dapat dimulai dari tab HWP. Pilih PDF dengan **File** ▸ **Impor PDF…**, lalu tab HWP baru terbuka dengan jendela impor PDF yang sama. Dokumen di tab tempat menu digunakan tetap seperti semula.
+- **Cetak**: urutan dan rotasi saat ini melalui dialog sistem. Anda bisa mencetak rentang halaman atau halaman yang dipilih di gambar mini, dan memilih di **Tata letak halaman** beberapa halaman per lembar, buklet, skala abu-abu, dan lainnya.
 
 ## Menyimpan
 
@@ -127,6 +132,9 @@ Tekan **E** atau **T**, atau cip jelaskan dan terjemahkan di kotak **Tanya AI**,
 - **Terjemahkan halaman ini** (atau **Terjemahkan sisanya** bila sebagian sudah selesai) mengirim halaman itu dengan sekali tekan saat Anda memakai langganan; nama AI tujuannya tertera di samping tombol. Pada koneksi yang ditagih per pemakaian, tekanan pertama di sebuah tab lebih dulu bertanya "akan mengenakan biaya untuk ini · Terjemahkan / Batal".
 - Klik dua kali paragraf terjemahan untuk menyuntingnya. Paragraf yang disunting disimpan sebagai teks polos dan dipakai apa adanya di file PDF, Markdown, dan EPUB terjemahan. **Terjemahkan ulang** pada sebuah paragraf hanya mengirim paragraf itu, dan bertanya dulu bila Anda sudah menyuntingnya.
 - Saat tetikus berada di atas paragraf terjemahan, tempatnya di halaman asli diberi bingkai. Lebar dan ukuran huruf kolom bisa diubah. **Terjemahkan semua halaman…** membuka jendela **Terjemahkan Dokumen**, yang format **Simpan saja (tanpa file)**-nya menyimpan terjemahan tanpa menulis file.
+- Paragraf yang baru diterjemahkan ditautkan kalimat demi kalimat. Mengarahkan penunjuk ke kalimat terjemahan menyorot kalimat itu di halaman sumber, dan mengarahkannya ke kalimat sumber menerangkan terjemahannya. Jika letak kalimat tidak ditemukan di halaman, serta untuk paragraf yang diterjemahkan sebelumnya atau Anda ubah sendiri, tautannya tetap per paragraf.
+- Bilah di atas kolom beralih antara **Terjemahan** dan **Penjelasan sederhana**. Penjelasan sederhana menulis ulang teks dengan kata sehari-hari dan kalimat pendek, untuk anak-anak, orang lanjut usia, atau orang yang sedang belajar bahasa itu; fakta, angka, dan nama tetap seperti semula. Pilihan diingat, dan beralih tidak mengirim apa pun. Selama penjelasan ditampilkan, tombol halaman dan paragraf serta penyuntingan berlaku untuk penjelasan.
+- Dalam penjelasan sederhana, **Jelaskan semua halaman dengan sederhana…** membuka jendela **Terjemahkan Dokumen** dengan jenis **Penjelasan sederhana**. Penjelasan lebih panjang daripada aslinya, jadi tidak bisa menjadi PDF terjemahan; penjelasan ditulis sebagai Markdown atau EPUB. Jika **Asli lalu penjelasan** dinyalakan, setiap paragraf asli diikuti penjelasannya; jika dimatikan, file hanya berisi penjelasan. Bahasanya awalnya bahasa antarmuka dan boleh sama dengan bahasa dokumen.
 
 ## Sorotan AI
 

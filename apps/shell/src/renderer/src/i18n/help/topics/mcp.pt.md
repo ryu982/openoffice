@@ -58,7 +58,7 @@ Cada comando é uma ferramenta. As interessantes:
 Um pedido que chega do comando `ieumoffice` ou de um cliente MCP não foi escrito por si na aplicação, por isso o GenOffice trata-o com cuidado.
 
 - **A pesquisa** funciona sempre e é gratuita por predefinição. A chave de um fornecedor de pesquisa só é usada se tiver selecionado uma.
-- **Gerar uma imagem** precisa da chave de um fornecedor de imagens. Nesta versão, uma assinatura não gera imagens.
+- **Gerar uma imagem** segue a opção de geração de imagens das configurações. O padrão, Plano do ChatGPT (programa Codex), usa o seu plano do ChatGPT pelo programa Codex e **não é usado a menos que você permita** (veja abaixo). Caso contrário, usa a chave de um fornecedor de imagens configurado. Um modelo indicado pelo agente é usado quando esse caminho o oferece.
 - **Descrever uma imagem** usa um fornecedor com chave quando há um configurado. A sua assinatura do Claude ou do Codex **não é usada a menos que o autorize**.
 - **Vídeo e áudio** precisam de um fornecedor com chave que suporte vídeo.
 

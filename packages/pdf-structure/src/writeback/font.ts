@@ -71,7 +71,8 @@ export function defaultWritebackFontLocator(text: string, lang: string): Uint8Ar
     const bytes = findSystemFont(ps, family)
     if (usable(bytes, text)) return bytes
   }
-  const any = findFontCovering(text)
+  // a CFF face covering the text (Noto Sans CJK on Linux) must not hide a TrueType one
+  const any = findFontCovering(text, { truetypeOnly: true })
   return usable(any, text) ? any : null
 }
 

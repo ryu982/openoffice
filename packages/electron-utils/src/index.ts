@@ -23,11 +23,16 @@ export {
   editMenuTemplate,
   helpCheckUpdatesItems,
   helpMenuTemplate,
+  macAppMenuTemplate,
+  SETTINGS_ACCELERATOR,
+  setOpenSettingsInvoker,
+  settingsMenuItem,
   setUpdateCheckInvoker,
   toggleDevToolsItem,
   viewMenuTemplate,
   windowMenuTemplate,
   type AppMenuLabels,
+  type SettingsShortcut,
   type ViewMenuOptions,
 } from './app-menu'
 export {
@@ -56,16 +61,33 @@ export {
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
 } from './dialog-memory'
+export { numberedExportPaths } from './numbered-export-paths'
 export {
   DEFAULT_SAVE_DIR_KEY,
   configuredDefaultSaveDir,
   defaultSaveDirFallback,
+  documentsDirOrFallback,
   isUsableSaveDir,
   readDefaultSaveDirSetting,
   resolveDefaultSaveDir,
   type PathProvider,
 } from './default-save-dir'
+export {
+  HWP_DEFAULT_FORMAT_KEY,
+  normalizeHwpDefaultFormat,
+  readHwpDefaultFormat,
+  type HwpDefaultFormat,
+  type SettingsPathProvider,
+} from './hwp-default-format'
 export { installNavigationGuard } from './navigation-guard'
+export {
+  decodeChunks,
+  decodeChunksUtf8,
+  decodeCommandOutput,
+  decodeUtf8,
+  windowsOemCodePage,
+  type DecodeCommandOptions,
+} from './console-output'
 export {
   DROP_OPEN_CHANNEL,
   droppableFilePaths,
@@ -108,6 +130,8 @@ export {
   type OpenFilesSource,
 } from './unsaved-files'
 export {
+  DIAGRAM_BATCH_MODES,
+  DIAGRAM_FILE_TARGETS,
   HEADLESS_EXIT,
   HEADLESS_EXPORT_FLAG,
   HEADLESS_SUPPORTED_EXTENSIONS,
@@ -116,12 +140,16 @@ export {
   headlessExitCode,
   headlessModuleFor,
   headlessSummary,
+  isDiagramFileTarget,
   parseHeadlessExportArgv,
+  type DiagramBatchMode,
+  type DiagramFileTarget,
   type HeadlessArgvParse,
   type HeadlessExitCode,
   type HeadlessExportFormat,
   type HeadlessExportModule,
   type HeadlessExportOutcome,
+  type HeadlessExportProduct,
   type HeadlessExportRequest,
   type HeadlessExportTarget,
 } from './headless-export'

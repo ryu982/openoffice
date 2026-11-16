@@ -37,6 +37,8 @@ export const ko = {
   arConfirmSends: '페이지 그림이 이 AI로 보내집니다.',
   arConfirmNothing: '고른 페이지를 모두 읽어 두었습니다. 보낼 페이지가 없습니다.',
   arChecking: 'AI 연결을 확인하는 중…',
+  arProviderLabel: '제공자',
+  arProviderNotConnected: '{provider} (연결 안 됨)',
   arVisionProvider:
     '{provider}는 그림을 읽지 못해 AI 페이지 읽기를 시작할 수 없습니다. 설정에서 그림을 읽을 수 있는 AI를 고르세요.',
   arVisionModel:
@@ -63,9 +65,9 @@ export const ko = {
   arDeleted: '이 문서의 AI 보관분을 지웠습니다.',
   arDeleteFailed: 'AI 보관분을 지우지 못했습니다.',
   arDeleteBusy: 'AI 작업이 진행 중이라 지금은 지울 수 없습니다.',
-  jobResumeAiRead: '끝나지 않은 AI 읽기 {percent}% — 이어서 할까요?',
-  jobResumeTranslate: '끝나지 않은 번역({language}) {percent}% — 이어서 할까요?',
-  jobResumeHighlight: '끝나지 않은 AI 핵심 표시 {percent}% — 이어서 할까요?',
+  jobResumeAiRead: '끝나지 않은 AI 읽기 {percent}%. 이어서 할까요?',
+  jobResumeTranslate: '끝나지 않은 번역({language}) {percent}%. 이어서 할까요?',
+  jobResumeHighlight: '끝나지 않은 AI 핵심 표시 {percent}%. 이어서 할까요?',
   arDeleteAlsoBoth: '사람이 고친 번역 {edited}개, 구절 카드 {cards}개도 지워집니다.',
   arDeleteAlsoEdited: '사람이 고친 번역 {count}개도 지워집니다.',
   arDeleteAlsoCards: '구절 카드 {count}개도 지워집니다.',

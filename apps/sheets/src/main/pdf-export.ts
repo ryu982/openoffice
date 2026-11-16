@@ -15,6 +15,7 @@ import { atomicWriteFile } from './atomic-write'
 import { evenPageRanges, stitchPlan, type PageVariant } from './pdf-page-variants'
 import { printOptionsFor } from './print-options'
 import { sheetsTemplateFontsDir, withTemplateFontFaces } from './template-fonts'
+import { printPdfViaCups, printToPdfOptionsFor } from '@genoffice/electron-utils/print-cups'
 
 import type { IpcMainInvokeEvent, WebContents } from 'electron'
 import type { PDFDocument } from 'pdf-lib'
@@ -24,9 +25,12 @@ import type {
   WorkbookPrintResult,
 } from '../shared/desktop-api'
 
+/// `presetPath`: a target the caller already authorized (Save As › PDF picked
+/// it in the Save As dialog), so no second dialog opens.
 export async function exportPdf(
   event: IpcMainInvokeEvent,
   request: WorkbookExportPdfRequest,
+  presetPath?: string,
 ): Promise<WorkbookExportPdfResult> {
   const parent = BrowserWindow.fromWebContents(event.sender)
   const dialogOptions = {
@@ -35,9 +39,11 @@ export async function exportPdf(
   }
   // Headless export has no dialog to authorize a path; the CLI already chose one.
   const selection =
-    isHeadlessMode() && request.outPath
-      ? { canceled: false as const, filePath: request.outPath }
-      : await showSaveDialogWithMemory(dialog, parent, dialogOptions)
+    presetPath !== undefined
+      ? { canceled: false as const, filePath: presetPath }
+      : isHeadlessMode() && request.outPath
+        ? { canceled: false as const, filePath: request.outPath }
+        : await showSaveDialogWithMemory(dialog, parent, dialogOptions)
   if (selection.canceled || !selection.filePath) return { canceled: true }
 
   const workDir = await mkdtemp(join(tmpdir(), 'ai-excel-pdf-'))
@@ -86,8 +92,29 @@ export async function printWorkbook(
       window.show()
       window.focus()
     }
+    const printOpts = printOptionsFor(request)
+    // A named printer prints silently, and Chromium's silent print on macOS
+    // can drop the job outright — no queue entry, no callback error
+    // (genoffice#2347). Route through CUPS instead: printToPDF bakes the
+    // pages at the request's paper size and margins (print() takes CSS
+    // pixels and microns, printToPDF inches), and lp spools a real,
+    // diagnosable job.
+    if (process.platform === 'darwin' && printOpts.silent) {
+      const printed = await window.webContents.printToPDF({
+        ...printToPdfOptionsFor({
+          marginsIn: request.margins,
+          landscape: request.landscape,
+          scale: request.scale,
+        }),
+        // named sizes ('A4') and inch sizes both go through as-is; sheets
+        // declare their own @page, so a mixed job keeps each sheet's paper
+        pageSize: request.pageSize,
+        preferCSSPageSize: true,
+      })
+      return printPdfViaCups(printed, printOpts)
+    }
     const outcome = await new Promise<{ success: boolean; failureReason: string }>((resolve) => {
-      window.webContents.print(printOptionsFor(request), (success, failureReason) =>
+      window.webContents.print(printOpts, (success, failureReason) =>
         resolve({ success, failureReason }),
       )
     })
@@ -97,6 +124,26 @@ export async function printWorkbook(
       : { ok: false, error: outcome.failureReason }
   } catch (error: unknown) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
+  } finally {
+    window.destroy()
+    await rm(workDir, { recursive: true, force: true })
+  }
+}
+
+/// Advanced print layout: the print job PDF is the laid-out HTML the preview,
+/// print and PDF export use (range, scale, paper, margins and gridlines already
+/// applied by the renderer), rendered exactly as the PDF export renders it.
+export async function buildPrintJobPdf(request: WorkbookExportPdfRequest): Promise<Uint8Array> {
+  const workDir = await mkdtemp(join(tmpdir(), 'ai-excel-print-layout-'))
+  const htmlPath = join(workDir, 'print.html')
+  const window = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, javascript: false },
+  })
+  try {
+    await writeFile(htmlPath, withTemplateFontFaces(request.html, sheetsTemplateFontsDir()), 'utf8')
+    await window.loadFile(htmlPath)
+    return await renderPdf(window.webContents, request)
   } finally {
     window.destroy()
     await rm(workDir, { recursive: true, force: true })

@@ -45,7 +45,7 @@ Nel pannello IA degli editor Docs, Sheets, Slides, Hangul, HTML e mappe mentali 
 
 ## Ripristino e sicurezza
 
-- Il pannello di Docs mantiene un **elenco delle versioni**: uno snapshot per turno, puoi tornare a qualunque versione e il ripristino stesso è annullabile con Ctrl+Z. Gli snapshot sopravvivono alla riapertura del documento.
+- Un turno in cui l'IA ha modificato il documento riceve, sotto la risposta, una scheda **Modifiche apportate al documento: N**, e i punti modificati vengono segnati in giallo sul documento. I segni compaiono solo sullo schermo — non vengono mai salvati, stampati né esportati — e scompaiono quando invii la richiesta successiva o premi **Nascondi segni**. **Annulla queste modifiche** annulla l'intero turno in una volta. In Docs, Markdown, HTML, Slides, mappe mentali e diagrammi, annullare un turno precedente annulla anche i turni successivi; in Hangul, Sheets, PDF ed EPUB si può annullare solo l'ultimo turno, e solo se il documento non è stato modificato dopo. Quando non si può annullare, usa l'Annulla dell'editor (Ctrl+Z).
 - Le modifiche dell'IA passano dalla stessa pipeline di modifica di quelle manuali (annullabili, subordinate al salvataggio) — niente aggira la tua conferma di salvataggio.
 
 ## Nascondere una selezione all'IA

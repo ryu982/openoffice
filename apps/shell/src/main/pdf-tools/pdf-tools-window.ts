@@ -80,6 +80,17 @@ export interface PdfToolsWindowDeps {
   /** Open a PDF the user picked for an editor-only tool; an open tab is only focused */
   openForEditing(path: string): boolean
   /**
+   * A result's "open" while the editor it opens in is off (editor choice spec
+   * 7.3): asks, then opens through `open`, shows the file in its folder, or
+   * does nothing. Without it the result opens at once.
+   */
+  askBeforeOpenResult?(path: string, open: (path: string) => boolean): Promise<boolean>
+  /**
+   * Before an entrance that needs the PDF editor or this window itself while
+   * that is off: [Turn on and open] [Cancel]; true = go ahead.
+   */
+  askEditorOn?(item: 'pdf' | 'pdfTools'): Promise<boolean>
+  /**
    * Run a page-rendering job in a process of its own, ended when it answers,
    * is cancelled, or `owner` goes away (pdf-structure-ipc.ts runWindowJob)
    */
@@ -431,20 +442,26 @@ async function findBlankPages(inputId: unknown): Promise<PdfBlankPagesResult> {
  * False for a task that does not take one PDF.
  */
 export function openPdfToolsWithFile(path: string, tool: unknown): boolean {
-  if (!deps || !isPdfToolId(tool) || toolInputKind(tool) !== 'pdf') return false
-  void inputsFrom([path], 'pdf', toolAccepts(tool)).then((picked) => {
+  const d = deps
+  if (!d || !isPdfToolId(tool) || toolInputKind(tool) !== 'pdf') return false
+  void (async () => {
+    // the PDF tools turned off: asked before the window opens (spec 7.3)
+    if (d.askEditorOn && !(await d.askEditorOn('pdfTools'))) return
+    const picked = await inputsFrom([path], 'pdf', toolAccepts(tool))
     pendingStart = { tool, inputs: picked.inputs, rejected: picked.rejected }
     const open = !!win && !win.isDestroyed()
     openPdfToolsWindow()
     // a fresh window takes the task as it loads; an open one is told it waits
     if (open) win?.webContents.send(PDF_TOOLS_CHANNELS.startReady)
-  })
+  })()
   return true
 }
 
 async function openInEditor(): Promise<void> {
   const owner = win
   if (!owner || !deps) return
+  // the PDF editor opens the file: it is asked for before the file is picked
+  if (deps.askEditorOn && !(await deps.askEditorOn('pdf'))) return
   const picked = await showOpenDialogWithMemory(dialog, owner, {
     filters: [PDF_FILTER],
     properties: ['openFile'],
@@ -475,9 +492,13 @@ function registerIpc(): void {
     if (!fromWindow(event)) return { ok: false, error: 'failed' }
     return run(request)
   })
-  ipcMain.handle(PDF_TOOLS_CHANNELS.openResult, (event, id: unknown) => {
+  ipcMain.handle(PDF_TOOLS_CHANNELS.openResult, async (event, id: unknown) => {
     const path = fromWindow(event) && typeof id === 'string' ? results.get(id) : undefined
-    if (path && existsSync(path)) deps?.openResult(path)
+    const d = deps
+    if (!path || !d || !existsSync(path)) return
+    // while the result's editor is off its "open" asks first (spec 7.3)
+    if (d.askBeforeOpenResult) await d.askBeforeOpenResult(path, (p) => d.openResult(p))
+    else d.openResult(path)
   })
   ipcMain.handle(PDF_TOOLS_CHANNELS.revealResult, (event, id: unknown) => {
     const path = fromWindow(event) && typeof id === 'string' ? results.get(id) : undefined
@@ -507,9 +528,11 @@ function registerIpc(): void {
   ipcMain.handle(PDF_TOOLS_CHANNELS.close, (event) => {
     if (fromWindow(event)) win?.close()
   })
-  ipcMain.handle(PDF_TOOLS_HOME_CHANNELS.open, (event) => {
+  ipcMain.handle(PDF_TOOLS_HOME_CHANNELS.open, async (event) => {
     const parent = deps?.parentWindow()
     if (!parent || parent.isDestroyed() || event.sender !== parent.webContents) return
+    // Home hides the card while the tools are off; asked anyway if it is reached
+    if (deps?.askEditorOn && !(await deps.askEditorOn('pdfTools'))) return
     openPdfToolsWindow()
   })
 }

@@ -12,6 +12,15 @@
  * 'running' record in the store (`runningElsewhere`). The tab's own records
  * are never 'running' when no job of the tab runs: the engine writes the
  * final state when its job ends.
+ *
+ * The lock does not look at the way a book is translated: a translation and
+ * an easy explanation of the same book never run at the same time. The view
+ * names the way (`mode`) so the strip can say which one runs.
+ *
+ * With an `activity` bridge the job is also one entry on the shell's list of
+ * running AI work: the main process refuses a job while AI is turned off (the
+ * job stops and fails with the refusal) and asks the job to stop when AI is
+ * being turned off (the same as its Stop).
  */
 import type {
   DocumentJobHandle,
@@ -19,8 +28,10 @@ import type {
   JobProgressEvent,
   JobSummary,
   RunningDocumentJob,
+  TranslationMode,
 } from '@genoffice/pdf-structure'
 import type { JobStatus } from '@genoffice/pdf-structure/store'
+import type { ScreenAiJobBridge } from '../../shared/ipc'
 import { DocumentJobBusyError, documentJobs } from './engine'
 
 export interface BookJobView {
@@ -30,6 +41,8 @@ export interface BookJobView {
   lang: string
   /** the provider id the job sends to */
   provider: string
+  /** 'easy': the job is an easy explanation; absent for a translation */
+  mode?: 'easy'
   state: 'running' | 'complete' | 'stopped' | 'failed'
   /** blocks done, including those done before this run */
   done: number
@@ -48,6 +61,8 @@ export interface StartBookJob<U> {
   docHash: string
   lang: string
   provider: string
+  /** 'easy' for an easy explanation */
+  mode?: TranslationMode
   /** start the engine job with this signal, registry and progress sink */
   launch(options: {
     signal: AbortSignal
@@ -69,8 +84,17 @@ export class BookJobSession {
   private readonly listeners = new Set<() => void>()
   private nextId = 1
   private snapshot: BookJobView | null = null
+  /** the activity id of the running job */
+  private activityId: string | null = null
 
-  constructor(private readonly registry: DocumentJobRegistry = documentJobs) {}
+  constructor(
+    private readonly registry: DocumentJobRegistry = documentJobs,
+    private readonly activity: ScreenAiJobBridge | null = null,
+  ) {
+    activity?.onStop((jobId) => {
+      if (jobId === this.activityId) this.stop()
+    })
+  }
 
   /** the job running on this book in this page (any tab), or null */
   running(docHash: string): RunningDocumentJob | null {
@@ -82,11 +106,33 @@ export class BookJobSession {
     const busy = this.registry.running(spec.docHash)
     if (busy) return { ok: false, running: busy }
     const controller = new AbortController()
+    // told before the job's first call leaves, so the main process hears it first
+    const activityId = this.activity ? crypto.randomUUID() : null
+    let refusal: string | null = null
+    const activityEnded = () => {
+      if (activityId === null) return
+      if (this.activityId === activityId) this.activityId = null
+      this.activity?.end(activityId)
+    }
+    if (activityId !== null) {
+      this.activityId = activityId
+      this.activity!.begin(activityId).then(
+        (refused) => {
+          if (!refused || controller.signal.aborted) return
+          refusal = refused
+          controller.abort('cancelled')
+        },
+        () => {
+          // no main process answering (an older shell): the job runs as before
+        },
+      )
+    }
     const view: BookJobView = {
       id: this.nextId++,
       docHash: spec.docHash,
       lang: spec.lang,
       provider: spec.provider,
+      ...(spec.mode === 'easy' ? { mode: 'easy' as const } : {}),
       state: 'running',
       done: 0,
       total: 0,
@@ -108,6 +154,7 @@ export class BookJobSession {
           }),
       })
     } catch (err) {
+      activityEnded()
       if (err instanceof DocumentJobBusyError) return { ok: false, running: err.running }
       throw err
     }
@@ -115,8 +162,12 @@ export class BookJobSession {
     this.controller = controller
     this.emit()
     const end = (patch: Partial<BookJobView>) => {
+      activityEnded()
       if (this.controller === controller) this.controller = null
-      const last = this.update(view.id, { ...patch, stopping: false })
+      // a job the main process refused (AI turned off) fails with that refusal
+      const ended =
+        refusal === null ? patch : { ...patch, state: 'failed' as const, error: refusal }
+      const last = this.update(view.id, { ...ended, stopping: false })
       if (last) spec.onEnd?.(last)
     }
     handle.result.then(

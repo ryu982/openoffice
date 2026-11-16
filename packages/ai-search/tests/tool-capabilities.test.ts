@@ -26,7 +26,14 @@ const off = { available: false, route: null, provider: null }
 
 beforeEach(() => {
   setCodexImageGenerationAvailable(true)
-  registerCodexImageGenerator(async () => ({ url: 'https://images.example.com/a.png' }))
+  registerCodexImageGenerator({
+    generate: async () => ({
+      kind: 'image',
+      bytes: new Uint8Array([137, 80, 78, 71]),
+      mime: 'image/png',
+    }),
+    models: async () => [],
+  })
 })
 
 afterEach(() => {
@@ -46,6 +53,9 @@ describe('aiToolCapabilities', () => {
       for (const capability of [c.imageGeneration, c.imageAnalysis, c.videoAnalysis]) {
         expect(capability.message).toMatch(/Settings/)
       }
+      expect(c.imageGeneration.message).toContain(
+        "If the user uses a ChatGPT plan, making images needs the Codex program signed in with the same ChatGPT account (Settings > AI > Codex); the app's direct ChatGPT connection cannot make images because OpenAI does not allow it.",
+      )
     }
   })
 

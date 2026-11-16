@@ -1300,6 +1300,7 @@ export async function loadVisibleRange(
   worksheet: UniverWorksheet,
   setMessage: (message: string) => void,
   viewportStart?: { row: number; column: number },
+  fromScroll = false,
 ): Promise<void> {
   const state = lazyWorkbookRef.current
   if (!state) return
@@ -1336,13 +1337,29 @@ export async function loadVisibleRange(
       endColumn: startColumn + columnSpan,
     }
   }
-  const range = createBufferedRange(
-    normalizeVisibleRange(visible, screenRowCount, screenColumnCount),
-    screenRowCount,
-    screenColumnCount,
-  )
+  const viewport = normalizeVisibleRange(visible, screenRowCount, screenColumnCount)
+  if (
+    fromScroll &&
+    !scrollNeedsWindow({
+      viewport,
+      resident: state.loadedRanges.get(sheetId),
+      arriving: arrivingWindows.get(state)?.get(sheetId),
+      decorationsNeedPostIndexingRead: state.decorationsPendingSheets.has(sheetId),
+      rowCount: screenRowCount,
+      columnCount: screenColumnCount,
+    })
+  ) {
+    return
+  }
+  const range = createBufferedRange(viewport, screenRowCount, screenColumnCount)
   const generation = bumpViewportGeneration(state, sheetId)
-  await loadRange(runtime, lazyWorkbookRef, worksheet, range, setMessage)
+  const arriving = arrivingWindowsOf(state)
+  arriving.set(sheetId, range)
+  try {
+    await loadRange(runtime, lazyWorkbookRef, worksheet, range, setMessage)
+  } finally {
+    if (arriving.get(sheetId) === range) arriving.delete(sheetId)
+  }
   await loadFrozenColumnStrip(lazyWorkbookRef, worksheet, sheet, range)
   await extendWindowPastHiddenRows(
     runtime,
@@ -1353,6 +1370,34 @@ export async function loadVisibleRange(
     screenRowCount,
     generation,
   )
+}
+
+const arrivingWindows = new WeakMap<LazyWorkbookState, Map<string, IRange>>()
+
+function arrivingWindowsOf(state: LazyWorkbookState): Map<string, IRange> {
+  let perSheet = arrivingWindows.get(state)
+  if (!perSheet) {
+    perSheet = new Map()
+    arrivingWindows.set(state, perSheet)
+  }
+  return perSheet
+}
+
+export interface ScrollWindowInput {
+  readonly viewport: IRange
+  readonly resident: IRange | undefined
+  readonly arriving: IRange | undefined
+  readonly decorationsNeedPostIndexingRead: boolean
+  readonly rowCount: number
+  readonly columnCount: number
+}
+
+export function scrollNeedsWindow(input: ScrollWindowInput): boolean {
+  if (input.decorationsNeedPostIndexingRead) return true
+  const lead = viewportLeadRange(input.viewport, input.rowCount, input.columnCount)
+  const covers = (window: IRange | undefined): boolean =>
+    window !== undefined && containsRange(window, lead)
+  return !covers(input.resident) && !covers(input.arriving)
 }
 
 /// Every viewport load supersedes the previous one for its sheet: a scroll
@@ -4033,17 +4078,39 @@ export function normalizeVisibleRange(
   }
 }
 
-function createBufferedRange(visible: IRange, rowCount: number, columnCount: number): IRange {
-  const rowBuffer = 80
-  const columnBuffer = 8
+const VIEWPORT_LEAD_ROWS_MIN = 20
+const VIEWPORT_LEAD_ROWS_MAX = 80
+const VIEWPORT_LEAD_COLUMNS = 2
+const VIEWPORT_TRAVEL_ROWS = 60
+const VIEWPORT_TRAVEL_COLUMNS = 6
+
+export function viewportLeadRange(visible: IRange, rowCount: number, columnCount: number): IRange {
+  const leadRows = Math.min(
+    VIEWPORT_LEAD_ROWS_MAX,
+    Math.max(VIEWPORT_LEAD_ROWS_MIN, visible.endRow - visible.startRow + 1),
+  )
+  return {
+    startRow: Math.max(0, visible.startRow - leadRows),
+    endRow: Math.min(rowCount - 1, visible.endRow + leadRows),
+    startColumn: Math.max(0, visible.startColumn - VIEWPORT_LEAD_COLUMNS),
+    endColumn: Math.min(columnCount - 1, visible.endColumn + VIEWPORT_LEAD_COLUMNS),
+  }
+}
+
+export function createBufferedRange(
+  visible: IRange,
+  rowCount: number,
+  columnCount: number,
+): IRange {
+  const lead = viewportLeadRange(visible, rowCount, columnCount)
   // Frozen panes are protected from eviction in patchWorksheetRange rather
   // than folded into this range — startRow=0 at deep scroll would blow the
   // sidecar's 20k-cell request limit.
   return {
-    startRow: Math.max(0, visible.startRow - rowBuffer),
-    endRow: Math.min(rowCount - 1, visible.endRow + rowBuffer),
-    startColumn: Math.max(0, visible.startColumn - columnBuffer),
-    endColumn: Math.min(columnCount - 1, visible.endColumn + columnBuffer),
+    startRow: Math.max(0, lead.startRow - VIEWPORT_TRAVEL_ROWS),
+    endRow: Math.min(rowCount - 1, lead.endRow + VIEWPORT_TRAVEL_ROWS),
+    startColumn: Math.max(0, lead.startColumn - VIEWPORT_TRAVEL_COLUMNS),
+    endColumn: Math.min(columnCount - 1, lead.endColumn + VIEWPORT_TRAVEL_COLUMNS),
   }
 }
 
@@ -6763,7 +6830,13 @@ const DV_ERROR_STYLES: Record<string, number> = { stop: 1, warning: 2, informati
 /// model is the wire format for the declarative save, so install fidelity IS
 /// save fidelity. Only called once indexing completes; marking the sheet even
 /// when it has no rules unlocks DV editing (the gate above).
-function applyDataValidations(
+///
+/// `source: 'patched'` is the tag Univer's own snapshot loader uses. Without
+/// it the rule counts as a user command, and Univer re-measures the auto
+/// height of every row a list rule covers (each column of each row, through
+/// the whole cell interceptor chain) in one synchronous block. The file
+/// already carries its row heights.
+export function applyDataValidations(
   runtime: UniverRuntime,
   state: LazyWorkbookState,
   sheetId: string,
@@ -6782,6 +6855,7 @@ function applyDataValidations(
           unitId,
           subUnitId: sheetId,
           rule: mapped,
+          source: 'patched',
         })
       } catch {
         // Unsupported validation shapes must not break streaming.

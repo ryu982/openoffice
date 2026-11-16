@@ -12,7 +12,7 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 
 ## Lezen
 
-- Het deelvenster **Inhoud** links toont de inhoudsopgave van het boek. Klik op een item om erheen te gaan. Een boek zonder inhoudsopgave krijgt een lijst van zijn hoofdstukken.
+- Het deelvenster **Inhoud** links toont de inhoudsopgave van het boek. Klik op een item om erheen te gaan. Een boek zonder inhoudsopgave krijgt een lijst van zijn hoofdstukken. Sleep de binnenrand van het deelvenster om de breedte te wijzigen; dubbelklik op de rand om terug te gaan naar de oorspronkelijke breedte. Het zoekvenster gebruikt dezelfde breedte.
 - Elk hoofdstuk scrolt omhoog en omlaag. Scrol verder voorbij het einde van een hoofdstuk om naar het volgende te gaan, of voorbij het begin om terug te gaan. De statusregel laat zien in welk hoofdstuk je bent.
 - Het tabblad **Beeld** wijzigt de tekstgrootte en regelafstand en zet **Donkere weergave** aan en uit. Deze instellingen veranderen alleen het scherm, nooit het boek, en gelden voor alle boeken.
 - De plek waar je bent gestopt met lezen, wordt per bestand onthouden, in de gegevensmap van de app en niet in het boek.
@@ -47,7 +47,7 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 ## AI-paneel
 
 - Stel vragen over het boek, laat een hoofdstuk samenvatten of laat de tekst ervan verbeteren of herschrijven. De AI leest de inhoudsopgave en hoofdstukken van het boek en zoekt er tekst in.
-- Wijzigingen van de AI verschijnen meteen, en één keer ongedaan maken (Ctrl+Z) draait alles terug wat de AI in die beurt heeft veranderd. De AI kan tekst vet of cursief maken, maar geen afbeeldingen, tabellen of hoofdstukken toevoegen.
+- Wijzigingen van de AI verschijnen meteen, de gewijzigde blokken worden geel gemarkeerd, en **Deze wijzigingen ongedaan maken** op de kaart onder het antwoord draait alles terug wat de AI in die beurt heeft veranderd (zolang het boek daarna niet is bewerkt). De AI kan tekst vet of cursief maken, maar geen afbeeldingen, tabellen of hoofdstukken toevoegen.
 - De tekst van het boek is materiaal voor de AI, geen opdracht.
 - Vraag "Vertaal dit boek naar het Frans" en de AI opent het vertaalvenster met die taal al ingevuld. Er wordt niets verzonden tot je op **Starten** klikt.
 - EPUB-boeken kun je ook als bijlage toevoegen in het AI-paneel van de andere editors, kiezen met `@` en vinden met het zoeken naar bestanden op Start.
@@ -67,6 +67,7 @@ De e-boekeditor opent EPUB-boeken (`.epub`) in een tabblad. Je leest het boek, v
 - Wat al vertaald is, wordt bewaard. Als je stopt, kies je **Exporteren wat tot nu toe vertaald is** (de rest blijft in de oorspronkelijke taal) of **Later verdergaan**. Open je een boek met een onafgemaakte vertaling, dan biedt GenOffice aan om ermee verder te gaan. **Opnieuw vertalen vanaf het begin** verwijdert eerst de bewaarde vertaling voor die taal.
 - Bewaarde vertalingen tellen mee onder Instellingen ▸ Algemeen ▸ **Opgeslagen AI-resultaten**, samen met die van pdf-documenten, en **Alles verwijderen** wist ook deze.
 - Dezelfde vertaling kun je ook starten met de [terminalopdrachten](help://cli) als `ieumoffice epub translate`.
+- Kies bij **Soort** voor **Eenvoudige taal** om het boek in eenvoudige woorden in de gekozen taal te herschrijven. De resultaten zijn een **Boek in eenvoudige taal** en **Origineel, gevolgd door eenvoudige taal**; hun titel vermeldt in die taal dat het een versie in eenvoudige taal is, en hun bestandsnaam vermeldt dat in de taal van de interface, zodat die verschilt van die van een vertaling. De taal is eerst die van de interface en mag ook die van het boek zijn. De eenvoudige versie wordt los van vertalingen bewaard, verdergaan wordt er apart voor aangeboden, en de terminalopdrachten maken haar niet.
 
 ## Nog niet ondersteund
 

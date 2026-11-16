@@ -112,3 +112,24 @@ describe('html:ai-generate-image, cancelling', () => {
     await stopped.result
   })
 })
+
+describe('html:ai-generate-image, model', () => {
+  beforeEach(() => {
+    generateImageTool.mockReset()
+  })
+
+  it('hands the model the user named to the tool trimmed, and none when absent', async () => {
+    generateImageTool.mockResolvedValue({ url: 'file:///fake/out.png' })
+    createHtmlView(null)
+    const sender = lastContents
+    const handler = handlers.get(HTML_CHANNELS.aiGenerateImage)!
+    await handler({ sender }, { prompt: 'a red kite', model: ' gpt-image-2 ' })
+    expect(generateImageTool.mock.calls[0]![1]).toEqual({
+      prompt: 'a red kite',
+      aspectRatio: undefined,
+      model: 'gpt-image-2',
+    })
+    await handler({ sender }, { prompt: 'a red kite' })
+    expect(generateImageTool.mock.calls[1]![1].model).toBeUndefined()
+  })
+})

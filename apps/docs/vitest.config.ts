@@ -10,8 +10,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@genoffice/docx-engine/lazy-media': local('../../packages/docx-engine/src/lazy-media.ts'),
+      '@genoffice/docx-engine/zip-splice': local('../../packages/docx-engine/src/zip-splice.ts'),
       '@genoffice/docx-engine': local('../../packages/docx-engine/src/index.ts'),
       '@genoffice/odt-engine': local('../../packages/odt-engine/src/index.ts'),
+      '@genoffice/docx2hwp': local('../../packages/docx2hwp/src/index.ts'),
       '@genoffice/font-metrics/resolve': local('../../packages/font-metrics/src/resolve.ts'),
       '@genoffice/font-metrics/word-faces.json': local(
         '../../packages/font-metrics/word-faces.json',
@@ -24,8 +26,14 @@ export default defineConfig({
       '@genoffice/electron-utils/headless-export': local(
         '../../packages/electron-utils/src/headless-export.ts',
       ),
+      '@genoffice/electron-utils/print-cups': local(
+        '../../packages/electron-utils/src/print-cups.ts',
+      ),
       '@genoffice/electron-utils/print-job': local(
         '../../packages/electron-utils/src/print-job.ts',
+      ),
+      '@genoffice/electron-utils/print-arranged': local(
+        '../../packages/electron-utils/src/print-arranged.ts',
       ),
       '@genoffice/electron-utils/atomic-write': local(
         '../../packages/electron-utils/src/atomic-write.ts',
@@ -39,10 +47,35 @@ export default defineConfig({
       '@genoffice/electron-utils/template-font-response': local(
         '../../packages/electron-utils/src/template-font-response.ts',
       ),
+      '@genoffice/electron-utils/ai-create-guard': local(
+        '../../packages/electron-utils/src/ai-create-guard.ts',
+      ),
+      '@genoffice/electron-utils/app-choice': local(
+        '../../packages/electron-utils/src/app-choice.ts',
+      ),
       '@genoffice/electron-utils/ai-run-guard': local(
         '../../packages/electron-utils/src/ai-run-guard.ts',
       ),
+      '@genoffice/electron-utils/ai-activity': local(
+        '../../packages/electron-utils/src/ai-activity.ts',
+      ),
+      '@genoffice/electron-utils/app-choice-bridge': local(
+        '../../packages/electron-utils/src/app-choice-bridge.ts',
+      ),
+      '@genoffice/electron-utils/generated-images': local(
+        '../../packages/electron-utils/src/generated-images.ts',
+      ),
+      '@genoffice/electron-utils/remote-image': local(
+        '../../packages/electron-utils/src/remote-image.ts',
+      ),
+      '@genoffice/electron-utils/safe-remote-url': local(
+        '../../packages/electron-utils/src/safe-remote-url.ts',
+      ),
+      '@genoffice/electron-utils/numbered-export-paths': local(
+        '../../packages/electron-utils/src/numbered-export-paths.ts',
+      ),
       '@genoffice/electron-utils': local('../../packages/electron-utils/src/index.ts'),
+      '@genoffice/ai-provider/trace': local('../../packages/ai-provider/src/trace.ts'),
       '@genoffice/ai-provider/browser': local('../../packages/ai-provider/src/browser.ts'),
       '@genoffice/ai-provider/codex-app-server': local(
         '../../packages/ai-provider/src/codex-app-server.ts',

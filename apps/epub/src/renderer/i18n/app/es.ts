@@ -30,6 +30,7 @@ export const es = {
   darkView: 'Vista oscura',
   toc: 'Contenido',
   tocEmpty: 'Este libro no tiene índice',
+  sideResize: 'Cambiar el ancho del panel',
   statusChapter: 'Capítulo {n}/{total}',
   prevChapter: 'Capítulo anterior',
   nextChapter: 'Capítulo siguiente',

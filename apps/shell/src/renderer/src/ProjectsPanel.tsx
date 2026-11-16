@@ -37,6 +37,7 @@ import {
   type ProjectProblem,
 } from '@genoffice/ui'
 import { useI18n } from './locale'
+import { projectTabShown, projectTabsShown } from './ai-features'
 import { projectsText, type ProjectsStringKey } from './i18n/strings-projects'
 import './projects-panel.css'
 
@@ -169,6 +170,8 @@ export interface ProjectsPanelProps {
   onOpenAiSettings: () => void
   /** main handed a chat to this home window (a home chat, or no document to open it in): show the ask panel with it */
   onOpenHomeAsk: (chat: ProjectChatRef) => void
+  /** AI features are on; off, the chats tab and the memory tidy-up are not shown (editor choice spec 8.1) */
+  aiOn?: boolean
   /** open a file of the project in the app (a name in the file list); defaults to the shell's open path */
   onOpenPath?: (path: string) => void
   /** the settings a consolidation runs with, read fresh at the click; tests inject one */
@@ -368,6 +371,7 @@ export function ProjectsPanel(props: ProjectsPanelProps) {
           onNoticeNeeded={props.onNoticeNeeded}
           onOpenAiSettings={props.onOpenAiSettings}
           onOpenHomeAsk={props.onOpenHomeAsk}
+          aiOn={props.aiOn ?? true}
           readSettings={props.readSettings}
           createTransport={props.createTransport}
           consolidate={props.consolidate}
@@ -543,6 +547,7 @@ interface DetailProps {
   onNoticeNeeded: (() => void) | undefined
   onOpenAiSettings: () => void
   onOpenHomeAsk: (chat: ProjectChatRef) => void
+  aiOn: boolean
   readSettings: (() => Promise<AiSettings>) | undefined
   createTransport: ((getSettings: () => AiSettings, lang: () => Lang) => AgentTransport) | undefined
   consolidate:
@@ -560,7 +565,10 @@ function ProjectDetailView(props: DetailProps) {
 
   const [detail, setDetail] = useState<ProjectDetail | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
-  const [tab, setTab] = useState<Tab>(props.tabRequest.tab)
+  const [tabAsked, setTab] = useState<Tab>(props.tabRequest.tab)
+  // no chats while AI is off: a request for them shows the first tab
+  const tabs = projectTabsShown(TABS, props.aiOn)
+  const tab = projectTabShown(tabAsked, TABS, props.aiOn)
   const [headNote, setHeadNote] = useState<Note | null>(props.initialNote)
   const [nameDraft, setNameDraft] = useState('')
   const [instructionsDraft, setInstructionsDraft] = useState('')
@@ -994,7 +1002,7 @@ function ProjectDetailView(props: DetailProps) {
     if (step === 0) return
     event.preventDefault()
     const dir = document.documentElement.dir === 'rtl' ? -step : step
-    const next = TABS[(TABS.indexOf(tab) + dir + TABS.length) % TABS.length]!
+    const next = tabs[(tabs.indexOf(tab) + dir + tabs.length) % tabs.length]!
     setTab(next)
     tabRefs.current[next]?.focus()
   }
@@ -1089,7 +1097,7 @@ function ProjectDetailView(props: DetailProps) {
         aria-label={s('tabsLabel')}
         onKeyDown={onTabKey}
       >
-        {TABS.map((id) => (
+        {tabs.map((id) => (
           <button
             key={id}
             type="button"
@@ -1236,16 +1244,18 @@ function ProjectDetailView(props: DetailProps) {
                   >
                     {s('memoryEditAll')}
                   </button>
-                  <button
-                    type="button"
-                    className="projects-ghost"
-                    disabled={
-                      consolidation?.kind === 'running' || detail.memoryEntries.length === 0
-                    }
-                    onClick={() => void consolidate()}
-                  >
-                    {p('consolidate')}
-                  </button>
+                  {props.aiOn && (
+                    <button
+                      type="button"
+                      className="projects-ghost"
+                      disabled={
+                        consolidation?.kind === 'running' || detail.memoryEntries.length === 0
+                      }
+                      onClick={() => void consolidate()}
+                    >
+                      {p('consolidate')}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (

@@ -7,7 +7,14 @@
  * the subscription programs they started). Nothing here ever starts or
  * resumes a job by itself.
  *
- * Generic over the job kind: AI page reading and translation share it.
+ * Generic over the job kind: AI page reading and translation share it. An
+ * easy explanation is a translate or translate-page job with `mode` 'easy';
+ * its record is told apart from the plain one of the same language.
+ *
+ * With an `activity` bridge every job is also one entry on the shell's list
+ * of running AI work: the main process refuses a job while AI is turned off
+ * (the job stops and fails with the refusal) and asks a job to stop when AI
+ * is being turned off (the same as its Stop).
  */
 import {
   DocumentJobBusyError,
@@ -21,6 +28,7 @@ import {
 import type { JobStatus } from '../../../../../packages/pdf-structure/src/store/store'
 // the store's own record-key rule, from its Node-free module (reading-assist spec 5.3)
 import { jobKeyOf, type JobKind } from '../../../../../packages/pdf-structure/src/store/job-keys'
+import type { ScreenAiJobBridge } from '../../shared/ipc'
 
 export interface DocumentJobView {
   /** session-unique */
@@ -30,6 +38,8 @@ export interface DocumentJobView {
   lang?: string
   /** the AI highlight run of a 'highlight' job */
   runId?: string
+  /** 'easy': an easy explanation (a translate or translate-page job); absent: a plain one */
+  mode?: 'easy'
   /** the provider id the job sends to */
   provider: string
   /** the provider and model as the confirmation showed them (for the progress strip) */
@@ -55,6 +65,8 @@ export interface StartDocumentJob<U> {
   lang?: string
   /** the AI highlight run of a 'highlight' job */
   runId?: string
+  /** 'easy': the job makes an easy explanation; its record is kept apart from the plain one */
+  mode?: 'easy'
   provider: string
   /** the provider and model as the confirmation showed them (for the progress strip) */
   aiLabel?: string
@@ -70,8 +82,8 @@ export interface StartDocumentJob<U> {
   onEnd?(view: DocumentJobView): void
 }
 
-const recordKey = (docHash: string, kind: JobKind, key?: string): string =>
-  JSON.stringify([docHash, kind, key ?? null])
+const recordKey = (docHash: string, kind: JobKind, key?: string, mode?: 'easy'): string =>
+  JSON.stringify([docHash, kind, key ?? null, mode ?? null])
 
 export type StartJobOutcome =
   { ok: true; view: DocumentJobView } | { ok: false; running: RunningDocumentJob }
@@ -86,8 +98,18 @@ export class DocumentJobSession {
   private readonly ran = new Set<string>()
   /** copies of those records an in-app save carried to another hash, and when */
   private readonly carried = new Map<string, number>()
+  /** the activity id of each running job, to the document it runs on */
+  private readonly activityJobs = new Map<string, string>()
 
-  constructor(private readonly registry: DocumentJobRegistry = documentJobs) {}
+  constructor(
+    private readonly registry: DocumentJobRegistry = documentJobs,
+    private readonly activity: ScreenAiJobBridge | null = null,
+  ) {
+    activity?.onStop((jobId) => {
+      const docHash = this.activityJobs.get(jobId)
+      if (docHash !== undefined) this.stop(docHash)
+    })
+  }
 
   /** the job running on this document in this process (any tab), or null */
   running(docHash: string): RunningDocumentJob | null {
@@ -99,12 +121,34 @@ export class DocumentJobSession {
     const busy = this.registry.running(spec.docHash)
     if (busy) return { ok: false, running: busy }
     const controller = new AbortController()
+    // told before the job's first call leaves, so the main process hears it first
+    const activityId = this.activity ? crypto.randomUUID() : null
+    let refusal: string | null = null
+    const activityEnded = () => {
+      if (activityId === null) return
+      this.activityJobs.delete(activityId)
+      this.activity?.end(activityId)
+    }
+    if (activityId !== null) {
+      this.activityJobs.set(activityId, spec.docHash)
+      this.activity!.begin(activityId).then(
+        (refused) => {
+          if (!refused || controller.signal.aborted) return
+          refusal = refused
+          controller.abort('cancelled')
+        },
+        () => {
+          // no main process answering (an older shell): the job runs as before
+        },
+      )
+    }
     const view: DocumentJobView = {
       id: this.nextId++,
       docHash: spec.docHash,
       kind: spec.kind,
       ...(spec.lang !== undefined ? { lang: spec.lang } : {}),
       ...(spec.runId !== undefined ? { runId: spec.runId } : {}),
+      ...(spec.mode === 'easy' ? { mode: 'easy' as const } : {}),
       provider: spec.provider,
       ...(spec.aiLabel !== undefined ? { aiLabel: spec.aiLabel } : {}),
       state: 'running',
@@ -128,16 +172,21 @@ export class DocumentJobSession {
           }),
       })
     } catch (err) {
+      activityEnded()
       if (err instanceof DocumentJobBusyError) return { ok: false, running: err.running }
       throw err
     }
     this.views.set(spec.docHash, view)
     this.controllers.set(spec.docHash, controller)
-    this.ran.add(recordKey(spec.docHash, spec.kind, jobKeyOf(spec)))
+    this.ran.add(recordKey(spec.docHash, spec.kind, jobKeyOf(spec), spec.mode))
     this.emit()
     const end = (patch: Partial<DocumentJobView>) => {
+      activityEnded()
       if (this.controllers.get(spec.docHash) === controller) this.controllers.delete(spec.docHash)
-      const last = this.update(view.id, spec.docHash, { ...patch, stopping: false })
+      // a job the main process refused (AI turned off) fails with that refusal
+      const ended =
+        refusal === null ? patch : { ...patch, state: 'failed' as const, error: refusal }
+      const last = this.update(view.id, spec.docHash, { ...ended, stopping: false })
       if (last) spec.onEnd?.(last)
     }
     handle.result.then(
@@ -165,8 +214,15 @@ export class DocumentJobSession {
     const at = Date.now()
     const own = [...this.ran, ...this.carried.keys()]
     for (const key of own) {
-      const [docHash, kind, second] = JSON.parse(key) as [string, JobKind, string | null]
-      if (docHash === from) this.carried.set(recordKey(to, kind, second ?? undefined), at)
+      const [docHash, kind, second, mode] = JSON.parse(key) as [
+        string,
+        JobKind,
+        string | null,
+        'easy' | null,
+      ]
+      if (docHash === from) {
+        this.carried.set(recordKey(to, kind, second ?? undefined, mode ?? undefined), at)
+      }
     }
   }
 
@@ -179,7 +235,8 @@ export class DocumentJobSession {
   runningElsewhere(docHash: string, records: readonly JobStatus[]): JobStatus | undefined {
     return records.find((job) => {
       if (job.state !== 'running') return false
-      const carriedAt = this.carried.get(recordKey(docHash, job.kind, jobKeyOf(job)))
+      const mode = job.mode === 'easy' ? job.mode : undefined
+      const carriedAt = this.carried.get(recordKey(docHash, job.kind, jobKeyOf(job), mode))
       return carriedAt === undefined || job.updatedAt === undefined || job.updatedAt > carriedAt
     })
   }

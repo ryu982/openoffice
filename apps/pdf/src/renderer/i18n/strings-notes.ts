@@ -20,6 +20,7 @@ import { he } from './notes/he'
 import { hi } from './notes/hi'
 import { zhTW } from './notes/zh-TW'
 import { vi } from './notes/vi'
+import { tr } from './notes/tr'
 
 /** Copy for the note of each PDF (reading assistant) */
 export const notesStrings = defineStrings({
@@ -44,4 +45,5 @@ export const notesStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

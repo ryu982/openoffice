@@ -69,6 +69,9 @@
   --color-ai-action: #e8663f;
   --color-ai-action-hover: #d4552f;
   --color-ai-action-text: #ffffff;
+  /* what the last AI run changed, marked over the document (screen only, never saved) */
+  --color-ai-changed-bg: rgb(255 193 7 / 24%);
+  --color-ai-changed-line: rgb(214 140 0 / 85%);
   --color-brand-secondary: #0f7fff;
   --color-text-primary: #232425;
   --color-text-secondary: #606366;
@@ -119,7 +122,7 @@
   --bg-hover-accent: #444;
   --bg-content: #1a1a1a;
   --icon-muted: #666;
-  --danger: #d13438;
+  --danger: #f28b82;
   --danger-bg: #3a2020;
   --docs-revision-bar: #ff6b6b;
   --search-hit-bg: #745a1e;
@@ -140,6 +143,8 @@
   --color-ai-action: #e8663f;
   --color-ai-action-hover: #f07a55;
   --color-ai-action-text: #ffffff;
+  --color-ai-changed-bg: rgb(255 193 7 / 22%);
+  --color-ai-changed-line: rgb(240 176 48 / 85%);
   --color-brand-secondary: #4a9eff;
   --color-text-primary: #e4e4e4;
   --color-text-secondary: #a0a0a0;
@@ -178,7 +183,7 @@
     --bg-hover-accent: #444;
     --bg-content: #1a1a1a;
     --icon-muted: #666;
-    --danger: #d13438;
+    --danger: #f28b82;
     --danger-bg: #3a2020;
     --docs-revision-bar: #ff6b6b;
     --search-hit-bg: #745a1e;
@@ -199,6 +204,8 @@
     --color-ai-action: #e8663f;
     --color-ai-action-hover: #f07a55;
     --color-ai-action-text: #ffffff;
+    --color-ai-changed-bg: rgb(255 193 7 / 22%);
+    --color-ai-changed-line: rgb(240 176 48 / 85%);
     --color-brand-secondary: #4a9eff;
     --color-text-primary: #e4e4e4;
     --color-text-secondary: #a0a0a0;

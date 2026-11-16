@@ -47,6 +47,11 @@ export const it = {
   saveFailedStatus: 'Salvataggio non riuscito',
   exportFailed: 'Esportazione non riuscita',
   printFailed: 'Stampa non riuscita: {error}',
+  printRangeEmpty:
+    'Questo documento ha {count} pagine. Inserisci numeri di pagina compresi in questo intervallo.',
+  printPagesFailed: 'Impossibile contare le pagine da stampare: {error}',
+  printLayoutSaved: 'Il risultato impaginato è stato salvato come PDF.',
+  printLayoutSaveFailed: 'Impossibile salvare il PDF: {error}',
   exportHtmlSkipped:
     'Esportato, ma {count} risorsa/e non è stato possibile incorporarle (es. {first})',
   viewPreview: 'Anteprima',
@@ -83,7 +88,7 @@ export const it = {
   previewNeedsSave:
     "Immagini e stili relativi compaiono nell'anteprima dopo il salvataggio del file",
   inspectHint:
-    "Fai clic su un elemento nell'anteprima per selezionarlo, doppio clic per modificare il testo",
+    "Fai clic su un elemento nell'anteprima per selezionarlo, doppio clic per modificare il testo, Maiusc+clic o {alt}+trascina per selezionarne più di uno",
   nodeDynamic:
     "Questo elemento è stato creato dallo script della pagina e non esiste nel sorgente; modificalo dal sorgente o con l'IA",
   nodeDynamicShort: 'generato da script',

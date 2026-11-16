@@ -41,6 +41,15 @@ describe('buildContext', () => {
     expect(ctx).not.toContain('Unsaved')
   })
 
+  it('tells the model an encrypted document still reads and translates', () => {
+    expect(contextOf()).not.toContain('encrypted')
+    const ctx = contextOf({ readOnly: () => true })
+    expect(ctx).toContain('read-only')
+    expect(ctx).toContain('start_document_translation')
+    expect(ctx).toContain('Do not refuse those because of the encryption')
+    expect(ctx).not.toContain('it cannot be modified.')
+  })
+
   it('lists only the document properties that are set', () => {
     expect(contextOf()).not.toContain('Document properties')
     const ctx = contextOf({ metadata: () => ({ title: 'Plan', author: '', keywords: 'q3, plan' }) })

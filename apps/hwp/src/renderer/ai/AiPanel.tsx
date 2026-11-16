@@ -2,6 +2,7 @@ import {
   AI_QUEUE_LABELS,
   AiBlockedNotice,
   AiComposer,
+  AiRunStopNotice,
   AiConnectPrompt,
   AiFirstConnectionNotice,
   AiInputTruncatedNotice,
@@ -14,7 +15,7 @@ import {
   type AiScopeQuoteData,
   AiSubscriptionUsageLine,
   AiToolsUnsupportedNotice,
-  AiTypingIndicator,
+  AiReplyProgress,
   Markdown,
   aiPanelWidthAtPointer,
   aiSubscriptionText,
@@ -23,6 +24,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -35,6 +39,8 @@ import {
   type TemplateDocument,
   type SkillChipRef,
   type SkillUse,
+  runContinueNote,
+  runStopText,
   docMentionActions,
   type AiComposerDocs,
   type ProjectChatEntry,
@@ -43,6 +49,8 @@ import {
   placeRemoteEntries,
   useProjectPanel,
   type ProjectPanel,
+  useSubscriptionUsageUpdates,
+  AiChangesCard,
 } from '@genoffice/ui'
 import { useEffect, useId, useRef, useState } from 'react'
 import type {
@@ -53,8 +61,12 @@ import type {
 import {
   AgentLoop,
   type AgentImage,
+  type AgentRunStop,
   type IpcStreamError,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type {
   AiSettings,
@@ -69,8 +81,9 @@ import sendStop from '../assets/send-stop.png'
 import attachIcon from '../assets/attach-icon.png'
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { AttachmentAddResult, AttachmentMeta } from '../../shared/ipc'
-import type { AgentMemoRemovalRefusal, AgentPlace } from '../../../studio-plugin/agent-plugin.mjs'
+import type { AgentMemoRemovalRefusal } from '../../../studio-plugin/agent-plugin.mjs'
 import type { AgentBridge } from './agent-bridge'
+import type { AiPrefill } from './easy-words'
 import { blockedRunOf, type AiBlockedRun } from './ai-connection'
 import { AttachmentList, MAX_IMAGES_PER_MESSAGE, PASTE_MIME_EXT } from './attachments'
 import { createFilesSkill } from './files-skill'
@@ -83,7 +96,15 @@ import {
   type SelectionScope,
 } from './selection-scope'
 import { createHwpSkill, type HwpChange } from './hwp-skill'
+import {
+  hwpChangeCount,
+  hwpChangeLine,
+  revertableIndex,
+  undoOutcome,
+  type HwpRunState,
+} from './run-changes'
 import { MemoApprovalGate, memoApprovalPreview } from './memo-approval'
+import { unfinishedSteps, type RunStep } from './unfinished-steps'
 import { useSubscriptionConnection } from './subscription-client'
 import { createElectronTransport } from './transport'
 
@@ -129,7 +150,7 @@ interface RunChanges {
   items: HwpChange[]
   /** the editor's count of changes made by anyone else, read when the run began */
   foreign: number
-  state: 'applied' | 'reverted' | 'refused'
+  state: HwpRunState
 }
 
 interface ChatEntry {
@@ -139,10 +160,14 @@ interface ChatEntry {
   isError?: boolean
   /** the run stopped because its connection cannot go on (limit used up, signed out, …) */
   blocked?: AiBlockedRun
+  /** the app stopped the run by its own rule (unusable edits, failing edits, a loop) */
+  stop?: AgentRunStop
   /** the run failed and this user message was rolled back out of the model context */
   undelivered?: boolean
   tools?: ToolActivity[]
   changes?: RunChanges
+  /** labels of the edits this run left undone, shown under its last reply */
+  unfinished?: string[]
   /** attachments this message took from the composer (echoed read-only; a retry sends them again) */
   attachments?: AttachmentMeta[]
   /** the selection this message was about, frozen at send */
@@ -207,6 +232,7 @@ export function AiPanel({
   templateDocument,
   onSkillHandoff,
   prefill,
+  onPrefillTaken,
 }: {
   /** the document operations of the open editor */
   bridge: AgentBridge
@@ -217,8 +243,16 @@ export function AiPanel({
   templateDocument?: TemplateDocument | null
   /** this tab took a request handed over by the template flow: show the panel */
   onSkillHandoff?: () => void
-  /** a request from the document check: fills the input box, never sends it */
-  prefill?: { text: string; nonce: number } | null
+  /**
+   * a request handed to the panel: the document check's fills the input box and waits for
+   * the user; one with `autoRun` (the editor's right-click 쉬운 말로 풀기) is sent at once
+   */
+  prefill?: AiPrefill | null
+  /**
+   * the panel took an `autoRun` request: the owner clears it (`afterPrefillTaken`), so the
+   * request runs once even when the panel mounts again with the same props
+   */
+  onPrefillTaken?: (taken: AiPrefill) => void
 }): ReactElement {
   const { lang, t } = useI18n()
   const [chat, setChat] = useState<ChatEntry[]>([])
@@ -230,7 +264,7 @@ export function AiPanel({
 
   // a request handed over by the document check: it waits in the input box for the user
   useEffect(() => {
-    if (!prefill) return
+    if (!prefill || prefill.autoRun) return
     setPrompt(prefill.text)
   }, [prefill])
 
@@ -258,6 +292,8 @@ export function AiPanel({
   >([])
   /** what the tools of the run in flight did, kept with its reply */
   const runToolsRef = useRef<ToolActivity[]>([])
+  /** the tool calls of the run in flight with their arguments, for its unfinished edits */
+  const runStepsRef = useRef<RunStep[]>([])
   /** the project folder of this panel (set once its hook ran; read by callbacks) */
   const projectRef = useRef<ProjectPanel | null>(null)
 
@@ -322,9 +358,13 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    editor: 'hwp',
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -350,6 +390,18 @@ export function AiPanel({
     cards: skillCards,
     busy,
     send: (text, use) => send(text, undefined, undefined, use),
+    // a template skill called in a document with content asks where to run
+    hasContent: async () => {
+      if ((await bridge.readText()).trim() !== '') return true
+      const [tables, pictures] = await Promise.all([bridge.listTables(), bridge.listPictures()])
+      return tables.count > 0 || pictures.count > 0
+    },
+    // a template copy that brought the asking document: it goes in as an attachment
+    attach: async (paths) => {
+      const added = (await window.hwpApi.addAttachmentPaths(paths)) ?? null
+      mergeAttachments(added)
+      return (added?.accepted.length ?? 0) > 0
+    },
     onTaken: onSkillHandoff,
     setComposer: setPrompt,
   })
@@ -507,6 +559,25 @@ export function AiPanel({
       window.clearInterval(timer)
     }
   }, [busy])
+  // the plugin takes the marks off by itself when the user edits the document: the card's
+  // button to clear them goes with them
+  useEffect(() => {
+    if (busy || !marksShown) return
+    let stopped = false
+    const readMarks = async (): Promise<void> => {
+      try {
+        const result = await bridgeRef.current.hasMarks()
+        if (!stopped && !result.shown) setMarksShown(false)
+      } catch {
+        // the editor is not ready, or is gone: the button stays as it is
+      }
+    }
+    const timer = window.setInterval(() => void readMarks(), SELECTION_POLL_MS)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [busy, marksShown])
   const scope = selected && selected.key !== scopeCleared ? selected : null
   const scopeRef = useRef(scope)
   scopeRef.current = scope
@@ -616,6 +687,9 @@ export function AiPanel({
   const streamErrorRef = useRef<IpcStreamError | null>(null)
   /** usage windows the subscription program reported last */
   const [subscriptionUsage, setSubscriptionUsage] = useState<AiSubscriptionUsage[]>([])
+  // usage a picture request reported reaches every window (the chat stream only its own);
+  // the shared merge keeps the windows a report does not name
+  useSubscriptionUsageUpdates(() => window.hwpApi.aiSubscription, setSubscriptionUsage)
   /** the input of the last run was cut to fit a limit */
   const [inputTruncated, setInputTruncated] = useState(false)
   const langRef = useRef(lang)
@@ -624,6 +698,10 @@ export function AiPanel({
   bridgeRef.current = bridge
   /** instruction of the last run, for a retry */
   const runInstructionRef = useRef('')
+  /** why the app stopped the last run, for "Continue"; null once another run starts */
+  const runStopRef = useRef<AgentRunStop | null>(null)
+  /** the skills of the stopped run without a Continue note, so a second Continue does not stack them */
+  const continueBaseRef = useRef<SkillUse | null>(null)
   /** document changes of the in-flight run, in the order they were made */
   const runChangesRef = useRef<HwpChange[]>([])
   /** foreign-change count read when the in-flight run began; null when it could not be read */
@@ -690,6 +768,8 @@ export function AiPanel({
       onInputTruncated: () => setInputTruncated(true),
     })
 
+  /** the person's words of the run that is going: import_attachment may hand them to a new tab */
+  const runRequestRef = useRef('')
   const skillRef = useRef<ReturnType<typeof createHwpSkill> | null>(null)
   if (!skillRef.current)
     skillRef.current = createHwpSkill({
@@ -706,6 +786,17 @@ export function AiPanel({
       confirmMemoRemoval: (refusal) => memoGateRef.current!.ask(refusal),
       imageGenAvailable: () => imageGenAvailableRef.current,
       pictureAnalysisAvailable: () => imageAnalysisAvailableRef.current !== false,
+      // a Markdown attachment as a new Hangul tab; the request of this run may go along
+      importAttachment: async (name, handOver) => {
+        const attachment = availableAttachmentsRef
+          .current()
+          .find((candidate) => candidate.name === name)
+        if (!attachment) {
+          return { ok: false, error: `there is no file named "${name}" attached to this chat.` }
+        }
+        const request = handOver ? runRequestRef.current.trim() : ''
+        return window.hwpApi.importAttachmentAsDocument(attachment.path, request || undefined)
+      },
       // the model names an attachment; only files the panel shows can be found
       attachmentPath: (name) =>
         availableAttachmentsRef.current().find((attachment) => attachment.name === name)?.path ??
@@ -715,6 +806,18 @@ export function AiPanel({
           .current()
           .filter((attachment) => ATTACHMENT_IMAGE_EXTS.has(attachment.ext))
           .map((attachment) => attachment.name),
+      readAttachmentDocument: async (name) => {
+        const attachment = availableAttachmentsRef
+          .current()
+          .find((candidate) => candidate.name === name)
+        if (!attachment) {
+          return {
+            ok: false,
+            error: `there is no file named "${name}" attached to this chat (see the attachment list)`,
+          }
+        }
+        return window.hwpApi.readAttachmentDocument(attachment.path)
+      },
     })
 
   // The loop is built once; every mutable value goes through a ref getter
@@ -730,10 +833,13 @@ export function AiPanel({
         createFilesSkill(() => availableAttachmentsRef.current()),
         // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
         ...panelUserSkills({
+          editor: 'hwp',
           lang: () => langRef.current,
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLast((last) => ({
@@ -752,7 +858,7 @@ export function AiPanel({
           patchLast((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },
@@ -764,6 +870,12 @@ export function AiPanel({
             output: execution.output?.slice(0, TOOL_OUTPUT_MAX_CHARS),
           }
           runToolsRef.current.push(activity)
+          runStepsRef.current.push({
+            name: call.name,
+            input: call.input,
+            isError: execution.isError,
+            summary: execution.summary,
+          })
           patchLast((last) => {
             // Swap out the running placeholder pushed by onToolStart (parse-fail calls have none)
             const tools = [...(last.tools ?? [])]
@@ -785,19 +897,26 @@ export function AiPanel({
           const changed = takeRunChanges()
           persistMessage('assistant', final, runToolsRef.current)
           runToolsRef.current = []
+          // decided from the tool results, not from what the reply says it did
+          const unfinished = unfinishedSteps(runStepsRef.current).map((step) => step.summary)
+          runStepsRef.current = []
           patchLast((last) => ({
             streaming: false,
             text: final || (last.tools?.length ? last.text : tGlobal('aiNoReply')),
             // A stop mid-tool can leave a running placeholder behind — drop it
             tools: last.tools?.filter((tl) => !tl.running),
             ...changed,
+            ...(unfinished.length > 0 ? { unfinished } : {}),
           }))
           setBusy(false)
           projectRef.current?.finishSend()
         },
-        onError: (error) => {
+        onError: (error, stop) => {
           const blocked = blockedRunOf(streamErrorRef.current, error)
           streamErrorRef.current = null
+          runStopRef.current = stop ?? null
+          // kept on this PC only, as words and counts (no text of the document or the model)
+          if (stop) window.hwpApi.noteAiRunStop?.(stop)
           if (blocked) {
             // the queue must not fire one message after another into the same wall
             msgQueueRef.current.hold()
@@ -819,9 +938,11 @@ export function AiPanel({
               next[next.length - 1] = {
                 ...last,
                 streaming: false,
-                text: error,
+                // the loop reports in English; a stop it explains is shown in the screen language
+                text: stop ? runStopText(stop, langRef.current) : error,
                 isError: true,
                 ...(blocked ? { blocked } : {}),
+                ...(stop ? { stop } : {}),
                 tools: last.tools?.filter((tl) => !tl.running),
                 ...changed,
               }
@@ -902,6 +1023,8 @@ export function AiPanel({
     }
     stickToBottomRef.current = true
     streamErrorRef.current = null
+    runStopRef.current = null
+    continueBaseRef.current = null
     setInputTruncated(false)
     runInstructionRef.current = instruction
     runChangesRef.current = []
@@ -944,7 +1067,10 @@ export function AiPanel({
     setPrompt('')
     skillsRef.current.consume(skillUse)
     skillTemplatesRef.current.noteRequest(text)
+    runRequestRef.current = text
     runSkillUseRef.current = skillUse
+    runStepsRef.current = []
+    skillRef.current!.beginRun()
     setBusy(true)
     void (async () => {
       try {
@@ -986,6 +1112,15 @@ export function AiPanel({
     return true
   }
 
+  // a request that runs as soon as it arrives goes through the same gate as a typed one;
+  // when that gate does not start it, it waits in the input box as a typed one would
+  useEffect(() => {
+    if (!prefill?.autoRun) return
+    if (!send(prefill.text)) setPrompt(prefill.text)
+    onPrefillTaken?.(prefill)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per handed request
+  }, [prefill])
+
   const stop = (): void => {
     // a run waiting on the memo question stops now: the call is answered "keep"
     memoGateRef.current?.cancel()
@@ -1021,6 +1156,22 @@ export function AiPanel({
     )
   }
 
+  /**
+   * "Continue" on a run the app stopped after it had changed the document: the
+   * same request goes again with a note from the app that part of the work is
+   * already in the document, so the model goes on instead of starting over.
+   */
+  const continueRun = (): void => {
+    const stop = runStopRef.current
+    if (!stop) return
+    const base = continueBaseRef.current ?? runSkillUseRef.current
+    const sent = send(runInstructionRef.current, runAttachmentsRef.current, runScopeRef.current, {
+      ...base,
+      text: `${base.text}\n\n${runContinueNote(stop)}`,
+    })
+    if (sent) continueBaseRef.current = base
+  }
+
   /** A send typed in the composer: the chosen skills are read first, then it goes out. */
   const sendPrompt = (): void => {
     const text = prompt.trim()
@@ -1038,16 +1189,8 @@ export function AiPanel({
     window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
   }
 
-  // The editor's history is one stack: only the newest run still in the document can be
-  // taken back, and a run that could not be taken back whole blocks the ones under it.
-  const revertableIdx = (() => {
-    for (let i = chat.length - 1; i >= 0; i--) {
-      const state = chat[i]!.changes?.state
-      if (state === 'applied') return i
-      if (state === 'refused') return -1
-    }
-    return -1
-  })()
+  // the editor's history is one stack: only the newest run still in the document can be taken back
+  const revertableIdx = revertableIndex(chat.map((entry) => entry.changes?.state))
   /** the newest user message: the one the last run (and its skills) belongs to */
   const lastUserIdx = chat.map((entry) => entry.role).lastIndexOf('user')
 
@@ -1062,17 +1205,17 @@ export function AiPanel({
           i === idx && entry.changes ? { ...entry, changes: { ...entry.changes, state } } : entry,
         ),
       )
-      if (state === 'reverted') {
+      if (state === 'reverted' || state === 'partial') {
         revertedNoteDueRef.current = true
-        // what they marked was taken back
+        // what they marked was taken back, or moved under them
         clearMarks()
       }
       setReverting(false)
     }
     setReverting(true)
     bridgeRef.current.undo(changes.items.length, changes.foreign).then(
-      (result) => settle(result.ok ? 'reverted' : 'refused'),
-      () => settle('refused'),
+      (result) => settle(undoOutcome(result)),
+      () => settle(undoOutcome(null)),
     )
   }
 
@@ -1082,6 +1225,8 @@ export function AiPanel({
     msgQueue.clear()
     sendGate.reset()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     revertedNoteDueRef.current = false
     sentAttachmentsRef.current = []
     setAttachments([])
@@ -1124,6 +1269,8 @@ export function AiPanel({
         message.role === 'user' ? skillChipRefsOf(message.skills) : undefined,
       ),
     )
+    // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     loopRef.current?.restore(
       messages.map((message) => ({ role: message.role, text: message.text })),
     )
@@ -1358,13 +1505,9 @@ export function AiPanel({
           return (
             <div
               key={i}
-              className={`ai-msg ai-msg-assistant${entry.isError && !blocked ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
+              className={`ai-msg ai-msg-assistant${entry.isError && !blocked && !entry.stop ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
-              {!entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator label={hasTools ? t('aiWorking') : t('aiThinking')} />
-                </span>
-              ) : blocked ? (
+              {blocked ? (
                 <AiBlockedNotice
                   kind={blocked.kind}
                   provider={blocked.provider}
@@ -1376,6 +1519,13 @@ export function AiPanel({
                   lang={lang}
                   onContinueWith={continueWith}
                 />
+              ) : entry.stop ? (
+                <AiRunStopNotice
+                  stop={entry.stop}
+                  lang={lang}
+                  // going on belongs to the run that just stopped, not to older replies
+                  onContinue={isLast && !busy && !reverting ? continueRun : undefined}
+                />
               ) : (
                 entry.text && (
                   <div dir="auto">
@@ -1383,19 +1533,27 @@ export function AiPanel({
                   </div>
                 )
               )}
+              {entry.unfinished && <UnfinishedSteps steps={entry.unfinished} />}
               {hasTools && <ToolChipList tools={entry.tools!} />}
               <SkillUsedNotes tools={entry.tools} />
               {project.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.changes && (
-                <RunChangesCard
-                  changes={entry.changes}
+                <AiChangesCard
+                  lang={lang}
+                  state={entry.changes.state}
+                  count={hwpChangeCount(entry.changes.items)}
+                  lines={entry.changes.items.map(hwpChangeLine)}
                   canRevert={i === revertableIdx && !busy && !reverting}
                   onRevert={() => revert(i)}
                   onClearMarks={i === revertableIdx && marksShown ? clearMarks : null}
-                  onShow={(place) => void bridgeRef.current.reveal(place).catch(() => {})}
+                  onShowLine={(index) => {
+                    const place = entry.changes?.items[index]?.place
+                    if (place) void bridgeRef.current.reveal(place).catch(() => {})
+                  }}
                 />
               )}
+              <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   <button
@@ -1412,6 +1570,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
         {sendGate.connectChoice && (
           <AiConnectPrompt
             choice={sendGate.connectChoice}
@@ -1543,6 +1703,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
             </>
           }
           footerBelow={project.picker}
@@ -1622,111 +1783,6 @@ export function AiPanel({
   )
 }
 
-/** What a run changed in the document, with the button that takes the whole run back. */
-function RunChangesCard({
-  changes,
-  canRevert,
-  onRevert,
-  onClearMarks,
-  onShow,
-}: {
-  changes: RunChanges
-  canRevert: boolean
-  onRevert: () => void
-  /** set while the editor marks these changes on the pages */
-  onClearMarks: (() => void) | null
-  onShow: (place: AgentPlace) => void
-}): ReactElement {
-  const { t } = useI18n()
-  const count = changes.items.reduce((sum, item) => sum + item.count, 0)
-  return (
-    <div className={`ai-changes ai-changes-${changes.state}`}>
-      <div className="ai-changes-head">
-        <span className="ai-changes-title">
-          {changes.state === 'reverted' ? t('aiReverted') : t('aiChangesTitle', { count })}
-        </span>
-        {onClearMarks && changes.state === 'applied' && (
-          <button className="ai-changes-unmark" onClick={onClearMarks}>
-            {t('aiClearMarks')}
-          </button>
-        )}
-        {changes.state === 'applied' && (
-          <button className="ai-changes-revert" disabled={!canRevert} onClick={onRevert}>
-            {t('aiRevert')}
-          </button>
-        )}
-      </div>
-      <ul className="ai-changes-list">
-        {changes.items.map((item, j) => (
-          <li key={j} className="ai-change" dir="auto">
-            {item.place && changes.state !== 'reverted' ? (
-              // a place that was taken back is no longer there to show
-              <button
-                type="button"
-                className="ai-change-go"
-                data-tip={t('aiShowChange')}
-                onClick={() => onShow(item.place!)}
-              >
-                <ChangeLine item={item} />
-              </button>
-            ) : (
-              <ChangeLine item={item} />
-            )}
-          </li>
-        ))}
-      </ul>
-      {changes.state === 'refused' && (
-        <div className="ai-changes-note" role="status">
-          {t('aiRevertRefused')}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** One change as a line: what went (struck through), what came, marked the same in every language. */
-function ChangeLine({ item }: { item: HwpChange }): ReactElement {
-  if (item.kind === 'insert' || item.kind === 'table' || item.kind === 'image') {
-    return (
-      <>
-        <span className="ai-change-mark" aria-hidden>
-          {item.kind === 'table' ? '+ ▦' : item.kind === 'image' ? '+ ▧' : '+'}
-        </span>
-        <ins className="ai-change-to">{item.to}</ins>
-      </>
-    )
-  }
-  if (item.kind === 'delete') {
-    return (
-      <>
-        <span className="ai-change-mark" aria-hidden>
-          −
-        </span>
-        <del className="ai-change-from">{item.from}</del>
-      </>
-    )
-  }
-  return (
-    <>
-      {item.kind === 'field' ||
-      item.kind === 'format' ||
-      item.kind === 'cells' ||
-      item.kind === 'lines' ||
-      item.kind === 'note' ? (
-        // named, not struck through: this text stays, it is what the change was done to
-        <span className="ai-change-field">{item.from}</span>
-      ) : (
-        <del className="ai-change-from">{item.from}</del>
-      )}
-      <span className="ai-change-arrow" aria-hidden>
-        →
-      </span>
-      <ins className="ai-change-to">{item.to}</ins>
-      {item.count > 1 && <span className="ai-change-count">×{item.count}</span>}
-    </>
-  )
-}
-
 /** Step-row status icons (timeline glyphs, unified with the other apps) */
 function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
   if (status === 'running') {
@@ -1779,6 +1835,24 @@ function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12.4 2.4 2.4 4.6-5" />
     </svg>
+  )
+}
+
+/** The edits a run left undone, under its reply: the count, and their labels when opened. */
+function UnfinishedSteps({ steps }: { steps: string[] }): ReactElement {
+  const { t: tr } = useI18n()
+  return (
+    <details className="ai-unfinished">
+      <summary className="ai-unfinished-summary">
+        {tr('aiUnfinishedSteps', { n: steps.length })}
+      </summary>
+      <p className="ai-unfinished-note">{tr('aiUnfinishedNote')}</p>
+      <ul className="ai-unfinished-list">
+        {steps.map((step, j) => (
+          <li key={j}>{step}</li>
+        ))}
+      </ul>
+    </details>
   )
 }
 

@@ -536,6 +536,31 @@ export const DRIVE_MAIN_STRINGS = defineStrings({
       'Tài liệu này là bản sao của một tệp Google Drive, còn AI đang dùng là kết nối miễn phí có thể dùng nội dung nhận được để huấn luyện. Hãy chọn AI khác để làm việc với tài liệu này.',
     ok: 'OK',
   } satisfies Keys,
+  tr: {
+    pageDoneTitle: 'Google Drive bağlandı',
+    pageDoneBody: "Bu sekmeyi kapatıp GenOffice'e dönebilirsiniz.",
+    pageFailedTitle: 'Google Drive bağlanmadı',
+    pageFailedBody: "GenOffice'e dönüp tekrar deneyin.",
+    dialogTitle: 'Google Drive',
+    askChanged: '“{name}” siz açtıktan sonra Google Drive üzerinde değiştirildi.',
+    askReadOnly: '“{name}” dosyasını Google Drive üzerinde düzenleyemezsiniz.',
+    askGone: '“{name}” artık Google Drive üzerinde değil veya bu hesap onu göremiyor.',
+    askDetail: "Değişiklikleriniz bu PC'de kaydedildi. Drive üzerinde ne yapılsın?",
+    btnOverwrite: 'Drive üzerindekinin üzerine yaz',
+    btnCopy: "Drive'a kopya kaydet",
+    btnLocal: "Yalnızca bu PC'de sakla",
+    copySuffix: 'kopya',
+    noticeOfficeCopy:
+      '“{name}” bir Google belgesi olduğu için olduğu gibi bırakıldı. Değişiklikleriniz aynı klasöre “{copyName}” olarak kaydedildi.',
+    noticeCopy: 'Değişiklikleriniz Google Drive üzerine “{copyName}” olarak kaydedildi.',
+    noticeUploadFailed:
+      "“{name}” Google Drive üzerine yüklenemedi. Değişiklikleriniz bu PC'de kaydedildi ve uygulama tekrar deneyecek.",
+    pagePickedTitle: 'Dosyalar seçildi',
+    pagePickedBody: 'Bu sekmeyi kapatıp GenOffice’e dönebilirsiniz.',
+    freeAiDocRefusal:
+      'Bu belge bir Google Drive dosyasının kopyası ve kullanılan AI, aldıklarıyla eğitim yapabilecek ücretsiz bir bağlantı. Bu belgede çalışmak için başka bir AI seçin.',
+    ok: 'Tamam',
+  } satisfies Keys,
 })
 
 export const driveText = createI18n(DRIVE_MAIN_STRINGS)

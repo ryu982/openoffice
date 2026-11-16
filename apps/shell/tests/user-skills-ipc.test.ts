@@ -48,12 +48,30 @@ const service = {
   aiRead: vi.fn(async () => ({ ok: false, reason: 'disabled' })),
   aiReadFile: vi.fn(async () => ({ ok: false, reason: 'outside' })),
   copyToMine: vi.fn(async () => ({ ok: false, reason: 'exists' })),
+  prepare: vi.fn(async (source: { kind: string }) => ({
+    origin: source.kind === 'text' ? { kind: 'text' } : { kind: source.kind, file: 'f' },
+    root: 'r',
+    candidates: [],
+    rootLicense: undefined,
+    tempDir: undefined,
+  })),
+  readImported: vi.fn(async () => ({
+    ok: true,
+    content: { body: { text: 'b', truncated: false }, files: [] },
+  })),
+  readImportedFile: vi.fn(async () => ({ ok: true, file: { text: 'f', truncated: false } })),
+  exportBundleTo: vi.fn(async () => ({ ok: true, path: 'p' })),
+  exportInfo: vi.fn(async () => ({ ok: true, fileName: 'a.zip', includesTemplate: false })),
+  versions: vi.fn(async () => ({ ok: true, versions: [] })),
+  compareVersion: vi.fn(async () => ({ ok: true, diff: { same: true, skillMd: [], files: [] } })),
+  restoreVersion: vi.fn(async () => ({ ok: true, id: 'app:a' })),
+  removeVersion: vi.fn(async () => ({ ok: true })),
 }
 
 const { registerUserSkillsIpc } = await import('../src/main/user-skills/user-skills-ipc')
 const { userSkillsManageGate } = await import('../src/main/agent/agent-skills')
 const openSettings = vi.fn()
-registerUserSkillsIpc({
+const ipc = registerUserSkillsIpc({
   service: service as unknown as UserSkillsService,
   canManage: userSkillsManageGate({
     isMainWindow: (sender) => sender === (settings as unknown),
@@ -110,6 +128,45 @@ describe('who may do what', () => {
     expect(mocks.sent.map((entry) => entry.channel)).toEqual([C.changed, C.changed])
   })
 
+  it('keeps the earlier versions of a skill to the settings screen', async () => {
+    const version = '20261110T093000000Z-edit'
+    for (const other of [editor, agent]) {
+      expect(await call(C.versions, other, 'app:a')).toMatchObject({ reason: 'not-allowed' })
+      expect(await call(C.compareVersion, other, 'app:a', version)).toMatchObject({
+        reason: 'not-allowed',
+      })
+      expect(await call(C.restoreVersion, other, 'app:a', version)).toMatchObject({
+        reason: 'not-allowed',
+      })
+      expect(await call(C.removeVersion, other, 'app:a', version)).toMatchObject({
+        reason: 'not-allowed',
+      })
+    }
+    expect(service.versions).not.toHaveBeenCalled()
+    expect(service.restoreVersion).not.toHaveBeenCalled()
+    expect(service.removeVersion).not.toHaveBeenCalled()
+
+    expect(await call(C.versions, settings, 'app:a')).toEqual({ ok: true, versions: [] })
+    expect(await call(C.compareVersion, settings, 'app:a', version)).toMatchObject({ ok: true })
+    expect(await call(C.removeVersion, settings, 'app:a', version)).toEqual({ ok: true })
+    expect(mocks.sent).toEqual([])
+    // going back changes the skill: every window reads the list again
+    expect(await call(C.restoreVersion, settings, 'app:a', version)).toEqual({
+      ok: true,
+      id: 'app:a',
+    })
+    expect(service.restoreVersion).toHaveBeenCalledWith('app:a', version)
+    expect(mocks.sent.map((entry) => entry.channel)).toEqual([C.changed, C.changed])
+
+    expect(await call(C.restoreVersion, settings, 'app:a', 7)).toMatchObject({
+      reason: 'invalid',
+    })
+    expect(await call(C.restoreVersion, settings, 'app:a', 'x'.repeat(65))).toMatchObject({
+      reason: 'invalid',
+    })
+    expect(service.restoreVersion).toHaveBeenCalledTimes(1)
+  })
+
   it('lets any window save a card and read for the AI', async () => {
     const input = { title: 'T', name: 'n', description: 'd', body: 'b', invoke: 'auto' }
     expect(await call(C.saveFromCard, editor, input)).toEqual({ ok: true, id: 'app:x' })
@@ -148,5 +205,108 @@ describe('who may do what', () => {
     expect(
       await call(C.install, settings, { token: 'nope', selected: [], onCollision: {} }),
     ).toEqual({ ok: false, reason: 'not-found' })
+  })
+})
+
+describe('skills dropped on a window and pasted text', () => {
+  it('keeps a dropped file for the settings screen, which previews it once', async () => {
+    ipc.queueDropped({ kind: 'zip', file: 'C:/dl/pack.zip' })
+    expect(mocks.sent.map((entry) => entry.channel)).toEqual([C.dropped, C.dropped])
+    expect(await call(C.takeDropped, editor)).toMatchObject({ reason: 'not-allowed' })
+    expect(await call(C.takeDropped, agent)).toMatchObject({ reason: 'not-allowed' })
+    const taken = (await call(C.takeDropped, settings)) as {
+      ok: boolean
+      preview: { origin: { kind: string } } | null
+    }
+    expect(taken.ok).toBe(true)
+    expect(taken.preview?.origin).toEqual({ kind: 'zip' })
+    expect(service.prepare).toHaveBeenCalledWith({ kind: 'zip', file: 'C:/dl/pack.zip' })
+    expect(await call(C.takeDropped, settings)).toEqual({ ok: true, preview: null })
+  })
+
+  it('turns a drop that held no skill into the "no skill found" answer, once', async () => {
+    ipc.queueDropped({ kind: 'no-skills' })
+    expect(mocks.sent.map((entry) => entry.channel)).toEqual([C.dropped, C.dropped])
+    expect(await call(C.takeDropped, settings)).toEqual({ ok: false, reason: 'no-skills' })
+    expect(service.prepare).not.toHaveBeenCalled()
+    expect(await call(C.takeDropped, settings)).toEqual({ ok: true, preview: null })
+  })
+
+  it('reads a previewed import only for the window that previewed it', async () => {
+    const mine = (await call(C.importText, settings, '---\nname: a\n---')) as {
+      preview: { token: string }
+    }
+    const token = mine.preview.token
+    expect(await call(C.readImport, settings, token, 'a')).toMatchObject({
+      ok: true,
+      content: { body: { text: 'b' } },
+    })
+    expect(await call(C.readImportFile, settings, token, 'a', 'notes.md')).toMatchObject({
+      ok: true,
+      file: { text: 'f' },
+    })
+    expect(service.readImportedFile).toHaveBeenCalledWith(expect.anything(), 'a', 'notes.md')
+
+    // another window may pass the gate but never reads someone else's preview
+    expect(await call(C.readImport, agent, token, 'a')).toMatchObject({ reason: 'not-found' })
+    expect(await call(C.readImport, editor, token, 'a')).toMatchObject({ reason: 'not-allowed' })
+    expect(await call(C.readImport, settings, 'unknown', 'a')).toMatchObject({
+      reason: 'not-found',
+    })
+    expect(await call(C.readImport, settings, token, 7)).toMatchObject({ reason: 'invalid' })
+    expect(await call(C.readImportFile, settings, token, 'a', 7)).toMatchObject({
+      reason: 'invalid',
+    })
+    expect(service.readImported).toHaveBeenCalledTimes(1)
+
+    await call(C.cancelImport, settings, token)
+    expect(await call(C.readImport, settings, token, 'a')).toMatchObject({ reason: 'not-found' })
+  })
+
+  it('previews pasted text from the settings screen only, and refuses what is not text', async () => {
+    expect(await call(C.importText, editor, '---\nname: a\n---')).toMatchObject({
+      reason: 'not-allowed',
+    })
+    expect(await call(C.importText, settings, 42)).toMatchObject({ reason: 'invalid' })
+    expect(await call(C.importText, settings, 'x'.repeat(2_000_001))).toMatchObject({
+      reason: 'invalid',
+    })
+    const answer = (await call(C.importText, settings, '---\nname: a\n---')) as {
+      preview: { origin: unknown }
+    }
+    expect(answer.preview.origin).toEqual({ kind: 'text' })
+    expect(service.prepare).toHaveBeenCalledTimes(1)
+    expect(service.prepare).toHaveBeenCalledWith({ kind: 'text', text: '---\nname: a\n---' })
+  })
+
+  it('refuses a bundle export without skill identifiers before asking where to save', async () => {
+    expect(await call(C.exportBundle, settings, [])).toMatchObject({ reason: 'invalid' })
+    expect(await call(C.exportBundle, settings, ['no-colon'])).toMatchObject({ reason: 'invalid' })
+    expect(await call(C.exportBundle, editor, ['app:a'])).toMatchObject({ reason: 'not-allowed' })
+    // the save dialog of this test is cancelled
+    expect(await call(C.exportBundle, settings, ['app:a', 'app:b'])).toMatchObject({
+      reason: 'cancelled',
+    })
+    expect(service.exportBundleTo).not.toHaveBeenCalled()
+  })
+
+  it('suggests a bundle file name from the words the screen made, or the one skill it holds', async () => {
+    const { dialog } = await import('electron')
+    const suggested = () =>
+      (vi.mocked(dialog.showSaveDialog).mock.lastCall as unknown as [{ defaultPath: string }])[0]
+        .defaultPath
+
+    await call(C.exportBundle, settings, ['app:a', 'app:b'], '회의록: "정리" 외 1개')
+    expect(suggested()).toBe('회의록 정리 외 1개.zip')
+
+    await call(C.exportBundle, settings, ['app:a', 'app:b'])
+    expect(suggested()).toBe('skills.zip')
+    await call(C.exportBundle, settings, ['app:a', 'app:b'], { not: 'text' })
+    expect(suggested()).toBe('skills.zip')
+
+    // one skill: the name its own export uses, whatever the screen sent
+    await call(C.exportBundle, settings, ['app:a'], 'anything')
+    expect(service.exportInfo).toHaveBeenCalledWith('app:a')
+    expect(suggested()).toBe('a.zip')
   })
 })

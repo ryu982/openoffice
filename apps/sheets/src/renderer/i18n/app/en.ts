@@ -368,7 +368,7 @@ export const en = {
   appTableOverlapsSession: 'The range overlaps table "{name}" created this session.',
   appTableOverlapsFile: 'The range overlaps table "{name}" in the file.',
   appTableAlreadyInTable:
-    'The selection is already in table "{name}" — pick a style from Table Design to change it.',
+    'The selection is already in table "{name}". Pick a style from Table Design to change it.',
   appTablesNeedFile: 'Open an XLSX file first — tables are written into the file.',
   appTableSelectRange: 'Select the data range first — headers in its first row.',
   appTableCreated: 'Table created — save with ⌘S.',
@@ -446,6 +446,7 @@ export const en = {
   appGridlinesHidden: 'Gridlines hidden.',
   appGridlinesShown: 'Gridlines shown.',
   appShowingFormulas: 'Showing formulas — toggle again for values.',
+  appShowingFormulasActive: 'Showing formulas',
   appShowingValues: 'Showing calculated values.',
   appTraceNoFormula: 'Trace Precedents: the active cell has no formula.',
   appTraceNoRefs: 'Trace Precedents: this formula has no cell references.',
@@ -536,6 +537,9 @@ export const en = {
     'CSV export needs the fully loaded workbook — wait for loading to finish.',
   appCsvExportTooLarge: 'The sheet is too large to export as CSV.',
   appCsvExportCanceled: 'CSV export canceled.',
+  appOdsExported: 'Exported {path}.',
+  appOdsExportCanceled: 'ODS export canceled.',
+  appOdsExportFailed: 'ODS export failed.',
   appCsvExported: 'Exported {path}.',
   appCsvExportedActiveOnly:
     'CSV holds a single sheet — exported the active sheet "{name}" to {path}.',
@@ -572,6 +576,10 @@ export const en = {
     "This workbook's stylesheet is missing basic structure, so style changes cannot be saved.",
   appSaveErrPackageGuard:
     "Saving would change the workbook's package structure — aborted to protect the file.",
+  appSaveErrSheetNotFound:
+    'A sheet this save refers to was not found in the workbook. The save was stopped and the file was left as it was.',
+  appSaveErrSheetNameReused:
+    'A new sheet uses the old name of a sheet you renamed, so this cannot be saved. Give the new sheet another name for now, save, then rename it. The file was left as it was.',
   appSaveErrChartUnsupported:
     'This chart type does not support that edit; save aborted — undo the chart change.',
   appSaveErrMoveOverlap:
@@ -677,6 +685,13 @@ export const en = {
   appSaveAs: 'Save As',
   appUndo: 'Undo',
   appRedo: 'Redo',
+  appQuickAccessCustomize: 'Customize Quick Access Toolbar',
+  appQuickAccessHint:
+    'Press Alt and a number to run the button in that position, counting from the left.',
+  appQuickAccessMoveEarlier: 'Move earlier',
+  appQuickAccessMoveLater: 'Move later',
+  appQuickAccessReset: 'Reset to default',
+  appQuickAccessFull: 'The toolbar holds up to 10 buttons.',
   appUnsavedEditOne: '● {count} unsaved edit',
   appUnsavedEditMany: '● {count} unsaved edits',
   appSavedState: 'Saved',
@@ -1138,6 +1153,8 @@ export const en = {
   appRefreshAll: 'Refresh All',
   appWorkbookNoPivot: 'No pivot tables in this workbook.',
   appRefreshAllTitle: 'Refresh every pivot table',
+  appQueriesConnections: 'Queries & Connections',
+  appQueriesConnectionsTitle: "List the workbook's queries and data connections",
   appErrorCheckingDetail: 'Scan the sheet for error values',
   appErrorsFound: '{count} errors — at {cell}: {value}',
   appCheckingErrors: 'Scanning the whole sheet for errors…',
@@ -1533,4 +1550,8 @@ export const en = {
   appSpellUnavailable: 'Spell checking is unavailable in this window.',
   appSpellReplaceAll: 'Replace All with "{suggestion}"',
   appSpellChangedAll: 'Corrected {count} cells of "{word}".',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'Opened the ODS as an xlsx copy. Saving writes an xlsx file.',
+  appOdsFormulasDropped: '{count} formulas were kept as values only.',
 } satisfies Record<keyof typeof zh, string>

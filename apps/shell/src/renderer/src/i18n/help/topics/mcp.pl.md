@@ -58,7 +58,7 @@ Każde polecenie jest narzędziem. Najciekawsze:
 Żądanie z polecenia `ieumoffice` albo od klienta MCP nie zostało wpisane przez ciebie w aplikacji, więc GenOffice traktuje je ostrożnie.
 
 - **Wyszukiwanie** działa zawsze i domyślnie jest bezpłatne. Klucz dostawcy wyszukiwania jest używany tylko wtedy, gdy został wybrany.
-- **Generowanie obrazu** wymaga klucza dostawcy obrazów. W tej wersji subskrypcja nie generuje obrazów.
+- **Generowanie obrazu** korzysta z wyboru generowania obrazów w ustawieniach. Domyślny wybór, Plan ChatGPT (program Codex), używa Twojego planu ChatGPT za pomocą programu Codex i **nie jest używany, dopóki na to nie zezwolisz** (zobacz niżej). W przeciwnym razie używany jest klucz skonfigurowanego dostawcy obrazów. Model, który wskaże agent, jest używany, gdy ta droga go oferuje.
 - **Opisywanie obrazu** korzysta z dostawcy z kluczem, jeśli jest skonfigurowany. Twoja subskrypcja Claude lub Codex **nie jest używana, dopóki na to nie pozwolisz**.
 - **Wideo i dźwięk** wymagają dostawcy z kluczem obsługującego wideo.
 

@@ -28,6 +28,7 @@ export const de = {
   invokeManual: 'Nur auf Aufruf',
   badgeTemplate: 'Mit Vorlage',
   badgeScripts: 'Mit Skripten · funktioniert vollständig im Agent-Fenster',
+  badgeMcpServer: 'MCP-Server erforderlich: {servers}',
   badgeAgentOnly: 'Nur im Agent-Fenster',
   unreadableNoFrontmatter: 'kein Front Matter',
   unreadableBadName: 'Name entspricht nicht den Regeln',
@@ -47,6 +48,7 @@ export const de = {
   unhide: 'Wieder einblenden',
   confirmRemove:
     'Den Skill „{title}“ in den Papierkorb verschieben? Sie können ihn dort wiederherstellen.',
+  removeTurnOn: 'Skill {name} ({source}) wieder einschalten',
   confirmHide:
     'Den integrierten Skill „{title}“ ausblenden? Ein ausgeblendeter Skill ist ausgeschaltet; Sie können ihn unten in der Liste wieder einblenden.',
   cancel: 'Abbrechen',
@@ -72,12 +74,15 @@ export const de = {
   editorNew: 'Neuer Skill',
   editorEdit: 'Skill bearbeiten',
   editorView: 'Skill-Inhalt',
+  fieldTitle: 'Titel',
+  titleHint:
+    'Wird in Listen angezeigt, in beliebiger Sprache. Leer lassen, um den Namen anzuzeigen',
   fieldDescription: 'Beschreibung',
   fieldDescriptionHint: 'Die KI liest dies, um zu entscheiden, wann sie den Skill nutzt',
   fieldBody: 'Anleitung',
   fieldName: 'Name',
   nameHint:
-    'Name in der Skill-Liste. Kleinbuchstaben, Ziffern und Bindestriche (-), höchstens 64 Zeichen',
+    'Name, den andere Programme und der Aufruf mit / verwenden. Kleinbuchstaben, Ziffern und Bindestriche (-), höchstens 64 Zeichen. Ein automatisch eingetragener Name kann so bleiben',
   files: 'Dateien im Skill',
   filesNone: 'Keine weiteren Dateien',
   filesHint: 'Öffnen Sie den Ordner, um diese Dateien zu ändern',
@@ -86,16 +91,20 @@ export const de = {
   createHint: 'Sie können auch im KI-Bereich fragen: „Erstelle mir einen Skill, der …“',
   nameEmpty: 'Geben Sie einen Namen ein',
   nameTooLong: 'Namen dürfen höchstens 64 Zeichen lang sein',
-  nameCharacters: 'Nur Kleinbuchstaben, Ziffern und Bindestriche (-)',
+  nameCharacters:
+    'Nur Kleinbuchstaben, Ziffern und Bindestriche (-). Einen Titel in Ihrer Sprache schreiben Sie oben in das Feld „Titel“',
   nameHyphenEdge: 'Ein Name darf nicht mit einem Bindestrich beginnen oder enden',
   nameDoubleHyphen: 'Ein Name darf keine zwei Bindestriche hintereinander enthalten',
   nameReserved: 'Dieser Name kann nicht verwendet werden',
   nameTaken: 'In Meine Skills gibt es bereits einen Skill mit diesem Namen',
+  sameNameOn:
+    'Ein Skill mit demselben Namen ist eingeschaltet ({sources}). Beim Speichern wird stattdessen Ihr Skill verwendet und der andere ausgeschaltet.',
+  saveTurnOff: 'Speichern und den anderen ausschalten',
   githubTitle: 'Über einen GitHub-Link hinzufügen',
   githubLabel: 'GitHub-Adresse',
   githubPlaceholder: 'https://github.com/inhaber/repository',
   githubHint:
-    'Nur öffentliche Repositorys. Fügen Sie die Adresse eines Repositorys, Ordners oder einer SKILL.md ein, oder „inhaber/repository“.',
+    'Nur öffentliche Repositorys. Fügen Sie die Adresse eines Repositorys, Ordners oder einer SKILL.md ein, „inhaber/repository“ oder die Seite eines Skills auf skills.sh.',
   githubFind: 'Suchen',
   githubFetching: 'Wird von GitHub heruntergeladen…',
   importReading: 'Skills werden gelesen…',
@@ -140,4 +149,67 @@ export const de = {
   failEmptyBody: 'Geben Sie die Anleitung ein',
   failBadName: 'Der Name entspricht nicht den Regeln',
   failGeneric: 'Das hat nicht geklappt. Versuchen Sie es noch einmal',
+  addPaste: 'Aus eingefügtem Text',
+  pasteTitle: 'Durch Einfügen von Text hinzufügen',
+  pasteLabel: 'SKILL.md-Text',
+  pasteHint:
+    'Fügen Sie den ganzen SKILL.md-Text ein, beginnend mit der Zeile --- und den Zeilen name: und description: darunter.',
+  pastePreview: 'Vorschau',
+  pasteNotSkill:
+    'Das ist kein Skill-Text. Er muss mit einer Zeile --- beginnen, auf die eine Zeile name: folgt.',
+  previewFromText: '{n} Skills im eingefügten Text gefunden',
+  previewFromSkillFile: '{n} Skills in der SKILL.md-Datei gefunden',
+  previewWarnings: 'Zeilen, die Sie vor der Installation lesen sollten: {n}',
+  previewWarningsNote:
+    'Diese Zeilen passen zu einer kurzen Liste von Mustern. Ein Skill ohne Zeilen hier ist deshalb noch nicht sicher.',
+  previewWarningAt: '{file}, Zeile {line}',
+  warnIgnoreInstructions: 'Fordert die KI auf, frühere Anweisungen zu ignorieren',
+  warnHideFromUser: 'Fordert die KI auf, etwas vor Ihnen zu verbergen',
+  warnRemoteInstructions: 'Fordert die KI auf, Anweisungen von einer externen Adresse zu holen',
+  warnParentPath: 'Ein ../-Pfad, der aus dem Skill-Ordner hinauszeigt',
+  exportSeveral: 'Mehrere exportieren',
+  bundleFileName: '{title} und {n} weitere',
+  bundleTitle: 'Skills gemeinsam exportieren',
+  bundleIntro:
+    'Die angehakten Skills kommen in eine zip-Datei, ein Ordner pro Skill. Wer sie erhält, kann die zip-Datei auf ein App-Fenster ziehen oder Hinzufügen ▸ Aus einer zip-Datei verwenden.',
+  bundleSelectLabel: '{title} einschließen',
+  bundleExport: 'Exportieren ({n})',
+  previewBodyEmpty: 'Die Anleitung ist leer',
+  previewTruncated: 'Es werden nur die ersten {n} Zeichen angezeigt. Danach geht der Text weiter.',
+  collisionKeeps:
+    'Beim Ersetzen bleiben die Einstellungen des Skills erhalten: ein oder aus, wann er genutzt wird und wo er genutzt wird.',
+  discardAsk: 'Es gibt nicht gespeicherte Änderungen. Beim Schließen gehen sie verloren.',
+  discardKeep: 'Weiter bearbeiten',
+  discardClose: 'Verwerfen und schließen',
+  dropOverlaySkills: 'Auch Skill-Dateien (.zip, SKILL.md) können hier abgelegt werden',
+  shadowedNote: 'Statt diesem wird der gleichnamige Skill ({source}) verwendet',
+  builtinBodyNote:
+    'Die Anleitung unten ist der Text, den die KI erhält. Er wird unverändert gezeigt und kann daher englisch sein',
+  pasteUnclosed:
+    'Die schließende Zeile --- fehlt. Der Text wurde vielleicht abgeschnitten; kopieren Sie ihn noch einmal von Anfang bis Ende.',
+  versionsTitle: 'Frühere Versionen',
+  versionsNone:
+    'Noch keine früheren Versionen. Wenn Sie diesen Skill bearbeiten, ersetzen oder aktualisieren, bleibt die Version davor hier erhalten.',
+  versionsTotal: '{n} aufbewahrt, insgesamt {size}. Sie bleiben, bis Sie sie löschen.',
+  versionReasonEdit: 'Vor einer Bearbeitung',
+  versionReasonReplace: 'Vor dem Ersetzen',
+  versionReasonUpdate: 'Vor einer Aktualisierung',
+  versionReasonRestore: 'Vor dem Zurücksetzen',
+  versionCompare: 'Unterschiede ansehen',
+  versionRestore: 'Zu dieser Version zurückkehren',
+  versionRestoreNote:
+    'Die jetzige Version bleibt hier ebenfalls erhalten, Sie können zu ihr zurückkehren.',
+  versionRestoreUnsaved:
+    'Es gibt ungespeicherte Änderungen. Speichern oder verwerfen Sie sie zuerst.',
+  versionRemove: 'Löschen',
+  versionRemoveAsk: 'Diese Version löschen? Sie lässt sich nicht wiederherstellen.',
+  versionSame: 'Sie enthält dasselbe wie die jetzige Version.',
+  versionDiffLegend: '+ Zeilen, die zurückkommen, − Zeilen, die beim Zurückkehren verschwinden',
+  versionDiffGap: '{n} unveränderte Zeilen',
+  versionFileAdded: 'kommt zurück',
+  versionFileRemoved: 'verschwindet',
+  versionFileModified: 'ändert sich',
+  versionRestored: 'Zur früheren Version zurückgekehrt',
+  replacedKept:
+    'Die ersetzte Version bleibt unter „Frühere Versionen“ dieses Skills erhalten, Sie können zu ihr zurückkehren.',
 } satisfies Record<keyof typeof zh, string>

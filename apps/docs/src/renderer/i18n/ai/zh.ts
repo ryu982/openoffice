@@ -78,7 +78,6 @@ export const zh = {
   aiCopied: '已复制',
   aiRegenerateTitle: '重新生成',
   aiSnapshotsTitle: '版本快照',
-  aiRollback: '回滚',
   aiScopeSelected: '已选中 {count} 段',
   aiScopeEmptyDoc: '空白文档',
   aiScopeCursor: '在光标处',
@@ -187,4 +186,7 @@ export const zh = {
   aiMindMapReset: '重置视图',
   aiMindMapExpand: '展开分支',
   aiMindMapCollapse: '折叠分支',
+  aiMindMapToggleLayout: '切换布局',
+  aiMindMapLayoutTopDown: '切换为从上到下布局',
+  aiMindMapLayoutLeftRight: '切换为左右分栏布局',
 }

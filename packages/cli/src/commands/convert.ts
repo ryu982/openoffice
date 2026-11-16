@@ -1,14 +1,17 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, resolve as resolvePath } from 'node:path'
 import { PdfLoadError } from '@genoffice/pdf2docx'
-import { flagBool, flagString, type ParsedArgs } from '../args'
+import { assertOptionValues, flagBool, flagString, type ParsedArgs } from '../args'
 import { csvToXlsx, sheetNameFromStem } from '../formats/csv'
+import { convertLegacyDoc } from '../formats/legacy-doc'
+import { convertLegacyPpt } from '../formats/legacy-ppt'
 import { convertPdf, type PdfTarget } from '../formats/pdf'
-import { convertLegacyWorkbook, sheetToCsv } from '../formats/xlsx'
+import { convertLegacyWorkbook, convertToOds, sheetToCsv } from '../formats/xlsx'
 import { exportViaApp, type AppExportTarget } from '../formats/app-export'
 import { htmlToMarkdown, markdownToDocx, markdownToHtml } from '../formats/markdown'
 import { closeDocument, documentHtml, openDocument } from '../formats/docx'
+import { docxToHangul } from '../formats/docx-hwp'
 import { docxBytesToOdt, openOdtBytes, reportOdtConversion } from '../formats/odt'
 import { writeEpubFile, writeMarkdownFile } from '../formats/pdf-outputs'
 import {
@@ -20,7 +23,22 @@ import {
   resultStore,
   withStoredReadings,
 } from '../formats/pdf-structure'
-import { extension, readInput, resolveInput, resolveOutput, writeOutput } from '../fs'
+import {
+  DIAGRAM_CONVERT_TARGETS,
+  convertDiagram,
+  isDiagramPath,
+  openDiagramInput,
+  planDiagramConvert,
+} from '../formats/diagram'
+import {
+  decodeText,
+  extension,
+  readInput,
+  resolveInput,
+  resolveOutput,
+  stripBom,
+  writeOutput,
+} from '../fs'
 import { assertNotEmptyPackage } from '../limits'
 import type { CommandContext, CommandDef } from '../registry'
 import { CliError, EXIT } from '../result'
@@ -32,17 +50,21 @@ const NODE_ROUTES: Record<string, readonly string[]> = {
   xls: ['xlsx'],
   xlsb: ['xlsx'],
   ods: ['xlsx'],
-  md: ['docx', 'html'],
-  markdown: ['docx', 'html'],
-  docx: ['md'],
-  xlsx: ['csv'],
-  xlsm: ['csv'],
+  doc: ['docx'],
+  dot: ['docx'],
+  ppt: ['pptx'],
+  md: ['docx', 'html', 'hwp', 'hwpx'],
+  markdown: ['docx', 'html', 'hwp', 'hwpx'],
+  docx: ['md', 'hwp', 'hwpx'],
+  xlsx: ['csv', 'ods'],
+  xlsm: ['csv', 'ods'],
 }
 
 /**
  * Conversions the GenOffice binary runs for us in its hidden headless-export
  * mode: anything that needs an app renderer (page layout for pdf, the Word
- * editor's HTML export, html2docx). Mirrors HEADLESS_TARGETS in the shell.
+ * editor's HTML export, html2docx, the Hangul editor's pages). Mirrors
+ * HEADLESS_TARGETS in the shell.
  */
 const APP_ROUTES: Record<string, readonly AppExportTarget[]> = {
   pdf: ['html'],
@@ -56,6 +78,8 @@ const APP_ROUTES: Record<string, readonly AppExportTarget[]> = {
   pptx: ['pdf'],
   html: ['pdf', 'docx'],
   htm: ['pdf', 'docx'],
+  hwp: ['pdf'],
+  hwpx: ['pdf'],
 }
 
 /**
@@ -95,7 +119,7 @@ export const convertCommand: CommandDef = {
   name: 'convert',
   summary: 'Convert a document to another format using the GenOffice engines.',
   usage:
-    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks]',
+    'convert <file> --to <format> [--out <path>] [--force] [--password <pw>] [--sheet <name>] [--pages <list>] [--title <text>] [--author <text>] [--no-cover] [--page-breaks] [--page <id|name>]',
   options: [
     { name: 'to', value: 'format', description: 'target format: ' + describeRoutes() },
     { name: 'out', value: 'path', description: 'output file (default: same name, new extension)' },
@@ -126,9 +150,17 @@ export const convertCommand: CommandDef = {
       name: 'page-breaks',
       description: 'pdf→epub: start each original page on a new screen',
     },
+    {
+      name: 'page',
+      value: 'id|name',
+      description:
+        'diagram→png/svg/pdf: only this page (default: every page; png/svg then write <name>-p<n>.<ext> into the --out folder)',
+    },
   ],
   async run(args, ctx) {
+    assertOptionValues(args, convertCommand.options)
     const input = resolveInput(args.positionals[0], ctx)
+    if (isDiagramPath(input)) return convertDiagramFile(input, args, ctx)
     const from = extension(input)
     assertNotEmptyPackage(input, from)
     const to = flagString(args, 'to')?.toLowerCase()
@@ -215,12 +247,19 @@ async function run(
     return { bytes: r.bytes, detail: { pages: r.pages, warnings: r.warnings } }
   }
   if (from === 'md' || from === 'markdown') {
-    const text = Buffer.from(readInput(input)).toString('utf-8')
+    const text = stripBom(decodeText(readInput(input)))
     const title = basename(input, extname(input))
     if (to === 'html') {
       return { bytes: Buffer.from(await markdownToHtml(text, title), 'utf-8'), detail: { title } }
     }
-    return { bytes: await markdownToDocx(text, { file: input, ctx }), detail: { title } }
+    const docx = await markdownToDocx(text, { file: input, ctx })
+    if (to === 'hwp' || to === 'hwpx') {
+      // Markdown reaches Hangul through the Word document the docx route writes;
+      // that document has no layout of its own to keep, so the tables get Hangul's
+      const { bytes, hwp_report } = await docxToHangul(docx, to, ctx, 'hangul')
+      return { bytes, detail: { title, hwp_report } }
+    }
+    return { bytes: docx, detail: { title } }
   }
   if (from === 'csv') {
     const sheet = sheetNameFromStem(basename(input, extname(input)))
@@ -231,9 +270,84 @@ async function run(
     // UTF-8 BOM, as the app writes it, so Excel opens the file without a wizard
     return { bytes: Buffer.from('\ufeff' + csv, 'utf-8'), detail }
   }
+  if (to === 'ods') return workbookToOds(input, output, ctx)
   if (to === 'md') return docxToMarkdown(readInput(input), ctx)
+  if (to === 'hwp' || to === 'hwpx') {
+    const { bytes, hwp_report } = await docxToHangul(readInput(input), to, ctx)
+    return { bytes, detail: { hwp_report } }
+  }
+  if (from === 'doc' || from === 'dot') {
+    const r = await convertLegacyDoc(readInput(input))
+    return { bytes: r.bytes, detail: r.detail }
+  }
+  if (from === 'ppt') {
+    const r = await convertLegacyPpt(readInput(input))
+    return { bytes: r.bytes, detail: r.detail }
+  }
   const r = await convertLegacyWorkbook(input, output)
   return { detail: { sheets: r.sheets, cells: r.cells } }
+}
+
+async function workbookToOds(
+  input: string,
+  output: string,
+  ctx: CommandContext,
+): Promise<Produced> {
+  const result = await convertToOds(input, output)
+  const dropped = {
+    charts: result.dropped.charts,
+    images: result.dropped.images,
+    conditionalFormats: result.dropped.conditionalFormats,
+    validations: result.dropped.validations,
+    pivots: result.dropped.pivots,
+    comments: result.dropped.comments,
+    macros: result.dropped.macros,
+    shapes: result.dropped.shapes,
+    slicers: result.dropped.slicers,
+    sparklines: result.dropped.sparklines,
+  }
+  const lost = [
+    ...(result.formulasDropped > 0 ? [`${result.formulasDropped} formula(s) kept as values`] : []),
+    ...Object.entries(dropped)
+      .filter(([, count]) => count > 0)
+      .map(([kind, count]) => `${count} ${odsDroppedLabel(kind)}`),
+  ]
+  if (lost.length) {
+    ctx.warn({
+      code: 'ods_features_dropped',
+      message: `the ODS copy leaves out ${lost.join(', ')}`,
+      suggestion: 'keep the .xlsx when those features matter',
+    })
+  }
+  return {
+    detail: {
+      sheets: result.sheets,
+      cells: result.cells,
+      formulas_dropped: result.formulasDropped,
+      dropped,
+    },
+  }
+}
+
+function odsDroppedLabel(kind: string): string {
+  switch (kind) {
+    case 'conditionalFormats':
+      return 'conditional formatting rule(s)'
+    case 'validations':
+      return 'data validation rule(s)'
+    case 'pivots':
+      return 'pivot table(s)'
+    case 'macros':
+      return 'macro project'
+    case 'shapes':
+      return 'shape(s) and text box(es)'
+    case 'slicers':
+      return 'slicer(s)'
+    case 'sparklines':
+      return 'sparkline(s)'
+    default:
+      return kind
+  }
 }
 
 async function docxToMarkdown(docx: Uint8Array, ctx: CommandContext): Promise<Produced> {
@@ -278,6 +392,7 @@ const ROUTE_OPTIONS: [string, (from: string, to: string) => boolean, string][] =
   ['author', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['no-cover', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
   ['page-breaks', (from, to) => from === 'pdf' && to === 'epub', 'pdf→epub'],
+  ['page', () => false, 'diagrams (.drawio, .dio, .drawio.svg, .drawio.png)'],
 ]
 
 function assertRouteOptions(args: ParsedArgs, from: string, to: string): void {
@@ -335,7 +450,7 @@ async function runOdt(
   const detail: Record<string, unknown> = {}
   if (from === 'docx') docx = readInput(input)
   else if (from === 'md' || from === 'markdown') {
-    const text = Buffer.from(readInput(input)).toString('utf-8')
+    const text = stripBom(decodeText(readInput(input)))
     docx = await markdownToDocx(text, { file: input, ctx })
   } else {
     docx = await withTempDocx(output, stem, null, async (path) => {
@@ -418,9 +533,72 @@ async function pdfReflow(
 }
 
 function describeRoutes(): string {
-  return Object.entries(ROUTES)
-    .map(([from, tos]) => `${from}→${tos.join('/')}`)
-    .join(', ')
+  return [
+    ...Object.entries(ROUTES).map(([from, tos]) => `${from}→${tos.join('/')}`),
+    `drawio/dio/drawio.svg/drawio.png→${DIAGRAM_CONVERT_TARGETS.join('/')}`,
+  ].join(', ')
+}
+
+/** A diagram to PDF, PNG or SVG: draw.io makes them in the app (windowless). */
+async function convertDiagramFile(input: string, args: ParsedArgs, ctx: CommandContext) {
+  const opened = openDiagramInput(input, ctx)
+  const to = flagString(args, 'to')?.toLowerCase()
+  if (!to)
+    throw new CliError(EXIT.usage, 'missing --to <format>', undefined, {
+      reason: 'missing_argument',
+    })
+  const target = DIAGRAM_CONVERT_TARGETS.find((t) => t === to)
+  if (!target) {
+    throw new CliError(
+      EXIT.usage,
+      `cannot convert a diagram to .${to}`,
+      { supported: [...DIAGRAM_CONVERT_TARGETS] },
+      { reason: 'unsupported', suggestion: 'pick a target from detail.supported' },
+    )
+  }
+  for (const option of [
+    'sheet',
+    'pages',
+    'title',
+    'author',
+    'no-cover',
+    'page-breaks',
+    'password',
+  ]) {
+    if (args.flags[option] !== undefined) {
+      throw new CliError(EXIT.usage, `--${option} does not apply to diagrams`, undefined, {
+        reason: 'invalid_argument',
+      })
+    }
+  }
+  const force = flagBool(args, 'force')
+  const out = flagString(args, 'out')
+  if (out === '' || args.flags.out === true) {
+    throw new CliError(EXIT.usage, 'missing --out <path>', undefined, {
+      reason: 'missing_argument',
+    })
+  }
+  const plan = planDiagramConvert(
+    opened,
+    target,
+    args.flags.page,
+    out === undefined ? undefined : isAbsolute(out) ? out : resolvePath(ctx.cwd, out),
+    (spec, fallback) => resolveOutput(spec, ctx, { fallback, force, fresh: true }),
+  )
+  for (const output of plan.outputs) {
+    if (samePath(input, output)) {
+      throw new CliError(
+        EXIT.usage,
+        `output path must differ from the input: ${output}`,
+        undefined,
+        {
+          reason: 'invalid_argument',
+          suggestion: 'pass a different --out',
+        },
+      )
+    }
+  }
+  return convertDiagram(opened, plan, ctx)
 }
 
 /**

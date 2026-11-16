@@ -18,6 +18,7 @@ import {
   maxOutputTokensOf,
   normalizeAiSettings,
   resolveAiSettings,
+  setCodexImageGenerationAvailable,
   type AiRunErrorKind,
   type AiSettings,
   type LegacyAiSettings,
@@ -32,8 +33,18 @@ import {
 } from '@genoffice/electron-utils/remote-image'
 import { fetchWithSsrfGuard } from '@genoffice/electron-utils/safe-remote-url'
 import { analyzeImagesWithChatProvider } from './chat-analysis'
-import { codexImageGenerator, type CodexImageRequest } from './codex-image-generator'
+import {
+  codexImageGenerator,
+  type CodexImageRequest,
+  type CodexImageResult,
+} from './codex-image-generator'
 import { runHeadlessSubscriptionCall } from './headless-ledger'
+import {
+  codexImageModelChoice,
+  codexPicksImageModel,
+  keyImageModelChoice,
+  requestedImageModel,
+} from './image-model'
 import {
   SCREEN_TOOL_CONTEXT,
   imageGenerationUnavailableMessage,
@@ -359,18 +370,20 @@ export async function loadMediaReferences(
   return blobs
 }
 
-const MODEL_IGNORED_NOTE =
-  'The `model` option is no longer supported and was ignored: special-purpose image models (background removal, upscaling, outpainting, text removal) are gone, and the image was generated with the configured image backend.'
-
-const CODEX_NO_REFERENCES_ERROR =
-  'Reference images are not supported when images are generated through the Codex subscription. Call again without referenceImageUrls, or select an image provider key under Settings > AI > Advanced to edit images.'
+/** What the model can do instead when the Codex route cannot make pictures */
+const CODEX_UNAVAILABLE_NEXT =
+  ' Add an image provider key under Settings > AI > Advanced, or use image search for imagery instead.'
 
 export interface GenerateImageToolOp {
   /** Image description (English works better; text that must appear in the image stays verbatim) */
   prompt: string
-  /** ignored, with a note in the result: it named special-purpose models that no longer exist */
+  /**
+   * A model the user named. Followed when the route in use can run it (rule D);
+   * never changes the route. A name the route cannot serve is refused before
+   * anything is requested.
+   */
   model?: string | undefined
-  /** Reference/edit-target images (URLs or local paths); key providers only */
+  /** Reference/edit-target images (URLs or local paths), on every route */
   referenceImageUrls?: string[] | undefined
   /** 1:1 | 4:3 | 16:9 | 9:16 | 3:4 | 2:3 | 3:2 | auto */
   aspectRatio?: string | undefined
@@ -379,6 +392,24 @@ export interface GenerateImageToolOp {
   /** The result must have real PNG alpha (icons/logos/cutouts). Passed to the backend's own
    * alpha control where it has one; there is no separate background-removal pass. */
   transparentBackground?: boolean | undefined
+}
+
+/** One Codex picture's ending, as the tool answers it */
+function codexOutcomeResult(
+  outcome: CodexImageResult,
+  note: { note?: string },
+): GenerateImageToolResult {
+  switch (outcome.kind) {
+    case 'image':
+      return { url: storeGeneratedImage(outcome.bytes, outcome.mime), ...note }
+    case 'unavailable':
+      // a plan without the image tool will not grow one during this process: hide the route
+      // (until the app restarts, or for the rest of one command) instead of failing every call
+      if (outcome.reason === 'free-plan') setCodexImageGenerationAvailable(false)
+      return { error: `${outcome.message}${CODEX_UNAVAILABLE_NEXT}`, errorCode: 'unavailable' }
+    case 'refused':
+      return { error: outcome.message }
+  }
 }
 
 export async function generateImageTool(
@@ -398,27 +429,43 @@ export async function generateImageTool(
     errorCode: 'unavailable',
   })
   if (backend.kind === 'none') return unavailable()
-  const note = op.model ? { note: MODEL_IGNORED_NOTE } : {}
+  const named = requestedImageModel(op.model)
   try {
     if (backend.kind === 'codex') {
       // the route is `codex` only while a generator is registered
-      const generate = codexImageGenerator()
-      if (!generate) return unavailable()
-      // the generator takes a prompt only: an edit request must not come back as an unrelated picture
-      if (op.referenceImageUrls?.length) return { error: CODEX_NO_REFERENCES_ERROR }
+      const generator = codexImageGenerator()
+      if (!generator) return unavailable()
+      // judged before the turn; only a name outside the `gpt-image` row needs Codex's list
+      let models: readonly string[] | null = []
+      if (named && !codexPicksImageModel(named)) models = await generator.models()
+      if (models === null) return unavailable()
+      const choice = codexImageModelChoice(named, models)
+      if (choice.kind === 'refuse') return { error: choice.message }
+      const references = await loadMediaReferences(
+        op.referenceImageUrls ?? [],
+        MEDIA_BUDGET,
+        mediaRoots,
+      )
       const request: CodexImageRequest = {
         prompt,
         aspectRatio: op.aspectRatio,
         imageSize: op.imageSize,
         transparent: op.transparentBackground === true,
+        references,
+        ...(choice.kind === 'use' ? { model: choice.model } : {}),
         signal: options.signal,
       }
-      const image = await onSubscription(context, () => generate(request), options.signal)
-      return {
-        url: 'url' in image ? image.url : storeGeneratedImage(image.bytes, image.mime),
-        ...note,
-      }
+      const outcome = await onSubscription(
+        context,
+        () => generator.generate(request),
+        options.signal,
+      )
+      return codexOutcomeResult(outcome, choice.kind === 'codex-picks' ? { note: choice.note } : {})
     }
+    const choice = keyImageModelChoice(named, backend.provider, backend.config)
+    if (choice.kind === 'refuse') return { error: choice.message }
+    const config =
+      choice.kind === 'use' ? { ...backend.config, imageModel: choice.model } : backend.config
     const references = await loadMediaReferences(
       op.referenceImageUrls ?? [],
       MEDIA_BUDGET,
@@ -426,7 +473,7 @@ export async function generateImageTool(
     )
     const image = await generateImageWithProvider(
       backend.provider,
-      backend.config,
+      config,
       {
         prompt,
         aspectRatio: op.aspectRatio,
@@ -435,7 +482,7 @@ export async function generateImageTool(
       },
       options.signal,
     )
-    return { url: storeGeneratedImage(image.bytes, image.mime), ...note }
+    return { url: storeGeneratedImage(image.bytes, image.mime) }
   } catch (err) {
     return failure(err)
   }

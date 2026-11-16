@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const ar = {
+  appLegacyDocImported:
+    'تم فتح ملف .{ext} كنسخة ‎.docx محوَّلة. يبقى الملف الأصلي كما هو، ويؤدي الحفظ إلى كتابة ملف ‎.docx جديد.',
   appScTitle: 'اختصارات لوحة المفاتيح',
   appScFilter: 'البحث عن اختصار',
   appScNone: 'لا توجد اختصارات مطابقة',
@@ -52,6 +54,7 @@ export const ar = {
   appVerticalTextNotice: 'يحتوي المستند على نص عمودي (يُعرض أفقيًا حاليًا؛ لا يؤثر ذلك على الحفظ)',
   appNewDocCreated:
     'تم إنشاء مستند فارغ. صِف المحتوى المراد إنشاؤه في لوحة الذكاء الاصطناعي على اليسار',
+  appNewDocCreatedNoAi: 'تم إنشاء مستند فارغ.',
   appNewFailed: 'فشل إنشاء المستند: {error}',
   appSaveFailed: 'فشل الحفظ: {error}',
   appAutoSavedAt: 'تم الحفظ التلقائي ({time})',
@@ -91,6 +94,9 @@ export const ar = {
   appPrintRangeAll: 'كل الصفحات',
   appPrintRangeCurrent: 'الصفحة الحالية',
   appPrintRangeCustom: 'نطاق مخصص',
+  appPrintRangeSelection: 'التحديد',
+  appPrintSelectionPreparing: 'جارٍ تقسيم التحديد إلى صفحات…',
+  appPrintSelectionFailed: 'تعذّر تقسيم التحديد إلى صفحات: {error}',
   appPrintRangeHint: 'مثال: 1,3,5-8',
   appPrintPageCount: '{n} صفحات',
   appPrintNoPages: 'لا توجد صفحات للطباعة',
@@ -345,6 +351,9 @@ export const ar = {
   appAiBadgeTip: 'يستخدم الذكاء الاصطناعي',
   appTranslate: 'ترجمة',
   appTranslateTo: 'ترجمة إلى {lang}',
+  appEasyWords: 'شرح بكلمات بسيطة',
+  appEasyWordsPrompt:
+    'اشرح النص المحدد باللغة العربية بحيث يفهمه أيضًا من يحتاج إلى نص سهل (الأطفال وكبار السن ومن يتعلمون العربية). استخدم كلمات يومية وجملًا قصيرة، واحتفظ بكل الحقائق والأرقام والشروط، ولا تعدّل المستند: "{text}"',
   redactMenuLabel: 'إخفاء التحديد عن الذكاء الاصطناعي',
   redactDialogDesc:
     'تبقى الكلمات في المستند وفي الملف؛ يرى النموذج العلامة أدناه. سمِّها ليعرف ما تمثّله.',
@@ -375,6 +384,7 @@ export const ar = {
   appLangHindi: 'الهندية',
   appLangTraditionalChinese: 'الصينية التقليدية',
   appLangVietnamese: 'الفيتنامية',
+  appLangTurkish: 'التركية',
   appWrapTextMenu: 'التفاف النص',
   appViewImage: 'عرض الصورة',
   appSaveImageAs: 'حفظ الصورة باسم…',
@@ -575,4 +585,9 @@ export const ar = {
   appMergeSourceLoaded: 'تم تحميل {name} ({n} سجلًا)',
   appMergeWritten: 'تمت كتابة {n} مستندًا',
   appMergeNothingToWrite: 'لا يوجد ما يكتب',
+  appExportingHwp: 'جارٍ تصدير مستند HWP…',
+  appExportedHwp: 'تم تصدير مستند HWP: {path}',
+  appExportHwpFailed: 'فشل التصدير إلى HWP: {error}',
+  appExportHwpCanceled: 'تم إلغاء التصدير إلى HWP',
+  appExportHwpReadback: 'تعذّرت كتابة هذا المستند بصيغة .hwp بدقة. جرّب حفظه بصيغة .hwpx.',
 } satisfies Record<keyof typeof zh, string>

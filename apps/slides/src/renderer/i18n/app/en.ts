@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const en = {
+  appLegacyPptImported:
+    'Opened the .ppt file as a converted .pptx copy. The original stays as it was; saving writes a new .pptx file. Speaker notes and animations are not carried over.',
   redactMenuLabel: 'Hide the selection from AI',
   redactDialogDesc:
     'The selection stays in the document and in the file; the model sees the placeholder below instead. Name it so the model knows what it stands for.',
@@ -170,6 +172,9 @@ export const en = {
   appPrintLandscape: 'Landscape',
   appPrintFrame: 'Frame slides',
   appPrintHidden: 'Print hidden slides',
+  appPrintRangeSelected: 'Selected slides',
+  appPrintLayoutBlocked:
+    'Handouts and notes pages print one page per sheet. To arrange pages, choose Full Page Slides.',
   appPrintPageCount: '{n} pages',
   appPrintNoPages: 'No slides to print',
   appPrintRendering: 'Generating preview…',
@@ -179,6 +184,7 @@ export const en = {
   appCtxSendToBack: 'Send to Back',
   appCtxBringForward: 'Bring Forward',
   appCtxSendBackward: 'Send Backward',
+  appCtxRotate: 'Rotate',
   appCtxRotateLeft90: 'Rotate Left 90°',
   appCtxRotateRight90: 'Rotate Right 90°',
   appCtxFlipH: 'Flip Horizontal',

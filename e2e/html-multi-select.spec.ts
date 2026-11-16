@@ -22,6 +22,21 @@ body{margin:0;padding:40px;font:16px/1.5 sans-serif}
 </html>
 `
 
+// a page of text from edge to edge and taller than the preview: no empty spot to start a band on
+const WALL_SOURCE = `<!doctype html>
+<html>
+<head>
+<style>
+body{margin:0;font:16px/1.5 sans-serif}
+.row{margin:0;padding:0;height:120px;border-bottom:1px solid #888;overflow:hidden}
+</style>
+</head>
+<body>
+${Array.from({ length: 14 }, (_, i) => `<p class="row" id="r${i}">${'Words fill this row from edge to edge. '.repeat(12)}</p>`).join('')}
+</body>
+</html>
+`
+
 test.describe('html editor: selecting several elements', () => {
   test('shift / ctrl+click and a rubber band select several elements; edits reach all of them', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'genoffice-html-'))
@@ -122,6 +137,76 @@ test.describe('html editor: selecting several elements', () => {
       await frame.locator('body').press('Escape')
       await expect(boxes).toHaveCount(0)
       await expect(float).toHaveCount(0)
+    } finally {
+      await closeAndSaveVideo(launched)
+    }
+  })
+
+  test('alt+drag starts a band on text, and the page scrolls while the band rides its edge', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'genoffice-html-'))
+    const htmlPath = join(dir, 'wall.html')
+    await writeFile(htmlPath, WALL_SOURCE)
+
+    const launched = await launchShell({
+      onboardingSeen: true,
+      videoDir: 'html-multi-select-alt',
+      openFile: htmlPath,
+    })
+    const { app } = launched
+    try {
+      const editorPage = await waitForPageWithUrl(app, '://html/')
+      await expect(editorPage.locator('.ribbon-body')).toBeVisible()
+      const frame = editorPage.frameLocator('.preview-frame')
+      await expect(frame.locator('#r0')).toBeVisible()
+      // the status bar tells how to select several
+      await expect(editorPage.locator('.status-bar .status-hint')).toContainText('Alt+drag')
+      const boxes = frame.locator('[data-gx-inspector-overlay="select"]:visible')
+      const band = frame.locator('[data-gx-inspector-band]')
+      const scrollY = () => frame.locator('body').evaluate(() => window.scrollY)
+      const view = (await editorPage.locator('.preview-frame').boundingBox())!
+
+      // a plain drag on the words selects words, not elements
+      const r0 = (await frame.locator('#r0').boundingBox())!
+      await editorPage.mouse.move(r0.x + 40, r0.y + 30)
+      await editorPage.mouse.down()
+      await editorPage.mouse.move(r0.x + 200, r0.y + 80, { steps: 4 })
+      await expect(band).toHaveCount(0)
+      await editorPage.mouse.up()
+      await frame.locator('body').press('Escape')
+
+      // with Alt the same drag draws a band; held at the bottom edge, the page scrolls under it
+      await editorPage.keyboard.down('Alt')
+      // on the words, a few pixels in from the left side: the band reaches the side of the page
+      await editorPage.mouse.move(r0.x + 6, r0.y + 30)
+      await editorPage.mouse.down()
+      await editorPage.mouse.move(r0.x + 200, r0.y + 80, { steps: 4 })
+      await expect(band).toBeVisible()
+      await editorPage.mouse.move(view.x + view.width - 4, view.y + view.height - 4, { steps: 6 })
+      await expect.poll(scrollY, { timeout: 5000 }).toBeGreaterThan(400)
+      // back away from the edge: the scrolling stops and the band stays where it was dragged
+      await editorPage.mouse.move(view.x + view.width - 4, view.y + view.height / 2, { steps: 3 })
+      const stopped = await scrollY()
+      await editorPage.waitForTimeout(300)
+      expect(await scrollY()).toBe(stopped)
+      // the rows the band fully encloses, as wide as the page thanks to the snapped sides
+      const expected = await frame.locator('body').evaluate(() => {
+        const band = document.querySelector('[data-gx-inspector-band]')!.getBoundingClientRect()
+        const rows = [...document.querySelectorAll('.row')].map((row) =>
+          row.getBoundingClientRect(),
+        )
+        if (band.left > 0 || band.right < rows[0].right) return -1
+        return rows.filter((row) => row.top >= band.top - 0.5 && row.bottom <= band.bottom + 0.5)
+          .length
+      })
+      await editorPage.mouse.up()
+      await editorPage.keyboard.up('Alt')
+      await expect(band).toHaveCount(0)
+
+      // those rows are selected, nothing else
+      expect(expected).toBeGreaterThan(4)
+      await expect(boxes).toHaveCount(expected)
+      await expect(editorPage.locator('.hx-float-count')).toHaveText(`${expected} selected`)
+      await editorPage.screenshot({ path: screenshotPath('html-multi-select-alt') })
     } finally {
       await closeAndSaveVideo(launched)
     }

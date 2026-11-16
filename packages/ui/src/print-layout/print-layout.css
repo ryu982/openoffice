@@ -1,0 +1,349 @@
+/* Shared advanced print parts: page layout panel, layout diagram, arranged preview, small print dialog.
+   The diagram is chrome (sheet and page outlines), not document content, so it uses tokens too. */
+
+.gs-pl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.gs-pl-title {
+  font-weight: 600;
+}
+
+.gs-pl-group,
+.gs-pl-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gs-pl-custom {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.gs-pl-custom > .gs-pl-legend,
+.gs-pl-custom > .gs-pl-hint {
+  grid-column: 1 / -1;
+}
+
+.gs-pl-legend {
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.gs-pl-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.gs-pl-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.gs-pl-check input:disabled + span {
+  color: var(--text-muted);
+}
+
+.gs-pl-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gs-pl-field-label {
+  color: var(--text-dim);
+}
+
+.gs-pl select,
+.gs-pl-number,
+.gs-pl-range-text {
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.gs-pl-number {
+  width: 72px;
+}
+
+.gs-pl-number[aria-invalid='true'],
+.gs-pl-range-text[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.gs-pl-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.gs-pl-issue {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 12px;
+}
+
+.gs-pl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gs-pl-btn {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gs-pl-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.gs-pl-btn:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.gs-pl-btn.primary {
+  border-color: var(--color-btn-primary);
+  background: var(--color-btn-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.gs-pl-btn.primary:hover:not(:disabled) {
+  background: var(--color-btn-primary-hover);
+}
+
+.gs-pl-btn.primary:disabled {
+  opacity: 0.5;
+}
+
+/* ---- layout diagram ---- */
+
+.gs-pl-schematic {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.gs-pl-faces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.gs-pl-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+}
+
+.gs-pl-face[data-excluded='true'] .gs-pl-face-svg {
+  opacity: 0.35;
+}
+
+.gs-pl-face-svg {
+  display: block;
+  overflow: visible;
+}
+
+.gs-pl-sheet {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-pl-page {
+  fill: var(--surface-subtle);
+  stroke: var(--text-muted);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-pl-blank {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1px;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-pl-label-cell {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-pl-label-cell.skipped {
+  fill: var(--bg-hover-strong);
+}
+
+.gs-pl-label-cell.start {
+  stroke: var(--accent);
+  stroke-width: 2px;
+}
+
+.gs-pl-page-number {
+  fill: var(--text);
+  font-family: inherit;
+}
+
+.gs-pl-cut {
+  stroke: var(--text-dim);
+  stroke-width: 1px;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-pl-face-caption {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.gs-pl-face-tag {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.gs-pl-more {
+  align-self: center;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* ---- arranged preview and progress ---- */
+
+.gs-pl-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.gs-pl-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gs-pl-result-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.gs-pl-result-face {
+  max-width: 160px;
+  max-height: 160px;
+  border: 1px solid var(--border-strong);
+}
+
+.gs-pl-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.gs-pl-progress-bar {
+  flex: 1;
+  min-width: 80px;
+  accent-color: var(--accent);
+}
+
+/* ---- small print dialog ---- */
+
+.gs-pl-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--color-bg-overlay);
+}
+
+.gs-pl-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  margin-top: 32px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-modal-strong);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.gs-pl-dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gs-pl-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.gs-pl-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gs-pl-spacer {
+  flex: 1;
+}

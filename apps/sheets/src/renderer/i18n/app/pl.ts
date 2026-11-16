@@ -480,6 +480,7 @@ export const pl = {
   appGridlinesHidden: 'Linie siatki ukryte.',
   appGridlinesShown: 'Linie siatki pokazane.',
   appShowingFormulas: 'Wyświetlanie formuł — przełącz ponownie, aby zobaczyć wartości.',
+  appShowingFormulasActive: 'Wyświetlanie formuł',
   appShowingValues: 'Wyświetlanie obliczonych wartości.',
   appTraceNoFormula: 'Śledź poprzedniki: aktywna komórka nie zawiera formuły.',
   appTraceNoRefs: 'Śledź poprzedniki: ta formuła nie zawiera odwołań do komórek.',
@@ -577,6 +578,9 @@ export const pl = {
     'Eksport do CSV wymaga w pełni załadowanego skoroszytu — poczekaj na zakończenie ładowania.',
   appCsvExportTooLarge: 'Arkusz jest za duży, aby wyeksportować go do CSV.',
   appCsvExportCanceled: 'Anulowano eksport do CSV.',
+  appOdsExported: 'Wyeksportowano {path}.',
+  appOdsExportCanceled: 'Anulowano eksport do ODS.',
+  appOdsExportFailed: 'Eksport do ODS nie powiódł się.',
   appCsvExported: 'Wyeksportowano {path}.',
   appCsvExportedActiveOnly:
     'Pliki CSV zawierają tylko jeden arkusz — aktywny arkusz „{name}” wyeksportowano do {path}.',
@@ -614,6 +618,10 @@ export const pl = {
     'Arkuszowi stylów tego skoroszytu brakuje podstawowej struktury; zmian stylów nie można zapisać.',
   appSaveErrPackageGuard:
     'Zapisanie zmieniłoby strukturę pakietu skoroszytu — przerwano, aby chronić plik.',
+  appSaveErrSheetNotFound:
+    'Nie znaleziono w skoroszycie arkusza, do którego odnosi się ten zapis — zapisywanie przerwano, a plik pozostał bez zmian.',
+  appSaveErrSheetNameReused:
+    'Nowy arkusz używa dawnej nazwy arkusza, którego nazwę zmieniono, więc nie można zapisać. Nadaj na razie nowemu arkuszowi inną nazwę, zapisz, a potem zmień ją. Plik pozostał bez zmian.',
   appSaveErrChartUnsupported:
     'Ten typ wykresu nie obsługuje tej edycji; zapisywanie przerwano — cofnij zmianę wykresu.',
   appSaveErrMoveOverlap:
@@ -724,6 +732,13 @@ export const pl = {
   appSaveAs: 'Zapisz jako',
   appUndo: 'Cofnij',
   appRedo: 'Wykonaj ponownie',
+  appQuickAccessCustomize: 'Dostosuj pasek narzędzi Szybki dostęp',
+  appQuickAccessHint:
+    'Naciśnij Alt i cyfrę, aby uruchomić przycisk na tej pozycji, licząc od lewej.',
+  appQuickAccessMoveEarlier: 'Przesuń bliżej początku',
+  appQuickAccessMoveLater: 'Przesuń bliżej końca',
+  appQuickAccessReset: 'Przywróć domyślne',
+  appQuickAccessFull: 'Pasek mieści najwyżej 10 przycisków.',
   appUnsavedEditOne: '● {count} niezapisana zmiana',
   appUnsavedEditMany: '● {count} niezapisanych zmian',
   appSavedState: 'Zapisano',
@@ -1187,6 +1202,8 @@ export const pl = {
   appRefreshAll: 'Odśwież wszystko',
   appWorkbookNoPivot: 'Brak tabel przestawnych w tym skoroszycie.',
   appRefreshAllTitle: 'Odśwież wszystkie tabele przestawne',
+  appQueriesConnections: 'Zapytania i połączenia',
+  appQueriesConnectionsTitle: 'Pokaż zapytania i połączenia danych skoroszytu',
   appErrorCheckingDetail: 'Skanuj arkusz w poszukiwaniu błędów',
   appErrorsFound: 'Błędy: {count} — w {cell}: {value}',
   appCheckingErrors: 'Skanowanie całego arkusza w poszukiwaniu błędów…',
@@ -1583,4 +1600,8 @@ export const pl = {
   appSpellUnavailable: 'Sprawdzanie pisowni jest niedostępne w tym oknie.',
   appSpellReplaceAll: 'Zamień wszystkie na „{suggestion}”',
   appSpellChangedAll: 'Poprawiono {count} komórek ze słowem „{word}”.',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'Plik ODS otwarto jako kopię xlsx. Zapis utworzy plik xlsx.',
+  appOdsFormulasDropped: 'W {count} formułach zachowano tylko wartości.',
 } satisfies Record<keyof typeof zh, string>

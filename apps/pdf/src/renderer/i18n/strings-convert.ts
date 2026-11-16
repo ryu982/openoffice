@@ -20,6 +20,7 @@ import { he } from './convert/he'
 import { hi } from './convert/hi'
 import { zhTW } from './convert/zh-TW'
 import { vi } from './convert/vi'
+import { tr } from './convert/tr'
 
 /** Copy for the Markdown / EPUB conversion dialog and the picture export choice */
 export const convertStrings = defineStrings({
@@ -44,4 +45,5 @@ export const convertStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

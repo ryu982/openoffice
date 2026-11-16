@@ -90,8 +90,6 @@ export const en = {
   aiStopGeneration: 'Stop generating',
   aiStop: 'Stop',
   aiSend: 'Send',
-  aiSnapshotsTitle: 'Snapshots',
-  aiRollback: 'Roll back',
   aiStarterPolishTitle: "Improve this slide's title and copy",
   aiStarterTighten: "Make this slide's bullets more concise",
   aiStarterProofread: 'Check the whole deck for typos and fix them',
@@ -242,6 +240,11 @@ export const en = {
   aiTplFontsNotice:
     'Template fonts are included in this app. Other programs such as PowerPoint may show a different font.',
   aiTplOpenFonts: 'Open fonts folder',
+  aiTplFontsAuto: 'Fonts: AI picks',
+  aiTplFontsOne: 'Fonts: {font}',
+  aiTplFontsTwo: 'Fonts: titles {title}, body {body}',
+  aiTplFontsTemplate: "Fonts: the chosen template's own",
+  aiTplFontsChange: 'Change',
   aiTplDesc_coral: 'Cream and orange-pink on near-black, with oversized condensed headlines.',
   aiTplDesc_blue_professional:
     'Cream background with vivid cobalt accents. Clean, modern, and businesslike.',

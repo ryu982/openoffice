@@ -79,7 +79,7 @@ const AGENT_SYSTEM_PROMPT = [
 ].join('\n')
 
 const IMAGE_GEN_OFF_NOTE =
-  '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no image API key in Settings). Do not call or promise it; use image_search for imagery.'
+  '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no image API key in Settings). Do not call or promise it; use image_search for imagery. If the user uses a ChatGPT plan: making images needs the Codex program signed in with the same ChatGPT account (Settings > AI > Codex); the direct ChatGPT connection in the app cannot make images because OpenAI does not allow it. Tell the user this when they ask for an image.'
 
 export function createMarkdownSkill(
   getEditor: () => Editor | null,

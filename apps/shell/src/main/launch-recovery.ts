@@ -361,6 +361,93 @@ export function resolveLaunchDecisions(
   }
 }
 
+// ---- tabs of turned-off editors the person did not turn on ----
+
+/**
+ * The session record's index of a planned tab from the previous strip (its
+ * key is `s<index>`); undefined for any other planned tab.
+ */
+export function sessionIndexOfPlannedTab(key: string): number | undefined {
+  const match = /^s(\d+)$/.exec(key)
+  return match ? Number(match[1]) : undefined
+}
+
+/**
+ * The plan without the previous tabs the person declined to restore (their
+ * editor is turned off and "Cancel" was the answer). The front tab and the
+ * split go with them. The launch list keeps every row: a copy is never
+ * dropped, and choosing it in the list asks again.
+ */
+export function withoutPlannedTabs(plan: LaunchPlan, refused: ReadonlySet<string>): LaunchPlan {
+  if (refused.size === 0) return plan
+  const tabs = plan.tabs.filter((tab) => !refused.has(tab.key))
+  const front = plan.front && !refused.has(plan.front) ? plan.front : undefined
+  const split =
+    plan.split && !refused.has(plan.split.a) && !refused.has(plan.split.b) ? plan.split : undefined
+  const next: LaunchPlan = {
+    ...plan,
+    tabs,
+    plainLaunch: tabs.length === 0 && plan.items.length === 0,
+  }
+  delete next.front
+  delete next.split
+  if (front) next.front = front
+  if (split) next.split = split
+  return next
+}
+
+/** the key of the tab a restored list row is appended under (resolveLaunchDecisions) */
+function appendKeyOf(plan: LaunchPlan, rowId: string): string | undefined {
+  const index = plan.items.findIndex((item) => item.id === rowId)
+  return index < 0 ? undefined : `a${index}`
+}
+
+/**
+ * The list's outcome without the appended tabs the person declined to open
+ * (a "restore" row of a turned-off editor, then "Cancel"). Their copies are
+ * recorded as "later" instead of "restore": kept, and offered again.
+ */
+export function withoutRefusedAppends(
+  outcome: LaunchOutcome,
+  plan: LaunchPlan,
+  refused: ReadonlySet<string>,
+): LaunchOutcome {
+  if (refused.size === 0) return outcome
+  const laterKeys = new Set<string>()
+  for (const item of plan.items) {
+    const key = appendKeyOf(plan, item.id)
+    const copy = plan.copies.get(item.id)
+    if (key && copy && refused.has(key)) laterKeys.add(recoveryIdentityKey(copy.identity))
+  }
+  const storeDecisions = outcome.storeDecisions.map((entry) =>
+    laterKeys.has(recoveryIdentityKey(entry.identity))
+      ? { identity: entry.identity, decision: 'later' as const }
+      : entry,
+  )
+  const append = outcome.append.filter((tab) => !refused.has(tab.key))
+  let front = outcome.front && !refused.has(outcome.front) ? outcome.front : undefined
+  if (
+    !front &&
+    outcome.front &&
+    !outcome.split &&
+    outcome.launchPaths.length === 0 &&
+    append.length > 0 &&
+    !plan.crashLoop
+  ) {
+    front = append[0].key
+  }
+  const next: LaunchOutcome = {
+    ...outcome,
+    storeDecisions,
+    append,
+    splitMemoryOrHome:
+      !plan.restoreRun && !front && !outcome.split && outcome.launchPaths.length === 0,
+  }
+  delete next.front
+  if (front) next.front = front
+  return next
+}
+
 // ---- the launch list over IPC ----
 
 const CHOICES: readonly RecoveryChoice[] = ['restore', 'discard']

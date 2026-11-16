@@ -6,16 +6,18 @@ Cada editor tem as suas próprias combinações de teclas, e apenas algumas func
 
 **Quase nada disto é global.** As três teclas de acesso abaixo são-no; tudo o que se segue pertence à aplicação que tiver à frente, e muda quando muda de separador.
 
-| Ação                                                      | macOS | Windows / Linux |
-| --------------------------------------------------------- | ----- | --------------- |
-| Abrir o guia do utilizador — funciona em toda a aplicação | F1    | F1              |
-| Recolher / expandir o friso — todos os editores           | ⌥⌘R   | Ctrl+F1         |
-| Faixa compacta — só Docs                                  | ⌥⌘K   | Ctrl+Alt+K      |
-| Abrir a folha de atalhos de teclado — apenas Word         | ⌘/    | Ctrl+/          |
+| Ação                                                        | macOS | Windows / Linux |
+| ----------------------------------------------------------- | ----- | --------------- |
+| Abrir o guia do utilizador — funciona em toda a aplicação   | F1    | F1              |
+| Recolher / expandir o friso — todos os editores             | ⌥⌘R   | Ctrl+F1         |
+| Faixa compacta — só Docs                                    | ⌥⌘K   | Ctrl+Alt+K      |
+| Abrir a folha de atalhos de teclado — apenas Word           | ⌘/    | Ctrl+/          |
+| Abrir as configurações — todos os separadores exceto o Word | ⌘,    | Ctrl+,          |
 
 - **F1 abre este manual**, não a folha de atalhos. A tecla pertence ao menu da aplicação, por isso funciona igualmente a partir de Word, Sheets, Slides, PDF ou do separador Home.
 - **O interruptor do friso é `Ctrl+F1`, ou `⌥⌘R` no macOS.** Premir `F1` sozinho não faz nada — F1 é o manual, e a tecla do friso deliberadamente não partilha essa combinação. `Ctrl+F1` também é aceite no macOS, mas `⌥⌘R` é a tecla que o Office para Mac usa.
 - **A folha de atalhos de teclado é só do Word** (`⌘/`). Lista exatamente a tabela do Word abaixo. Nenhum outro editor tem uma.
+- **`⌘,` abre as configurações** (`Ctrl+,` no Windows e no Linux), como na maioria das apps para Mac. Num separador do Word a combinação continua a ser subscrito; abra aí as configurações pelo menu da aplicação num Mac, ou por Menu (☰) ▸ Configurações… no Windows e no Linux.
 
 ![A folha de atalhos de teclado do próprio Word: a ação à esquerda, o atalho à direita, agrupados por Ficheiro, Edição, Formatação de texto, Formatação de parágrafo, Inserir, Revisão e ferramentas, Vista](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ O atalho de filtro do Excel, Ctrl+Shift+L, não faz nada no Windows nem no Linux
 
 ### Janela
 
-| Ação                                                         | macOS    | Windows / Linux |
-| ------------------------------------------------------------ | -------- | --------------- |
-| Guardar o livro                                              | ⌘S       | Ctrl+S          |
-| Guardar como                                                 | ⇧⌘S      | Ctrl+Shift+S    |
-| Abrir um livro                                               | ⌘O       | Ctrl+O          |
-| Imprimir                                                     | ⌘P       | Ctrl+P          |
-| Fechar o livro (macOS) / Sair da aplicação (Windows e Linux) | ⌘W       | Ctrl+Q          |
-| Abrir o guia do utilizador                                   | F1       | F1              |
-| Ampliar                                                      | ⌘=       | Ctrl+=          |
-| Zoom com a roda do rato                                      | ⌘ + roda | Ctrl + roda     |
-| Mostrar ou ocultar as fórmulas nas células                   | ⌘`       | Ctrl+`          |
-| Expandir ou recolher a barra de fórmulas                     | ⌘⇧U      | Ctrl+Shift+U    |
+| Ação                                                                                  | macOS    | Windows / Linux |
+| ------------------------------------------------------------------------------------- | -------- | --------------- |
+| Guardar o livro                                                                       | ⌘S       | Ctrl+S          |
+| Guardar como                                                                          | ⇧⌘S      | Ctrl+Shift+S    |
+| Abrir um livro                                                                        | ⌘O       | Ctrl+O          |
+| Imprimir                                                                              | ⌘P       | Ctrl+P          |
+| Fechar o livro (macOS) / Sair da aplicação (Windows e Linux)                          | ⌘W       | Ctrl+Q          |
+| Abrir o guia do utilizador                                                            | F1       | F1              |
+| Ampliar                                                                               | ⌘=       | Ctrl+=          |
+| Zoom com a roda do rato                                                               | ⌘ + roda | Ctrl + roda     |
+| Mostrar ou ocultar as fórmulas nas células                                            | ⌘`       | Ctrl+`          |
+| Expandir ou recolher a barra de fórmulas                                              | ⌘⇧U      | Ctrl+Shift+U    |
+| Executar um botão da Barra de Ferramentas de Acesso Rápido pela posição (1.º ao 10.º) |          | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Estas teclas funcionam quando o separador HWP/HWPX está à frente e o documento
 | Localizar seguinte     | ⌃L          | Ctrl+L                       |
 | Localizar para trás    | ⌃Q, L       | Ctrl+Q, L                    |
 | Ir para                | ⌥G          | Alt+G                        |
+| Início do documento    | ⌃⇞          | Ctrl+PageUp                  |
+| Fim do documento       | ⌃⇟          | Ctrl+PageDown                |
 | Comparar documentos    | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Caráter
@@ -757,3 +762,5 @@ Só funcionam quando o cursor está numa célula vazia de uma tabela. Há teclas
 | Ir para o separador Início (fora de uma tabela) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Uma tecla escrita como `Ctrl+N,T` significa premir Ctrl+N, largar e depois premir T. `F5 → S` significa selecionar um bloco de células com F5 e depois premir S. `Ctrl+1 … Ctrl+0` correspondem ao primeiro ao décimo estilo do documento; `Ctrl+Alt+1 … Ctrl+Alt+0` aplicam os mesmos estilos. Com um bloco de células selecionado, `Ctrl+Shift+S` (no macOS `⇧⌘S`) é a soma do bloco; fora dele, essa tecla guarda como.
+
+Com o rato, como no Hangul, um clique duplo seleciona uma palavra, um clique triplo o parágrafo inteiro, e um clique duplo mantido e arrastado amplia a seleção palavra a palavra. Também funciona ao editar um cabeçalho, um rodapé ou uma nota de rodapé. Copiar um bloco de células (`Ctrl+C`) copia o texto das células e a própria tabela, por isso, colado no corpo do texto, cria de novo a mesma tabela. Colar com apenas o cursor numa célula de outra tabela abre a caixa Paste Cells: substituir a partir dessa célula (as células que ficam fora da tabela são descartadas) ou inserir as células acima, abaixo, à esquerda ou à direita.

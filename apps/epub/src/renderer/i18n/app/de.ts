@@ -30,6 +30,7 @@ export const de = {
   darkView: 'Dunkle Ansicht',
   toc: 'Inhalt',
   tocEmpty: 'Dieses Buch hat kein Inhaltsverzeichnis',
+  sideResize: 'Bereichsbreite ändern',
   statusChapter: 'Kapitel {n}/{total}',
   prevChapter: 'Vorheriges Kapitel',
   nextChapter: 'Nächstes Kapitel',

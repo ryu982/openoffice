@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` e `media` usam o que está configurado na aplicação em Configurações ▸ IA ▸ Avançado:
 
 - `search` funciona sempre. Usa a pesquisa gratuita por predefinição, ou o fornecedor de pesquisa cuja chave selecionou.
-- `image` precisa da chave de um fornecedor de imagens. Nesta versão, uma assinatura não gera imagens.
+- `image` segue a opção de geração de imagens das configurações. Com o padrão, Plano do ChatGPT (programa Codex), desenha com o seu plano do ChatGPT pelo programa Codex, mas só quando você permitiu usar assinaturas nas chamadas automáticas (**desativado por padrão**; consulte [Conectar um agente de programação](help://mcp)). Caso contrário, usa a chave de um fornecedor de imagens configurado. `--model` é usado quando esse caminho oferece o modelo; caso contrário, o comando responde com os modelos que você pode usar. As imagens passadas com `--ref` funcionam nos dois caminhos.
 - `media` sobre uma imagem usa um fornecedor com chave quando há um configurado. Só usa a sua assinatura do Claude ou do Codex se o tiver autorizado, e isso vem **desligado por predefinição**; [Conectar um agente de programação](help://mcp) explica o interruptor e os seus limites.
 - `media` sobre vídeo ou áudio precisa de um fornecedor com chave que suporte vídeo.
 

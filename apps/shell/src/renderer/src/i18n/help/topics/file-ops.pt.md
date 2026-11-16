@@ -26,6 +26,8 @@ As regras: a extensão é preservada automaticamente; caracteres proibidos, pont
 ## Salvar e Salvar Como
 
 - **⌘S / ctrl+S** salva o ficheiro atual; um ficheiro sem título pergunta primeiro pela localização e pelo nome.
+- Na maioria dos editores, a lista de tipos de ficheiro da caixa Salvar Como também oferece os formatos de exportação (PDF, imagens, outros formatos de documento). Escolher um deles grava apenas uma cópia; o documento aberto e o seu separador continuam no ficheiro original. Imagens de várias páginas são divididas em `nome-01.png`, `nome-02.png`, ….
+- **Docs**: a lista Guardar como também oferece .hwp e .hwpx (Ficheiro ▸ Exportar como documento HWP… faz o mesmo). Se algo não puder ser transferido, como comentários, equações ou caixas de texto, é avisado antes de o ficheiro ser escrito.
 - **Salvar Como…** grava um ficheiro novo e deixa o original intacto; as edições seguintes passam a incidir sobre o ficheiro novo.
 - Cada gravação é atómica (ficheiro temporário + mudança de nome), pelo que sair a meio da escrita não corrompe o ficheiro.
 - O salvamento automático segue o interruptor de cada editor; um documento novo sem ficheiro próprio só começa após o primeiro salvamento (consulte [Início rápido](help://getting-started)).
@@ -44,7 +46,17 @@ As regras: a extensão é preservada automaticamente; caracteres proibidos, pont
 
 ## Imprimir
 
-Arquivo ▸ Imprimir… em cada editor (⌘P/ctrl+P) abre a caixa de diálogo de impressão do sistema; os PDFs imprimem com a ordem de páginas e as rotações atuais.
+Arquivo ▸ Imprimir (⌘P/ctrl+P) abre uma janela de impressão em cada editor. Docs, PDF, Sheets, Slides e Markdown têm a seção **Disposição das páginas** na janela de impressão de sempre, o HWP na pré-visualização de impressão, e HTML, mapa mental e diagrama numa nova janela de impressão pequena. Se não escolher nada em Disposição das páginas, a impressão funciona como antes.
+
+- **Disposição**: escolha Uma página por folha, Várias páginas por folha (2, 4, 6, 9 ou 16), Livreto (encadernar à esquerda ou à direita), Pôster (folhas na largura e na altura, sobreposição, linhas de corte) ou Etiquetas (uma página por etiqueta ou a mesma página em todas as etiquetas, etiqueta inicial, formato A4 comum ou medidas personalizadas).
+- **Só faces ímpares, só faces pares, ordem inversa**: as faces são contadas depois da disposição, sobre o que realmente sai da impressora. Serve em impressoras sem frente e verso: imprima as frentes, vire o papel e imprima os versos.
+- **Reduzir para caber no papel**: só as páginas maiores que o papel escolhido são reduzidas; as menores não são ampliadas. Sheets e Markdown usam os próprios campos de papel e escala.
+- **Tons de cinza e resolução da imagem**: ao imprimir com opções de Disposição das páginas, cada página vira imagem antes de ir para a impressora. Escolha a resolução entre Automática, 150, 300 ou 600 dpi.
+- **Só a seleção**: Docs e Markdown imprimem só o texto selecionado, repaginado a partir da primeira página; Slides imprime os slides selecionados e PDF as páginas selecionadas. Sheets imprime o intervalo selecionado como antes.
+- **Esquema da disposição e pré-visualização do resultado**: o esquema mostra na hora onde cada número de página fica no papel, e **Pré-visualizar o resultado** mostra o que foi gerado de fato. Com **Salvar o resultado disposto como PDF** é possível imprimir a mesma disposição em outro PC ou numa gráfica.
+- **Janela de impressão do sistema**: para um livreto, escolha frente e verso virando pela borda curta. Deixe o intervalo de páginas e as páginas por folha como estão na janela do sistema.
+
+Os PDFs imprimem com a ordem de páginas e as rotações atuais.
 
 ## Onde vivem os ficheiros sem título
 

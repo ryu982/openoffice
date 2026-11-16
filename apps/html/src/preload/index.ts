@@ -1,6 +1,7 @@
 import type { AiPanelPrefs } from '@genoffice/ui'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import {
@@ -16,12 +17,22 @@ import { SUBSCRIPTION_IPC_CHANNELS } from '@genoffice/ai-provider/browser'
 import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import { splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import { createPrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
+import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 import { AI_CHANNELS, HTML_CHANNELS } from '../shared/ipc'
 import { HTML_HANDOFF_CHANNELS } from '../shared/ipc'
-import type { AutoSaveDefault, ExportFormat, HtmlApi, SaveMode, UiTheme } from '../shared/ipc'
+import type {
+  AutoSaveDefault,
+  ExportFormat,
+  HtmlApi,
+  HtmlPrintJob,
+  SaveMode,
+  UiTheme,
+} from '../shared/ipc'
 import {
   SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
+  SUBSCRIPTION_USAGE_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
   subscriptionStatusMapOf,
@@ -69,6 +80,11 @@ const subscription: HtmlSubscriptionApi = {
       handler(subscriptionStatusMapOf(statuses))
     ipcRenderer.on(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
     return () => ipcRenderer.removeListener(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
+  },
+  onUsage: (handler) => {
+    const listener = (_e: unknown, usage: unknown) => handler(Array.isArray(usage) ? usage : [])
+    ipcRenderer.on(SUBSCRIPTION_USAGE_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(SUBSCRIPTION_USAGE_CHANNEL, listener)
   },
   openInstallHelp: async (provider) => {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
@@ -149,6 +165,12 @@ const api: HtmlApi = {
   exportHtml: (request) => ipcRenderer.invoke(HTML_CHANNELS.exportHtml, request),
   printHtml: (request) => ipcRenderer.invoke(HTML_CHANNELS.printHtml, request),
   renderPrintPreview: (request) => ipcRenderer.invoke(HTML_CHANNELS.printPreview, request),
+  printJobPages: (request) =>
+    ipcRenderer.invoke(HTML_CHANNELS.printJobPages, request).catch((err: unknown) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    })),
+  printLayout: createPrintLayoutBridge<HtmlPrintJob>(ipcRenderer, 'html'),
   getLanguage: () => ipcRenderer.invoke(HTML_CHANNELS.getLanguage),
   onLanguageChanged: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, lang: Lang) => handler(lang)
@@ -219,9 +241,18 @@ const projectApi: Pick<ProjectApi, 'resolveChat' | 'appendChat' | 'loadChat' | '
 contextBridge.exposeInMainWorld('htmlApi', api)
 // The split-pane role and focus calls the shell drives this pane with
 contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
+// Settings › Editors and AI: the screen reads and hears the choice (hides its AI parts
+// while AI is off); changing it or stopping AI jobs is the shell's alone
+const editorChoice = appChoiceBridge()
+contextBridge.exposeInMainWorld(APP_CHOICE_BRIDGE_KEY, {
+  get: editorChoice.get,
+  onChange: editorChoice.onChange,
+})
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
 contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for this editor's AI: list and call approved tools (the shell checks each)
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button

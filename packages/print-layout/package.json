@@ -1,0 +1,26 @@
+{
+  "name": "@genoffice/print-layout",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Advanced print layout shared by the editors: option model, sheet planning (renderer-safe ./plan), and re-placing a print job PDF's pages (N-up, booklet, poster, labels, odd/even, reverse, fit)",
+  "exports": {
+    ".": "./src/index.ts",
+    "./plan": "./src/plan.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@embedpdf/pdfium": "^2.15.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "^6.2.108",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

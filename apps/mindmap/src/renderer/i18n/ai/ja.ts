@@ -36,10 +36,6 @@ export const ja = {
   aiRetry: '再試行',
   aiCopyReplyTitle: '返信をコピー',
   aiRegenerateTitle: '再生成',
-  aiTurnsTitle: 'AI の変更を元に戻す',
-  aiRollback: 'ロールバック',
-  aiRollbackIncomplete:
-    'このターンの一部は元に戻せませんでした。マップの元に戻す履歴がそこまで残っていません。',
   aiUnknownError: 'AI リクエストに失敗しました。再試行してください',
   aiTimeoutError: 'AI の応答がタイムアウトしました',
   aiCreditsExhausted: 'クレジット不足です。ご利用の AI プロバイダーでチャージしてください',

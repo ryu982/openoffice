@@ -8,8 +8,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./ai-panel-prefs": "./src/ai-panel-prefs.ts",
+    "./icons": "./src/icons.tsx",
+    "./clipboard-picture": "./src/clipboard-picture.ts",
     "./ai-subscription-login-window": "./src/ai-subscription-login-window.ts",
     "./template-fonts": "./src/template-fonts.ts",
+    "./slides-ai-fonts": "./src/slides-ai-fonts.ts",
     "./tokens.css": "./src/tokens.css",
     "./screentip.css": "./src/screentip.css",
     "./color-picker.css": "./src/color-picker.css",
@@ -20,11 +23,13 @@
     "./ai-panel-prefs.css": "./src/ai-panel-prefs.css",
     "./ai-scope-quote.css": "./src/ai-scope-quote.css",
     "./ai-queue-strip.css": "./src/ai-queue-strip.css",
+    "./ai-changes.css": "./src/ai-changes.css",
     "./ai-usage.css": "./src/ai-usage.css",
     "./image-dialogs.css": "./src/image-dialogs.css",
     "./image-viewer.css": "./src/image-viewer.css",
     "./fonts/*": "./src/fonts/*",
-    "./ai-model-picker.css": "./src/ai-model-picker.css"
+    "./ai-model-picker.css": "./src/ai-model-picker.css",
+    "./print-layout.css": "./src/print-layout/print-layout.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -43,6 +48,7 @@
     "@genoffice/pptx-render": "*",
     "@genoffice/agent-core": "*",
     "@genoffice/ai-provider": "*",
+    "@genoffice/print-layout": "*",
     "@genoffice/project-store": "*"
   }
 }

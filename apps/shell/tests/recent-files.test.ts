@@ -19,17 +19,27 @@ describe('matchesExtFamily', () => {
     expect(matchesExtFamily('txt', 'md')).toBe(true)
     expect(matchesExtFamily('json', 'md')).toBe(true)
     expect(matchesExtFamily('csv', 'xlsx')).toBe(true)
+    // an OpenDocument spreadsheet is a spreadsheet in the sidebar filters too
+    expect(matchesExtFamily('ods', 'xlsx')).toBe(true)
     expect(matchesExtFamily('htm', 'html')).toBe(true)
   })
 
   it('still matches exact extensions and rejects outsiders', () => {
     expect(matchesExtFamily('pdf', 'pdf')).toBe(true)
-    // a mind map has one extension, so its filter key is the extension itself
+    // the mind map filter takes its own maps and the FreeMind / Freeplane maps it imports
     expect(matchesExtFamily('xmind', 'xmind')).toBe(true)
+    expect(matchesExtFamily('mm', 'xmind')).toBe(true)
     expect(matchesExtFamily('md', 'xmind')).toBe(false)
     expect(matchesExtFamily('epub', 'epub')).toBe(true)
     expect(matchesExtFamily('pdf', 'epub')).toBe(false)
+    // the diagram filter takes every form the diagram tab opens
+    for (const ext of ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx']) {
+      expect(matchesExtFamily(ext, 'drawio'), ext).toBe(true)
+    }
+    expect(matchesExtFamily('svg', 'drawio')).toBe(false)
+    expect(matchesExtFamily('png', 'drawio')).toBe(false)
     expect(matchesExtFamily('xlsx', 'docx')).toBe(false)
+    expect(matchesExtFamily('ods', 'docx')).toBe(false)
     expect(matchesExtFamily('png', 'xlsx')).toBe(false)
     expect(matchesExtFamily('png', 'md')).toBe(false)
   })

@@ -71,9 +71,37 @@ export function onSubscriptionLoginChange(
 
 /** Tell the listeners of `onSubscriptionLoginChange`; one that throws does not stop the others */
 export function notifySubscriptionLoginChange(provider: AiSubscriptionProviderId): void {
-  for (const listener of [...loginChangeListeners]) {
+  tell(loginChangeListeners, provider)
+}
+
+interface SubscriptionOffChange {
+  provider: AiSubscriptionCliId
+  off: boolean
+}
+
+const offChangeListeners = new Set<(change: SubscriptionOffChange) => void>()
+
+/**
+ * Be told when a CLI was turned off in this app, or back on (decision 0114). A
+ * bridge that keeps one of its processes running ends it, and keeps none while
+ * the CLI is off. Returns a function that stops the listening.
+ */
+export function onSubscriptionOffChange(
+  listener: (change: SubscriptionOffChange) => void,
+): () => void {
+  offChangeListeners.add(listener)
+  return () => offChangeListeners.delete(listener)
+}
+
+/** Tell the listeners of `onSubscriptionOffChange`; one that throws does not stop the others */
+export function notifySubscriptionOffChange(change: SubscriptionOffChange): void {
+  tell(offChangeListeners, change)
+}
+
+function tell<P>(listeners: Set<(value: P) => void>, value: P): void {
+  for (const listener of [...listeners]) {
     try {
-      listener(provider)
+      listener(value)
     } catch {
       /* keep telling the others */
     }
@@ -392,13 +420,22 @@ export async function launchSubscriptionLogout(
  * constant in `SUBSCRIPTION_INSTALL_COMMANDS` and the full path of PowerShell
  * in the system directory: `start` looks for a bare program name in the working
  * directory before anywhere else.
+ *
+ * A fixed line is printed first: Claude's script turns off its progress display
+ * and says nothing until the download is done, so without it the window stays
+ * blank for minutes and looks stuck. The line is ASCII with no quote marks, so
+ * it sits inside both cmd's double quotes and PowerShell's single quotes as is.
  */
+export const SUBSCRIPTION_INSTALL_WINDOW_NOTE =
+  'Installing. The download can take a few minutes, and this window may show nothing until it is done. Keep this window open.'
+
 export function subscriptionInstallCommandLine(
   provider: AiSubscriptionCliId,
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   const powershell = windowsSystemTool(env, 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-  return `start "" "${powershell}" -NoLogo -NoExit -Command "${SUBSCRIPTION_INSTALL_COMMANDS[provider]}"`
+  const command = `Write-Host '${SUBSCRIPTION_INSTALL_WINDOW_NOTE}'; ${SUBSCRIPTION_INSTALL_COMMANDS[provider]}`
+  return `start "" "${powershell}" -NoLogo -NoExit -Command "${command}"`
 }
 
 export interface SubscriptionInstallOptions {

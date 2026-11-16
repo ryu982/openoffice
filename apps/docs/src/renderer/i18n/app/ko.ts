@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const ko = {
+  appLegacyDocImported:
+    '.{ext} 파일을 .docx 사본으로 바꿔 열었습니다. 원본은 그대로 두고, 저장하면 새 .docx 파일로 저장됩니다.',
   appScTitle: '키보드 바로 가기',
   appScFilter: '바로 가기 검색',
   appScNone: '일치하는 바로 가기가 없습니다',
@@ -54,8 +56,8 @@ export const ko = {
   appFontsMissing: '문서 글꼴이 설치되어 있지 않습니다: {names} (대체 글꼴로 표시)',
   appVerticalTextNotice:
     '세로쓰기 텍스트가 포함된 문서입니다(현재 가로쓰기로 표시되며 저장에는 영향이 없습니다)',
-  appNewDocCreated:
-    '빈 문서를 만들었습니다. 왼쪽 AI 패널에서 생성할 내용을 바로 입력할 수 있습니다',
+  appNewDocCreated: '빈 문서를 만들었습니다. 왼쪽 AI 창에서 생성할 내용을 바로 입력할 수 있습니다',
+  appNewDocCreatedNoAi: '빈 문서를 만들었습니다',
   appNewFailed: '새로 만들기 실패: {error}',
   appSaveFailed: '저장 실패: {error}',
   appAutoSavedAt: '자동 저장됨 ({time})',
@@ -101,6 +103,9 @@ export const ko = {
   appPrintRangeAll: '모든 페이지',
   appPrintRangeCurrent: '현재 페이지',
   appPrintRangeCustom: '사용자 지정 범위',
+  appPrintRangeSelection: '선택 영역',
+  appPrintSelectionPreparing: '선택 영역을 쪽으로 나누는 중…',
+  appPrintSelectionFailed: '선택 영역을 준비하지 못했습니다: {error}',
   appPrintRangeHint: '예: 1,3,5-8',
   appPrintPageCount: '총 {n}페이지',
   appPrintNoPages: '인쇄할 페이지가 없습니다',
@@ -370,6 +375,9 @@ export const ko = {
   appAiBadgeTip: 'AI를 사용합니다',
   appTranslate: '번역',
   appTranslateTo: '{lang}(으)로 번역',
+  appEasyWords: '쉬운 말로 풀기',
+  appEasyWordsPrompt:
+    '고른 글을 쉬운 글이 필요한 사람(어린이, 어르신, 한국어를 배우는 사람)도 알 수 있게 한국어로 풀어 설명해 주세요. 날마다 쓰는 쉬운 낱말과 짧은 문장으로 쓰고, 사실·숫자·조건은 하나도 빼지 마세요. 문서는 고치지 마세요: "{text}"',
   redactMenuLabel: '선택한 부분을 AI에서 숨기기',
   redactDialogDesc:
     '문서는 그대로 두고 AI에게는 아래 자리표시자만 보냅니다. 이름을 붙이면 AI가 무엇을 뜻하는지 알 수 있습니다.',
@@ -400,6 +408,7 @@ export const ko = {
   appLangHindi: '힌디어',
   appLangTraditionalChinese: '중국어 번체',
   appLangVietnamese: '베트남어',
+  appLangTurkish: '터키어',
   appWrapTextMenu: '텍스트 줄 바꿈',
   appViewImage: '이미지 보기',
   appSaveImageAs: '이미지를 다른 이름으로 저장…',
@@ -605,4 +614,9 @@ export const ko = {
   appMergeSourceLoaded: '{name}({n}개 레코드)을 불러왔습니다',
   appMergeWritten: '문서 {n}개를 저장했습니다',
   appMergeNothingToWrite: '저장할 문서가 없습니다',
+  appExportingHwp: '한글 문서 내보내는 중…',
+  appExportedHwp: '한글 문서를 내보냈습니다: {path}',
+  appExportHwpFailed: '한글 문서 내보내기 실패: {error}',
+  appExportHwpCanceled: '한글 문서 내보내기를 취소했습니다',
+  appExportHwpReadback: '이 문서는 .hwp로 정확히 쓰지 못했습니다. .hwpx로 저장해 보세요.',
 } satisfies Record<keyof typeof zh, string>

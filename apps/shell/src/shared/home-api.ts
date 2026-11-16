@@ -20,6 +20,8 @@ import type {
 import type { UpdateChannel, UpdateUiState } from './update-api'
 import type { KbFileInfo, KbReadPage, KbSearchHit } from '@genoffice/agent-core'
 import type { AiPanelPrefs } from '@genoffice/ui/ai-panel-prefs'
+import type { SlidesAiFonts } from '@genoffice/ui/slides-ai-fonts'
+import type { FontFamilyInfo } from '@genoffice/ui'
 
 /** UI language; kept self-contained here (mirrors Lang in @genoffice/i18n) */
 
@@ -45,6 +47,7 @@ export type UiLanguage =
   | 'hi'
   | 'zh-TW'
   | 'vi'
+  | 'tr'
 
 /** UI theme preference */
 export type UiTheme = 'light' | 'dark' | 'system'
@@ -207,6 +210,11 @@ export interface DefaultAppStatus {
   manualOnly: boolean
 }
 
+/** The part of the tool report (`AiToolCapabilities`) Settings reads */
+export interface HomeToolCapabilities {
+  imageGeneration: { available: boolean }
+}
+
 export interface HomeApi {
   /** unified recents across document types, newest first (paged) */
   recents(query?: RecentQuery): Promise<RecentPage>
@@ -273,6 +281,8 @@ export interface HomeApi {
   newHtml(opts?: NewFileOpts): Promise<void>
   /** open a new, untitled mind map tab */
   newMindmap(opts?: NewFileOpts): Promise<void>
+  /** open a new, untitled one-page diagram tab; its first save proposes .drawio */
+  newDiagram(opts?: NewFileOpts): Promise<void>
   /** open a blank HWP editor tab; the file is named at its first save */
   newHwp(opts?: NewFileOpts): Promise<void>
   /** create a blank single-page PDF in the default save folder and open it */
@@ -325,7 +335,7 @@ export interface HomeApi {
   getAutoUpdateCheck(): Promise<boolean>
   setAutoUpdateCheck(on: boolean): Promise<void>
   /** a tab asked for the settings modal (composer model chip → AI Model section) */
-  onOpenSettings(handler: (target: { section: string }) => void): () => void
+  onOpenSettings(handler: (target: { section: string; field?: string }) => void): () => void
   /** app version (from package.json / electron app.getVersion) */
   getAppVersion(): Promise<string>
   /** live updater state (null until an update was first seen); Settings → About */
@@ -380,6 +390,14 @@ export interface HomeApi {
   getHwpDefaultFormat(): Promise<HwpDefaultFormat>
   /** persist the choice; an unknown value is stored as HWP */
   setHwpDefaultFormat(format: HwpDefaultFormat): Promise<HwpDefaultFormat>
+  /** fonts AI slide generation uses when the request names none (userData/app-settings.json) */
+  getSlidesAiFonts?(): Promise<SlidesAiFonts>
+  /** persist the choice; resolves to the value as stored (unknown parts fall back to the defaults) */
+  setSlidesAiFonts?(fonts: SlidesAiFonts): Promise<SlidesAiFonts>
+  /** Korean names and similar details of installed families, read from the font files */
+  fontFamilyInfo?(
+    families: readonly string[],
+  ): Promise<ReadonlyArray<readonly [string, FontFamilyInfo]>>
   /** who opens .docx/.xlsx/.pptx today (Settings → General "default app" row) */
   getDefaultAppStatus(): Promise<DefaultAppStatus>
   /** claim the Office types (mac/linux) or open the system Default Apps page (win); resolves to the refreshed status */
@@ -435,6 +453,12 @@ export interface HomeApi {
   cancelLocalTest(testId: string): Promise<boolean>
   /** one-shot round trip against the given (possibly unsaved) settings — the settings-UI connection test */
   testAiSettings(settings: AiSettings): Promise<AiChatResponse>
+  /**
+   * What the tool report (`ai:tool-capabilities`, answered by the docs main)
+   * says about image generation on the screen path right now; null when it
+   * gave no answer. Only the part Settings reads is passed on.
+   */
+  aiToolCapabilities(): Promise<HomeToolCapabilities | null>
   /** image generation / media analysis provider catalog */
   getAiMediaProviders(): AiMediaProviderMeta[]
   /** credential check for a (possibly unsaved) media provider */
@@ -562,6 +586,7 @@ export const HOME_CHANNELS = {
   newMarkdown: 'home:new-markdown',
   newHtml: 'home:new-html',
   newMindmap: 'home:new-mindmap',
+  newDiagram: 'home:new-diagram',
   newHwp: 'home:new-hwp',
   newPdf: 'home:new-pdf',
   removeRecent: 'home:remove-recent',
@@ -611,6 +636,8 @@ export const HOME_CHANNELS = {
   pickDefaultSaveDir: 'home:pick-default-save-dir',
   getHwpDefaultFormat: 'home:get-hwp-default-format',
   setHwpDefaultFormat: 'home:set-hwp-default-format',
+  getSlidesAiFonts: 'home:get-slides-ai-fonts',
+  setSlidesAiFonts: 'home:set-slides-ai-fonts',
   openGitHubRepo: 'home:open-github-repo',
   openFeedbackSurvey: 'home:open-feedback-survey',
   openLicenseNotices: 'home:open-license-notices',

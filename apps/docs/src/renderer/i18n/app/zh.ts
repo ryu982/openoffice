@@ -1,5 +1,7 @@
 /** app strings, zh: defines the key set every other locale shard must match. */
 export const zh = {
+  appLegacyDocImported:
+    '已将 .{ext} 文件转换为 .docx 副本打开。原文件保持不变，保存时将写入新的 .docx 文件。',
   appScTitle: '键盘快捷键',
   appScFilter: '搜索快捷键',
   appScNone: '没有匹配的快捷键',
@@ -52,6 +54,7 @@ export const zh = {
   appFontsMissing: '文档字体未安装：{names}（已用替代字体显示）',
   appVerticalTextNotice: '文档包含竖排文字（暂以横排显示，保存不受影响）',
   appNewDocCreated: '已新建空白文档,可在左侧 AI 面板直接描述要生成的内容',
+  appNewDocCreatedNoAi: '已新建空白文档',
   appNewFailed: '新建失败: {error}',
   appSaveFailed: '保存失败: {error}',
   appAutoSavedAt: '已自动保存 ({time})',
@@ -96,6 +99,9 @@ export const zh = {
   appPrintRangeAll: '所有页',
   appPrintRangeCurrent: '当前页',
   appPrintRangeCustom: '自定义范围',
+  appPrintRangeSelection: '选定内容',
+  appPrintSelectionPreparing: '正在为选定内容分页…',
+  appPrintSelectionFailed: '无法准备选定内容：{error}',
   appPrintRangeHint: '如:1,3,5-8',
   appPrintPageCount: '共 {n} 页',
   appPrintNoPages: '没有可打印的页面',
@@ -358,6 +364,9 @@ export const zh = {
   appAiBadgeTip: '将调用 AI',
   appTranslate: '翻译',
   appTranslateTo: '翻译成{lang}',
+  appEasyWords: '用浅显的话解释',
+  appEasyWordsPrompt:
+    '请用中文把选中的文字解释得浅显易懂,让需要简单文字的人(儿童、老年人、正在学中文的人)也能看懂。用日常词语和短句,所有事实、数字和条件都要保留。不要修改文档:“{text}”',
   redactMenuLabel: '把选中的内容对 AI 隐藏',
   redactDialogDesc:
     '这段文字会留在文档和文件里，AI 读到的却是下面的标记。给它起个名字，AI 才知道它是什么。',
@@ -388,6 +397,7 @@ export const zh = {
   appLangHindi: '印地文',
   appLangTraditionalChinese: '繁体中文',
   appLangVietnamese: '越南文',
+  appLangTurkish: '土耳其语',
   appWrapTextMenu: '环绕文字',
   appViewImage: '查看图片',
   appSaveImageAs: '图片另存为…',
@@ -592,4 +602,9 @@ export const zh = {
   appMergeSourceLoaded: '已加载数据源 {name}（{n} 条记录）',
   appMergeWritten: '已写出 {n} 个文档',
   appMergeNothingToWrite: '没有可写出的文档',
+  appExportingHwp: '正在导出 HWP 文档…',
+  appExportedHwp: '已导出 HWP 文档：{path}',
+  appExportHwpFailed: 'HWP 文档导出失败：{error}',
+  appExportHwpCanceled: '已取消导出 HWP 文档',
+  appExportHwpReadback: '无法将此文档准确写成 .hwp。请尝试另存为 .hwpx。',
 }

@@ -10,12 +10,16 @@ import {
   normalizeLaunchListResult,
   planLaunch,
   resolveLaunchDecisions,
+  sessionIndexOfPlannedTab,
+  withoutPlannedTabs,
+  withoutRefusedAppends,
   type LaunchCopy,
   type LaunchPlan,
   type PlanLaunchInput,
 } from '../src/main/launch-recovery'
 import {
   createSessionRecorder,
+  sessionLayoutWithout,
   sessionSnapshotFrom,
   type SessionRecord,
   type SessionRecordReadResult,
@@ -704,5 +708,90 @@ describe('MCP / @ lookups of a restored tab', () => {
     }
     expect(await liveTabContents('d1', deps)).toBe(wc)
     expect(await liveTabContents('zz', deps)).toBeUndefined()
+  })
+})
+
+describe('tabs of turned-off editors declined at launch (editor choice spec 7.5)', () => {
+  const previous = record({
+    tabs: [
+      { kind: 'docs', title: 'a.docx', filePath: docA.filePath },
+      { kind: 'sheets', title: 'b.xlsx', filePath: sheetB.filePath },
+      {
+        kind: 'markdown',
+        title: 'Notes',
+        untitled: { untitledId: mdUntitled.untitledId, ext: '.md' },
+      },
+    ],
+    active: 1,
+    split: { a: 0, b: 1, orientation: 'side', ratio: 0.5, focus: 'b' },
+  })
+
+  it('maps a planned tab back to its index in the session record', () => {
+    expect(sessionIndexOfPlannedTab('s2')).toBe(2)
+    expect(sessionIndexOfPlannedTab('a0')).toBeUndefined()
+    expect(sessionIndexOfPlannedTab('crash')).toBeUndefined()
+  })
+
+  it('drops the declined tabs with the front tab and the split they held', () => {
+    const p = plan({ previous })
+    expect(p.front).toBe('s1')
+    expect(p.split).toBeDefined()
+    const next = withoutPlannedTabs(p, new Set(['s1']))
+    expect(next.tabs.map((t) => t.key)).toEqual(['s0'])
+    expect(next.front).toBeUndefined()
+    expect(next.split).toBeUndefined()
+    expect(next.plainLaunch).toBe(false)
+    // nothing declined: the very same plan
+    expect(withoutPlannedTabs(p, new Set())).toBe(p)
+  })
+
+  it('keeps every launch-list row: a declined untitled tab keeps its copy', () => {
+    const p = plan({ previous, copies: [copy({ identity: mdUntitled, title: 'Notes' })] })
+    const declined = p.tabs.find((t) => t.kind === 'markdown')!.key
+    const next = withoutPlannedTabs(p, new Set([declined]))
+    expect(next.tabs.some((t) => t.key === declined)).toBe(false)
+    expect(next.items).toEqual(p.items)
+    expect([...next.copies.values()].map((c) => c.identity)).toEqual([mdUntitled])
+  })
+
+  it('becomes a plain launch when nothing is left to restore or ask', () => {
+    const p = plan({
+      previous: record({ tabs: [{ kind: 'docs', title: 'a.docx', filePath: docA.filePath }] }),
+    })
+    const next = withoutPlannedTabs(p, new Set(['s0']))
+    expect(next.tabs).toEqual([])
+    expect(next.plainLaunch).toBe(true)
+  })
+
+  it('keeps a copy chosen in the list but declined at the question for later', () => {
+    const other = { kind: 'html' as const, filePath: file('page.html') }
+    const p = plan({
+      copies: [copy({ identity: hwpUntitled, title: 'Draft' }), copy({ identity: other })],
+    })
+    const ids = [...p.copies.keys()]
+    const out = resolveLaunchDecisions(p, {
+      decisions: { [ids[0]]: 'restore', [ids[1]]: 'restore' },
+    })
+    expect(out.append.map((t) => t.key)).toEqual(['a0', 'a1'])
+    expect(out.front).toBe('a0')
+    const next = withoutRefusedAppends(out, p, new Set(['a0']))
+    expect(next.append.map((t) => t.key)).toEqual(['a1'])
+    expect(next.front).toBe('a1')
+    expect(next.storeDecisions).toEqual([
+      { identity: hwpUntitled, decision: 'later' },
+      { identity: other, decision: 'restore' },
+    ])
+    expect(withoutRefusedAppends(out, p, new Set())).toBe(out)
+  })
+
+  it('the session record carries over only the tabs that were restored', () => {
+    if (previous.status !== 'ok') throw new Error('fixture')
+    const layout = sessionLayoutWithout(
+      { tabs: previous.record.tabs, active: 2, split: previous.record.split },
+      new Set([1]),
+    )
+    expect(layout.tabs.map((t) => t.title)).toEqual(['a.docx', 'Notes'])
+    expect(layout.active).toBe(1)
+    expect(layout.split).toBeUndefined()
   })
 })

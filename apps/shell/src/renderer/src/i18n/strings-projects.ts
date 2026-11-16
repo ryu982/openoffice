@@ -20,6 +20,7 @@ import { he } from './projects/he'
 import { hi } from './projects/hi'
 import { zhTW } from './projects/zh-TW'
 import { vi } from './projects/vi'
+import { tr } from './projects/tr'
 
 /**
  * The home project screen (decision 0088). Words the AI panel already has
@@ -48,6 +49,7 @@ export const projectsUiStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type ProjectsStringKey = keyof typeof zh

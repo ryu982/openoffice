@@ -97,7 +97,12 @@ export interface EditGroup {
 }
 
 export type EditGroupsOutcome =
-  | { ok: true; results: OkEdit[] }
+  | {
+      ok: true
+      results: OkEdit[]
+      /** the history entry the edits became; absent when nothing changed */
+      entry?: number
+    }
   | {
       ok: false
       /** which group failed */
@@ -105,7 +110,15 @@ export type EditGroupsOutcome =
       failure: FailedEdit
       /** groups that stayed applied (none when atomic) */
       results: OkEdit[]
+      entry?: number
     }
+
+/**
+ * How taking back given history entries went: all of them, some, none
+ * (others are on top of them now), none because they are no longer in the
+ * history, or not now (this tab's book translation runs).
+ */
+export type UndoEntriesOutcome = 'reverted' | 'partial' | 'refused' | 'expired' | 'locked'
 
 export interface ReplaceAllOutcome {
   replaced: number
@@ -123,6 +136,8 @@ interface HistoryPart {
 }
 
 interface HistoryEntry {
+  /** unique in the tab: an entry undone and redone comes back with a new one */
+  id: number
   parts: HistoryPart[]
 }
 
@@ -200,6 +215,7 @@ export class EpubEditController {
   private chain: Promise<unknown> = Promise.resolve()
   private undoStack: HistoryEntry[] = []
   private redoStack: HistoryEntry[] = []
+  private historySeq = 0
   /** the main process's version of every chapter text known here, by path */
   private readonly versions = new Map<string, number>()
   private changes = 0
@@ -753,11 +769,13 @@ export class EpubEditController {
       .map((r) => ({ spineIndex: r.spineIndex, path: r.path, inverse: r.inverse }))
   }
 
-  private push(parts: HistoryPart[]): void {
-    if (parts.length === 0) return
-    this.undoStack.push({ parts })
+  private push(parts: HistoryPart[]): number | undefined {
+    if (parts.length === 0) return undefined
+    const id = ++this.historySeq
+    this.undoStack.push({ id, parts })
     if (this.undoStack.length > HISTORY_LIMIT) this.undoStack.shift()
     this.redoStack = []
+    return id
   }
 
   private refused(result: FailedEdit, quiet = false): void {
@@ -996,7 +1014,7 @@ export class EpubEditController {
       path: r.path,
       inverse: r.inverse,
     }))
-    return { entry: { parts }, results }
+    return { entry: { id: ++this.historySeq, parts }, results }
   }
 
   /** Takes back changes just made, last first (an entry or a batch that could not be made whole). */
@@ -1083,10 +1101,52 @@ export class EpubEditController {
         this.note(result)
         results.push(result)
       }
-      this.push(this.partsOf(results))
+      const entry = this.push(this.partsOf(results))
       this.show(results, false)
       this.host.changed()
-      return failed ? { ok: false, ...failed, results } : { ok: true, results }
+      const made = entry === undefined ? {} : { entry }
+      return failed ? { ok: false, ...failed, results, ...made } : { ok: true, results, ...made }
+    })
+  }
+
+  /**
+   * Takes back exactly these history entries (the AI panel's run), like as
+   * many Ctrl+Z, but only while they are the top of the history in this order:
+   * any edit made after them (typed text included) refuses it. What it takes
+   * back can be redone.
+   */
+  async undoEntries(ids: readonly number[]): Promise<UndoEntriesOutcome> {
+    if (this.locked) {
+      this.host.notify({ key: 'editLocked' })
+      return 'locked'
+    }
+    return this.run(async () => {
+      await this.send(this.capture())
+      if (ids.length === 0) return 'refused'
+      const top = this.undoStack.slice(-ids.length)
+      if (top.length !== ids.length || top.some((entry, i) => entry.id !== ids[i])) {
+        const kept = [...this.undoStack, ...this.redoStack].some((e) => ids.includes(e.id))
+        return kept ? 'refused' : 'expired'
+      }
+      const results: OkEdit[] = []
+      let undone = 0
+      while (undone < ids.length) {
+        const entry = this.undoStack.pop()!
+        const done = await this.revert(entry)
+        if (!done) {
+          // as with Ctrl+Z: the history no longer matches the book
+          this.undoStack = []
+          this.redoStack = []
+          this.host.notify({ key: 'editHistoryFailed' })
+          break
+        }
+        this.redoStack.push(done.entry)
+        results.push(...done.results)
+        undone++
+      }
+      this.show(results, false)
+      this.host.changed()
+      return undone === ids.length ? 'reverted' : undone > 0 ? 'partial' : 'refused'
     })
   }
 

@@ -20,6 +20,7 @@ import { he } from './ai-read/he'
 import { hi } from './ai-read/hi'
 import { zhTW } from './ai-read/zh-TW'
 import { vi } from './ai-read/vi'
+import { tr } from './ai-read/tr'
 
 /** Copy for AI page reading, the document-job progress strip, the resume offer and AI-read search results */
 export const aiReadStrings = defineStrings({
@@ -44,4 +45,5 @@ export const aiReadStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

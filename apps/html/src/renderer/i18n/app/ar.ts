@@ -45,6 +45,10 @@ export const ar = {
   saveFailedStatus: 'فشل الحفظ',
   exportFailed: 'فشل التصدير',
   printFailed: 'فشل الطباعة: {error}',
+  printRangeEmpty: 'يحتوي هذا المستند على {count} صفحة. اكتب أرقام صفحات ضمنها.',
+  printPagesFailed: 'تعذّر عدّ الصفحات المراد طباعتها: {error}',
+  printLayoutSaved: 'تم حفظ النتيجة المرتبة بتنسيق PDF.',
+  printLayoutSaveFailed: 'تعذّر حفظ ملف PDF: {error}',
   exportHtmlSkipped: 'تم التصدير، لكن تعذّر تضمين {count} من الأصول (مثل {first})',
   viewPreview: 'معاينة',
   viewSplit: 'مقسم',
@@ -78,7 +82,8 @@ export const ar = {
   slideThumbs: 'الشرائح',
   slideThumbGo: 'الانتقال إلى الشريحة {n}',
   previewNeedsSave: 'ستظهر الصور والأنماط النسبية في المعاينة بعد حفظ الملف',
-  inspectHint: 'انقر على عنصر في المعاينة لتحديده، وانقر نقرًا مزدوجًا لتحرير النص',
+  inspectHint:
+    'انقر على عنصر في المعاينة لتحديده، وانقر نقرًا مزدوجًا لتحرير النص، وShift+نقر أو {alt}+سحب لتحديد عدة عناصر',
   nodeDynamic:
     'أنشأ هذا العنصر سكربت الصفحة ولا يوجد في المصدر؛ حرّره عبر المصدر أو الذكاء الاصطناعي',
   nodeDynamicShort: 'مولّد بسكربت',

@@ -14,6 +14,10 @@ export type {
   AiProviderSelection,
   AiReadUrlSettings,
   AiRunErrorKind,
+  AiSubscriptionCliId,
+  AiSubscriptionLoginFailure,
+  AiSubscriptionLoginFailureReason,
+  AiSubscriptionLoginFailureStep,
   AiSubscriptionLoginMethod,
   AiSubscriptionSigningIn,
   AiSubscriptionModel,
@@ -32,6 +36,7 @@ export {
   providerSelectionOf,
   selectAiProvider,
   subscriptionConnection,
+  subscriptionOffIn,
   subscriptionStateOf,
 } from './provider-selection'
 export type { AiNotConnectedReason, AiProviderChoice } from './provider-selection'
@@ -51,6 +56,16 @@ export {
   setCodexImageGenerationAvailable,
 } from './image-backend'
 export type { AiImageBackend, AiImageBackendContext } from './image-backend'
+export {
+  AI_EFFORTS,
+  CLAUDE_EFFORTS,
+  aiEffortOf,
+  aiEffortsOf,
+  aiModelEffortOf,
+  aiModelEffortsOf,
+} from './effort'
+export type { AiEffort, AiModelEffort } from './effort'
+export { keyEffortBody, keyModelEffort, keyProviderEffort, takesKeyEffort } from './key-effort'
 export { subscriptionConnectHelpUrl } from './connect-help'
 export type { SubscriptionConnectHelpPath } from './connect-help'
 export {
@@ -63,10 +78,13 @@ export {
   checkingSubscriptionStatus,
   checkingSubscriptionStatuses,
   isSubscriptionProviderId,
+  offSubscriptionStatus,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
+  subscriptionOffResultOf,
   subscriptionNeedsUpdate,
   subscriptionStatusErrorKind,
+  subscriptionLoginFailureOf,
   subscriptionStatusMapOf,
 } from './subscription/contract'
 export type {
@@ -78,6 +96,8 @@ export type {
   SubscriptionLoginRequest,
   SubscriptionMeteredRequest,
   SubscriptionMeteredResult,
+  SubscriptionOffRequest,
+  SubscriptionOffResult,
   SubscriptionProviderRequest,
   SubscriptionRecheckRequest,
   SubscriptionStatusErrorKind,

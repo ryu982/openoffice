@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const id = {
+  appLegacyPptImported:
+    'File .ppt dibuka sebagai salinan .pptx hasil konversi. File asli tetap seperti semula; menyimpan akan menulis file .pptx baru. Catatan pembicara dan animasi tidak ikut terbawa.',
   redactMenuLabel: 'Sembunyikan pilihan dari AI',
   redactDialogDesc:
     'Konten yang dipilih tetap ada di dokumen dan berkas; model hanya melihat placeholder di bawah. Beri nama agar model tahu apa yang diwakili.',
@@ -174,6 +176,9 @@ export const id = {
   appPrintLandscape: 'Lanskap',
   appPrintFrame: 'Bingkai slide',
   appPrintHidden: 'Cetak slide tersembunyi',
+  appPrintRangeSelected: 'Slide yang dipilih',
+  appPrintLayoutBlocked:
+    'Handout dan halaman catatan dicetak satu halaman per lembar. Untuk mengatur halaman, pilih Slide Halaman Penuh.',
   appPrintPageCount: '{n} halaman',
   appPrintNoPages: 'Tidak ada slide untuk dicetak',
   appPrintRendering: 'Membuat pratinjau…',
@@ -184,6 +189,7 @@ export const id = {
   appCtxSendToBack: 'Kirim ke Belakang',
   appCtxBringForward: 'Bawa Maju',
   appCtxSendBackward: 'Kirim Mundur',
+  appCtxRotate: 'Putar',
   appCtxRotateLeft90: 'Putar Kiri 90°',
   appCtxRotateRight90: 'Putar Kanan 90°',
   appCtxFlipH: 'Balik Horizontal',

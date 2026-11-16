@@ -17,6 +17,8 @@ export const ko = {
   cardErrNeedsUpdatePath: '이 앱이 실행하는 파일:',
   cardErrNeedsUpdateWindows:
     'WSL(Ubuntu)이나 다른 폴더에 설치된 {provider}를 업데이트해도 이 파일은 바뀌지 않습니다. Windows PowerShell에서 {command}를 실행하세요.',
+  claudeDesktopNote:
+    'Claude 데스크톱 앱은 이 앱이 실행하는 Claude Code가 아닙니다. Claude Code는 터미널에서 쓰는 별도 프로그램이라, 데스크톱 앱을 설치하거나 업데이트해도 바뀌지 않습니다.',
   cardErrTimeout: '{provider} 프로그램이 제때 응답하지 않았습니다. 잠시 뒤 다시 확인하세요.',
   cardErrFailed: '{provider} 연결을 확인하는 중에 문제가 생겼습니다. 다시 확인해 보세요.',
   actionInstall: '설치',
@@ -50,6 +52,8 @@ export const ko = {
   errSignedOut: '{provider} 로그인이 풀렸습니다. 다시 로그인한 뒤 계속하세요.',
   errRateLimit: '{provider} 구독 한도를 모두 썼습니다.',
   errRateLimitReset: '{provider} 구독 한도를 모두 썼습니다. {time}에 초기화됩니다.',
+  errChatGptAppLimit:
+    'ChatGPT에서 이 앱이 쓸 수 있는 사용량을 다 썼습니다. 요금제 전체의 한도이거나 이 앱에 정해 둔 한도일 수 있습니다. ChatGPT 설정 → 사용량에서 확인하세요.',
   errUnsafeTools:
     '{provider} 프로그램이 자체 도구를 켠 채로 시작되어, 안전을 위해 실행을 멈췄습니다.',
   errMeteredNotAccepted:
@@ -58,7 +62,7 @@ export const ko = {
     '{provider} 프로그램 버전이 낮아 이 기능을 쓸 수 없습니다. 업데이트한 뒤 다시 시도하세요.',
   errHeadlessLimit: '자동 호출의 시간당 한도에 도달했습니다.',
   errHeadlessLimitReset: '자동 호출의 시간당 한도에 도달했습니다. {time}부터 다시 가능합니다.',
-  connectFreeHint: '구독이 없나요? 설정에서 무료 AI를 1분 안에 연결할 수 있습니다.',
+  connectFreeHint: '구독이 없어도 설정에서 무료 AI를 1분 안에 연결할 수 있습니다.',
   actionConnectFree: '무료 AI 연결하기',
   errFreeLimit:
     '오늘 쓸 수 있는 무료 사용량을 다 썼습니다. 내일 다시 쓰거나 설정에서 다른 AI를 고르세요.',
@@ -108,7 +112,8 @@ export const ko = {
   stepInstall: '프로그램 설치',
   stepLogin: '로그인',
   stepReady: '연결 완료',
-  installReturnNote: '창에서 설치가 끝나면 이 화면으로 돌아오세요. 앱이 저절로 다시 확인합니다.',
+  installReturnNote:
+    '설치 창에는 내려받는 몇 분 동안 아무것도 나오지 않을 수 있습니다. 창을 닫지 말고 기다리세요. 설치가 끝나면 이 화면으로 돌아오세요. 앱이 저절로 다시 확인합니다.',
   loginHowNote:
     '누르면 브라우저가 열립니다. {vendor} 계정으로 로그인하고 허용을 누르면 저절로 연결됩니다.',
   signingInStalledNote:
@@ -146,6 +151,16 @@ export const ko = {
     '누르면 브라우저에 ChatGPT 로그인 화면이 열립니다. 로그인한 뒤 이 앱이 ChatGPT 요금제를 쓰도록 허용하면 저절로 연결됩니다.',
   chatgptLoginUnfinishedNote:
     '로그인이 끝나지 않았습니다. 다시 누르면 처음부터 시작합니다. ChatGPT 요금제 사용을 허용해야 연결됩니다.',
+  chatgptLoginNoPlanNote:
+    'ChatGPT 로그인은 됐지만 이 앱이 요금제를 쓰는 허용을 받지 못했습니다. 다시 누르고 허용 화면에서 요금제 사용을 허용하세요. 허용했는데도 이렇다면, 이 계정(회사·학교에서 관리하는 계정 등)이나 요금제에는 OpenAI가 이 사용을 열지 않았을 수 있습니다. 그럴 때는 Codex 프로그램으로 연결할 수 있습니다.',
+  chatgptLoginDeniedNote:
+    '브라우저에서는 로그인했지만 OpenAI가 이 연결을 받아 주지 않았거나, 돌아온 답이 확인되지 않았습니다. 이 PC의 날짜와 시각이 맞는지 확인한 뒤 다시 누르면 처음부터 시작합니다.',
+  chatgptLoginNetworkNote:
+    'OpenAI에 연결하지 못했거나 브라우저를 열지 못해 로그인을 마치지 못했습니다. 인터넷 연결(회사망, VPN, 프록시 포함)을 확인하고 다시 누르세요.',
+  chatgptLoginWorkspacePolicyNote:
+    '이 ChatGPT 계정은 회사나 학교가 관리하는 작업 공간에 속해 있어, OpenAI가 이 앱에서 작업 공간의 ChatGPT 요금제를 쓰는 것을 허용하지 않습니다. 작업 공간 관리자가 이 앱을 허용할 수 있는 설정은 없어서 다시 로그인해도 결과가 같습니다. 개인 ChatGPT 계정(Go, Plus, Pro)으로 로그인하거나, Codex 카드로 연결해 보세요.',
+  chatgptLoginNotAllowedNote:
+    '이 앱이 ChatGPT 요금제를 쓰도록 허용하지 않았거나, 브라우저가 로그인 실패로 돌아왔습니다. 다시 누르고 로그인한 뒤 허용 화면에서 허용하세요.',
   chatgptSigningInNote:
     '열린 브라우저에서 ChatGPT 계정으로 로그인하고, 이 앱이 요금제를 쓰도록 허용하세요. 끝나면 저절로 연결됩니다.',
   chatgptPlanNote:
@@ -155,4 +170,17 @@ export const ko = {
   browserPageDoneBody: '이 탭을 닫고 앱으로 돌아가세요.',
   browserPageFailedTitle: '연결하지 못했습니다',
   browserPageFailedBody: '앱으로 돌아가 다시 시도하세요.',
+  cardOff: '이 앱에서 꺼 둠',
+  offNote:
+    '이 앱은 {provider} 프로그램을 실행하지도, 상태를 묻지도 않습니다. 이 PC의 {provider} 로그인과 터미널에서 쓰는 것은 그대로입니다.',
+  offElsewhereNote: '설정 → AI에서 다시 쓸 수 있습니다.',
+  offSwitchNote:
+    '"이 앱에서 쓰지 않기"는 이 PC의 {provider} 로그인을 그대로 두고 이 앱에서만 멈춥니다. 로그아웃은 PC 전체에 적용됩니다.',
+  actionTurnOff: '이 앱에서 쓰지 않기',
+  actionTurnOn: '다시 쓰기',
+  connectOffTitle: '{provider}를 이 앱에서 꺼 두었습니다',
+  connectOffBody: '설정 → AI의 {provider} 카드에서 "다시 쓰기"를 누르거나 다른 AI를 고르세요.',
+  errOffInApp:
+    '{provider}를 이 앱에서 꺼 두어 실행하지 않았습니다. 설정 → AI에서 다시 쓸 수 있습니다.',
+  guideBadgeOff: '꺼 둠',
 } satisfies Record<keyof typeof zh, string>

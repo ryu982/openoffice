@@ -39,6 +39,17 @@ const tDlg = createI18n({
     btnDontSave: 'Không lưu',
     btnCancel: 'Hủy',
   },
+  tr: {
+    dlgSaveTitle: 'E-kitabı Kaydet',
+    filterEpub: 'EPUB E-kitapları',
+    dlgSaveTranslatedTitle: 'Çevrilmiş Kitabı Kaydet',
+    dlgSaveBilingualTitle: 'İki Dilli Kitabı Kaydet',
+    closeUnsavedMsg: 'Bu belgede kaydedilmemiş değişiklikler var.',
+    closeUnsavedDetail: 'Kapatmadan önce kaydedilsin mi?',
+    btnSave: 'Kaydet',
+    btnDontSave: 'Kaydetme',
+    btnCancel: 'İptal',
+  },
   ja: {
     dlgSaveTitle: '電子書籍を保存',
     filterEpub: 'EPUB 電子書籍',

@@ -36,10 +36,6 @@ export const ru = {
   aiRetry: 'Повторить',
   aiCopyReplyTitle: 'Копировать ответ',
   aiRegenerateTitle: 'Создать заново',
-  aiTurnsTitle: 'Отменить ход ИИ',
-  aiRollback: 'Откатить',
-  aiRollbackIncomplete:
-    'Часть этого хода отменить не удалось: история отмены карты уже не уходит так далеко.',
   aiUnknownError: 'Сбой запроса ИИ, попробуйте ещё раз',
   aiTimeoutError: 'Тайм-аут ответа ИИ',
   aiCreditsExhausted: 'Кредиты закончились — пополните баланс у поставщика ИИ',

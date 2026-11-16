@@ -37,10 +37,6 @@ export const nl = {
   aiRetry: 'Opnieuw proberen',
   aiCopyReplyTitle: 'Antwoord kopiëren',
   aiRegenerateTitle: 'Opnieuw genereren',
-  aiTurnsTitle: 'Een AI-beurt ongedaan maken',
-  aiRollback: 'Terugzetten',
-  aiRollbackIncomplete:
-    'Een deel van die beurt kon niet ongedaan worden gemaakt: de geschiedenis van de map reikt niet meer zo ver terug.',
   aiUnknownError: 'AI-verzoek mislukt, probeer opnieuw',
   aiTimeoutError: 'AI-antwoord time-out',
   aiCreditsExhausted: 'Credits op — waardeer op bij je AI-aanbieder',

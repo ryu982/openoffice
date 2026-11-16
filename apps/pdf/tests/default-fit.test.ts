@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_FIT_KEY,
-  loadDefaultFit,
-  openingFitMode,
-  saveDefaultFit,
+  DEFAULT_VIEWS,
+  MAX_SCALE,
+  defaultViewPercent,
+  loadDefaultView,
+  openingView,
+  saveDefaultView,
 } from '../src/renderer/view-config'
+import { VIEW_STATE_KEY, loadViewState, saveViewState } from '../src/renderer/view-state'
 
 const memoryStorage = () => {
   const mem = new Map<string, string>()
@@ -17,34 +21,68 @@ const memoryStorage = () => {
   }
 }
 
-describe('default fit for a PDF without a saved view', () => {
+describe('default view for a PDF without a saved view', () => {
   it('starts on fit width, the old behaviour', () => {
     const { storage } = memoryStorage()
-    expect(loadDefaultFit(storage)).toBe('width')
+    expect(loadDefaultView(storage)).toBe('width')
   })
 
-  it('remembers fit page', () => {
+  it.each(['width', 'page', 'actual'] as const)('remembers %s across a reload', (view) => {
     const { mem, storage } = memoryStorage()
-    saveDefaultFit('page', storage)
-    expect(mem.get(DEFAULT_FIT_KEY)).toBe('page')
-    expect(loadDefaultFit(storage)).toBe('page')
+    saveDefaultView(view, storage)
+    expect(mem.get(DEFAULT_FIT_KEY)).toBe(view)
+    expect(loadDefaultView(storage)).toBe(view)
+  })
+
+  it('reads a fit page choice stored by an earlier version', () => {
+    const { mem, storage } = memoryStorage()
+    mem.set(DEFAULT_FIT_KEY, 'page')
+    expect(loadDefaultView(storage)).toBe('page')
   })
 
   it('falls back to fit width for an unknown stored value', () => {
     const { mem, storage } = memoryStorage()
     mem.set(DEFAULT_FIT_KEY, 'book')
-    expect(loadDefaultFit(storage)).toBe('width')
+    expect(loadDefaultView(storage)).toBe('width')
   })
 
-  it('keeps a saved fit mode or custom zoom over the default', () => {
-    expect(openingFitMode({ fitMode: 'page' }, 'width')).toBe('page')
-    expect(openingFitMode({ fitMode: 'width' }, 'page')).toBe('width')
-    expect(openingFitMode({ fitMode: null }, 'page')).toBeNull()
+  it('opens a file with no chosen zoom in the default view', () => {
+    expect(openingView(null, 'width')).toEqual({ fitMode: 'width' })
+    expect(openingView(null, 'page')).toEqual({ fitMode: 'page' })
+    expect(openingView(null, 'actual')).toEqual({ fitMode: null, scale: 1 })
   })
 
-  it('uses the default for a file with no saved position', () => {
-    expect(openingFitMode(null, 'page')).toBe('page')
-    expect(openingFitMode(null, 'width')).toBe('width')
+  it('opens at the chosen zoom percentage', () => {
+    expect(openingView(null, '75')).toEqual({ fitMode: null, scale: 0.75 })
+    expect(openingView(null, '80')).toEqual({ fitMode: null, scale: 0.8 })
+    expect(openingView(null, '150')).toEqual({ fitMode: null, scale: 1.5 })
+  })
+
+  it('offers the fit modes and percentages, each remembered across a reload', () => {
+    expect(DEFAULT_VIEWS.map(defaultViewPercent)).toEqual([
+      null,
+      null,
+      50,
+      75,
+      80,
+      90,
+      100,
+      125,
+      150,
+      200,
+    ])
+    for (const view of DEFAULT_VIEWS) {
+      const { storage } = memoryStorage()
+      saveDefaultView(view, storage)
+      expect(loadDefaultView(storage)).toBe(view)
+    }
+  })
+
+  it('keeps a saved custom zoom inside the zoom range', () => {
+    expect(openingView({ fitMode: null, scale: 40 }, 'actual')).toEqual({
+      fitMode: null,
+      scale: MAX_SCALE,
+    })
   })
 
   it('keeps working when storage is unavailable', () => {
@@ -56,7 +94,52 @@ describe('default fit for a PDF without a saved view', () => {
         throw new Error('denied')
       },
     }
-    expect(loadDefaultFit(storage)).toBe('width')
-    expect(() => saveDefaultFit('page', storage)).not.toThrow()
+    expect(loadDefaultView(storage)).toBe('width')
+    expect(() => saveDefaultView('actual', storage)).not.toThrow()
+  })
+})
+
+describe('how a PDF opens once 100% is the default', () => {
+  const opensAt = (path: string, records: Record<string, unknown>) => {
+    const { storage } = memoryStorage()
+    storage.setItem(VIEW_STATE_KEY, JSON.stringify(records))
+    const saved = loadViewState(path, storage)
+    return { page: saved?.page ?? 1, view: openingView(saved?.chosenZoom ?? null, 'actual') }
+  }
+
+  it('opens a file never opened before at 100%', () => {
+    expect(opensAt('/new.pdf', {})).toEqual({ page: 1, view: { fitMode: null, scale: 1 } })
+  })
+
+  it('opens a file an older build saved at fit width at 100%, on the same page', () => {
+    const records = { '/seen.pdf': { page: 4, frac: 0.3, scale: 1.03, fitMode: 'width', at: 1 } }
+    expect(opensAt('/seen.pdf', records)).toEqual({ page: 4, view: { fitMode: null, scale: 1 } })
+  })
+
+  it('keeps a custom zoom an older build saved', () => {
+    const records = { '/seen.pdf': { page: 4, frac: 0.3, scale: 1.5, fitMode: null, at: 1 } }
+    expect(opensAt('/seen.pdf', records)).toEqual({ page: 4, view: { fitMode: null, scale: 1.5 } })
+  })
+
+  it.each([
+    [{ fitMode: 'width' as const }, { fitMode: 'width' }],
+    [{ fitMode: 'page' as const }, { fitMode: 'page' }],
+    [
+      { fitMode: null, scale: 2 },
+      { fitMode: null, scale: 2 },
+    ],
+  ])('keeps the zoom the person chose for the file: %o', (zoom, expected) => {
+    const { storage } = memoryStorage()
+    saveViewState('/chosen.pdf', { page: 2, frac: 0, chosenZoom: zoom }, storage)
+    const saved = loadViewState('/chosen.pdf', storage)
+    expect(openingView(saved?.chosenZoom ?? null, 'actual')).toEqual(expected)
+  })
+
+  it('opens a file whose zoom was never chosen in the default after it was saved', () => {
+    const { storage } = memoryStorage()
+    saveViewState('/plain.pdf', { page: 6, frac: 0.5, chosenZoom: null }, storage)
+    const saved = loadViewState('/plain.pdf', storage)
+    expect(saved?.page).toBe(6)
+    expect(openingView(saved?.chosenZoom ?? null, 'page')).toEqual({ fitMode: 'page' })
   })
 })

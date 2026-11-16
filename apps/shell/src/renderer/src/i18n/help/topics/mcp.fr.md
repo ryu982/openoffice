@@ -58,7 +58,7 @@ Chaque commande est un outil. Les plus intéressantes :
 Une requête venue de la commande `ieumoffice` ou d’un client MCP n’a pas été saisie par vous dans l’application : GenOffice la traite donc avec prudence.
 
 - **La recherche** fonctionne toujours et est gratuite par défaut. La clé d’un fournisseur de recherche n’est utilisée que si vous en avez sélectionné une.
-- **Générer une image** demande la clé d’un fournisseur d’images. Dans cette version, un abonnement ne génère pas d’images.
+- **Générer une image** suit le choix de génération d’images des paramètres. Le choix par défaut, Forfait ChatGPT (programme Codex), utilise votre forfait ChatGPT via le programme Codex et **n’est pas utilisé sans votre autorisation** (voir plus bas). Sinon, la clé d’un fournisseur d’images configuré est utilisée. Un modèle que l’agent nomme est utilisé quand cette voie le propose.
 - **Décrire une image** utilise un fournisseur à clé lorsqu’il y en a un de configuré. Votre abonnement Claude ou Codex **n’est pas utilisé, sauf si vous l’autorisez**.
 - **La vidéo et l’audio** ont besoin d’un fournisseur à clé qui prend en charge la vidéo.
 

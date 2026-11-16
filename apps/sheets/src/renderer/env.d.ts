@@ -6,6 +6,7 @@ declare module '*.md?raw' {
 import type { DesktopApi } from '../shared/desktop-api'
 import type { ProjectApi, ProjectFolderApi } from '@genoffice/project-store'
 import type { SplitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import type { AppChoiceSource } from '@genoffice/ui'
 
 declare global {
   interface Window {
@@ -15,6 +16,8 @@ declare global {
     readonly projectApi: ProjectApi
     /** absent when the preload predates the split-pane bridge (or outside the shell) */
     readonly aiOfficeSplit?: SplitPaneBridge
+    /** Settings' editor choice and AI switch, read-only here; absent outside the shell */
+    readonly aiOfficeEditorChoice?: AppChoiceSource
     /** the frame's spell engine, bridged from webFrame in the preload */
     readonly nativeSpell?: {
       readonly isWordMisspelled: (word: string) => boolean

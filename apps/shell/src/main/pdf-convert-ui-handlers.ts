@@ -8,7 +8,8 @@
  * gets nothing. Only Markdown files are opened, and only existing files of the
  * kinds the conversion writes are shown. Electron-free so it can be tested.
  */
-import type { PdfConvertOutputRequest } from '../../../pdf/src/shared/ipc'
+import type { MakeAndOpenAnswer } from '@genoffice/electron-utils/editor-entrance'
+import type { PdfConvertOutputRequest, PdfReflowFormat } from '../../../pdf/src/shared/ipc'
 
 export interface PdfConvertUiTabs {
   /** the Markdown tab showing the file, if any */
@@ -17,8 +18,13 @@ export interface PdfConvertUiTabs {
   closeTab(tabId: string): Promise<void>
   /** bring the pdf view's tab back to the front after closing another tab */
   activateView(viewId: number): void
-  /** open a file the way File > Open does */
+  /** open a converted file: its tab, or its folder while its editor is off */
   openDocument(path: string): boolean
+  /**
+   * Before a conversion whose result opens in another editor starts: asks
+   * while that editor is off (editor choice spec 7.3). `source` is the PDF.
+   */
+  askBeforeConvert(format: PdfReflowFormat, source: string): Promise<MakeAndOpenAnswer>
 }
 
 export interface PdfConvertUiDeps extends PdfConvertUiTabs {
@@ -58,6 +64,16 @@ export function createPdfConvertUiHandlers(deps: PdfConvertUiDeps) {
       const request = requestOf(viewId, req)
       if (!request || !MARKDOWN.test(request.path) || !deps.exists(request.path)) return false
       return deps.openDocument(request.path)
+    },
+
+    /** the converter's Markdown entry, before its dialog opens; anything unknown is a cancel */
+    async askBeforeConvert(viewId: number, req: unknown): Promise<MakeAndOpenAnswer> {
+      if (!req || typeof req !== 'object') return 'cancel'
+      const { source, format } = req as { source?: unknown; format?: unknown }
+      if (format !== 'md' && format !== 'epub') return 'cancel'
+      if (typeof source !== 'string' || !source || source.length > MAX_PATH) return 'cancel'
+      if (!deps.ownsSource(viewId, source)) return 'cancel'
+      return deps.askBeforeConvert(format, source)
     },
 
     revealResult(viewId: number, req: unknown): boolean {

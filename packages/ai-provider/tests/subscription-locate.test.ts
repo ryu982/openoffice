@@ -8,7 +8,14 @@ import { tmpdir } from 'node:os'
 import { delimiter, join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AiRunError } from '../src/run-error'
-import { locateSubscriptionProgram, resolveSubscriptionProgram } from '../src/subscription'
+import {
+  commonUnixBinDirs,
+  locateSubscriptionProgram,
+  resolveSubscriptionProgram,
+  SUBSCRIPTION_CODEX_UPDATE_COMMANDS,
+  subscriptionUpdatePlan,
+} from '../src/subscription'
+import type { SubscriptionVersionReader } from '../src/subscription/locate'
 
 let root: string
 
@@ -124,6 +131,76 @@ describe('locateSubscriptionProgram on Windows', () => {
     // the two variables the launcher sets for the native binary
     expect(program!.env.CODEX_MANAGED_PACKAGE_ROOT).toBe(packageRoot)
     expect(program!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+  })
+
+  it('runs the native Codex binary of the older vendor layout (vendor/<triple>/codex) in the package itself', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const native = await touch(
+      join(packageRoot, 'vendor', 'x86_64-pc-windows-msvc', 'codex', 'codex.exe'),
+    )
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+      nodeRuntime: { command: 'C:\\Program Files\\IeumOffice\\IeumOffice.exe', electron: true },
+    })
+    // not the Electron runtime with the JS launcher, which would open a console window
+    expect(program).toMatchObject({ provider: 'codex', command: native, prefixArgs: [] })
+    expect(program!.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+    expect(program!.env.CODEX_MANAGED_PACKAGE_ROOT).toBe(packageRoot)
+    expect(program!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+    // started directly, it is still updated by npm
+    expect(subscriptionUpdatePlan(program!)).toEqual({
+      kind: 'command',
+      command: SUBSCRIPTION_CODEX_UPDATE_COMMANDS.npm,
+    })
+  })
+
+  it('runs the native Codex binary of the older vendor layout in the platform package', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const native = await touch(
+      join(
+        packageRoot,
+        'node_modules',
+        '@openai',
+        'codex-win32-arm64',
+        'vendor',
+        'aarch64-pc-windows-msvc',
+        'codex',
+        'codex.exe',
+      ),
+    )
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'arm64',
+    })
+    expect(program).toMatchObject({ command: native, prefixArgs: [] })
+  })
+
+  it('takes vendor/<triple>/bin over vendor/<triple>/codex when both are there, as the launcher does', async () => {
+    const env = windowsEnv()
+    const npm = join(env.APPDATA!, 'npm')
+    await touch(join(npm, 'codex.cmd'), CODEX_SHIM)
+    const packageRoot = join(npm, 'node_modules', '@openai', 'codex')
+    await touch(join(packageRoot, 'bin', 'codex.js'))
+    const vendor = join(packageRoot, 'vendor', 'x86_64-pc-windows-msvc')
+    await touch(join(vendor, 'codex', 'codex.exe'))
+    const current = await touch(join(vendor, 'bin', 'codex.exe'))
+    const program = await locateSubscriptionProgram('codex', {
+      env,
+      platform: 'win32',
+      arch: 'x64',
+    })
+    expect(program?.command).toBe(current)
   })
 
   it('falls back to the JS entry on a Node runtime when the native binary is not where expected', async () => {
@@ -445,6 +522,33 @@ describe('locateSubscriptionProgram elsewhere', () => {
     },
   )
 
+  it('keeps the npm launcher for the older vendor layout, which also puts its rg on PATH', async () => {
+    for (const [platform, triple] of [
+      ['linux', 'x86_64-unknown-linux-musl'],
+      ['darwin', 'x86_64-apple-darwin'],
+    ] as const) {
+      const packageRoot = join(root, platform, 'lib', 'node_modules', '@openai', 'codex')
+      const entry = await touch(join(packageRoot, 'bin', 'codex.js'), '#!/usr/bin/env node\n')
+      const vendor = join(packageRoot, 'vendor', triple)
+      await touch(join(vendor, 'codex', 'codex'))
+      const options = {
+        env: { HOME: root, PATH: '' },
+        platform,
+        arch: 'x64',
+        commonDirs: [],
+        applicationDirs: [],
+        configuredPath: entry,
+      }
+      const older = await locateSubscriptionProgram('codex', options)
+      expect(older).toMatchObject({ command: entry, prefixArgs: [], env: {} })
+      // the current layout is still started directly
+      const current = await touch(join(vendor, 'bin', 'codex'))
+      const newer = await locateSubscriptionProgram('codex', options)
+      expect(newer).toMatchObject({ command: current, prefixArgs: [] })
+      expect(newer!.env.CODEX_MANAGED_BY_NPM).toBe('1')
+    }
+  })
+
   it('finds nothing when the home directory has no install', async () => {
     const program = await locateSubscriptionProgram('claude-code', {
       env: { HOME: root, PATH: join(root, 'empty') },
@@ -537,10 +641,185 @@ describe('locateSubscriptionProgram on macOS', () => {
   })
 })
 
+describe('several Claude Code copies', () => {
+  async function claudeAt(dir: string, version: string): Promise<string> {
+    const path = await touch(join(dir, 'claude'), `#!/bin/sh\necho "${version} (Claude Code)"\n`)
+    await chmod(path, 0o755)
+    return path
+  }
+
+  // a Finder-launched app inherits a PATH that lists none of these
+  const homebrew = () => join(root, 'opt', 'homebrew', 'bin')
+  const native = () => join(root, '.local', 'bin')
+
+  function onMac(readVersion?: SubscriptionVersionReader, PATH = '') {
+    return {
+      env: { HOME: root, PATH },
+      platform: 'darwin' as const,
+      applicationDirs: [],
+      commonDirs: [homebrew(), native()],
+      readVersion,
+    }
+  }
+
+  function versionsOf(versions: Record<string, string>) {
+    const asked: string[] = []
+    const readVersion: SubscriptionVersionReader = async (program) => {
+      asked.push(program.command)
+      return versions[program.command]
+    }
+    return { asked, readVersion }
+  }
+
+  it('passes over an old copy found first for one new enough for the app', async () => {
+    const old = await claudeAt(homebrew(), '2.1.97')
+    const fresh = await claudeAt(native(), '2.1.300')
+    const { readVersion } = versionsOf({ [old]: '2.1.97', [fresh]: '2.1.300' })
+    const program = await locateSubscriptionProgram('claude-code', onMac(readVersion))
+    expect(program).toMatchObject({ command: fresh, prefixArgs: [] })
+  })
+
+  it('keeps the search order when the first copy is new enough', async () => {
+    const first = await claudeAt(homebrew(), '2.1.248')
+    const second = await claudeAt(native(), '2.1.300')
+    const { readVersion } = versionsOf({ [first]: '2.1.248', [second]: '2.1.300' })
+    const program = await locateSubscriptionProgram('claude-code', onMac(readVersion))
+    expect(program?.command).toBe(first)
+  })
+
+  it('stays with the first copy when none is new enough, so the card names that file', async () => {
+    const first = await claudeAt(homebrew(), '2.1.97')
+    const second = await claudeAt(native(), '2.1.220')
+    const { readVersion } = versionsOf({ [first]: '2.1.97', [second]: '2.1.220' })
+    const program = await locateSubscriptionProgram('claude-code', onMac(readVersion))
+    expect(program?.command).toBe(first)
+  })
+
+  it('does not run a copy found alone', async () => {
+    const only = await claudeAt(homebrew(), '2.1.97')
+    const { asked, readVersion } = versionsOf({ [only]: '2.1.97' })
+    const program = await locateSubscriptionProgram('claude-code', onMac(readVersion))
+    expect(program?.command).toBe(only)
+    expect(asked).toEqual([])
+  })
+
+  it('counts one file reached through PATH and a common directory once', async () => {
+    const only = await claudeAt(homebrew(), '2.1.97')
+    const { asked, readVersion } = versionsOf({ [only]: '2.1.97' })
+    const program = await locateSubscriptionProgram('claude-code', onMac(readVersion, homebrew()))
+    expect(program).toMatchObject({ command: only, source: 'path' })
+    expect(asked).toEqual([])
+  })
+
+  it('leaves Codex to the first copy found', async () => {
+    const first = await touch(join(homebrew(), 'codex'), '#!/bin/sh\n')
+    await chmod(first, 0o755)
+    await chmod(await touch(join(native(), 'codex'), '#!/bin/sh\n'), 0o755)
+    const { asked, readVersion } = versionsOf({})
+    const program = await locateSubscriptionProgram('codex', onMac(readVersion))
+    expect(program?.command).toBe(first)
+    expect(asked).toEqual([])
+  })
+
+  // the copies are shell scripts, which Windows cannot start
+  it.skipIf(process.platform === 'win32')('asks each copy for its own version', async () => {
+    await claudeAt(homebrew(), '2.1.97')
+    const fresh = await claudeAt(native(), '2.1.300')
+    const program = await locateSubscriptionProgram('claude-code', onMac())
+    expect(program?.command).toBe(fresh)
+  })
+})
+
 describe('resolveSubscriptionProgram', () => {
   it('reports a missing program as a not-installed run error for that provider', async () => {
     const attempt = resolveSubscriptionProgram('codex', { env: windowsEnv(), platform: 'win32' })
     await expect(attempt).rejects.toBeInstanceOf(AiRunError)
     await expect(attempt).rejects.toMatchObject({ kind: 'not-installed', provider: 'codex' })
+  })
+})
+
+describe('commonUnixBinDirs', () => {
+  it('lists nvm Node bins newest-semver-first, not lexicographically', async () => {
+    const nvmRoot = join(root, '.nvm', 'versions', 'node')
+    for (const version of ['v8.17.0', 'v18.20.4', 'v20.11.1', 'v6.14.4']) {
+      await mkdir(join(nvmRoot, version, 'bin'), { recursive: true })
+    }
+    const dirs = await commonUnixBinDirs(root, {}, 'darwin')
+    const nvmBins = dirs.filter(
+      (dir) => dir.startsWith(nvmRoot + sep) || dir.startsWith(nvmRoot + '/'),
+    )
+    expect(nvmBins).toEqual([
+      join(nvmRoot, 'v20.11.1', 'bin'),
+      join(nvmRoot, 'v18.20.4', 'bin'),
+      join(nvmRoot, 'v8.17.0', 'bin'),
+      join(nvmRoot, 'v6.14.4', 'bin'),
+    ])
+  })
+
+  it('probes the tool managers that keep their bins outside the home dotfiles', async () => {
+    const dirs = await commonUnixBinDirs(root, {}, 'darwin')
+    expect(dirs).toContain('/opt/local/bin')
+    expect(dirs).toContain(join(root, '.asdf', 'shims'))
+    expect(dirs).toContain(join(root, '.local', 'share', 'mise', 'shims'))
+    expect(dirs).toContain(join(root, 'Library', 'pnpm'))
+    expect(dirs).toContain(
+      join(root, 'Library', 'Application Support', 'fnm', 'aliases', 'default', 'bin'),
+    )
+  })
+
+  it('follows the data directory each manager uses on Linux', async () => {
+    const dirs = await commonUnixBinDirs(root, { XDG_DATA_HOME: join(root, 'data') }, 'linux')
+    expect(dirs).toContain(join(root, 'data', 'mise', 'shims'))
+    expect(dirs).toContain(join(root, 'data', 'pnpm'))
+    expect(dirs).toContain(join(root, 'data', 'fnm', 'aliases', 'default', 'bin'))
+  })
+
+  it('follows FNM_DIR and PNPM_HOME when the user moved them', async () => {
+    const dirs = await commonUnixBinDirs(
+      root,
+      { FNM_DIR: join(root, 'fnm'), PNPM_HOME: join(root, 'pnpm') },
+      'darwin',
+    )
+    expect(dirs).toContain(join(root, 'fnm', 'aliases', 'default', 'bin'))
+    expect(dirs).toContain(join(root, 'pnpm'))
+  })
+
+  it('reads a moved global npm prefix from ~/.npmrc', async () => {
+    await touch(join(root, '.npmrc'), `prefix=${join(root, 'npm-global')}`)
+    const dirs = await commonUnixBinDirs(root, {}, 'darwin')
+    expect(dirs).toContain(join(root, 'npm-global', 'bin'))
+  })
+
+  it('leaves out a prefix that is not a full path', async () => {
+    await touch(join(root, '.npmrc'), 'prefix=')
+    const dirs = await commonUnixBinDirs(root, { npm_config_prefix: 'npm' }, 'darwin')
+    expect(dirs).not.toContain(join('npm', 'bin'))
+    expect(dirs.every((dir) => dir.length > 0)).toBe(true)
+  })
+})
+
+describe('a global npm prefix the user moved', () => {
+  it('finds the macOS CLI under the prefix in ~/.npmrc when PATH is the minimal one', async () => {
+    const prefix = join(root, 'npm-global')
+    await touch(join(root, '.npmrc'), `prefix=${prefix}`)
+    const cli = await touch(join(prefix, 'bin', 'claude'), '#!/bin/sh')
+    await chmod(cli, 0o755)
+    const program = await locateSubscriptionProgram('claude-code', {
+      env: { HOME: root, PATH: '/usr/bin:/bin' },
+      platform: 'darwin',
+      applicationDirs: [],
+    })
+    expect(program).toMatchObject({ command: cli, source: 'path' })
+  })
+
+  it('finds the Windows CLI under the prefix in ~/.npmrc', async () => {
+    const prefix = join(root, 'npm-global')
+    await touch(join(root, '.npmrc'), `prefix=${prefix}`)
+    const cli = await touch(join(prefix, 'claude.exe'))
+    const program = await locateSubscriptionProgram('claude-code', {
+      env: windowsEnv(),
+      platform: 'win32',
+    })
+    expect(program).toMatchObject({ command: cli, source: 'npm' })
   })
 })

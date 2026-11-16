@@ -3,7 +3,7 @@
  * the editor looks at the PC when it starts and detects anew only when the list changed.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { refreshPcFonts, sameFaces } from '../studio-plugin/pc-fonts.mjs'
+import { noteFontsApplying, refreshPcFonts, sameFaces } from '../studio-plugin/pc-fonts.mjs'
 
 type Face = { family: string; fullName: string; postscriptName: string }
 type Kept = Face & { aliases?: string[]; detectionSource?: string }
@@ -121,6 +121,38 @@ describe('refreshPcFonts', () => {
     expect(await refreshPcFonts(none.deps)).toBe(false)
     expect(none.calls).toEqual([])
     warn.mockRestore()
+  })
+
+  it("is over only once the studio's work on the document's fonts the change set off is", async () => {
+    let finish!: () => void
+    const work = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    const { deps } = studio([malgun], [], {
+      changed: vi.fn(() => {
+        noteFontsApplying(work)
+      }),
+    })
+    let over = false
+    const done = refreshPcFonts(deps).then((value) => {
+      over = true
+      return value
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(over).toBe(false)
+    finish()
+    expect(await done).toBe(true)
+
+    // a failed one ends the look too, and work set off outside a look is not waited for
+    noteFontsApplying(new Promise(() => {}))
+    const failing = studio([malgun], [], {
+      changed: vi.fn(() => {
+        noteFontsApplying(Promise.reject(new Error('no')))
+      }),
+    })
+    expect(await refreshPcFonts(failing.deps)).toBe(true)
+    const quiet = studio([malgun], [])
+    expect(await refreshPcFonts(quiet.deps)).toBe(true)
   })
 
   it('waits until a tab opened behind another is shown', async () => {

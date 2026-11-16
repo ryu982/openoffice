@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const es = {
+  appLegacyPptImported:
+    'El archivo .ppt se abrió como una copia .pptx convertida. El original no cambia; al guardar se escribe un nuevo archivo .pptx. Las notas del orador y las animaciones no se conservan.',
   redactMenuLabel: 'Ocultar la selección a la IA',
   redactDialogDesc:
     'Lo seleccionado sigue en el documento y en el archivo; el modelo solo ve el marcador. Ponle un nombre para que sepa qué representa.',
@@ -179,6 +181,9 @@ export const es = {
   appPrintLandscape: 'Horizontal',
   appPrintFrame: 'Enmarcar diapositivas',
   appPrintHidden: 'Imprimir diapositivas ocultas',
+  appPrintRangeSelected: 'Diapositivas seleccionadas',
+  appPrintLayoutBlocked:
+    'Los documentos y las páginas de notas se imprimen con una página por hoja. Para organizar las páginas, elija Diapositivas de página completa.',
   appPrintPageCount: '{n} páginas',
   appPrintNoPages: 'No hay diapositivas para imprimir',
   appPrintRendering: 'Generando la vista previa…',
@@ -188,6 +193,7 @@ export const es = {
   appCtxSendToBack: 'Enviar al fondo',
   appCtxBringForward: 'Traer adelante',
   appCtxSendBackward: 'Enviar atrás',
+  appCtxRotate: 'Girar',
   appCtxRotateLeft90: 'Girar 90° a la izquierda',
   appCtxRotateRight90: 'Girar 90° a la derecha',
   appCtxFlipH: 'Voltear horizontalmente',

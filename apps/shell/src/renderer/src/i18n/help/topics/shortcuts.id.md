@@ -12,10 +12,12 @@ Setiap editor punya pengikatan tombol sendiri, dan hanya sebagian yang berlaku d
 | Ciutkan / perluas pita — setiap editor                           | ⌥⌘R   | Ctrl+F1         |
 | Pita kompak — hanya Docs                                         | ⌥⌘K   | Ctrl+Alt+K      |
 | Buka lembar Pintasan Papan Ketik — hanya Word                    | ⌘/    | Ctrl+/          |
+| Buka Pengaturan — semua tab kecuali Word                         | ⌘,    | Ctrl+,          |
 
 - **F1 membuka manual ini**, bukan lembar pintasan. Tombol itu milik menu aplikasi, jadi ia berlaku dari Word, Sheets, Slides, PDF, maupun tab Beranda.
 - **Tombol pita adalah `Ctrl+F1`, atau `⌥⌘R` di macOS.** Menekan `F1` polos tidak melakukan apa pun — F1 adalah manualnya, dan tombol pita sengaja tidak berbagi kunci dengan F1. `Ctrl+F1` juga diterima di macOS, meski `⌥⌘R` adalah tombol yang dipakai Office for Mac.
 - **Lembar Pintasan Papan Ketik hanya milik Word** (`⌘/`). Isinya persis tabel Word di bawah ini. Tidak ada editor lain yang memilikinya.
+- **`⌘,` membuka Pengaturan** (`Ctrl+,` di Windows dan Linux), seperti di kebanyakan aplikasi Mac. Di tab Word kombinasi ini tetap subskrip, jadi buka Pengaturan dari menu aplikasi di Mac, atau dari Menu (☰) ▸ Pengaturan… di Windows dan Linux.
 
 ![Lembar Pintasan Papan Ketik milik Word sendiri: tindakan di sebelah kiri, kombinasi tombol di sebelah kanan, dikelompokkan menurut Berkas, Edit, Format Teks, Format Paragraf, Sisipkan, Tinjau & Alat, dan Tampilan](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Pintasan filter milik Excel, Ctrl+Shift+L, tidak melakukan apa pun di Windows ma
 
 ### Jendela
 
-| Tindakan                                                          | macOS            | Windows / Linux     |
-| ----------------------------------------------------------------- | ---------------- | ------------------- |
-| Simpan buku kerja                                                 | ⌘S               | Ctrl+S              |
-| Simpan Sebagai                                                    | ⇧⌘S              | Ctrl+Shift+S        |
-| Buka buku kerja                                                   | ⌘O               | Ctrl+O              |
-| Cetak                                                             | ⌘P               | Ctrl+P              |
-| Tutup buku kerja (macOS) / Keluar dari aplikasi (Windows & Linux) | ⌘W               | Ctrl+Q              |
-| Buka Panduan Pengguna                                             | F1               | F1                  |
-| Perbesar                                                          | ⌘=               | Ctrl+=              |
-| Perbesar dengan roda tetikus                                      | ⌘ + roda tetikus | Ctrl + roda tetikus |
-| Tampilkan atau sembunyikan rumus di dalam sel                     | ⌘`               | Ctrl+`              |
-| Perluas atau ciutkan Bilah Rumus                                  | ⌘⇧U              | Ctrl+Shift+U        |
+| Tindakan                                                                     | macOS            | Windows / Linux     |
+| ---------------------------------------------------------------------------- | ---------------- | ------------------- |
+| Simpan buku kerja                                                            | ⌘S               | Ctrl+S              |
+| Simpan Sebagai                                                               | ⇧⌘S              | Ctrl+Shift+S        |
+| Buka buku kerja                                                              | ⌘O               | Ctrl+O              |
+| Cetak                                                                        | ⌘P               | Ctrl+P              |
+| Tutup buku kerja (macOS) / Keluar dari aplikasi (Windows & Linux)            | ⌘W               | Ctrl+Q              |
+| Buka Panduan Pengguna                                                        | F1               | F1                  |
+| Perbesar                                                                     | ⌘=               | Ctrl+=              |
+| Perbesar dengan roda tetikus                                                 | ⌘ + roda tetikus | Ctrl + roda tetikus |
+| Tampilkan atau sembunyikan rumus di dalam sel                                | ⌘`               | Ctrl+`              |
+| Perluas atau ciutkan Bilah Rumus                                             | ⌘⇧U              | Ctrl+Shift+U        |
+| Jalankan tombol Bilah Alat Akses Cepat menurut posisinya (ke-1 sampai ke-10) |                  | Alt+1 … Alt+0       |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Tombol ini berlaku saat tab HWP/HWPX berada di depan dan dokumen memiliki fokus.
 | Temukan berikutnya | ⌃L          | Ctrl+L                       |
 | Temukan mundur     | ⌃Q, L       | Ctrl+Q, L                    |
 | Ke                 | ⌥G          | Alt+G                        |
+| Ke awal dokumen    | ⌃⇞          | Ctrl+PageUp                  |
+| Ke akhir dokumen   | ⌃⇟          | Ctrl+PageDown                |
 | Bandingkan dokumen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Karakter
@@ -757,3 +762,5 @@ Hanya berlaku saat kursor berada di sel tabel yang kosong. Ada tombol terpisah u
 | Ke tab Beranda (di luar tabel)            | ⇧⌘H   | Ctrl+Shift+H    |
 
 Tombol yang ditulis `Ctrl+N,T` berarti tekan Ctrl+N, lepaskan, lalu tekan T. `F5 → S` berarti pilih blok sel dengan F5 lalu tekan S. `Ctrl+1 … Ctrl+0` adalah gaya pertama hingga kesepuluh dokumen; `Ctrl+Alt+1 … Ctrl+Alt+0` menerapkan gaya yang sama. Saat blok sel dipilih, `Ctrl+Shift+S` (di macOS `⇧⌘S`) adalah jumlah blok; di luar itu tombol ini menyimpan sebagai.
+
+Dengan mouse, seperti di Hangul, klik dua kali memilih satu kata, klik tiga kali seluruh paragraf, dan klik dua kali lalu tahan dan seret memperluas pilihan kata demi kata. Ini juga berlaku saat mengedit header, footer, atau catatan kaki. Menyalin blok sel (`Ctrl+C`) menyalin teks sel sekaligus tabelnya, sehingga jika ditempel di badan teks, tabel yang sama dibuat lagi. Menempel dengan kursor saja di sel tabel lain membuka dialog Paste Cells: timpa mulai dari sel itu (sel yang keluar dari tabel dibuang) atau sisipkan sel di atas, di bawah, di kiri, atau di kanan.

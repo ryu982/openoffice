@@ -30,6 +30,7 @@ export const cs = {
   darkView: 'Tmavé zobrazení',
   toc: 'Obsah',
   tocEmpty: 'Tato kniha nemá obsah',
+  sideResize: 'Změnit šířku panelu',
   statusChapter: 'Kapitola {n}/{total}',
   prevChapter: 'Předchozí kapitola',
   nextChapter: 'Další kapitola',

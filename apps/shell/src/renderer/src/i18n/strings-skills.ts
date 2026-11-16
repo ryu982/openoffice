@@ -20,6 +20,7 @@ import { he } from './skills/he'
 import { hi } from './skills/hi'
 import { zhTW } from './skills/zh-TW'
 import { vi } from './skills/vi'
+import { tr } from './skills/tr'
 
 /**
  * Settings → Skills: the list, the editor, imports and updates. Sharded per
@@ -47,6 +48,7 @@ export const skillsUiStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type SkillsStringKey = keyof typeof zh

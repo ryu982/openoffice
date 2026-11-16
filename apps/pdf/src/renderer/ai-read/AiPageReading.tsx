@@ -91,6 +91,11 @@ export interface AiPageReadingProps {
   onResumeHighlight?: (job: JobStatus) => void
   /** a translation's target language as the user reads it */
   languageName?: (lang: string) => string
+  /**
+   * AI is turned off (Settings): nothing of this is shown and the window does
+   * not open; a stored result still moves with the file on save
+   */
+  hidden?: boolean
 }
 
 /** what the AI window's tool hears back */
@@ -297,7 +302,7 @@ export const AiPageReading = forwardRef<AiPageReadingHandle, AiPageReadingProps>
     useImperativeHandle(ref, () => ({
       requestOpen(pages) {
         const p = propsRef.current
-        if (!p.api || !p.filePath) return { unavailable: true }
+        if (p.hidden || !p.api || !p.filePath) return { unavailable: true }
         const hash = docHashRef.current
         const running = (hash ? session.running(hash) : null) ?? tabJob()
         if (running) return { running: running.progress }
@@ -349,6 +354,7 @@ export const AiPageReading = forwardRef<AiPageReadingHandle, AiPageReadingProps>
     const view = views.find((v) => v.state === 'running') ?? views.at(-1) ?? null
     const languageName = props.languageName ?? ((code: string) => code)
 
+    if (props.hidden) return null
     return (
       <>
         {view && view.kind === 'ai-read' && (

@@ -263,6 +263,19 @@ export const kbAskProjectStrings = defineStrings({
     askSavedToProject: 'Đã lưu vào thư mục dự án: {name}',
     askOpenCreated: 'Mở',
   },
+  tr: {
+    askProjectMissing:
+      'Seçilen projenin klasörü bulunamadığı için hiçbir şey gönderilmedi. Projeyi aşağıdan yeniden seçin.',
+    askProjectTitle: '“{name}” projesine sor',
+    askProjectPlaceholder: '“{name}” projesindeki dosyalar hakkında sorun…',
+    askProjectStarsPlaceholder:
+      '“{name}” projesindeki dosyalar ve yıldızlı dosyalarınız hakkında sorun…',
+    askProjectIntro:
+      'Yanıtlar “{name}” proje klasöründeki dosyalardan, gerektiğinde bulunup okunarak gelir.',
+    askHeroProjectHint: 'Ya da aşağıdan bir proje seçin.',
+    askSavedToProject: 'Proje klasörüne kaydedildi: {name}',
+    askOpenCreated: 'Aç',
+  },
 })
 
 export type KbAskProjectStringKey = keyof typeof zh

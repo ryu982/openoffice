@@ -199,20 +199,21 @@ describe('removing and copying', () => {
     expect(await service.copyToMine('codex:mine', false)).toEqual({ ok: false, reason: 'exists' })
     expect(trash).not.toHaveBeenCalled()
     expect(await service.copyToMine('codex:mine', true)).toMatchObject({ ok: true })
-    expect(trash).toHaveBeenCalledTimes(1)
+    // the overwritten skill stays in the app as an earlier version, not in the OS trash
+    expect(trash).not.toHaveBeenCalled()
+    expect(await service.versions('app:mine')).toMatchObject({
+      ok: true,
+      versions: [{ reason: 'replace' }],
+    })
     const text = readFileSync(join(appDir(), 'mine', 'SKILL.md'), 'utf8')
     expect(parseSkillMd(text)!.description).toBe('Codex copy')
   })
 
-  it('keeps the own skill when it cannot go to the trash, and says why', async () => {
+  it('keeps the own skill when its earlier version cannot be kept', async () => {
     skill(join(home, '.agents', 'skills', 'mine'), 'mine', 'Codex copy')
-    trash.mockImplementation(async () => {
-      throw new Error('no trash here')
-    })
-    expect(await service.copyToMine('codex:mine', true)).toEqual({
-      ok: false,
-      reason: 'trash-failed',
-    })
+    // a file where the versions folder would be: nothing can be kept there
+    writeFileSync(join(home, '.ieumoffice', 'skill-history'), 'in the way')
+    expect(await service.copyToMine('codex:mine', true)).toEqual({ ok: false, reason: 'failed' })
     expect(
       parseSkillMd(readFileSync(join(appDir(), 'mine', 'SKILL.md'), 'utf8'))!.description,
     ).toBe('My own')
@@ -368,21 +369,26 @@ describe('saving skills', () => {
     expect(await byId('app:home-letter')).toMatchObject({ title: 'home-letter' })
   })
 
-  it('keeps the title an own skill already has when an edit gives none', async () => {
+  it('keeps the title an edit sends along and takes out one the edit emptied', async () => {
     expect(
-      await service.save({ id: 'app:mine', title: '', description: 'D', body: 'New body\n' }),
+      await service.save({ id: 'app:mine', title: 'Mine', description: 'D', body: 'New body\n' }),
     ).toEqual({ ok: true, id: 'app:mine' })
     const parsed = parseSkillMd(readFileSync(join(appDir(), 'mine', 'SKILL.md'), 'utf8'))!
     expect(parsed.metadata['ieum-title']).toBe('Mine')
     expect(parsed.body).toBe('New body\n')
     expect(await byId('app:mine')).toMatchObject({ title: 'Mine' })
+
+    await service.save({ id: 'app:mine', title: '', description: 'D', body: 'New body\n' })
+    const emptied = parseSkillMd(readFileSync(join(appDir(), 'mine', 'SKILL.md'), 'utf8'))!
+    expect(emptied.metadata).not.toHaveProperty('ieum-title')
+    expect(await byId('app:mine')).toMatchObject({ title: 'mine' })
   })
 
-  it('keeps the title through a rename that gives none', async () => {
+  it('keeps the title through a rename that sends it along', async () => {
     expect(
       await service.save({
         id: 'app:mine',
-        title: '',
+        title: 'Mine',
         name: 'mine-2',
         description: 'D',
         body: 'B',
@@ -429,8 +435,23 @@ describe('the AI’s reads, checked again in main', () => {
         files: ['notes.md'],
         template: undefined,
         hasScripts: true,
+        mcpServers: [],
       },
     })
+  })
+
+  it('names the MCP servers a skill refers to, in the list and in the read (spec 8)', async () => {
+    skill(
+      join(appDir(), 'case-brief'),
+      'case-brief',
+      'Drafts a brief',
+      'allowed-tools:\n  - Read\n  - mcp__korean-law__search_decisions\n',
+      'Check each case with mcp__korean-law__get_decision_text and mcp__web__fetch.\n',
+    )
+    expect((await byId('app:case-brief'))?.mcpServers).toEqual(['korean-law', 'web'])
+    const read = await service.aiRead('app:case-brief')
+    expect(read.ok && read.skill.mcpServers).toEqual(['korean-law', 'web'])
+    expect((await byId('app:mine'))?.mcpServers).toEqual([])
   })
 
   it('refuses skills that are off, for the agent window only, or unknown', async () => {

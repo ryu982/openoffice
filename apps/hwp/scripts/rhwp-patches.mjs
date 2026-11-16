@@ -117,31 +117,40 @@
  *   so a selection can take a memo without going to the Insert menu. The menu keeps the
  *   selection, and the memo editor reads it when it opens.
  *
- * studio-memo-anchors, studio-memo-delete-undo
- *   The engine drops a memo when Backspace or Delete removes the last character of its
- *   anchor (vendor/rhwp-core patch 0018, decision 0072). The studio's undo of a typed
- *   deletion only puts the text back, so the memo stayed gone. The bridge gains a call
- *   for the memo anchors, and a deletion that touches one captures its paragraph first,
- *   as the studio already does for a link, so undo restores the paragraph with the memo.
- *
- * studio-font-memo-state, studio-font-memo-use
- *   The studio replaces the Canvas2D `font` setter so that every font string
- *   the engine sets passes its font substitution, which builds the family
- *   chain anew each time. Drawing a page sets the same few strings thousands
- *   of times, and that rebuilding was most of the cost of a keystroke. The
- *   setter keeps each string's answer until the next microtask checkpoint:
- *   one synchronous draw reuses it, and what the answer depends on (the fonts
- *   found on the PC, the open document's substitutions) changes only when an
- *   asynchronous step ends, so every later draw asks again.
+ * studio-easy-words-context-menu
+ *   The same two right-click menus gain 쉬운 말로 풀기 next to 메모: it asks the AI panel to
+ *   explain the selected text in plain words, in the app's language, and changes nothing in
+ *   the document. The item is the command the app's plugin registers (EASY_WORDS_COMMAND),
+ *   so its name is the label the app gives it, and it is off while nothing is selected.
+ *   Before the plugin registers it the menus leave it out.
  *
  * studio-pc-fonts
  *   The studio lists the PC's fonts only after the 찾기 button of its options dialog,
  *   so its font lists held the base fonts and the document's own until then. At start-up
  *   it now asks the PC for its font list and detects anew when that differs from the
  *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
+ *   It also hands that module what the studio knows of the PC's fonts, for the marks below.
+ *
+ * studio-missing-font-marks
+ *   A font that is not on the PC is drawn with another one, while the font menu and the
+ *   font box showed its name as if it were there. The menu marks such an entry and the box
+ *   underlines such a name, with a tooltip saying the file keeps the font's name
+ *   (studio-plugin/pc-fonts.mjs, in the words the app gives).
+ *
+ * studio-source-font-alias
+ *   The engine leads a canvas font list with its own alias for the document's font program
+ *   (`__rhwp_ttf__함초롬바탕`), meant for a host that supplies font files. The studio's
+ *   substitution took the alias for the document's font: it is on no PC, so the stand-in
+ *   (바탕, 맑은 고딕) went before the font the document names and the page drew every such
+ *   font in the stand-in, even one that is installed. The print and the PDF read the
+ *   engine's list without the alias and drew the font itself, so the paper did not look
+ *   like the page. The aliases keep their place and the list is weighed by its first real
+ *   name. Upstream had the same defect (edwardkim/rhwp#9077) and fixed it on devel the same
+ *   way (PR #9093); the patch is dropped with the release that has that fix.
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
+import { EASY_WORDS_COMMAND } from '../studio-plugin/agent-plugin.mjs'
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
 import { PC_FONTS_MODULE } from '../studio-plugin/pc-fonts.mjs'
 
@@ -241,22 +250,27 @@ const PATCHES = {
   },
   'studio-nested-table-cut': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
-    find: [
-      '        // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
-      '        if (ref.cellPath && ref.cellPath.length > 1) return;',
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
-    ].join('\n'),
-    replace: [
-      '        this.performCopy();',
-      '        this.cursor.moveOutOfSelectedTable();',
-      "        this.eventBus.emit('table-object-selection-changed', false);",
-      "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
-      '          wasm.deleteTableAt(ref);',
-    ].join('\n'),
+    edits: [
+      // the copy already takes a table in a cell (tableObjectClipboardTarget); only the delete did not
+      {
+        find: [
+          '    // 중첩 표 잘라내기는 지원하지 않는다. keydown 경로도 같은 선택 상태를 유지한다.',
+          '    if (table?.cellPath && table.cellPath.length > 1) return;',
+          '',
+        ].join('\n'),
+        replace: '',
+      },
+      {
+        find: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableControl(ref.sec, ref.ppi, ref.ci);',
+        ].join('\n'),
+        replace: [
+          "        this.executeOperation({ kind: 'snapshot', operationType: 'cutTable', operation: (wasm: WasmBridge) => {",
+          '          wasm.deleteTableAt(table!);',
+        ].join('\n'),
+      },
+    ],
   },
   'studio-nested-table-command': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]commands[\\/]table\.ts$/,
@@ -392,8 +406,9 @@ const PATCHES = {
       },
       // the typed character, before the editor decides what to do with it
       {
-        find: '  const text = this.textarea.value;',
-        replace: '  const text = quickCorrectTyped(this, this.textarea.value, e?.inputType);',
+        find: '  const text = normalizeTextNewlines(this.textarea.value);',
+        replace:
+          '  const text = normalizeTextNewlines(quickCorrectTyped(this, this.textarea.value, e?.inputType));',
       },
     ],
   },
@@ -721,7 +736,7 @@ const PATCHES = {
         find: "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
         replace: [
           "import { tableObjectClipboardTarget } from './table-object-clipboard-target';",
-          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
+          `import { ieumPasteHtmlInCell, ieumPictureHtml, ieumPictureIsRendering, ieumSelectionHtml } from '${CLIPBOARD_HTML_MODULE}';`,
         ].join('\n'),
       },
       {
@@ -766,12 +781,13 @@ const PATCHES = {
         ].join('\n'),
       },
       // a picture copied in another editor also lies on the clipboard as a picture file, at its
-      // own pixel size; that editor's HTML has the size the picture had in its document
+      // own pixel size; that editor's HTML has the size the picture had in its document. A
+      // spreadsheet copy's picture is a rendering of its table, which pastes as a table
       {
         find: ['  const items = clipboardData?.items;', '  if (items) {'].join('\n'),
         replace: [
           '  const items = clipboardData?.items;',
-          '  if (items && readRhwpClipboardToken(html) === null) {',
+          '  if (items && readRhwpClipboardToken(html) === null && !ieumPictureIsRendering(html, text)) {',
         ].join('\n'),
       },
       // a picture file from the clipboard went in with insertPicture, floating at the paper's top
@@ -842,6 +858,39 @@ const PATCHES = {
           "      { type: 'separator' },\n" +
           "      { type: 'command', commandId: 'insert:comment' },\n" +
           "      { type: 'separator' },",
+      },
+    ],
+  },
+  'studio-easy-words-context-menu': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    edits: [
+      // the end of the menu of body text (and of a header or footer), after 메모
+      {
+        find: [
+          '    ];',
+          '  }',
+          '',
+          '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+        ].join('\n'),
+        replace: [
+          `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`,
+          '    ];',
+          '  }',
+          '',
+          '  /** 특수 키 처리 (Backspace, Enter, 화살표, Ctrl+Z/Y) */',
+        ].join('\n'),
+      },
+      // the menu inside a table cell, after 메모 and before the table's own commands
+      {
+        find: [
+          "      { type: 'separator' },",
+          "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+        ].join('\n'),
+        replace: [
+          `      { type: 'command', commandId: '${EASY_WORDS_COMMAND}' },`,
+          "      { type: 'separator' },",
+          "      { type: 'command', commandId: 'table:split', label: '표 나누기' },",
+        ].join('\n'),
       },
     ],
   },
@@ -1026,98 +1075,6 @@ const PATCHES = {
     find: "      { type: 'command', commandId: 'table:cell-props', label: '셀 속성...' },",
     replace: "      { type: 'command', commandId: 'table:cell-props', label: '표/셀 속성(P)...' },",
   },
-  'studio-memo-anchors': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    // the memo list of vendor/rhwp-core patch 0018, ahead of a neighbour the bridge has once
-    find: '  getHyperlinkContext(target: HyperlinkTarget): HyperlinkContext {',
-    replace: [
-      '  /** The memo anchors of the document; none from an engine without memos. */',
-      '  getMemoAnchors(): {',
-      '    sectionIndex: number;',
-      '    paraIndex: number | null;',
-      '    startCharIdx: number | null;',
-      '    endCharIdx: number | null;',
-      '    path: { controlIndex: number; cellIndex?: number; paraIndex: number }[] | null;',
-      '  }[] {',
-      '    const doc = this.doc as any;',
-      "    if (!doc || typeof doc.getMemoList !== 'function') return [];",
-      '    return JSON.parse(doc.getMemoList());',
-      '  }',
-      '',
-      '  getHyperlinkContext(target: HyperlinkTarget): HyperlinkContext {',
-    ].join('\n'),
-  },
-  'studio-memo-delete-undo': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]command\.ts$/,
-    edits: [
-      // whether a deletion touches a memo's anchor, next to the command that asks
-      {
-        find: 'export class DeleteTextCommand implements EditCommand {',
-        replace: [
-          "/** Whether deleting `count` characters at `offset` in `target` touches a memo's anchor. */",
-          'export function memoAnchorOverlaps(',
-          '  wasm: WasmBridge,',
-          '  target: ReturnType<typeof hyperlinkTarget>,',
-          '  offset: number,',
-          '  count: number,',
-          '): boolean {',
-          '  const path = JSON.stringify(target.cellPath);',
-          '  return wasm.getMemoAnchors().some(memo =>',
-          '    memo.sectionIndex === target.section',
-          '    && memo.paraIndex === target.para',
-          '    && JSON.stringify((memo.path ?? []).map(entry =>',
-          '      [entry.controlIndex, entry.cellIndex ?? 0, entry.paraIndex])) === path',
-          '    && memo.startCharIdx !== null && memo.endCharIdx !== null',
-          '    && memo.startCharIdx < memo.endCharIdx',
-          '    && offset < memo.endCharIdx && memo.startCharIdx < offset + count);',
-          '}',
-          '',
-          'export class DeleteTextCommand implements EditCommand {',
-        ].join('\n'),
-      },
-      // the engine drops a memo whose whole anchor goes; capture the paragraph as for a link
-      {
-        find: [
-          '      if (context.links.some(link => this.position.charOffset < link.end',
-          '        && link.start < this.position.charOffset + this.count)) {',
-        ].join('\n'),
-        replace: [
-          '      if (context.links.some(link => this.position.charOffset < link.end',
-          '        && link.start < this.position.charOffset + this.count)',
-          '        || memoAnchorOverlaps(wasm, target, this.position.charOffset, this.count)) {',
-        ].join('\n'),
-      },
-    ],
-  },
-  'studio-font-memo-state': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'let canvasFontSubstitutionInstalled = false;',
-    replace: [
-      'let canvasFontSubstitutionInstalled = false;',
-      '',
-      '// one answer per font string until the next microtask checkpoint: a page draw sets the',
-      '// same strings thousands of times, and what the answer depends on changes between tasks',
-      'let canvasFontMemo: Map<string, string> | null = null;',
-      'function memoSubstituteCssFontFamily(cssFont: string): string {',
-      '  if (!canvasFontMemo) {',
-      '    canvasFontMemo = new Map();',
-      '    queueMicrotask(() => { canvasFontMemo = null; });',
-      '  }',
-      '  let out = canvasFontMemo.get(cssFont);',
-      '  if (out === undefined) {',
-      '    out = substituteCssFontFamily(cssFont);',
-      '    canvasFontMemo.set(cssFont, out);',
-      '  }',
-      '  return out;',
-      '}',
-    ].join('\n'),
-  },
-  'studio-font-memo-use': {
-    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
-    find: 'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? substituteCssFontFamily(String(value)));',
-    replace:
-      'descriptor.set!.call(this, scopedHostCanvasFont(String(value)) ?? memoSubstituteCssFontFamily(String(value)));',
-  },
   'studio-pc-fonts': {
     file: /[\\/]rhwp-studio[\\/]src[\\/]main\.ts$/,
     edits: [
@@ -1125,24 +1082,133 @@ const PATCHES = {
         find: ['  resolveLocalFont,', "} from '@/core/local-fonts';"].join('\n'),
         replace: [
           '  resolveLocalFont,',
-          '  getLocalFontRecords,',
           "} from '@/core/local-fonts';",
-          `import { refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+          `import { installFontPresence, noteFontsApplying, refreshPcFonts } from '${PC_FONTS_MODULE}';`,
+          // under a name of its own: rhwp v0.9.0's main.ts no longer imports it, and a later
+          // one that does must not clash
+          "import { getLocalFontRecords as ieumLocalFontRecords } from '@/core/local-fonts';",
         ].join('\n'),
+      },
+      {
+        find: "import { loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
+        replace:
+          "import { getDetectedOSFonts, loadWebFonts, resolveCanvasKitFontPlan } from '@/core/font-loader';",
       },
       {
         find: ['    setupEventListeners();', '    setupModalFocusRestore();'].join('\n'),
         replace: [
           '    setupEventListeners();',
+          '    installFontPresence({',
+          '      resolveLocalFont,',
+          '      records: () => ieumLocalFontRecords({ includeRegistered: true }),',
+          '      detected: getDetectedOSFonts,',
+          '      state: getLocalFontState,',
+          '    });',
           '    void refreshPcFonts({',
           '      queryLocalFonts: (globalThis as { queryLocalFonts?: () => Promise<{ family: string; fullName: string; postscriptName: string }[]> }).queryLocalFonts?.bind(globalThis),',
           '      loadStored: loadStoredLocalFonts,',
-          '      records: () => getLocalFontRecords({ includeRegistered: true }),',
+          '      records: () => ieumLocalFontRecords({ includeRegistered: true }),',
           '      detect: () => detectLocalFonts({ force: true }),',
           "      changed: () => eventBus.emit('local-fonts-changed', { source: 'pc-fonts' }),",
           '      document,',
           '    });',
           '    setupModalFocusRestore();',
+        ].join('\n'),
+      },
+      // The studio works the document's fonts out again when told the PC's fonts changed,
+      // without waiting: the work is handed over, so a print waits for the substitution the
+      // screen then draws with (pc-fonts.mjs printFontsReady).
+      {
+        find: "    void wasm.prepareDeclaredFontEnvironment('canvas2d').then(changed => {",
+        replace:
+          "    noteFontsApplying(wasm.prepareDeclaredFontEnvironment('canvas2d').then(changed => {",
+      },
+      {
+        find: "    }).catch(error => console.warn('[LocalFonts] View refresh failed:', error));",
+        replace:
+          "    }).catch(error => console.warn('[LocalFonts] View refresh failed:', error)));",
+      },
+    ],
+  },
+  // Hancom's equation fonts are written in private code points, which mean nothing in the
+  // font the substitution would put in their place while the PC's fonts are not known yet
+  // or the font is not there. The app's own layer (equation-fonts.mjs) sits under the
+  // substitution: it keeps the font when the PC has it and decodes the run when it has not.
+  'studio-equation-fonts': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    edits: [
+      {
+        find: "import { rememberRawCanvasFontDescriptor } from './canvas-font-raw';",
+        replace: [
+          "import { rememberRawCanvasFontDescriptor } from './canvas-font-raw';",
+          `import { installEquationFonts, isEquationGlyphFont } from '${PC_FONTS_MODULE}';`,
+          '',
+          '// before the substitution below wraps the canvas font: it must sit on top of this',
+          'installEquationFonts();',
+        ].join('\n'),
+      },
+      {
+        find: ['  const primary = incoming[0];', '  if (!primary) return cssFont;'].join('\n'),
+        replace: [
+          '  const primary = incoming[0];',
+          '  if (!primary) return cssFont;',
+          '  if (isEquationGlyphFont(primary)) return cssFont;',
+        ].join('\n'),
+      },
+    ],
+  },
+  // The engine leads a canvas font list with its alias for the document's font program
+  // (pc-fonts.mjs, isEngineFontAlias). The substitution took that alias for the document's
+  // font, found it on no PC and put its stand-in first: the page drew 함초롬바탕, 궁서 or
+  // Arial in 바탕 or 맑은 고딕 while the print drew the font. The aliases stay where the
+  // engine put them and the list is weighed by its first real name.
+  'studio-source-font-alias': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    edits: [
+      {
+        find: "import type { FileSystemFileHandleLike } from '@/command/file-system-access';",
+        replace: [
+          "import type { FileSystemFileHandleLike } from '@/command/file-system-access';",
+          `import { isEngineFontAlias } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: '  const incoming = parseCssFontFamilyList(familyPart);',
+        replace: [
+          '  const listed = parseCssFontFamilyList(familyPart);',
+          '  const engineAliases = listed.filter(name => isEngineFontAlias(name));',
+          '  const incoming = listed.filter(name => !isEngineFontAlias(name));',
+        ].join('\n'),
+      },
+      {
+        find: '  return prefix + formatCssFontFamilyList(completeFontFamilyList(merged, studioChain.slice(1)));',
+        replace:
+          '  return prefix + formatCssFontFamilyList([...engineAliases, ...completeFontFamilyList(merged, studioChain.slice(1))]);',
+      },
+    ],
+  },
+  'studio-missing-font-marks': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]toolbar\.ts$/,
+    edits: [
+      {
+        find: "import { getLocalFonts } from '@/core/local-fonts';",
+        replace: [
+          "import { getLocalFonts } from '@/core/local-fonts';",
+          `import { markFontOption, watchFontBox } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: "    this.fontName = container.querySelector('#font-name')!;",
+        replace: [
+          "    this.fontName = container.querySelector('#font-name')!;",
+          '    watchFontBox(this.fontName);',
+        ].join('\n'),
+      },
+      {
+        find: '        button.title = entry.label;',
+        replace: [
+          '        button.title = entry.label;',
+          '        markFontOption(button, entry.value);',
         ].join('\n'),
       },
     ],
@@ -1205,14 +1271,14 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-table-props-menu-label',
   'studio-memo-command',
   'studio-memo-context-menu',
+  'studio-easy-words-context-menu',
   'studio-memo-label-ko',
   'studio-memo-label-en',
-  'studio-memo-anchors',
-  'studio-memo-delete-undo',
-  'studio-font-memo-state',
-  'studio-font-memo-use',
   'studio-cell-block-paste',
   'studio-pc-fonts',
+  'studio-missing-font-marks',
+  'studio-equation-fonts',
+  'studio-source-font-alias',
 ])
 
 /** Whether a patch is written against this file. */
@@ -1250,6 +1316,33 @@ export const pluginHooks = [
       'getSelectedCellRange()',
       'getCellTableContext()',
       'getExcludedCells()',
+      'isInPictureObjectSelection(): boolean',
+      // word and paragraph selection in a header, footer or footnote being edited
+      'isInHeaderFooter(): boolean',
+      "get headerFooterMode(): 'none' | 'header' | 'footer'",
+      'get hfSectionIdx(): number',
+      'get hfApplyTo(): number',
+      'get hfParaIdx(): number',
+      'get hfCharOffset(): number',
+      'get hfPreviewPage(): number',
+      'selectHeaderFooterRange(',
+      'getHeaderFooterSelectionOrdered()',
+      'isInFootnote(): boolean',
+      'get fnSectionIdx(): number',
+      'get fnParaIdx(): number',
+      'get fnControlIdx(): number',
+      'get fnInnerParaIdx(): number',
+      'get fnCharOffset(): number',
+      'setFnCursorPosition(fnParaIdx: number, charOffset: number): void',
+      'setFnAnchor(): void',
+      'getFootnoteSelectionOrdered()',
+    ],
+  },
+  {
+    file: 'src/core/wasm-bridge.ts',
+    needles: [
+      'getHeaderFooterParaInfo(sec: number, isHeader: boolean, applyTo: number, hfParaIdx: number): string',
+      'getFootnoteInfo(sec: number, para: number, controlIdx: number)',
     ],
   },
   {
@@ -1327,6 +1420,7 @@ export const hancomHooks = [
       'clearSelection(): void',
       'isProtectedCellSelectionMode(): boolean',
       'getExcludedCells(): Set<string>',
+      'hasSelection(): boolean',
       'captureCellSelection(): CellBlockSelectionState | null',
     ],
   },
@@ -1358,6 +1452,16 @@ export const hancomHooks = [
       'hasMultiCellSelection(): boolean',
       // Ctrl+Shift+Tab in a cell: the studio's Shift+Tab hanging indent
       'applyHangingIndentAtCursor(): boolean',
+      // Hangul's Ctrl+PageUp/PageDown: the studio's Ctrl+Home/End (documentEdgeKey)
+      'private handleCtrlKey(e: KeyboardEvent): void',
+    ],
+  },
+  {
+    file: 'src/engine/input-handler-keyboard.ts',
+    needles: [
+      'export function handleCtrlKey(this: any, e: KeyboardEvent): void',
+      'this.cursor.moveToDocumentStart();',
+      'this.cursor.moveToDocumentEnd();',
     ],
   },
   {
@@ -1412,6 +1516,12 @@ export const hancomHooks = [
       'getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string)',
       'getCellInfoByPath(sec: number, parentPara: number, pathJson: string)',
       'runInBatch<T>(fn: () => T): T',
+      // the cell copy's table HTML and the 셀 붙이기 dialog's new rows and columns
+      "exportControlHtml(sec: number, para: number, ci: number, cellPathJson = ''): string",
+      'getCellProperties(sec: number, parentPara: number, controlIdx: number, cellIdx: number): CellProperties',
+      'insertTableRow(sec: number, parentPara: number, controlIdx: number, rowIdx: number, below: boolean)',
+      'insertTableColumn(sec: number, parentPara: number, controlIdx: number, colIdx: number, right: boolean)',
+      'mergeTableCells(sec: number, parentPara: number, controlIdx: number, startRow: number',
       // 문서 정보 reads the document through these (studio-plugin/document-info.mjs)
       'getSectionCount(): number {',
       'getTextRange(sec: number, para: number, charOffset: number, count: number): string {',

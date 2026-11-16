@@ -58,7 +58,7 @@ Setiap perintah adalah sebuah alat. Yang menarik:
 Permintaan dari perintah `ieumoffice` atau dari klien MCP tidak Anda ketik sendiri di aplikasi, jadi GenOffice memperlakukannya dengan hati-hati.
 
 - **Pencarian** selalu berfungsi dan gratis secara bawaan. Kunci penyedia pencarian hanya dipakai jika Anda memilihnya.
-- **Membuat gambar** memerlukan kunci penyedia gambar. Pada versi ini langganan tidak membuat gambar.
+- **Membuat gambar** mengikuti pilihan pembuatan gambar di Pengaturan. Pilihan bawaan, Paket ChatGPT (program Codex), memakai paket ChatGPT Anda melalui program Codex dan **tidak dipakai kecuali Anda mengizinkannya** (lihat di bawah). Jika tidak, kunci penyedia gambar yang sudah disiapkan yang dipakai. Model yang disebut agen dipakai bila jalur itu menyediakannya.
 - **Mendeskripsikan gambar** memakai penyedia berbasis kunci bila ada yang disiapkan. Langganan Claude atau Codex Anda **tidak dipakai kecuali Anda mengizinkannya**.
 - **Video dan audio** memerlukan penyedia berbasis kunci yang mendukung video.
 

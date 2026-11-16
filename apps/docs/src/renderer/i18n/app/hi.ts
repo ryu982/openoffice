@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const hi = {
+  appLegacyDocImported:
+    '.{ext} फ़ाइल को परिवर्तित .docx प्रति के रूप में खोला गया। मूल फ़ाइल वैसी ही रहती है; सहेजने पर नई .docx फ़ाइल लिखी जाती है।',
   appScTitle: 'कीबोर्ड शॉर्टकट',
   appScFilter: 'शॉर्टकट खोजें',
   appScNone: 'कोई मेल खाता शॉर्टकट नहीं',
@@ -54,6 +56,7 @@ export const hi = {
   appVerticalTextNotice:
     'इस दस्तावेज़ में लंबवत पाठ है (फ़िलहाल क्षैतिज रूप में दिखाया गया है; सहेजने पर असर नहीं)',
   appNewDocCreated: 'खाली दस्तावेज़ बनाया गया। बाईं ओर AI पैनल में बताएँ कि क्या जनरेट करना है।',
+  appNewDocCreatedNoAi: 'खाली दस्तावेज़ बनाया गया।',
   appNewFailed: 'दस्तावेज़ बनाने में विफल: {error}',
   appSaveFailed: 'सहेजने में विफल: {error}',
   appAutoSavedAt: 'स्वतः सहेजा गया ({time})',
@@ -94,6 +97,9 @@ export const hi = {
   appPrintRangeAll: 'सभी पृष्ठ',
   appPrintRangeCurrent: 'वर्तमान पृष्ठ',
   appPrintRangeCustom: 'कस्टम श्रेणी',
+  appPrintRangeSelection: 'चयन',
+  appPrintSelectionPreparing: 'चयन को पृष्ठों में बाँटा जा रहा है…',
+  appPrintSelectionFailed: 'चयन को पृष्ठों में नहीं बाँटा जा सका: {error}',
   appPrintRangeHint: 'जैसे: 1,3,5-8',
   appPrintPageCount: 'कुल {n} पृष्ठ',
   appPrintNoPages: 'प्रिंट करने के लिए कोई पृष्ठ नहीं',
@@ -350,6 +356,9 @@ export const hi = {
   appAiBadgeTip: 'AI का उपयोग करता है',
   appTranslate: 'अनुवाद करें',
   appTranslateTo: '{lang} में अनुवाद करें',
+  appEasyWords: 'आसान शब्दों में समझाएं',
+  appEasyWordsPrompt:
+    'चयनित अंश को हिंदी में ऐसे समझाएं कि जिन्हें आसान भाषा चाहिए (बच्चे, बुज़ुर्ग, हिंदी सीख रहे लोग) वे भी समझ सकें। रोज़मर्रा के शब्दों और छोटे वाक्यों का उपयोग करें, और सभी तथ्य, संख्याएं और शर्तें बनाए रखें। दस्तावेज़ में बदलाव न करें: "{text}"',
   redactMenuLabel: 'चयन को AI से छिपाएँ',
   redactDialogDesc:
     'शब्द दस्तावेज़ और फ़ाइल में बने रहते हैं; मॉडल को केवल नीचे वाला प्लेसहोल्डर दिखता है। नाम दें ताकि उसे पता चले कि यह किसका स्थान है।',
@@ -380,6 +389,7 @@ export const hi = {
   appLangHindi: 'हिंदी',
   appLangTraditionalChinese: 'पारंपरिक चीनी',
   appLangVietnamese: 'वियतनामी',
+  appLangTurkish: 'तुर्की',
   appWrapTextMenu: 'टेक्स्ट रैप करें',
   appViewImage: 'छवि देखें',
   appSaveImageAs: 'छवि इस रूप में सहेजें…',
@@ -581,4 +591,10 @@ export const hi = {
   appMergeSourceLoaded: '{name} लोड हुई ({n} रिकॉर्ड)',
   appMergeWritten: '{n} दस्तावेज़ लिखे गए',
   appMergeNothingToWrite: 'लिखने के लिए कुछ नहीं है',
+  appExportingHwp: 'HWP दस्तावेज़ निर्यात हो रहा है…',
+  appExportedHwp: 'HWP दस्तावेज़ निर्यात हुआ: {path}',
+  appExportHwpFailed: 'HWP निर्यात विफल: {error}',
+  appExportHwpCanceled: 'HWP निर्यात रद्द किया गया',
+  appExportHwpReadback:
+    'यह दस्तावेज़ .hwp के रूप में ठीक से नहीं लिखा जा सका। इसे .hwpx के रूप में सहेजकर देखें।',
 } satisfies Record<keyof typeof zh, string>

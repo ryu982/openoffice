@@ -20,6 +20,7 @@ import { he } from './strings-project-panel/he'
 import { hi } from './strings-project-panel/hi'
 import { zhTW } from './strings-project-panel/zh-TW'
 import { vi } from './strings-project-panel/vi'
+import { tr } from './strings-project-panel/tr'
 
 /**
  * Project-folder wording of the AI panel (decision 0088): the project chip
@@ -48,6 +49,7 @@ export const PROJECT_PANEL_STRINGS = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type ProjectPanelStringKey = keyof typeof zh

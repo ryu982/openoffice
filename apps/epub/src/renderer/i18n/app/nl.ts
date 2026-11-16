@@ -30,6 +30,7 @@ export const nl = {
   darkView: 'Donkere weergave',
   toc: 'Inhoud',
   tocEmpty: 'Dit boek heeft geen inhoudsopgave',
+  sideResize: 'Paneelbreedte aanpassen',
   statusChapter: 'Hoofdstuk {n}/{total}',
   prevChapter: 'Vorig hoofdstuk',
   nextChapter: 'Volgend hoofdstuk',

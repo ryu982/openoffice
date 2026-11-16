@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const id = {
+  appLegacyDocImported:
+    'File .{ext} dibuka sebagai salinan .docx hasil konversi. File asli tetap seperti semula; menyimpan akan menulis file .docx baru.',
   appScTitle: 'Pintasan Papan Ketik',
   appScFilter: 'Cari pintasan',
   appScNone: 'Tidak ada pintasan yang cocok',
@@ -55,6 +57,7 @@ export const id = {
     'Dokumen ini berisi teks vertikal (sementara ditampilkan horizontal; penyimpanan tidak terpengaruh)',
   appNewDocCreated:
     'Dokumen kosong telah dibuat. Jelaskan konten yang ingin dibuat di panel AI sebelah kiri',
+  appNewDocCreatedNoAi: 'Dokumen kosong dibuat.',
   appNewFailed: 'Gagal membuat dokumen: {error}',
   appSaveFailed: 'Gagal menyimpan: {error}',
   appAutoSavedAt: 'Disimpan otomatis ({time})',
@@ -96,6 +99,9 @@ export const id = {
   appPrintRangeAll: 'Semua halaman',
   appPrintRangeCurrent: 'Halaman saat ini',
   appPrintRangeCustom: 'Rentang kustom',
+  appPrintRangeSelection: 'Pilihan',
+  appPrintSelectionPreparing: 'Menata halaman pilihan…',
+  appPrintSelectionFailed: 'Pilihan tidak dapat ditata ke halaman: {error}',
   appPrintRangeHint: 'mis. 1,3,5-8',
   appPrintPageCount: '{n} halaman',
   appPrintNoPages: 'Tidak ada halaman untuk dicetak',
@@ -352,6 +358,9 @@ export const id = {
   appAiBadgeTip: 'Menggunakan AI',
   appTranslate: 'Terjemahkan',
   appTranslateTo: 'Terjemahkan ke {lang}',
+  appEasyWords: 'Jelaskan dengan kata sederhana',
+  appEasyWordsPrompt:
+    'Jelaskan teks yang dipilih dalam bahasa Indonesia agar mudah dipahami juga oleh orang yang membutuhkan bacaan mudah (anak-anak, lansia, orang yang sedang belajar bahasa Indonesia). Gunakan kata sehari-hari dan kalimat pendek, serta pertahankan semua fakta, angka, dan syarat. Jangan ubah dokumen: "{text}"',
   redactMenuLabel: 'Sembunyikan pilihan dari AI',
   redactDialogDesc:
     'Kata-kata tetap ada di dokumen dan berkas; model hanya melihat placeholder di bawah. Beri nama agar model tahu apa yang diwakili.',
@@ -382,6 +391,7 @@ export const id = {
   appLangHindi: 'Hindi',
   appLangTraditionalChinese: 'Tionghoa Tradisional',
   appLangVietnamese: 'Vietnam',
+  appLangTurkish: 'Turki',
   appWrapTextMenu: 'Bungkus Teks',
   appViewImage: 'Lihat Gambar',
   appSaveImageAs: 'Simpan Gambar Sebagai…',
@@ -584,4 +594,10 @@ export const id = {
   appMergeSourceLoaded: '{name} dimuat ({n} record)',
   appMergeWritten: '{n} dokumen ditulis',
   appMergeNothingToWrite: 'Tidak ada yang ditulis',
+  appExportingHwp: 'Mengekspor dokumen HWP…',
+  appExportedHwp: 'Dokumen HWP diekspor: {path}',
+  appExportHwpFailed: 'Ekspor HWP gagal: {error}',
+  appExportHwpCanceled: 'Ekspor HWP dibatalkan',
+  appExportHwpReadback:
+    'Dokumen ini tidak dapat ditulis persis sebagai .hwp. Coba simpan sebagai .hwpx.',
 } satisfies Record<keyof typeof zh, string>

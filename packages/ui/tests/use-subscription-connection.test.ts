@@ -94,7 +94,7 @@ describe('shared subscription connection', () => {
   })
 
   it('rechecks a provider after a sign-in and again on focus', async () => {
-    let current = statusMap('signed-out', 'not-installed')
+    let current = statusMap('signed-out', 'ready')
     const recheck = vi.fn(async () => current)
     const login = vi.fn(async () => ({ ok: true }))
     const api = {
@@ -108,12 +108,44 @@ describe('shared subscription connection', () => {
     await settle()
     expect(login).toHaveBeenCalledWith('claude-code')
 
-    current = statusMap('ready', 'not-installed')
+    current = statusMap('ready', 'ready')
     act(() => window.dispatchEvent(new Event('focus')))
     await settle()
     expect(recheck).toHaveBeenCalledWith(['claude-code'])
     expect(connection.statuses['claude-code'].state).toBe('ready')
 
+    recheck.mockClear()
+    act(() => window.dispatchEvent(new Event('focus')))
+    await settle()
+    expect(recheck).not.toHaveBeenCalled()
+  })
+
+  it('looks again on every focus for a program not found, however it was installed', async () => {
+    // nothing launched from the app: the user followed the vendor's guide in a terminal
+    let current = statusMap('not-installed', 'ready')
+    const recheck = vi.fn(async () => current)
+    const api = {
+      statuses: async () => current,
+      recheck,
+      onChanged: () => () => undefined,
+    } as unknown as SubscriptionApiLike
+    await mount({ api: () => api })
+    expect(connection.statuses['claude-code'].state).toBe('not-installed')
+
+    act(() => window.dispatchEvent(new Event('focus')))
+    await settle()
+    expect(recheck).toHaveBeenCalledExactlyOnceWith(['claude-code'])
+    expect(connection.statuses['claude-code'].state).toBe('not-installed')
+
+    // installed while the app was in the background
+    current = statusMap('signed-out', 'ready')
+    recheck.mockClear()
+    act(() => window.dispatchEvent(new Event('focus')))
+    await settle()
+    expect(recheck).toHaveBeenCalledExactlyOnceWith(['claude-code'])
+    expect(connection.statuses['claude-code'].state).toBe('signed-out')
+
+    // found: nothing is looked for any more
     recheck.mockClear()
     act(() => window.dispatchEvent(new Event('focus')))
     await settle()
@@ -208,5 +240,28 @@ describe('shared subscription connection', () => {
       await connection.acceptMetered('codex')
     })
     expect(connection.statuses.codex.meteredAccepted).toBe(true)
+  })
+
+  it('says so when the switch could not be stored, and clears it on a switch that was', async () => {
+    let stored = false
+    const api = {
+      statuses: async () => statusMap('ready', 'ready'),
+      recheck: async () => statusMap('ready', 'ready'),
+      setSubscriptionOff: async () =>
+        stored
+          ? { ok: true, statuses: statusMap('off', 'ready') }
+          : { ok: false, statuses: statusMap('ready', 'ready') },
+      onChanged: () => () => undefined,
+    } as unknown as SubscriptionApiLike
+    await mount({ api: () => api })
+    act(() => connection.setOff('claude-code', true))
+    await settle()
+    expect(connection.failed['claude-code']).toBe('switch')
+    expect(connection.statuses['claude-code'].state).toBe('ready')
+    stored = true
+    act(() => connection.setOff('claude-code', true))
+    await settle()
+    expect(connection.failed['claude-code']).toBeUndefined()
+    expect(connection.statuses['claude-code'].state).toBe('off')
   })
 })

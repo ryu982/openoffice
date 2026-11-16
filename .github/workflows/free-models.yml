@@ -2,11 +2,13 @@ name: Free models
 
 # Weekly look at OpenRouter's public model list against the free models the app
 # offers (OPENROUTER_FREE_MODELS in packages/ai-provider/src/free-ai.ts). Reads
-# no key and spends no free request. When an offered model is gone or a new
-# free model with tool support is there to try, the run fails with the report
-# in its summary; GitHub mails a failed scheduled run to the repository owner
-# (the repository has issues turned off). Trying a model in the app spends a
-# real key's free requests and is done by hand (docs/operations.md, "무료 모델 점검").
+# no key and spends no free request. When an offered model is gone, the run
+# fails with the report in its summary; GitHub mails a failed scheduled run to
+# the repository owner. New free models with tool support are listed in the
+# summary with a notice and do not fail the run: they appear most weeks, and a
+# run that is red every week hid the one that named a withdrawn model
+# (decision 0138). Trying a model in the app spends a real key's free requests
+# and is done by hand (docs/operations.md, "무료 모델 점검").
 
 on:
   schedule:
@@ -42,6 +44,8 @@ jobs:
           cat report.md
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$code" -eq 1 ]; then
-            echo "::error title=Free models::OpenRouter's free models changed; see the run summary"
+            echo "::error title=Free models::An offered free model is gone from OpenRouter; see the run summary"
+          elif [ "$code" -eq 0 ] && grep -q '^## 시험해 볼 새 무료 모델' report.md; then
+            echo "::notice title=Free models::New free models to try; see the run summary"
           fi
           exit "$code"

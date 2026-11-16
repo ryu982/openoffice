@@ -7,6 +7,7 @@ import { AI_CHANNELS } from '../src/shared/ipc'
 import {
   SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
+  SUBSCRIPTION_USAGE_CHANNEL,
   checkingSubscriptionStatuses,
   isSubscriptionProviderId,
   subscriptionLaunchResultOf,
@@ -120,6 +121,7 @@ describe('html preload', () => {
         'cancelLogin',
         'login',
         'onChanged',
+        'onUsage',
         'openConnectHelp',
         'openInstallHelp',
         'recheck',
@@ -202,6 +204,23 @@ describe('html preload', () => {
       SUBSCRIPTION_IPC_CHANNELS.changed,
       listener,
     )
+  })
+
+  it('hears the usage a picture request reported, and stops when asked', () => {
+    expect(SUBSCRIPTION_USAGE_CHANNEL).toBe('ai:subscription-usage-update')
+    const seen: unknown[] = []
+    const off = api.subscription.onUsage((usage) => seen.push(usage))
+    const [channel, listener] = electron.on.mock.calls[0] as [
+      string,
+      (event: unknown, payload: unknown) => void,
+    ]
+    expect(channel).toBe(SUBSCRIPTION_USAGE_CHANNEL)
+    const usage = [{ provider: 'codex', window: 'five_hour', utilization: 0.4, resetsAt: 1 }]
+    listener({}, usage)
+    listener({}, 'not a list')
+    expect(seen).toEqual([usage, []])
+    off()
+    expect(electron.removeListener).toHaveBeenCalledWith(SUBSCRIPTION_USAGE_CHANNEL, listener)
   })
 })
 

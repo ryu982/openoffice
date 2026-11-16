@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const it = {
+  appLegacyPptImported:
+    'Il file .ppt è stato aperto come copia .pptx convertita. L’originale resta invariato; il salvataggio crea un nuovo file .pptx. Le note del relatore e le animazioni non vengono trasferite.',
   redactMenuLabel: 'Nascondi la selezione all’IA',
   redactDialogDesc:
     'Il contenuto selezionato resta nel documento e nel file; il modello vede solo il segnaposto. Dai un nome perché sappia cosa rappresenta.',
@@ -181,6 +183,9 @@ export const it = {
   appPrintLandscape: 'Orizzontale',
   appPrintFrame: 'Cornice alle diapositive',
   appPrintHidden: 'Stampa diapositive nascoste',
+  appPrintRangeSelected: 'Diapositive selezionate',
+  appPrintLayoutBlocked:
+    'Stampati e pagine note si stampano con una pagina per foglio. Per disporre le pagine, scegli Diapositive a pagina intera.',
   appPrintPageCount: '{n} pagine',
   appPrintNoPages: 'Nessuna diapositiva da stampare',
   appPrintRendering: 'Generazione dell’anteprima…',
@@ -191,6 +196,7 @@ export const it = {
   appCtxSendToBack: 'Porta in secondo piano',
   appCtxBringForward: 'Porta avanti',
   appCtxSendBackward: 'Porta indietro',
+  appCtxRotate: 'Ruota',
   appCtxRotateLeft90: 'Ruota di 90° a sinistra',
   appCtxRotateRight90: 'Ruota di 90° a destra',
   appCtxFlipH: 'Capovolgi orizzontalmente',

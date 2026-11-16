@@ -20,6 +20,7 @@ import { he } from './agent/he'
 import { hi } from './agent/hi'
 import { zhTW } from './agent/zh-TW'
 import { vi } from './agent/vi'
+import { tr } from './agent/tr'
 
 /**
  * The agent window (decision 0032). Sharded per language; `zh` defines the key set.
@@ -46,6 +47,7 @@ export const agentStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type AgentStringKey = keyof typeof zh

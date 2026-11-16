@@ -2,15 +2,15 @@
 
 [한국어](README.md) · **English**
 
-[![Total downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fpblsketch%2Fopenoffice%2Fmain%2Fdocs%2Ftracking%2Fgrowth-latest.json&query=%24.totalDownloads&label=total%20downloads)](https://github.com/pblsketch/openoffice/releases)
-[![Stars](https://img.shields.io/github/stars/pblsketch/openoffice?style=social)](https://github.com/pblsketch/openoffice/stargazers)
+[![Total downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fpblsketch%2Fieumoffice%2Fmain%2Fdocs%2Ftracking%2Fgrowth-latest.json&query=%24.totalDownloads&label=total%20downloads)](https://github.com/pblsketch/ieumoffice/releases)
+[![Stars](https://img.shields.io/github/stars/pblsketch/ieumoffice?style=social)](https://github.com/pblsketch/ieumoffice/stargazers)
 
 If IeumOffice helps you, please tap the **star** above. Every star makes it
 easier for the next person to find this program.
 
 IeumOffice (이음오피스) is a free, open-source desktop office suite. It opens
-and edits Word, Excel, PowerPoint, PDF, Markdown and HTML documents and mind
-maps in one window, and its AI works on the document itself instead of
+and edits Word, Excel, PowerPoint, PDF, Markdown and HTML documents, mind
+maps and diagrams in one window, and its AI works on the document itself instead of
 answering in a chat box beside it.
 
 The AI runs on **the Claude subscription or ChatGPT plan you already pay
@@ -65,8 +65,8 @@ The author's own account, in Korean, is at
 ## What works today
 
 - **Editors in one tabbed window**: Word (`.docx`), Excel (`.xlsx`),
-  PowerPoint (`.pptx`), PDF, Hangul (`.hwp`, `.hwpx`), Markdown, HTML and mind
-  maps. Files are opened and saved in their real formats on your own PC; edits are written back as narrow changes
+  PowerPoint (`.pptx`), PDF, Hangul (`.hwp`, `.hwpx`), Markdown, HTML, mind
+  maps and diagrams (draw.io files `.drawio`). Files are opened and saved in their real formats on your own PC; edits are written back as narrow changes
   to the original file, so the parts you did not touch are kept as they were.
 - **An AI panel in every editor.** You ask in plain words, and the AI changes
   the document through the app's own editing tools. You see what was changed
@@ -77,7 +77,13 @@ The author's own account, in Korean, is at
 - **Mind maps**: opens and saves XMind files (`.xmind`) in place. Elements the
   editor does not show are kept when you save, and a map you did not change is
   saved byte for byte as it was. Several sheets, themes, export to a picture,
-  PDF or Markdown outline, and printing.
+  PDF or Markdown outline, and printing. FreeMind and Freeplane files (`.mm`)
+  are imported as new maps and saved as `.xmind`.
+- **Diagrams**: opens draw.io files (`.drawio`, `.dio`, `.drawio.svg`,
+  `.drawio.png`) and saves them in the same format. The drawing screen runs
+  on this PC only and sends nothing to the internet.
+  Visio files (`.vsdx`) are imported as new diagrams. Export to PNG, SVG or
+  PDF, printing, and drawing from Mermaid in the AI panel.
 - **New documents from your documents**: start "Make a new document" from a
   starred group on the home screen, from files you picked, or from an
   editor's File menu, and the material is turned into a PowerPoint deck, an
@@ -88,13 +94,13 @@ The author's own account, in Korean, is at
 - **Search across your documents** from the home screen, indexed on your PC.
 - **A terminal command (`ieumoffice`), an MCP server and an agent skill**, so a
   coding agent can read, create and edit the same files.
-- **21 interface languages.** Korean and English were written by hand; the
-  other 19 are machine translations.
+- **22 interface languages.** Korean and English were written by hand; the
+  other 20 are machine translations.
 
 Released for **Windows**, with separate **betas for Macs (Apple Silicon and
 Intel) and 64-bit Linux (x64)**. The developer has not been able to check the
 Mac or Linux builds on those machines; please report problems as
-[issues](https://github.com/pblsketch/openoffice/issues).
+[issues](https://github.com/pblsketch/ieumoffice/issues).
 
 ## Connecting your subscription
 
@@ -225,7 +231,7 @@ ieumoffice open report.docx
 
 - **Agent skill.** **Settings → Integrations** lists the coding agents found
   on the PC and installs the `ieumoffice` skill into the ones you choose. From
-  a terminal: `npx skills add pblsketch/openoffice`.
+  a terminal: `npx skills add pblsketch/ieumoffice`.
 - **MCP server.** `ieumoffice mcp` serves the same commands as Model Context
   Protocol tools. The same settings page shows ready-made snippets, for
   example `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`.
@@ -251,7 +257,7 @@ IeumOffice can be installed next to GenOffice. It registers only its own names
 ## Download and install
 
 Installers are published on the
-[Releases page](https://github.com/pblsketch/openoffice/releases) as
+[Releases page](https://github.com/pblsketch/ieumoffice/releases) as
 `IeumOffice-Setup-<version>.exe`, for 64-bit Windows 10 and 11. If that page
 is still empty, no release has been published yet; build from source instead.
 
@@ -290,10 +296,22 @@ xattr -dr com.apple.quarantine /Applications/IeumOffice.app
 
 What differs on a Mac:
 
-- **It does not update itself.** When a new version is out it tells you and
-  opens the download page; install the new dmg over the old app.
-- The AI connection card has **no install button**. Follow its "official
-  install instructions" link to install Claude Code or Codex.
+- **The app installs updates itself.** In the update window, **Update Now**
+  then **Restart & Install** closes the app, swaps in the new version and opens
+  it again; there is no second "Open Anyway". This works for an app moved into
+  Applications. One opened straight from the disk image, or kept in a folder
+  you cannot write to, opens the download page instead. Coming from an older
+  version without this, install the new dmg over the old app once.
+- The AI connection card has **no install button**. Install from Terminal
+  instead: `curl -fsSL https://claude.ai/install.sh | bash` for Claude Code,
+  `npm install -g @openai/codex` for Codex. The card's "official install
+  instructions" link says the same.
+- **A PATH set for your terminal does not reach the app.** An app opened from
+  the Dock or Applications never sees what `~/.zshrc` adds to PATH. The app
+  looks in the places the installers and package managers use instead
+  (`~/.local/bin`, Homebrew, MacPorts, nvm/fnm/volta/asdf/mise, the global npm
+  prefix). If it still cannot find the program, you can type its path under
+  **Settings → AI → Advanced**.
 - Signing in finishes in the browser. If the browser asks you to paste a code,
   run `claude auth login` or `codex login` in Terminal yourself.
 
@@ -317,7 +335,8 @@ What differs on Linux:
   when a new version is out and opens the download page.
 - As on a Mac, the AI connection card has **no install button**, and if a
   sign-in page asks you to paste a code, run `claude auth login` or
-  `codex login` in a terminal yourself.
+  `codex login` in a terminal yourself. The install commands, and the places
+  the app looks for the programs, are the same as on a Mac.
 
 To use only the terminal command without the desktop app (a server without a
 screen, or an AI agent's workspace), use the command-line archive
@@ -343,7 +362,8 @@ check fails, nothing happens and the app keeps working. To check yourself, use
 **Menu (☰) → Check for Updates…** at the left of the tab bar
 (**Help → Check for Updates…** on a Mac). Pre-release versions are offered
 only when you choose the beta channel under **Settings → About**. The Mac build
-and the Linux `deb` and `rpm` installs only tell you about a new version.
+installs updates itself when it sits in Applications; the Linux `deb` and `rpm`
+installs only tell you about a new version.
 
 ## Building from source
 
@@ -351,8 +371,8 @@ You need Node 22.12 or newer (npm 10 or newer) and a Rust toolchain with
 `cargo` on the PATH (for the spreadsheet engine).
 
 ```bash
-git clone https://github.com/pblsketch/openoffice.git
-cd openoffice
+git clone https://github.com/pblsketch/ieumoffice.git
+cd ieumoffice
 npm install
 npm run dev      # all editors and the shell, against development servers
 npm run shell    # or: build everything, then run the app
@@ -386,7 +406,7 @@ project easy to take.
   only.** The developer cannot check the Mac or Linux builds directly; they are
   checked through user reports.
 - **Unsigned installers**, as described above. That is also why the Mac build
-  cannot update itself.
+  swaps in its updates itself instead of using Apple's update mechanism.
 - **Claude Code and Codex answer a little later than an API key.** Each
   request starts the program first, so the first words take a few seconds to
   appear (about four seconds with Claude on the development PC).
@@ -406,8 +426,10 @@ project easy to take.
   the Windows proxy setting. Claude Code and Codex are separate programs: they
   see only the proxy environment variables (`HTTPS_PROXY` and the like), not a
   proxy that is set in Windows alone.
-- **Image generation needs a key**, as described above.
-- **Translations.** 19 of the 21 interface languages are machine-translated
+- **Image generation needs a key or a paid ChatGPT plan**: either the key
+  of an image provider, or the Codex program on this PC signed in with a
+  paid ChatGPT plan (Plus or higher), as described above.
+- **Translations.** 20 of the 22 interface languages are machine-translated
   and have not been reviewed by native speakers.
 - **Hiding does not reach everywhere.** Parts you hid from AI in the
   PowerPoint, Markdown and HTML editors stay hidden when the file is attached
@@ -445,14 +467,16 @@ account settings there. Search queries go to Parallel and DuckDuckGo by
 default, and update checks go to GitHub. When an editor or the app stops
 abnormally, only the time, what stopped, the reason, the editor and the memory
 use at that moment (numbers only) are written to `crash-log.jsonl` in the data
-folder, and the same numbers are written when the PC runs short of memory
-during an AI task; no document text, file names or paths, and it is never sent
+folder, and the same numbers are written when the PC or the app runs short of
+memory. When the app itself stops an AI run that was editing a document, one
+line holds why, as fixed words and counts. To tell when the whole app went down, the running app also writes its
+memory numbers to `crash-heartbeat.json` every 30 seconds; no document text, file names or paths, and it is never sent
 anywhere. The full list is in [PRIVACY.md](PRIVACY.md).
 
 ## Contributing and reporting problems
 
 - Bugs and requests:
-  [GitHub Issues](https://github.com/pblsketch/openoffice/issues).
+  [GitHub Issues](https://github.com/pblsketch/ieumoffice/issues).
 - Security problems: report them privately as described in
   [SECURITY.md](SECURITY.md), not as a public issue.
 - Code: see [CONTRIBUTING.md](CONTRIBUTING.md) and the
@@ -502,6 +526,13 @@ software made with its published HWP format document, we state:
 > (This product was developed with reference to Hancom's published document
 > on the Hangul document file format (.hwp).)
 
+The diagram editor is built on the web editor of
+[draw.io](https://github.com/jgraph/drawio) (Apache License 2.0). Parts under
+licenses outside the project's allowlist (the PlantUML converter, libavoid and
+ELK) are left out; what was left out and how is listed in the installed
+`THIRD-PARTY-NOTICES.txt`. IeumOffice is not affiliated with or endorsed by
+the company that makes draw.io.
+
 IeumOffice is an independent project. It is not affiliated with, sponsored by
 or endorsed by Genspark / Mainfunc, Inc., Anthropic, OpenAI, Microsoft, Hancom,
 Adobe, XMind Ltd. or Google. "GenOffice" and "Genspark", and their logos, are trademarks of
@@ -516,7 +547,7 @@ it works with and which files it opens.
 ### Official downloads and redistribution
 
 IeumOffice is free. Its only official downloads are the
-[GitHub releases](https://github.com/pblsketch/openoffice/releases) and
+[GitHub releases](https://github.com/pblsketch/ieumoffice/releases) and
 [ieumoffice.com](https://ieumoffice.com); a copy sold for money is not an
 official release.
 

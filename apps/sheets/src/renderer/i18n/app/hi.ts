@@ -463,6 +463,7 @@ export const hi = {
   appGridlinesHidden: 'ग्रिडलाइन छिपाई गईं।',
   appGridlinesShown: 'ग्रिडलाइन दिखाई गईं।',
   appShowingFormulas: 'सूत्र दिखाए जा रहे हैं — मानों के लिए फिर टॉगल करें।',
+  appShowingFormulasActive: 'सूत्र दिखाए जा रहे हैं',
   appShowingValues: 'परिकलित मान दिखाए जा रहे हैं।',
   appTraceNoFormula: 'पूर्ववर्ती ट्रेस करें: सक्रिय सेल में कोई सूत्र नहीं है।',
   appTraceNoRefs: 'पूर्ववर्ती ट्रेस करें: इस सूत्र में कोई सेल संदर्भ नहीं है।',
@@ -556,6 +557,9 @@ export const hi = {
     'CSV निर्यात के लिए पूरी तरह लोड की गई कार्यपुस्तिका चाहिए — लोडिंग पूरी होने तक प्रतीक्षा करें।',
   appCsvExportTooLarge: 'शीट बहुत बड़ी है, CSV के रूप में निर्यात नहीं की जा सकती।',
   appCsvExportCanceled: 'CSV निर्यात रद्द किया गया।',
+  appOdsExported: '{path} निर्यात किया गया।',
+  appOdsExportCanceled: 'ODS निर्यात रद्द किया गया।',
+  appOdsExportFailed: 'ODS निर्यात विफल।',
   appCsvExported: '{path} निर्यात किया गया।',
   appCsvExportedActiveOnly:
     'CSV फ़ाइलों में केवल एक शीट होती है — सक्रिय शीट “{name}” को {path} पर निर्यात किया गया।',
@@ -591,6 +595,10 @@ export const hi = {
     'इस कार्यपुस्तिका की स्टाइलशीट में बुनियादी संरचना नहीं है, इसलिए शैली बदलाव सहेजे नहीं जा सकते।',
   appSaveErrPackageGuard:
     'सहेजने से कार्यपुस्तिका की पैकेज संरचना बदल जाएगी — फ़ाइल की सुरक्षा के लिए रोक दिया गया।',
+  appSaveErrSheetNotFound:
+    'इस सहेजने में जिस शीट का उल्लेख है वह वर्कबुक में नहीं मिली — सहेजना रोक दिया गया और फ़ाइल जैसी थी वैसी ही रही।',
+  appSaveErrSheetNameReused:
+    'एक नई शीट उस शीट का पुराना नाम इस्तेमाल कर रही है जिसका नाम बदला गया है, इसलिए सहेजा नहीं जा सकता। अभी नई शीट को कोई दूसरा नाम दें, सहेजें, फिर उसका नाम बदलें। फ़ाइल जैसी थी वैसी ही रही।',
   appSaveErrChartUnsupported:
     'यह चार्ट प्रकार उस संपादन का समर्थन नहीं करता; सहेजना रोक दिया गया — चार्ट बदलाव को पूर्ववत करें।',
   appSaveErrMoveOverlap:
@@ -700,6 +708,12 @@ export const hi = {
   appSaveAs: 'इस रूप में सहेजें',
   appUndo: 'पूर्ववत करें',
   appRedo: 'फिर से करें',
+  appQuickAccessCustomize: 'त्वरित पहुँच टूलबार अनुकूलित करें',
+  appQuickAccessHint: 'Alt और कोई अंक दबाएँ, तो बाईं ओर से उस स्थान का बटन चलता है।',
+  appQuickAccessMoveEarlier: 'आगे ले जाएँ',
+  appQuickAccessMoveLater: 'पीछे ले जाएँ',
+  appQuickAccessReset: 'डिफ़ॉल्ट पर रीसेट करें',
+  appQuickAccessFull: 'टूलबार में अधिकतम 10 बटन रखे जा सकते हैं।',
   appUnsavedEditOne: '● {count} असहेजा संपादन',
   appUnsavedEditMany: '● {count} असहेजे संपादन',
   appSavedState: 'सहेजा गया',
@@ -1161,6 +1175,8 @@ export const hi = {
   appRefreshAll: 'सभी ताज़ा करें',
   appWorkbookNoPivot: 'इस वर्कबुक में कोई पिवट टेबल नहीं।',
   appRefreshAllTitle: 'सभी पिवट टेबल रीफ़्रेश करें',
+  appQueriesConnections: 'क्वेरी और कनेक्शन',
+  appQueriesConnectionsTitle: 'वर्कबुक की क्वेरी और डेटा कनेक्शन दिखाएँ',
   appErrorCheckingDetail: 'शीट में त्रुटि मान खोजें',
   appErrorsFound: '{count} त्रुटियाँ — {cell} पर: {value}',
   appCheckingErrors: 'पूरी शीट में त्रुटियों के लिए स्कैन हो रहा है…',
@@ -1556,4 +1572,8 @@ export const hi = {
   appSpellUnavailable: 'इस विंडो में वर्तनी जाँच उपलब्ध नहीं है।',
   appSpellReplaceAll: 'सबको "{suggestion}" से बदलें',
   appSpellChangedAll: '"{word}" वाले {count} सेल ठीक किए गए।',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'ODS को xlsx प्रति के रूप में खोला गया। सहेजने पर xlsx फ़ाइल लिखी जाएगी।',
+  appOdsFormulasDropped: '{count} सूत्रों में केवल मान रखे गए।',
 } satisfies Record<keyof typeof zh, string>

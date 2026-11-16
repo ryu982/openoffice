@@ -284,9 +284,15 @@ describe('the skills gateway for the agent window', () => {
 
   it('lets the agent window make only the install-preview calls', () => {
     expect([...AGENT_WINDOW_MANAGE_CHANNELS].sort()).toEqual(
-      [C.importGitHub, C.cancelImport, C.install].sort(),
+      [C.importGitHub, C.readImport, C.readImportFile, C.cancelImport, C.install].sort(),
     )
-    for (const channel of [C.importGitHub, C.cancelImport, C.install]) {
+    for (const channel of [
+      C.importGitHub,
+      C.readImport,
+      C.readImportFile,
+      C.cancelImport,
+      C.install,
+    ]) {
       expect(gate('agent', channel)).toBe(true)
     }
     for (const channel of [
@@ -444,6 +450,20 @@ describe('template candidates', () => {
     expect(selected).toBeUndefined()
   })
 
+  it('take a suggestion in a project folder whose name starts with ".."', async () => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'form.docx'), 'x')
+    const { candidates, selected } = await agentTemplateCandidates({
+      projectRoot: project,
+      tabs: [],
+      suggested: join('..x', 'form.docx'),
+      projectFiles: [],
+    })
+    expect(candidates.map((c) => c.path)).toEqual([join(project, '..x', 'form.docx')])
+    expect(selected).toBe(candidates[0]?.id)
+  })
+
   it('take a suggestion through a link leading out of the project folder as no choice', async () => {
     const project = temp()
     const outside = temp()
@@ -553,6 +573,13 @@ describe('reading a candidate in main', () => {
         ok: false,
         reason: 'unreadable',
       })
+      // a folder in it whose name only starts with ".." is in it too
+      mkdirSync(join(dir, '..x'))
+      writeFileSync(join(dir, '..x', 'form.docx'), 'secret')
+      expect(await readTemplateCandidate(join(dir, '..x', 'form.docx'), guard), dir).toEqual({
+        ok: false,
+        reason: 'unreadable',
+      })
     }
     const docs = join(home, 'Documents')
     mkdirSync(docs)
@@ -643,5 +670,33 @@ describe('the one-time notice and the next-session line', () => {
       { kind: 'skill-card', key: 'k' },
       { kind: 'skill-install', key: 'j' },
     ])
+  })
+})
+
+describe('where a changed skill is used, on the agent window card', () => {
+  it('starts the card at where the skill is used now', () => {
+    const made = agentSkillProposalOf(
+      {
+        title: 'T',
+        name: '',
+        description: 'D',
+        body: 'B',
+        wantsTemplate: false,
+        targetId: 'app:deck',
+        suggestedTemplatePath: '',
+      },
+      [
+        {
+          id: 'app:deck',
+          source: 'app',
+          name: 'deck',
+          title: 'D',
+          owned: true,
+          editors: ['slides'],
+        },
+      ],
+      'k',
+    )
+    expect(made.ok && made.proposal.target?.editors).toEqual(['slides'])
   })
 })

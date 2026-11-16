@@ -1,12 +1,19 @@
 import katexCss from 'katex/dist/katex.min.css?inline'
+import { MARKDOWN_PRINT_OPTIONS } from '../../shared/print-options'
+import { AI_MARK_CLASS } from '../editor/aiHighlight'
 
 /** `[[target|alias]]` as one whole literal; mirrors the editor's link regex */
 const WIKI_ALIAS_RE = /^\[\[[^[\]|\n]+\|([^[\]\n]+)\]\]$/
 
-/** Print-theme CSS: mirrors the editor typography so the PDF matches the canvas */
+/**
+ * Print-theme CSS: mirrors the editor typography so the PDF matches the canvas.
+ * The `@page` margin is the print options' margin. Chromium lets a CSS page
+ * margin win over the `margins` that printToPDF and print() are given, so a
+ * margin of 0 here put the text on the paper's edge, where printers clip it.
+ */
 const PRINT_CSS = `
 @page {
-  margin: 0;
+  margin: ${MARKDOWN_PRINT_OPTIONS.marginIn}in;
   size: auto;
 }
 * { box-sizing: border-box; }
@@ -36,7 +43,8 @@ img { max-width: 100%; height: auto; }
 .md-diagram-preview { margin: 0.8em 0; text-align: center; break-inside: avoid; }
 .md-diagram-preview svg { max-width: 100%; height: auto; }
 .tableWrapper { margin: 0.8em 0; }
-table { border-collapse: collapse; width: 100%; margin: 0; break-inside: avoid; }
+table { border-collapse: collapse; width: 100%; margin: 0; }
+tr { break-inside: avoid; }
 th, td { border: 1px solid #d0d5db; padding: 6px 10px; vertical-align: top; text-align: start; overflow-wrap: anywhere; }
 th > p, td > p { margin: 0; }
 th { background: #f6f8fa; font-weight: 600; }
@@ -52,7 +60,7 @@ sup.md-footnote-ref { color: #0a69da; font-size: 0.78em; }
 @media print {
   /* High-quality rendering for text */
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  pre, blockquote, table { break-inside: avoid; }
+  pre, blockquote, tr { break-inside: avoid; }
   img { max-width: 100% !important; page-break-inside: avoid; }
 }
 `
@@ -68,6 +76,13 @@ export function buildPrintHtml(editorRoot: HTMLElement, title: string): string {
   for (const el of clone.querySelectorAll('[contenteditable]'))
     el.removeAttribute('contenteditable')
 
+  // the marks of the AI's last changes are screen-only: their spans go, the content stays
+  for (const mark of clone.querySelectorAll(`.${AI_MARK_CLASS}`)) {
+    mark.classList.remove(AI_MARK_CLASS)
+    if (!mark.classList.length) mark.removeAttribute('class')
+    if (mark.tagName === 'SPAN' && mark.attributes.length === 0)
+      mark.replaceWith(...mark.childNodes)
+  }
   // editor-only code block chrome (language picker + copy button) must not print
   for (const bar of clone.querySelectorAll(
     '.md-codeblock-bar, .md-diagram-error, .ProseMirror-separator',

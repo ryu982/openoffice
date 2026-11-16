@@ -425,6 +425,7 @@ export const vi = {
   ribbonLangHebrew: 'Tiếng Do Thái',
   ribbonLangHindi: 'Tiếng Hindi',
   ribbonLangVietnamese: 'Tiếng Việt',
+  ribbonLangTurkish: 'tiếng Thổ Nhĩ Kỳ',
   ribbonNewComment: 'Nhận xét mới',
   ribbonCommentsPane: 'Ngăn nhận xét',
   ribbonCommentsPaneTip: 'Hiện hoặc ẩn ngăn Nhận xét',

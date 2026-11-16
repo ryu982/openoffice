@@ -1,8 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
+import type { PrintLayoutErrorCode, PrintLayoutOptions } from '@genoffice/print-layout/plan'
+import {
+  PrintLayoutPanel,
+  PrintLayoutSchematic,
+  printLayoutIssueText,
+  printLayoutProblem,
+  showsLayoutSchematic,
+  takesNewPrintRoute,
+  usePrintLayoutOptions,
+  type PrintLabelSpecStore,
+  type PrintLayoutPreviewRequest,
+  type PrintLayoutProgress,
+} from '@genoffice/ui'
+import { IconChevronLeft, IconChevronRight } from '@genoffice/ui/icons'
 import type { AgentBridge } from '../ai/agent-bridge'
 import { useI18n } from '../i18n/locale'
-import type { PrintMode, PrintResult } from '../../shared/ipc'
+import type { HwpApi, PrintJob, PrintMode, PrintResult } from '../../shared/ipc'
+import { createJobCache, gatherPageSizes, whenPrintFontsReady } from '../print-flow'
 import { LruPages } from './preview-cache'
 import {
   MAX_ZOOM,
@@ -10,6 +25,7 @@ import {
   ZOOM_STEPS,
   clampZoom,
   gridOf,
+  layoutPageSizes,
   nextZoom,
   pageLabel,
   paperSizeLabel,
@@ -18,6 +34,7 @@ import {
   viewValue,
   visibleSlots,
   type PageView,
+  type PixelSize,
   type ZoomMode,
 } from './preview-model'
 
@@ -42,7 +59,8 @@ let rememberedZoom: ZoomMode = 'fit-page'
 let rememberedMargins = false
 
 interface Props {
-  bridge: Pick<AgentBridge, 'previewPage'>
+  bridge: Pick<AgentBridge, 'previewPage' | 'printPageSizes' | 'documentRevision'> &
+    Partial<Pick<AgentBridge, 'printFontsReady'>>
   /** 0-based page the cursor was on; clamped once the document's count is known. */
   initialPage: number
   /** A File > Print / Ctrl+P that arrived while the preview was open. */
@@ -54,6 +72,20 @@ interface Props {
   ) => Promise<PrintResult>
   /** Ctrl+Enter: close the preview and put the caret on the page's first paragraph */
   onEditPage: (page: number) => Promise<boolean>
+  /** the advanced print layout's calls; only used while a layout option is on */
+  printLayout: HwpApi['printLayout']
+  /**
+   * the job's pages as the PDF export gathers them, for the advanced print layout; the
+   * preview gathers them once and hands them out again while the document stays as it was
+   */
+  gatherJob: (onProgress: (done: number, total: number) => void) => Promise<PrintJob>
+}
+
+/** Why the last arranged print or save failed, put in words when it is shown. */
+interface LayoutFailure {
+  kind: 'print' | 'save'
+  detail: string
+  code?: PrintLayoutErrorCode
 }
 
 export function PrintPreview({
@@ -63,8 +95,19 @@ export function PrintPreview({
   onClose,
   onPrint,
   onEditPage,
+  printLayout,
+  gatherJob,
 }: Props): JSX.Element {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  // every preview starts at the default layout: nothing carries over from the last print
+  const [layout, setLayout] = usePrintLayoutOptions(true)
+  const [drawnSizes, setDrawnSizes] = useState<ReadonlyMap<number, PixelSize>>(new Map())
+  /** every page's print size, asked for once a layout option is on; null until it comes */
+  const [printSizes, setPrintSizes] = useState<readonly PixelSize[] | null>(null)
+  const printSizesAskedRef = useRef(false)
+  const [layoutProgress, setLayoutProgress] = useState<PrintLayoutProgress | null>(null)
+  const [layoutFailure, setLayoutFailure] = useState<LayoutFailure | null>(null)
+  const [layoutSaved, setLayoutSaved] = useState(false)
   const [page, setPage] = useState(() => Math.max(0, initialPage))
   const [pageCount, setPageCount] = useState<number | null>(null)
   const [view, setView] = useState<PageView>(rememberedView)
@@ -98,6 +141,8 @@ export function PrintPreview({
       loadingRef.current.add(target)
       setLoading(new Set(loadingRef.current))
       try {
+        // drawn in the screen's fonts, as the print and the PDF will be
+        await whenPrintFontsReady(bridge)
         const result = await bridge.previewPage(target)
         if (!mountedRef.current) return
         if (pageCountRef.current === null) {
@@ -116,6 +161,12 @@ export function PrintPreview({
           height: result.height,
           margins: result.margins,
         })
+        // sizes outlive the bitmap cache: the layout diagram needs every page's
+        setDrawnSizes((sizes) =>
+          sizes.has(target)
+            ? sizes
+            : new Map(sizes).set(target, { width: result.width, height: result.height }),
+        )
         errorsRef.current.delete(target)
         setErrors(new Set(errorsRef.current))
         setRevision((value) => value + 1)
@@ -232,9 +283,147 @@ export function PrintPreview({
   // revision is read so a cache fill redraws the page; the value itself is not used
   void revision
 
+  const layoutOn = takesNewPrintRoute(layout)
+
+  // Every page's print size, measured without drawing, once an option is on: the diagram
+  // shows pages the preview has not drawn. A failed call leaves the drawn pages' sizes.
+  useEffect(() => {
+    if (!layoutOn || pageCount === null || printSizesAskedRef.current) return
+    printSizesAskedRef.current = true
+    gatherPageSizes(bridge).then(
+      (sizes) => {
+        if (mountedRef.current && sizes.length === pageCountRef.current) setPrintSizes(sizes)
+      },
+      () => {},
+    )
+  }, [layoutOn, pageCount, bridge])
+
+  // The job's page count and sizes for the layout diagram and its checks.
+  const layoutPages = useMemo(
+    () =>
+      pageCount === null ? null : layoutPageSizes(pageCount, drawnSizes, FALLBACK_SIZE, printSizes),
+    [pageCount, drawnSizes, printSizes],
+  )
+  const layoutProblem = useMemo(
+    () => (layoutOn ? printLayoutProblem(layout, layoutPages) : null),
+    [layoutOn, layout, layoutPages],
+  )
+  const layoutRunningRef = useRef(false)
+
+  // The arranged preview, print and save of one open preview share the pages gathered for
+  // the first of them; the job is let go when the preview closes.
+  const jobCache = useMemo(
+    () => createJobCache(gatherJob, () => bridge.documentRevision()),
+    [gatherJob, bridge],
+  )
+  useEffect(() => () => jobCache.clear(), [jobCache])
+
+  // A layout job still running when the preview closes is stopped: nothing is sent.
+  useEffect(
+    () => () => {
+      if (layoutRunningRef.current) void printLayout.cancel()
+    },
+    [printLayout],
+  )
+
+  /**
+   * Print or save on the advanced print layout's route: the pages are gathered as the
+   * PDF export gathers them and the main process makes them the PDF export's PDF, then
+   * arranges it. Only the pages travel; the preview's own marks are not in them.
+   */
+  const runLayout = useCallback(
+    async (kind: 'print' | 'save', options: PrintLayoutOptions): Promise<void> => {
+      if (printingRef.current || staleRef.current || pageCountRef.current === null) return
+      printingRef.current = true
+      layoutRunningRef.current = true
+      setPrinting(true)
+      setPrintError(null)
+      setLayoutFailure(null)
+      setLayoutSaved(false)
+      const off = printLayout.onProgress((next) => {
+        if (mountedRef.current) setLayoutProgress(next)
+      })
+      try {
+        const job = await jobCache.get((done, total) => {
+          if (mountedRef.current) setProgress({ done, total })
+        })
+        if (!mountedRef.current) return
+        setProgress(null)
+        const request = { options, editor: job }
+        const result =
+          kind === 'print' ? await printLayout.print(request) : await printLayout.savePdf(request)
+        if (!mountedRef.current) return
+        if (!result.ok) {
+          if (!('aborted' in result)) {
+            setLayoutFailure({
+              kind,
+              detail: result.error,
+              ...(result.code ? { code: result.code } : {}),
+            })
+          }
+        } else if (kind === 'save' && 'path' in result) {
+          setLayoutSaved(true)
+        }
+      } catch (error) {
+        if (mountedRef.current) {
+          setLayoutFailure({
+            kind,
+            detail: error instanceof Error ? error.message : String(error),
+          })
+        }
+      } finally {
+        off()
+        printingRef.current = false
+        layoutRunningRef.current = false
+        if (mountedRef.current) {
+          setPrinting(false)
+          setProgress(null)
+          setLayoutProgress(null)
+        }
+      }
+    },
+    [jobCache, printLayout],
+  )
+
+  const previewLayout = useCallback<PrintLayoutPreviewRequest>(
+    async (options, { signal, onProgress }) => {
+      const job = await jobCache.get((done, total) => onProgress({ done, total }))
+      signal.throwIfAborted()
+      const off = printLayout.onProgress(onProgress)
+      const stop = (): void => void printLayout.cancel()
+      signal.addEventListener('abort', stop, { once: true })
+      try {
+        const result = await printLayout.preview({ options, editor: job })
+        if (!result.ok) throw new Error('aborted' in result ? 'canceled' : result.error)
+        return result.faces.map((face) => face.png)
+      } finally {
+        off()
+        signal.removeEventListener('abort', stop)
+      }
+    },
+    [jobCache, printLayout],
+  )
+
+  const labelSpecStore = useMemo<PrintLabelSpecStore>(
+    () => ({
+      load: () => printLayout.getLabelSpec(),
+      save: async (spec) => {
+        const result = await printLayout.setLabelSpec(spec)
+        if (!result.ok) throw new Error(result.error)
+      },
+    }),
+    [printLayout],
+  )
+
   const doPrint = useCallback(
     async (mode: PrintMode): Promise<void> => {
       if (printingRef.current || staleRef.current || pageCountRef.current === null) return
+      // a layout option on: the arranged route; all at their defaults: the print as it was
+      if (mode === 'print' && layoutOn) {
+        if (layoutProblem) return
+        await runLayout('print', layout)
+        return
+      }
       printingRef.current = true
       setPrinting(true)
       setPrintError(null)
@@ -251,7 +440,7 @@ export function PrintPreview({
         }
       }
     },
-    [onPrint],
+    [onPrint, layoutOn, layoutProblem, runLayout, layout],
   )
 
   useEffect(() => {
@@ -368,6 +557,16 @@ export function PrintPreview({
 
   const canPrint = pageCount !== null && !printing && !stale
   const initialError = errors.has(Math.max(0, initialPage)) && pageCount === null
+  const showSchematic = showsLayoutSchematic(layout)
+  const layoutError = layoutFailure
+    ? layoutFailure.code
+      ? printLayoutIssueText(
+          lang,
+          { code: layoutFailure.code, message: layoutFailure.detail },
+          { pageCount: pageCount ?? undefined },
+        )
+      : `${t(layoutFailure.kind === 'print' ? 'printFailed' : 'pdfFailed')} ${layoutFailure.detail}`
+    : null
 
   return (
     <div
@@ -382,7 +581,7 @@ export function PrintPreview({
         <button
           type="button"
           className="hwp-preview-button primary"
-          disabled={!canPrint}
+          disabled={!canPrint || layoutProblem !== null}
           onClick={() => void doPrint('print')}
         >
           {t('filePrint')}
@@ -404,7 +603,7 @@ export function PrintPreview({
           disabled={page <= 0}
           onClick={() => go(stepPage(page, view, pageCount ?? 0, -1))}
         >
-          ‹
+          <IconChevronLeft size={14} />
         </button>
         <input
           className="hwp-preview-page-input"
@@ -431,7 +630,7 @@ export function PrintPreview({
           disabled={pageCount === null || page >= pageCount - 1}
           onClick={() => go(stepPage(page, view, pageCount ?? 0, 1))}
         >
-          ›
+          <IconChevronRight size={14} />
         </button>
         <span className="hwp-preview-spacer" />
         <label className="hwp-preview-field">
@@ -508,6 +707,11 @@ export function PrintPreview({
           ) : (
             <div className="hwp-preview-empty">{t('previewRendering')}</div>
           )
+        ) : showSchematic ? (
+          // the faces are not the pages while the layout moves them: show where they go
+          <div className="hwp-preview-schematic">
+            <PrintLayoutSchematic lang={lang} pages={layoutPages} options={layout} />
+          </div>
         ) : (
           <div
             className="hwp-preview-grid"
@@ -585,6 +789,25 @@ export function PrintPreview({
           </div>
         )}
       </div>
+      <aside className="hwp-preview-layout">
+        <PrintLayoutPanel
+          lang={lang}
+          value={layout}
+          onChange={setLayout}
+          pages={layoutPages}
+          capabilities={{ showPaperAndFit: true }}
+          labelSpecStore={labelSpecStore}
+          showSchematic={false}
+          onPreviewRequest={previewLayout}
+          onSavePdf={(options) => void runLayout('save', options)}
+          job={{
+            progress: layoutProgress,
+            onCancel: () => void printLayout.cancel(),
+            error: layoutError,
+          }}
+          disabled={printing}
+        />
+      </aside>
 
       <div className="hwp-preview-status">
         <span>{pageCount === null ? '…' : pageLabel(page, view, pageCount)}</span>
@@ -616,6 +839,12 @@ export function PrintPreview({
           <span className="hwp-preview-problem" role="alert">
             {t('printFailed')} {printError}
           </span>
+        )}
+        {layoutSaved && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span role="status">{t('printLayoutSaved')}</span>
+          </>
         )}
       </div>
     </div>

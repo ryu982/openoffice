@@ -135,4 +135,10 @@ export const FREE_AI_PAGE_STRINGS = defineStrings({
     pageFailedTitle: 'Không kết nối được',
     pageFailedBody: 'Hãy quay lại ứng dụng và thử lại.',
   } satisfies Keys,
+  tr: {
+    pageDoneTitle: 'GenOffice’e bağlandı',
+    pageDoneBody: 'Bu sekmeyi kapatıp uygulamaya dönebilirsiniz.',
+    pageFailedTitle: 'Bağlantı kurulamadı',
+    pageFailedBody: 'Uygulamaya dönüp yeniden deneyin.',
+  } satisfies Keys,
 })

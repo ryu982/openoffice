@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   OFFICE_TYPES,
+  claimableOfficeTypes,
   createDefaultAppService,
   macAppBundlePath,
   parseMacStatus,
@@ -136,8 +137,8 @@ describe('createDefaultAppService', () => {
       platform: 'linux',
       run,
       readFile: (p) => {
-        if (p.endsWith('/usr/share/applications/wps-office-et.desktop'))
-          return '[Desktop Entry]\nName=WPS Spreadsheets\n'
+        // path.join uses backslashes on Windows, so match the file name only.
+        if (p.includes('wps-office-et.desktop')) return '[Desktop Entry]\nName=WPS Spreadsheets\n'
         throw new Error('ENOENT')
       },
     })
@@ -192,11 +193,31 @@ describe('createDefaultAppService', () => {
     ]
     const run = vi.fn<RunCommand>(async (_cmd, args) => {
       const index = OFFICE_TYPES.findIndex((t) => args[1].endsWith(`.${t.ext}\\UserChoice`))
-      if (index >= 0) return `    ProgId    REG_SZ    ${upstream[index]}\r\n`
+      // the diagram types are the upstream app's to leave unclaimed
+      if (index >= 0 && index < upstream.length) {
+        return `    ProgId    REG_SZ    ${upstream[index]}\r\n`
+      }
       throw new Error('missing')
     })
     const svc = createDefaultAppService({ ...base, platform: 'win32', run })
     expect(await svc.status()).toEqual({ state: 'other', others: upstream, manualOnly: true })
+  })
+
+  it('windows: falls back to the ProgId when a name still has replacement characters', async () => {
+    const run = vi.fn<RunCommand>(async (_cmd, args) => {
+      const key = args[1]
+      if (key.includes('UserChoice')) return '    ProgId    REG_SZ    Excel.Sheet.12\r\n'
+      if (key === 'HKCR\\Excel.Sheet.12')
+        return '    (Default)    REG_SZ    Microsoft Excel \uFFFD\uFFFD\uFFFD\r\n'
+      throw new Error('missing')
+    })
+    const svc = createDefaultAppService({
+      ...base,
+      platform: 'win32',
+      run,
+      openExternal: vi.fn(async () => {}),
+    })
+    expect((await svc.status()).others).toEqual(['Excel.Sheet.12'])
   })
 
   it('reports unknown instead of throwing when the probe fails', async () => {
@@ -205,5 +226,56 @@ describe('createDefaultAppService', () => {
     })
     const svc = createDefaultAppService({ ...base, platform: 'darwin', run })
     expect((await svc.status()).state).toBe('unknown')
+  })
+})
+
+describe('turned-off editors (Settings → Editors and AI)', () => {
+  const base = {
+    packaged: true,
+    exePath: '/Applications/GenOffice.app/Contents/MacOS/GenOffice',
+    openExternal: vi.fn(async () => {}),
+  }
+
+  it('leaves out the types of the editors that are off', () => {
+    expect(claimableOfficeTypes([]).map((t) => t.ext)).toEqual(OFFICE_TYPES.map((t) => t.ext))
+    expect(claimableOfficeTypes(['sheets', 'diagram']).map((t) => t.ext)).toEqual(['docx', 'pptx'])
+  })
+
+  it('checks and claims only the types of editors that are on', async () => {
+    const calls: string[][] = []
+    const run = vi.fn<RunCommand>(async (cmd, args) => {
+      calls.push([cmd, ...args])
+      return args[0] === 'query' ? 'ieumoffice.desktop' : ''
+    })
+    const svc = createDefaultAppService({
+      ...base,
+      platform: 'linux',
+      run,
+      editorsOff: () => ['docs', 'sheets', 'diagram'],
+    })
+    expect(await svc.status()).toMatchObject({ state: 'default' })
+    await svc.set()
+    const pptx = OFFICE_TYPES.find((t) => t.ext === 'pptx')!.mime
+    // status() and the status set() answers with: only the PowerPoint type each time
+    expect(calls.filter((c) => c[1] === 'query').map((c) => c[3])).toEqual([pptx, pptx])
+    expect(calls.find((c) => c[1] === 'default')).toEqual([
+      'xdg-mime',
+      'default',
+      'ieumoffice.desktop',
+      pptx,
+    ])
+  })
+
+  it('has nothing to make default when every editor with such a type is off', async () => {
+    const run = vi.fn<RunCommand>()
+    const svc = createDefaultAppService({
+      ...base,
+      platform: 'linux',
+      run,
+      editorsOff: () => ['docs', 'sheets', 'slides', 'diagram'],
+    })
+    expect(await svc.status()).toMatchObject({ state: 'unsupported' })
+    expect(await svc.set()).toMatchObject({ state: 'unsupported' })
+    expect(run).not.toHaveBeenCalled()
   })
 })

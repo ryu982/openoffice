@@ -91,8 +91,6 @@ export const cs = {
   aiStopGeneration: 'Zastavit generování',
   aiStop: 'Zastavit',
   aiSend: 'Odeslat',
-  aiSnapshotsTitle: 'Snímky stavu',
-  aiRollback: 'Vrátit zpět',
   aiStarterPolishTitle: 'Vylepši nadpis a text tohoto snímku',
   aiStarterTighten: 'Zestručni odrážky na tomto snímku',
   aiStarterProofread: 'Zkontroluj celou prezentaci na překlepy a oprav je',
@@ -243,6 +241,11 @@ export const cs = {
   aiTplFontsNotice:
     'Písma šablony jsou součástí této aplikace. Jiné programy, například PowerPoint, mohou zobrazit jiné písmo.',
   aiTplOpenFonts: 'Otevřít složku s písmy',
+  aiTplFontsAuto: 'Písma: vybere AI',
+  aiTplFontsOne: 'Písma: {font}',
+  aiTplFontsTwo: 'Písma: nadpisy {title}, text {body}',
+  aiTplFontsTemplate: 'Písma: ze zvolené šablony',
+  aiTplFontsChange: 'Změnit',
   aiTplDesc_coral: 'Krémová a lososově oranžová na téměř černém pozadí, s obřími úzkými nadpisy.',
   aiTplDesc_blue_professional:
     'Krémové pozadí s výraznými kobaltově modrými akcenty. Čistý, moderní a věcný vzhled.',

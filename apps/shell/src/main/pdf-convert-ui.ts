@@ -26,11 +26,27 @@ export function requestPdfConvertDialog(
   })
 }
 
+/**
+ * File menu › Markdown: asks first while the editor the result opens in is
+ * off (editor choice spec 7.3), then opens the dialog. "Create the file only"
+ * opens it as well: the result is shown in its folder instead of a tab.
+ */
+export async function askThenRequestPdfConvertDialog(
+  tab: { webContents: WebContents; filePath?: string } | undefined,
+  format: PdfReflowFormat,
+): Promise<void> {
+  if (!tab?.filePath || !askBeforeConvert) return
+  if ((await askBeforeConvert(format, tab.filePath)) === 'cancel') return
+  requestPdfConvertDialog(tab.webContents, format)
+}
+
 let registered = false
+let askBeforeConvert: PdfConvertUiTabs['askBeforeConvert'] | null = null
 
 export function registerPdfConvertUiIpc(tabs: PdfConvertUiTabs): void {
   if (registered) return
   registered = true
+  askBeforeConvert = tabs.askBeforeConvert
   const h = createPdfConvertUiHandlers({
     ...tabs,
     ownsSource: (viewId, path) => pdfPathGranted(viewId, path),
@@ -39,5 +55,8 @@ export function registerPdfConvertUiIpc(tabs: PdfConvertUiTabs): void {
   })
   ipcMain.handle(PDF_CHANNELS.convertReleaseTarget, (e, req) => h.releaseTarget(e.sender.id, req))
   ipcMain.handle(PDF_CHANNELS.convertOpenResult, (e, req) => h.openResult(e.sender.id, req))
+  ipcMain.handle(PDF_CHANNELS.convertAskBeforeOpen, (e, req) =>
+    h.askBeforeConvert(e.sender.id, req),
+  )
   ipcMain.handle(PDF_CHANNELS.convertRevealResult, (e, req) => h.revealResult(e.sender.id, req))
 }

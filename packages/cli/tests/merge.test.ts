@@ -76,27 +76,59 @@ describe('genoffice merge', () => {
     expect(xml).not.toContain('{{고객명')
   })
 
-  it('fills a docx template, keeps table cells and reports split and unknown placeholders', async () => {
+  it('fills a Hangul placeholder when the template is NFD and --data is NFC', async () => {
+    const dir = tempDir()
+    const nfd = '이름'.normalize('NFD')
+    const nfc = '이름'.normalize('NFC')
+    expect(nfd).not.toBe(nfc)
+    const md = join(dir, 'form.md')
+    writeFileSync(md, `# Hi\n\n{{${nfd}}}\n`)
+    const template = join(dir, 'form.docx')
+    expect((await run(['create', '--type', 'docx', '--from', md, '--out', template])).code).toBe(0)
+    const out = join(dir, 'filled.docx')
+    const data = dataFile(dir, { [nfc]: 'Ada' })
+    const r = await run(['merge', template, '--data', data, '--out', out, '--json'])
+    expect(r.code).toBe(0)
+    expect(r.json().detail).toMatchObject({ filled: 1, used_keys: [nfc], unused_keys: [] })
+    expect(await documentXml(out)).toContain('Ada')
+    expect(await documentXml(out)).not.toContain('{{')
+  })
+
+  it('fills a Hangul placeholder when the template is NFC and --data is NFD', async () => {
+    const dir = tempDir()
+    const nfd = '이름'.normalize('NFD')
+    const nfc = '이름'.normalize('NFC')
+    const md = join(dir, 'form.md')
+    writeFileSync(md, `# Hi\n\n{{${nfc}}}\n`)
+    const template = join(dir, 'form.docx')
+    expect((await run(['create', '--type', 'docx', '--from', md, '--out', template])).code).toBe(0)
+    const out = join(dir, 'filled.docx')
+    // JSON.stringify preserves the NFD key spelling in the file
+    const data = dataFile(dir, { [nfd]: 'Ada' })
+    const r = await run(['merge', template, '--data', data, '--out', out, '--json'])
+    expect(r.code).toBe(0)
+    expect(r.json().detail).toMatchObject({ filled: 1, used_keys: [nfc], unused_keys: [] })
+    expect(await documentXml(out)).toContain('Ada')
+  })
+
+  it('fills a docx template including a placeholder split over runs, keeps table cells and reports unknown placeholders', async () => {
     const dir = tempDir()
     const template = await templateDocx(dir)
     const out = join(dir, 'invoice.docx')
     const r = await run(['merge', template, '--data', dataFile(dir, DATA), '--out', out, '--json'])
     expect(r.code).toBe(0)
     const j = r.json()
-    expect(j.summary).toBe('4 placeholders filled, 3 unresolved')
+    expect(j.summary).toBe('5 placeholders filled, 2 unresolved')
     expect(j.detail).toMatchObject({
       format: 'docx',
-      filled: 4,
+      filled: 5,
       used_keys: ['name', 'amount', 'due.date', 'item'],
       unused_keys: ['extra'],
     })
+    // the {{na**me**}} marker the converter split over three runs fills like
+    // any other (the slides engine has done this since #1052); only markers
+    // no flat match can reach stay behind, reported with their reason
     expect(j.detail.unresolved_placeholders).toEqual([
-      {
-        placeholder: '{{name}}',
-        key: 'name',
-        reason: 'split_placeholder',
-        location: { block: 2 },
-      },
       { placeholder: '{{missing}}', key: 'missing', reason: 'no_key', location: { block: 3 } },
       { placeholder: '{{absent}}', key: 'absent', reason: 'no_key', location: { block: 4 } },
     ])
@@ -111,7 +143,7 @@ describe('genoffice merge', () => {
     const texts = read.json().detail.items.map((b: { text: string }) => b.text)
     expect(texts[0]).toBe('Invoice for Ada')
     expect(texts[1]).toBe('Amount due: 12.5 by 2026-10-01.')
-    expect(texts[2]).toBe('Ref {{name}} is split.')
+    expect(texts[2]).toBe('Ref Ada is split.')
     expect(texts[3]).toContain('Widget')
     expect(texts[3]).toContain('{{missing}}')
     expect(read.json().detail.items[3].table.rows).toBe(2)
@@ -134,7 +166,7 @@ describe('genoffice merge', () => {
     ])
     expect(strict.code).toBe(1)
     expect(strict.json()).toMatchObject({ status: 'error', error: 'unresolved_placeholder' })
-    expect(strict.json().detail.unresolved_placeholders).toHaveLength(3)
+    expect(strict.json().detail.unresolved_placeholders).toHaveLength(2)
     expect(existsSync(out)).toBe(false)
 
     const full = { ...DATA, missing: 'now here', absent: 'here too', name: 'Grace' }
@@ -148,9 +180,7 @@ describe('genoffice merge', () => {
       '--json',
     ])
     expect(ok.code).toBe(0)
-    expect(ok.json().detail.unresolved_placeholders).toEqual([
-      expect.objectContaining({ key: 'name', reason: 'split_placeholder' }),
-    ])
+    expect(ok.json().detail.unresolved_placeholders).toEqual([])
     expect(ok.json().detail.used_keys).toContain('missing')
 
     const again = await run(['merge', template, '--data', JSON.stringify(full), '--out', out])
@@ -275,6 +305,7 @@ describe('genoffice merge', () => {
     expect(r.json().detail.used_keys).toEqual(['addr', 'name'])
     const read = await run(['docs', 'read', out, '--full', '--json'])
     const texts = read.json().detail.items.map((b: { text: string }) => b.text)
+    // the value's line break round-trips as a <w:br/>, read back as a plain newline
     expect(texts[0]).toBe('A\nB {{name}}')
     expect(texts[1]).toBe('X')
     expect(await documentXml(out)).toContain('<w:br/>')

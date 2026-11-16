@@ -20,6 +20,7 @@ import { he } from './reading/he'
 import { hi } from './reading/hi'
 import { zhTW } from './reading/zh-TW'
 import { vi } from './reading/vi'
+import { tr } from './reading/tr'
 
 /** Copy for selection-bar shortcuts and passage cards (reading assistant) */
 export const readingStrings = defineStrings({
@@ -44,4 +45,5 @@ export const readingStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

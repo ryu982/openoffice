@@ -32,6 +32,7 @@
     "@genoffice/file-parse": "*",
     "@genoffice/font-metrics": "*",
     "@genoffice/i18n": "*",
+    "@genoffice/print-layout": "*",
     "@genoffice/ui": "*",
     "@genoffice/pptx-render": "*",
     "@genoffice/xlsx-gateway": "*",

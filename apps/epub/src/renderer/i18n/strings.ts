@@ -129,6 +129,12 @@ export const strings = {
     ...aiStrings.vi,
     ...translateStrings.vi,
   },
+  tr: {
+    ...appStrings.tr,
+    ...editStrings.tr,
+    ...aiStrings.tr,
+    ...translateStrings.tr,
+  },
   'zh-TW': {
     ...appStrings['zh-TW'],
     ...editStrings['zh-TW'],

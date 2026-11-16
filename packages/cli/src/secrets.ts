@@ -10,16 +10,23 @@ import { appLaunch } from './resources'
  *
  * The command line has no Electron and so no safeStorage. When it meets a
  * sealed value it starts the app hidden with `--reveal-ai-secrets`, passes
- * every sealed value of the settings file on stdin, and keeps the plain ones
- * in this process's memory. Nothing is written anywhere. That costs one app
- * start (a second or two) the first time a command reads a sealed key; a
+ * every sealed value of the settings file in REVEAL_REQUEST_ENV and on stdin,
+ * and keeps the plain ones in this process's memory. An Electron main process
+ * on Windows never receives stdin, so the environment is the way that works
+ * there; stdin is kept for an app built before the variable. Nothing is
+ * written anywhere. That costs one app start (a second or two) the first time
+ * a command reads a sealed key; a
  * value the app cannot open (no app, another account's file) reads as empty,
  * which the commands report as a missing key.
  * The command line never seals: the app does that when it next saves.
  */
 
 const REVEAL_FLAG = '--reveal-ai-secrets'
+/** the app's name for it (apps/shell/src/main/ai-secrets.ts) */
+const REVEAL_REQUEST_ENV = 'GENOFFICE_REVEAL_REQUEST'
 const REVEAL_TIMEOUT_MS = 30_000
+/** one request per app start stays this short, under Windows' 32,767-character variable */
+const MAX_ENV_REQUEST_CHARS = 30_000
 
 type Spawn = (
   command: string,
@@ -49,6 +56,26 @@ export function revealedSecretsOf(stdout: string): Record<string, string> {
   }
 }
 
+/**
+ * `wanted` cut into requests that each fit the environment variable. Nearly
+ * always one: a sealed key is a few hundred characters. A value too long to
+ * fit alone still goes in a request of its own and reaches the app on stdin
+ * only (it opens on macOS and Linux, and stays unopened on Windows).
+ */
+export function revealBatches(wanted: readonly string[]): string[][] {
+  const batches: string[][] = []
+  let current: string[] = []
+  for (const value of wanted) {
+    if (current.length > 0 && JSON.stringify([...current, value]).length > MAX_ENV_REQUEST_CHARS) {
+      batches.push(current)
+      current = []
+    }
+    current.push(value)
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
 export function cliSecretCodec(
   env: NodeJS.ProcessEnv,
   opts: CliSecretCodecOptions = {},
@@ -62,20 +89,25 @@ export function cliSecretCodec(
       opts.log?.('cannot open saved keys: the app was not found')
       return
     }
-    const childEnv: NodeJS.ProcessEnv = {
-      ...env,
-      // an unpacked app honours this; an installed one already uses this folder
-      GENOFFICE_USER_DATA: dirname(aiSettingsPath(env)),
+    for (const batch of revealBatches(wanted)) {
+      const request = JSON.stringify(batch)
+      const childEnv: NodeJS.ProcessEnv = {
+        ...env,
+        // an unpacked app honours this; an installed one already uses this folder
+        GENOFFICE_USER_DATA: dirname(aiSettingsPath(env)),
+        // a variable past Windows' limit would fail the start itself: such a request goes on stdin only
+        ...(request.length <= MAX_ENV_REQUEST_CHARS ? { [REVEAL_REQUEST_ENV]: request } : {}),
+      }
+      delete childEnv.ELECTRON_RUN_AS_NODE
+      const result = spawn(launch.command, [...launch.args, REVEAL_FLAG], {
+        input: request,
+        env: childEnv,
+        timeout: REVEAL_TIMEOUT_MS,
+        encoding: 'utf8',
+      })
+      const secrets = revealedSecretsOf(result.stdout ?? '')
+      for (const v of batch) opened.set(v, secrets[v] ?? null)
     }
-    delete childEnv.ELECTRON_RUN_AS_NODE
-    const result = spawn(launch.command, [...launch.args, REVEAL_FLAG], {
-      input: JSON.stringify(wanted),
-      env: childEnv,
-      timeout: REVEAL_TIMEOUT_MS,
-      encoding: 'utf8',
-    })
-    const secrets = revealedSecretsOf(result.stdout ?? '')
-    for (const v of wanted) opened.set(v, secrets[v] ?? null)
   }
 
   return {

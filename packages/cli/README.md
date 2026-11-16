@@ -32,7 +32,7 @@ ieumoffice slides replace deck.pptx --slide 2 --spec deck/pages/03.json   # rebu
 ieumoffice slides apply deck.pptx --ops edit.json [--dry-run] [--out copy.pptx]
 ieumoffice slides audit deck.pptx [--slide 0] --json            # out_of_bounds / off_slide / text_overflow / text_overflow_width / overlap / picture_distorted: typed issues with durable ids and a setTransform `suggest` where geometry fixes it
 ieumoffice slides render deck.pptx --out shots/ [--scale 2]     # one PNG per slide through the app's PDF export
-ieumoffice render report.docx|book.xlsx|page.html|file.pdf --out shots/ [--page 3] [--scale 2]   # one PNG per page of any document, to look at what was made
+ieumoffice render report.docx|book.xlsx|page.html|form.hwp|file.pdf --out shots/ [--page 3] [--scale 2]   # one PNG per page of any document, to look at what was made
 ieumoffice render deck.pptx --out shots/ --el e_12 [--pad 16]   # plus the page cropped to that element (<stem>-NN-e_12.png)
 ieumoffice render deck.pptx --out shots/ --grid [--cols 4] [--tile 320]   # plus <stem>-grid.png: every page on one contact sheet
 ieumoffice create --type xlsx --from table.json --out book.xlsx   # 2-D array or {sheets:[{name,rows}]}; "=..." cells are formulas
@@ -41,20 +41,25 @@ ieumoffice sheet read book.xlsx [--sheet Data] [--range A1:D20] [--formats] --js
 ieumoffice sheet apply book.xlsx --cells cells.json    # [{cell:"B2", value|formula, style?, sheet?}]
 ieumoffice sheet apply book.xlsx --ops ops.json [--dry-run]   # workbook DSL: cells, formats, charts, tables, filters, conditional formats, validation, links, notes, panes, page setup, sheets (`ieumoffice guide sheets`)
 ieumoffice sheet check book.xlsx --json                # formula errors, missing-sheet references, broken defined names, chart ranges off the data, ### columns (suggest: set_col_width), placeholder text, existing rules; exit 0
+ieumoffice sheet links book.xlsx                       # external [n] links: stored path, resolved path, reachable, source sheets
+ieumoffice sheet links book.xlsx --update              # re-read reachable sources and write the computed values as the formulas' cached <v> (formulas untouched; unreachable links keep their cache)
+ieumoffice sheet links book.xlsx --break 1,2           # break links: formulas become their cached values, the links' parts are removed and surviving links renumber
 ieumoffice create --type docx --from report.md --out report.docx      # or --from fragment.html (restricted HTML)
 ieumoffice convert notes.md --to docx|html
 ieumoffice convert report.docx --to html               # the Word editor's standalone-HTML export
 ieumoffice convert page.html --to docx                 # html2docx, same as the HTML app's Export as Word
 ieumoffice convert report.docx --to md                 # GFM via the markdown editor's serializer; nested tables become cell text with a nested_tables_flattened warning
 ieumoffice convert book.xlsx --to csv [--sheet Data]   # one sheet, cell text as displayed, UTF-8 BOM, CRLF
+ieumoffice convert book.xlsx --to ods                  # a complete ODS package (also .xlsm→ods); detail.dropped and warnings list the features ODS cannot hold
 ieumoffice convert form.odt --to docx|pdf|md|html      # through the ODT bridge docx (pdf/html: a temporary docx the app exports, always deleted)
+ieumoffice convert letter.doc --to docx                # Word 97-2003 .doc/.dot through the in-process doc2docx importer
 ieumoffice convert report.docx --to odt                # also md→odt and html→odt; warnings[] odt_converted / odt_dropped + detail.odt_report
 ieumoffice capabilities --json                        # which of search, image generation, image/video analysis and the PDF AI jobs work here and by which route (free, key, subscription); no model call
 ieumoffice search "electron headless export" [--images] [--max 6] --json
 ieumoffice read-url https://example.com/guide.md [--offset 50000] --json   # the readable text of an http(s) page (article, document, skill); the address goes to that site; private GitHub files use the app's read-only token
 ieumoffice image "isometric office, soft light" --aspect 16:9 --out hero.png
 ieumoffice media photo.jpg --ask "What text is in this picture?" --json
-ieumoffice docs read report.docx [--range 0-9] [--html] [--full] [--comments] [--revisions] [--header-footer] --json   # blocks (--full: whole text), comment threads, tracked changes, header/footer text
+ieumoffice docs read report.docx [--range 0-9] [--html] [--full] [--comments] [--revisions] [--header-footer] --json   # blocks (--full: whole text; contentControls chain + inlineContentControls for w:sdt controls), comment threads, tracked changes, header/footer text
 ieumoffice docs apply report.docx --ops ops.json [--dry-run]           # apply_ops entries + insert_content / replace_blocks / insert_image / insert_chart / edit_chart / set_header_footer / reply_comment / resolve_comment
 ieumoffice docs check report.docx --json                               # fields without results, broken bookmark references, stale TOC, missing images, empty charts/headings, heading level skips, placeholder text, pending revisions, open comments; exit 0
 ieumoffice docs compare original.docx revised.docx --out redline.docx [--author name] [--date iso] [--granularity word|char] [--ignore formatting,case,whitespace]   # redline: the revised document with the differences marked as tracked insertions and deletions; --json reports the counts
@@ -77,6 +82,18 @@ ieumoffice hwp read notice.hwp [--offset 20000] [--full] --json           # text
 ieumoffice hwp apply form.hwp --ops ops.json [--out filled.hwpx] [--dry-run] [--force] --json   # the in-app AI's tools as ops (replace_text, insert_paragraphs, fill_cells, fill_field ...; `guide hwp`); written back in its own format, the replaced file kept as form.hwp.bak
 ieumoffice create --type hwp --ops ops.json --out minutes.hwp             # a new Hangul document: the same ops on a blank A4 page (--type hwpx for .hwpx)
 ieumoffice guide hwp                                                    # the hwp apply ops, built from the in-app AI's tool definitions
+ieumoffice convert notice.hwp --to pdf                                  # .hwp/.hwpx → PDF: the Hangul editor's own PDF export in a hidden app, pages as the editor draws them, with a text layer
+ieumoffice convert letter.docx --to hwpx                               # .docx → .hwp/.hwpx with the Word editor's "Export as HWP Document" converter, no app process; warnings[] hwp_dropped / hwp_changed + detail.hwp_report; a .hwp that reads back with other pages is exit 3, detail.reason hwp-readback
+ieumoffice convert notes.md --to hwp                                    # .md → .hwp/.hwpx through the same converter: headings, lists and tables arrive as Hangul ones; tables run on to the next page with their header row and get column widths from their content
+ieumoffice diagram read flow.drawio [--page Two] --json               # shapes and edges of each page of a draw.io diagram (.drawio, .dio, .drawio.svg, .drawio.png); no app process
+ieumoffice diagram apply flow.drawio --ops '[{"op":"add_shape","label":"Check","x":40,"y":200}]' [--page Two] [--out flow.dio] [--force] --json   # the in-app AI's diagram ops (`guide diagram`); .drawio/.dio keep untouched pages byte for byte
+ieumoffice create --type drawio --mermaid flow.mmd [--ops @more.json] --out flow.drawio   # Mermaid drawn by draw.io (a hidden IeumOffice), then the ops; --out x.drawio.png writes that format
+ieumoffice convert flow.drawio --to png [--page Two] [--out pictures]  # one PNG per page (flow-p1.png ...) into the folder, or one file with --page; --to svg the same, --to pdf one file
+ieumoffice guide diagram                                                # the diagram ops, built from the same definitions as the in-app AI's tools
+ieumoffice map read plan.xmind --json                          # every topic of a mind map (.xmind) with the ids ops target; plain `map read` prints the outline, one `# ` heading per sheet
+ieumoffice map apply plan.xmind --ops '[{"op":"rename_topic","id":"<id>","title":"New"}]' --json   # the map ops (`guide map`: add_topic, rename_topic, move_topic, delete_topic, set_note, set_link); untouched parts of the file stay byte for byte, a delete that would take preserved elements is refused with the count
+ieumoffice map create --outline plan.md --out plan.xmind       # a new .xmind from a markdown outline (`# ` sheet heading, `- ` topic item); without --out the outline name gets .xmind
+ieumoffice guide map                                           # the map ops, built from the same definitions `map apply` checks against
 ieumoffice guide docs                                                   # op signatures + restricted-HTML rules (`guide <domain> --json` = the catalog with each op's schema and a fingerprint)
 ieumoffice selection report.docx --json   # what the user has selected in the editor showing the file
 ieumoffice skill list   # coding agents found on this machine and the skill version each has
@@ -290,10 +307,15 @@ at a screen when it runs. That decides which route it may take.
   used only when it is the one selected in the app's settings and its key is
   there; Parallel, Tavily, Exa and Firecrawl provide web search only. Search
   never uses a subscription.
-- **Image generation** is key-based only in this version: it runs on an image
-  provider whose key is set up in the app, and answers "unavailable"
-  otherwise. `--model` is ignored (a successful result says so in
-  `detail.note`) and `--size` has no effect on the key-based providers.
+- **Image generation** runs on the image route chosen in the app: the ChatGPT
+  plan through the Codex program (a Codex subscription login, used only with
+  the automatic-call setting below), or an image provider whose key is set up
+  in the app; otherwise it answers "unavailable". `--ref` images go with the
+  request on either route. `--model` is used when the route in use offers it
+  (on the Codex route a `gpt-image` name leaves the image model to Codex, and
+  `detail.note` says so); any other name is refused before anything is sent,
+  with the model names that route can use. `--size` has no effect on the
+  key-based providers.
 - **Media analysis**: a picture is shown to the AI provider the chat runs on,
   or to the key-based analysis provider chosen in the app. Video and sound
   need a key-based provider that can analyse video.

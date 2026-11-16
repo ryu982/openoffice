@@ -20,6 +20,7 @@
     "@genoffice/electron-utils": "*",
     "@genoffice/file-parse": "*",
     "@genoffice/i18n": "*",
+    "@genoffice/print-layout": "*",
     "@genoffice/project-store": "*",
     "@genoffice/ui": "*",
     "@genoffice/xmind-engine": "*",

@@ -1,0 +1,219 @@
+/**
+ * What an AI run changed in the PDF: when its changes card may take it back,
+ * what the stacks look like after, which places get a mark, and which edit
+ * batches count as the run's.
+ */
+import { describe, expect, it } from 'vitest'
+
+import {
+  remapMarks,
+  revertedStacks,
+  runMarks,
+  runRevertVerdict,
+  textInsertRect,
+  withAiEditScope,
+} from '../src/renderer/ai/ai-run-changes'
+import type { EditSnapshot } from '../src/renderer/edit-state'
+import type { LocalTextInsert } from '../src/renderer/text-edit-preview'
+
+const empty = (): EditSnapshot => ({
+  markups: [],
+  annotDeletes: [],
+  noteEdits: [],
+  drawings: [],
+  textEdits: [],
+  textInserts: [],
+  imageEdits: [],
+  stampCfg: null,
+  formEdits: new Map(),
+  formFields: [],
+  blankPages: [],
+  formWidgetEdits: new Map(),
+  rotations: new Map(),
+  deleted: new Set(),
+  order: null,
+  metadata: null,
+})
+
+const snaps = (count: number) => Array.from({ length: count }, empty)
+
+describe('runRevertVerdict', () => {
+  const user = snaps(2)
+  const run = snaps(2)
+
+  it('lets the card undo while the run’s snapshots are the newest, in order', () => {
+    expect(runRevertVerdict(run, [...user, ...run])).toBe('ok')
+  })
+
+  it('refuses after a user edit, or when the run’s batches are not one block', () => {
+    expect(runRevertVerdict(run, [...user, ...run, empty()])).toBe('refused')
+    expect(runRevertVerdict(run, [user[0]!, run[0]!, user[1]!, run[1]!])).toBe('refused')
+  })
+
+  it('has expired once the oldest snapshot left the ring of 50, or a save cleared the stack', () => {
+    expect(runRevertVerdict(run, [run[1]!])).toBe('expired')
+    expect(runRevertVerdict(run, [])).toBe('expired')
+    expect(runRevertVerdict([], [...user])).toBe('expired')
+  })
+})
+
+describe('revertedStacks', () => {
+  it('ends where Undo pressed once per batch ends', () => {
+    const before = snaps(1)
+    const run = snaps(3)
+    const current = empty()
+    const redo = snaps(1)
+    // Undo as App.tsx does it: the current state onto redo, the top snapshot back
+    let undoStack = [...before, ...run]
+    let redoStack = [...redo]
+    let state = current
+    for (let i = 0; i < run.length; i++) {
+      const top = undoStack.at(-1)!
+      redoStack = [...redoStack, state]
+      undoStack = undoStack.slice(0, -1)
+      state = top
+    }
+    const next = revertedStacks(run, [...before, ...run], redo, current)
+    expect(next.restore).toBe(state)
+    expect(next.undo).toEqual(undoStack)
+    expect(next.redo).toHaveLength(redoStack.length)
+    next.redo.forEach((snap, i) => expect(snap).toBe(redoStack[i]))
+  })
+})
+
+const measure = (line: string, fontSize: number) => line.length * fontSize * 0.5
+
+describe('runMarks', () => {
+  it('marks what the run added or changed, not what was there before or what it removed', () => {
+    const kept = {
+      id: 'old',
+      pageIndex: 0,
+      type: 'highlight' as const,
+      color: [1, 1, 0] as [number, number, number],
+      quads: [[0, 10, 5, 10, 0, 0, 5, 0]],
+    }
+    const before: EditSnapshot = { ...empty(), markups: [kept] }
+    const after: EditSnapshot = {
+      ...before,
+      markups: [
+        kept,
+        {
+          id: 'new',
+          pageIndex: 1,
+          type: 'highlight',
+          color: [1, 1, 0],
+          quads: [[10, 30, 50, 30, 10, 20, 50, 20]],
+        },
+      ],
+      textEdits: [
+        {
+          id: 't',
+          input: { pageIndex: 0, rect: [100, 100, 200, 120], oldText: 'a', newText: 'b' } as never,
+          cover: [98, 99, 201, 121],
+        },
+        {
+          id: 'moved',
+          input: { pageIndex: 0, rect: [0, 0, 10, 10], oldText: 'a', newText: 'a' } as never,
+          moveBy: [5, 5],
+        },
+      ],
+      imageEdits: [
+        {
+          id: 'i',
+          input: {
+            kind: 'insertImage',
+            pageIndex: 2,
+            image: '',
+            rect: [0, 0, 40, 40],
+            layer: 'above',
+          } as never,
+        },
+        { id: 'd', input: { kind: 'deleteImage', pageIndex: 2, oldRect: [0, 0, 9, 9] } },
+      ],
+      drawings: [
+        {
+          id: 'ink',
+          input: { kind: 'ink', pageIndex: 3, color: [0, 0, 0], width: 2, paths: [[0, 0, 10, 20]] },
+        },
+        {
+          id: 'note',
+          input: { kind: 'note', pageIndex: 3, color: [0, 0, 0], at: [50, 50], contents: 'x' },
+        },
+      ],
+      rotations: new Map([[0, 90]]),
+      deleted: new Set([4]),
+    }
+    expect(runMarks(before, after, measure)).toEqual([
+      { pageIndex: 1, rect: [10, 20, 50, 30] },
+      { pageIndex: 0, rect: [98, 99, 201, 121] },
+      { pageIndex: 0, rect: [5, 5, 15, 15] },
+      { pageIndex: 2, rect: [0, 0, 40, 40] },
+      { pageIndex: 3, rect: [-1, -1, 11, 21] },
+      { pageIndex: 3, rect: [42, 42, 58, 58] },
+    ])
+  })
+
+  it('boxes a text insert by its lines, and leaves invisible OCR text and rotated pages out', () => {
+    const insert = (input: Partial<LocalTextInsert['input']>): LocalTextInsert => ({
+      id: 'x',
+      input: {
+        pageIndex: 0,
+        origin: [100, 500],
+        text: 'abcd\nab',
+        fontSize: 10,
+        color: [0, 0, 0],
+        ...input,
+      },
+    })
+    expect(textInsertRect(insert({}), measure)).toEqual([100, 485.5, 120, 510])
+    expect(textInsertRect(insert({ align: 'right' }), measure)?.[0]).toBe(80)
+    expect(textInsertRect(insert({ rotate: 90 }), measure)).toBeNull()
+    const after = { ...empty(), textInserts: [insert({ invisible: true })] }
+    expect(runMarks(empty(), after, measure)).toEqual([])
+  })
+})
+
+describe('remapMarks', () => {
+  it('follows the pages a save moved and drops the ones it removed', () => {
+    const marks = [
+      { pageIndex: 0, rect: [0, 0, 1, 1] as [number, number, number, number] },
+      { pageIndex: 1, rect: [0, 0, 1, 1] as [number, number, number, number] },
+    ]
+    expect(remapMarks(marks, new Map([[1, 0]]))).toEqual([{ pageIndex: 0, rect: [0, 0, 1, 1] }])
+  })
+})
+
+describe('withAiEditScope', () => {
+  it('counts a call as the AI’s until it returns, an async one until it settles', async () => {
+    const depth = { current: 0 }
+    const seen: number[] = []
+    let finish = (): void => undefined
+    const api = withAiEditScope(
+      {
+        sync: () => seen.push(depth.current),
+        later: () =>
+          new Promise<void>((resolve) => {
+            finish = resolve
+          }).then(() => {
+            seen.push(depth.current)
+          }),
+        fails: () => {
+          throw new Error('no')
+        },
+        value: 3,
+      },
+      depth,
+    )
+    api.sync()
+    expect(depth.current).toBe(0)
+    const pending = api.later()
+    expect(depth.current).toBe(1)
+    finish()
+    await pending
+    expect(depth.current).toBe(0)
+    expect(() => api.fails()).toThrow('no')
+    expect(depth.current).toBe(0)
+    expect(seen).toEqual([1, 1])
+    expect(api.value).toBe(3)
+  })
+})

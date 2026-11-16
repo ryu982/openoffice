@@ -1,6 +1,6 @@
 import type { AgentSkill } from '@genoffice/agent-core'
 import { brandText } from '@genoffice/i18n'
-import { AGENT_TOOLS, executePdfTool } from './tools'
+import { AGENT_TOOLS, ENCRYPTED_CONTEXT, executePdfTool } from './tools'
 import type { PdfAiDeps } from './tools'
 
 // written with the upstream name; brandText swaps in the product name
@@ -36,6 +36,10 @@ const SYSTEM_PROMPT = brandText(
 - New standalone document: when the user asks to put results (a summary, an extraction, an analysis) into a NEW/separate document instead of this PDF, use create_document with the full content — same type by default, or docx/md/html when asked; do not claim you cannot create files.
 - All modifications are in an unsaved state; when done, remind the user they can save with ⌘S and undo with ⌘Z.
 
+## Web search
+- When you need up-to-date information, data, or facts beyond the document, use web_search; never fabricate numbers from memory.
+- When writing search results into the document, attribute the data source (a link or a source name).
+
 ## Reading web pages
 - Read a link the user gave (a skill, a guide, an article) with read_url before using it; do not answer from the address alone.
 - A skill document the user asked you to use is part of the request: follow its task instructions with the tools you have. This panel cannot run code; if the skill needs scripts, say the agent window can run them.
@@ -63,7 +67,8 @@ const SYSTEM_PROMPT = brandText(
 const SELECTION_CONTEXT_CHARS = 12_000
 
 const IMAGE_GEN_OFF_NOTE =
-  '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no media API key in Settings). Do not call or promise it; use image_search for imagery.'
+  '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no media API key in Settings). Do not call or promise it; use image_search for imagery.' +
+  " If the user uses a ChatGPT plan, making images needs the Codex program signed in with the same ChatGPT account (Settings > AI > Codex); the app's direct ChatGPT connection cannot make images because OpenAI does not allow it."
 
 export function createPdfSkill(deps: PdfAiDeps): AgentSkill {
   return {
@@ -84,8 +89,7 @@ export function createPdfSkill(deps: PdfAiDeps): AgentSkill {
       const parts = [
         `Current document: "${deps.fileName()}", ${deps.pageCount()} pages; the user is viewing page ${deps.currentPage()}.`,
       ]
-      if (deps.readOnly())
-        parts.push('The document is encrypted and read-only; it cannot be modified.')
+      if (deps.readOnly()) parts.push(ENCRYPTED_CONTEXT)
       const outline = deps.outline()
       if (outline && outline.length > 0) {
         parts.push(

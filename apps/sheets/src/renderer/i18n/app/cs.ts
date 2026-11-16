@@ -464,6 +464,7 @@ export const cs = {
   appGridlinesHidden: 'Mřížka skryta.',
   appGridlinesShown: 'Mřížka zobrazena.',
   appShowingFormulas: 'Zobrazeny vzorce — dalším přepnutím zobrazíte hodnoty.',
+  appShowingFormulasActive: 'Zobrazené vzorce',
   appShowingValues: 'Zobrazeny vypočítané hodnoty.',
   appTraceNoFormula: 'Předchůdci: aktivní buňka neobsahuje vzorec.',
   appTraceNoRefs: 'Předchůdci: tento vzorec neobsahuje žádné odkazy na buňky.',
@@ -557,6 +558,9 @@ export const cs = {
     'Export do CSV vyžaduje plně načtený sešit — počkejte na dokončení načítání.',
   appCsvExportTooLarge: 'List je příliš velký na export do CSV.',
   appCsvExportCanceled: 'Export do CSV zrušen.',
+  appOdsExported: 'Exportováno {path}.',
+  appOdsExportCanceled: 'Export do ODS zrušen.',
+  appOdsExportFailed: 'Export do ODS selhal.',
   appCsvExported: 'Exportováno {path}.',
   appCsvExportedActiveOnly:
     'CSV obsahuje jediný list — aktivní list „{name}“ byl exportován do {path}.',
@@ -592,6 +596,10 @@ export const cs = {
     'Stylopisu tohoto sešitu chybí základní struktura, proto změny stylů nelze uložit.',
   appSaveErrPackageGuard:
     'Uložení by změnilo strukturu balíčku sešitu — přerušeno kvůli ochraně souboru.',
+  appSaveErrSheetNotFound:
+    'List, na který tento zápis odkazuje, nebyl v sešitu nalezen — ukládání bylo zastaveno a soubor zůstal beze změny.',
+  appSaveErrSheetNameReused:
+    'Nový list používá původní název přejmenovaného listu, proto nelze uložit. Dejte novému listu zatím jiný název, uložte a potom ho přejmenujte. Soubor zůstal beze změny.',
   appSaveErrChartUnsupported:
     'Tento typ grafu danou úpravu nepodporuje; ukládání přerušeno — vraťte změnu grafu zpět.',
   appSaveErrMoveOverlap:
@@ -700,6 +708,13 @@ export const cs = {
   appSaveAs: 'Uložit jako',
   appUndo: 'Zpět',
   appRedo: 'Znovu',
+  appQuickAccessCustomize: 'Přizpůsobit panel nástrojů Rychlý přístup',
+  appQuickAccessHint:
+    'Stisknutím klávesy Alt a číslice spustíte tlačítko na dané pozici počítáno zleva.',
+  appQuickAccessMoveEarlier: 'Přesunout blíž k začátku',
+  appQuickAccessMoveLater: 'Přesunout blíž ke konci',
+  appQuickAccessReset: 'Obnovit výchozí',
+  appQuickAccessFull: 'Na panel se vejde nejvýše 10 tlačítek.',
   appUnsavedEditOne: '● {count} neuložená úprava',
   appUnsavedEditMany: '● {count} neuložených úprav',
   appSavedState: 'Uloženo',
@@ -1162,6 +1177,8 @@ export const cs = {
   appRefreshAll: 'Aktualizovat vše',
   appWorkbookNoPivot: 'V tomto sešitu nejsou žádné kontingenční tabulky.',
   appRefreshAllTitle: 'Aktualizovat všechny kontingenční tabulky',
+  appQueriesConnections: 'Dotazy a připojení',
+  appQueriesConnectionsTitle: 'Zobrazit dotazy a datová připojení sešitu',
   appErrorCheckingDetail: 'Prohledat list na chybové hodnoty',
   appErrorsFound: '{count} chyb — v {cell}: {value}',
   appCheckingErrors: 'Prohledává se celý list na chyby…',
@@ -1557,4 +1574,8 @@ export const cs = {
   appSpellUnavailable: 'Kontrola pravopisu není v tomto okně k dispozici.',
   appSpellReplaceAll: 'Nahradit vše za „{suggestion}“',
   appSpellChangedAll: 'Opraveno {count} buněk se slovem „{word}“.',
+
+  // ── ODS import ──
+  appOdsImportNotice: 'Soubor ODS byl otevřen jako kopie xlsx. Uložením se zapíše soubor xlsx.',
+  appOdsFormulasDropped: 'U {count} vzorců byly ponechány pouze hodnoty.',
 } satisfies Record<keyof typeof zh, string>

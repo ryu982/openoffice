@@ -8,14 +8,25 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import {
+  copyFile,
+  mkdir,
+  open,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises'
 import { refreshCsvDigest } from './csv-digest'
 import { createServer } from 'node:http'
-import { basename, dirname, isAbsolute, join, extname } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve as resolvePath, extname } from 'node:path'
 
 import {
   app,
   BrowserWindow,
+  clipboard,
   desktopCapturer,
   dialog,
   ipcMain,
@@ -57,6 +68,7 @@ import {
   showOpenDialogWithMemory,
   showSaveDialogWithMemory,
   helpMenuTemplate,
+  macAppMenuTemplate,
   viewMenuTemplate,
   windowMenuTemplate,
   installRendererProtocol,
@@ -82,7 +94,10 @@ import {
   type RecoveryOpenUntitledRequest,
   type SaveDiskState,
 } from '@genoffice/electron-utils'
+import { aiCreateRefusal } from '@genoffice/electron-utils/ai-create-guard'
 import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
+import { registerAiJob } from '@genoffice/electron-utils/ai-activity'
+import { screenMediaCall } from './screen-media-call'
 import {
   encryptOoxml,
   isCfbHeader,
@@ -116,9 +131,10 @@ import {
   type AiSettings,
   type AiStreamChunk,
   sealAiSecrets,
+  withStoredUnknownFields,
 } from '@genoffice/ai-provider'
 import { shutdownCodexAppServers } from '@genoffice/ai-provider/codex-app-server'
-import { withStoredKeyModels } from '@genoffice/ai-provider/key-models'
+import { withStoredMainFields } from '@genoffice/ai-provider/key-models'
 import {
   ensureSubscriptionIpc,
   sharedSubscriptionStatuses,
@@ -148,6 +164,8 @@ import {
   ATTACHABLE_MAX_BYTES,
   attachableMaxBytes,
   ATTACHABLE_IMAGE_MAX_BYTES,
+  diagramPictureExtOf,
+  diagramPictureExtOfName,
 } from '@genoffice/file-parse'
 import { familyInfoFor } from '@genoffice/font-metrics'
 import type { CellEdit, SheetStructuralOps } from '@genoffice/xlsx-gateway/gateway/xlsx-gateway'
@@ -157,6 +175,7 @@ import {
   saveWorkbookViaSidecar,
 } from '@genoffice/xlsx-gateway/gateway/xlsx-package-io'
 import { parsePivotDefinition } from '@genoffice/xlsx-gateway/gateway/xlsx-pivot'
+import { listWorkbookQueries } from '@genoffice/xlsx-gateway/gateway/xlsx-connections'
 import type { SheetEditPlan } from '@genoffice/xlsx-gateway/gateway/xlsx-sheets'
 import type {
   AttachmentAddResult,
@@ -180,6 +199,8 @@ import {
   workbookMediaRequestSchema,
   workbookMediaResultSchema,
   workbookPivotRequestSchema,
+  workbookQueriesRequestSchema,
+  workbookQueriesResultSchema,
   localImageRequestSchema,
   localImageResultSchema,
   screenCaptureRequestSchema,
@@ -188,6 +209,7 @@ import {
   workbookPivotDefinitionSchema,
   workbookCreateDocumentRequestSchema,
   workbookExportCsvRequestSchema,
+  workbookExportOdsRequestSchema,
   workbookExportPdfRequestSchema,
   printerInfoSchema,
   workbookRangeRequestSchema,
@@ -213,6 +235,14 @@ import { atomicWriteFile } from './atomic-write'
 import { closeGuardDecision, ShutdownLatch } from './close-guard'
 import { SaveEditsTransferStore } from './save-edits-transfer'
 import { exportPdf, printWorkbook } from './pdf-export'
+import { registerSheetsPrintLayoutIpc } from './print-layout'
+import { exportWorkbookAsOds, type OdsLoss, type OdsLossKind } from './ods-export'
+import {
+  resolveSheetsSaveAsPick,
+  SaveAsExportTargets,
+  sheetsSaveAsFilters,
+  sheetsSaveAsSuggestion,
+} from './save-as-formats'
 import { installStandaloneTemplateFontProtocol } from './template-fonts'
 import {
   allowsAutomaticWorkbookRecovery,
@@ -234,6 +264,7 @@ import {
 import { XlsxSidecarClient } from './xlsx-sidecar-client'
 import { convertLegacyWorkbook } from './legacy-import'
 import { sessionAfterRename } from './session-rename'
+import { continuedOpenOptions, sessionToContinue } from './session-reopen'
 import {
   appendSaveFailure,
   describeReopenFailure,
@@ -281,6 +312,10 @@ const tMain = createI18n({
     errDiskChanged: '工作簿在打开后被磁盘上的改动覆盖——请改用另存为。',
     errSaveUnreadable:
       '保存结果无法重新打开，因此没有覆盖原文件。原文件保持不变，编辑内容仍在屏幕上。',
+    errSaveUnreadableReason:
+      '原因：{reason}\n\n选择“复制原因”，再粘贴到“发送反馈”中，可以帮助我们查明原因。',
+    btnCopyReason: '复制原因',
+    btnCloseDialog: '关闭',
     menuFile: '文件',
     menuOpenWorkbook: '打开工作簿…',
     menuSave: '保存',
@@ -298,7 +333,28 @@ const tMain = createI18n({
     btnCancel: '取消',
     csvSaveAsNotice: 'CSV 格式不保留样式等格式修改——另存为 .xlsx 可保留全部内容。',
     menuExportCsv: '导出 CSV…',
+    menuExportOds: '导出为 ODS…',
+    filterOds: 'OpenDocument 电子表格 (.ods)',
+    errOdsOriginalTarget: '不能覆盖原始 ODS 文件。请选择其他名称。',
+    errOdsEncrypted: '受密码保护的工作簿无法导出为 ODS。请先取消密码。',
+    odsLossMsg: '无法全部保存到 ODS',
+    odsLossDetail: '此工作簿中的以下功能无法存入 ODS,导出的副本将不包含它们:',
+    odsLossFormulas: '仅保留值的公式:{count}',
+    odsLossCharts: '图表:{count}',
+    odsLossImages: '图片:{count}',
+    odsLossConditionalFormats: '条件格式规则:{count}',
+    odsLossValidations: '数据验证规则:{count}',
+    odsLossPivots: '数据透视表:{count}',
+    odsLossComments: '批注:{count}',
+    odsLossMacros: '宏:{count}',
+    odsLossShapes: '图形和文本框:{count}',
+    odsLossSlicers: '切片器:{count}',
+    odsLossSparklines: '迷你图:{count}',
+    odsContinueBtn: '继续',
+    errOdsExportFailed: 'ODS 导出失败:{message}',
+    errOdsReopenFailed: '导出的 ODS 文件无法重新打开,已将其删除。工作簿未受影响。',
     filterCsv: 'CSV (逗号分隔)',
+    filterPdfActiveSheet: 'PDF (当前工作表)',
     csvFormulaLossMsg: '当前工作表包含公式,CSV 格式无法保留。',
     csvFormulaLossDetail: 'CSV 只保留纯文本值——公式会被替换为当前计算结果,格式也会丢失。',
     csvKeepXlsxBtn: '另存为 .xlsx',
@@ -307,6 +363,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: '继续以 CSV 格式保存吗?',
     csvKeepFormatDetail:
       'CSV 只保留单张工作表的纯文本值——公式、格式和其他工作表不会存入 .csv 文件。',
+    saveAsNeedsExtension: '请在文件名后加上扩展名，例如 报告.xlsx、报告.ods。',
   },
   en: {
     filterSpreadsheets: 'Spreadsheets',
@@ -338,6 +395,10 @@ const tMain = createI18n({
     errDiskChanged: 'The workbook changed on disk after it was opened — use Save As instead.',
     errSaveUnreadable:
       'The saved result could not be opened again, so the original file was not overwritten. The original is unchanged and your edits are still on screen.',
+    errSaveUnreadableReason:
+      'Reason: {reason}\n\nChoose "Copy reason" and paste it into Send feedback to help us find the cause.',
+    btnCopyReason: 'Copy reason',
+    btnCloseDialog: 'Close',
     menuFile: 'File',
     menuOpenWorkbook: 'Open Workbook…',
     menuSave: 'Save',
@@ -355,7 +416,31 @@ const tMain = createI18n({
     btnCancel: 'Cancel',
     csvSaveAsNotice: "CSV files can't keep formatting — saving as .xlsx keeps all your changes.",
     menuExportCsv: 'Export CSV…',
+    menuExportOds: 'Export as ODS…',
+    filterOds: 'OpenDocument Spreadsheet (.ods)',
+    errOdsOriginalTarget: 'The original ODS file cannot be overwritten. Choose a different name.',
+    errOdsEncrypted:
+      'Password-protected workbooks cannot be exported as ODS. Remove the password first.',
+    odsLossMsg: 'Not everything can be saved to ODS',
+    odsLossDetail:
+      'This workbook uses features ODS cannot hold. They are left out of the exported copy:',
+    odsLossFormulas: 'Formulas kept as values only: {count}',
+    odsLossCharts: 'Charts: {count}',
+    odsLossImages: 'Images: {count}',
+    odsLossConditionalFormats: 'Conditional formatting rules: {count}',
+    odsLossValidations: 'Data validation rules: {count}',
+    odsLossPivots: 'Pivot tables: {count}',
+    odsLossComments: 'Comments: {count}',
+    odsLossMacros: 'Macros: {count}',
+    odsLossShapes: 'Shapes and text boxes: {count}',
+    odsLossSlicers: 'Slicers: {count}',
+    odsLossSparklines: 'Sparklines: {count}',
+    odsContinueBtn: 'Continue',
+    errOdsExportFailed: 'The ODS export failed: {message}',
+    errOdsReopenFailed:
+      'The exported ODS file could not be opened again, so it was removed. The workbook is unchanged.',
     filterCsv: 'CSV (Comma delimited)',
+    filterPdfActiveSheet: 'PDF (Current sheet)',
     csvFormulaLossMsg: 'This sheet contains formulas that CSV cannot keep.',
     csvFormulaLossDetail:
       'CSV keeps plain values only — formulas are flattened to their current results, and formatting is lost.',
@@ -366,6 +451,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Keep saving in CSV format?',
     csvKeepFormatDetail:
       'CSV keeps plain values of a single sheet only — formulas, formatting, and any additional sheets are not saved to the .csv file.',
+    saveAsNeedsExtension:
+      'Add an extension to the file name, for example report.xlsx or report.ods.',
   },
   vi: {
     filterSpreadsheets: 'Bảng tính',
@@ -398,6 +485,10 @@ const tMain = createI18n({
     errDiskChanged: 'Sổ làm việc đã thay đổi trên đĩa sau khi mở — hãy sử dụng Lưu dưới dạng.',
     errSaveUnreadable:
       'Không thể mở lại kết quả đã lưu nên tệp gốc không bị ghi đè. Tệp gốc vẫn nguyên vẹn và các chỉnh sửa vẫn còn trên màn hình.',
+    errSaveUnreadableReason:
+      'Lý do: {reason}\n\nChọn "Sao chép lý do" rồi dán vào Gửi phản hồi để giúp chúng tôi tìm ra nguyên nhân.',
+    btnCopyReason: 'Sao chép lý do',
+    btnCloseDialog: 'Đóng',
     menuFile: 'Tệp',
     menuOpenWorkbook: 'Mở sổ làm việc…',
     menuSave: 'Lưu',
@@ -416,7 +507,30 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Tệp CSV không thể giữ lại định dạng — lưu dưới dạng .xlsx sẽ giữ lại tất cả các thay đổi của bạn.',
     menuExportCsv: 'Xuất CSV…',
+    menuExportOds: 'Xuất thành ODS…',
+    filterOds: 'Bảng tính OpenDocument (.ods)',
+    errOdsOriginalTarget: 'Không thể ghi đè tệp ODS gốc. Hãy chọn tên khác.',
+    errOdsEncrypted: 'Không thể xuất sổ làm việc có mật khẩu sang ODS. Hãy bỏ mật khẩu trước.',
+    odsLossMsg: 'Không thể lưu mọi thứ vào ODS',
+    odsLossDetail:
+      'Sổ làm việc này dùng những tính năng ODS không chứa được. Chúng sẽ bị bỏ khỏi bản sao đã xuất:',
+    odsLossFormulas: 'Công thức chỉ còn giá trị: {count}',
+    odsLossCharts: 'Biểu đồ: {count}',
+    odsLossImages: 'Hình ảnh: {count}',
+    odsLossConditionalFormats: 'Quy tắc định dạng có điều kiện: {count}',
+    odsLossValidations: 'Quy tắc xác thực dữ liệu: {count}',
+    odsLossPivots: 'Bảng tổng hợp: {count}',
+    odsLossComments: 'Chú thích: {count}',
+    odsLossMacros: 'Macro: {count}',
+    odsLossShapes: 'Hình dạng và hộp văn bản: {count}',
+    odsLossSlicers: 'Slicer: {count}',
+    odsLossSparklines: 'Biểu đồ mini: {count}',
+    odsContinueBtn: 'Tiếp tục',
+    errOdsExportFailed: 'Xuất ODS thất bại: {message}',
+    errOdsReopenFailed:
+      'Không thể mở lại tệp ODS đã xuất nên đã xóa nó. Sổ làm việc không thay đổi.',
     filterCsv: 'CSV (Phân tách bằng dấu phẩy)',
+    filterPdfActiveSheet: 'PDF (Trang tính hiện tại)',
     csvFormulaLossMsg: 'Trang tính này chứa các công thức mà định dạng CSV không thể lưu giữ.',
     csvFormulaLossDetail:
       'CSV chỉ giữ các giá trị thuần — các công thức được làm phẳng thành kết quả hiện tại của chúng và định dạng sẽ bị mất.',
@@ -427,6 +541,98 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Tiếp tục lưu ở định dạng CSV?',
     csvKeepFormatDetail:
       'CSV chỉ giữ các giá trị thuần của một trang tính duy nhất — các công thức, định dạng và mọi trang tính bổ sung sẽ không được lưu vào tệp .csv.',
+    saveAsNeedsExtension: 'Hãy thêm phần mở rộng vào tên tệp, ví dụ bao-cao.xlsx hoặc bao-cao.ods.',
+  },
+  tr: {
+    filterSpreadsheets: 'Elektronik Tablolar',
+    filterXlsx: 'Excel Çalışma Kitapları',
+    filterXlsm: 'Excel Makro İçeren Çalışma Kitapları',
+    dlgAddAttachment: 'Ek Dosya Ekle',
+    filterSupported: 'Desteklenen Dosyalar',
+    filterAll: 'Tüm Dosyalar',
+    errUnsupportedExt: '.{ext} dosyaları desteklenmiyor',
+    errNotFile: 'dosya değil',
+    errTooLarge: '{mb} MB sınırını aşıyor',
+    errImageTooLarge: 'görsel 5 MB sınırını aşıyor',
+    errUnreadable: 'okunamıyor',
+    errFileTooLarge: 'Dosya boyut sınırını aşıyor',
+    errParseFailed: 'Dosya ayrıştırılamadı',
+    errHtmlNoTable:
+      'Bu dosya bir elektronik tablo değil, web sayfası; içe aktarılabilecek tablo bulunamadı.',
+    errImageNoText: 'Görsel eklerinde metin yok; görsel kullanıcı mesajıyla birlikte gönderilir',
+    errNotImage: 'desteklenen bir görsel türü değil',
+    errNoApiKey: '{provider} için API anahtarı yapılandırılmamış',
+    errAiBusy: 'AI hizmeti şu anda meşgul — lütfen biraz sonra yeniden deneyin',
+    errNoModel: 'Model adı yapılandırılmamış',
+    errImgAbsPath: 'Görsel yolu mutlak olmalıdır.',
+    errImgNotFound: 'Görsel dosyası bulunamadı: {path}',
+    errImgTooLarge20: 'Görsel 20 MB’ı aşıyor ve eklenemiyor.',
+    errImgBadType: 'Dosya bir PNG/JPEG/GIF görseli değil.',
+    errEncryptedOpenTitle: 'Parola korumalı çalışma kitabı açılamıyor',
+    errEncryptedUnsupported:
+      'Bu dosya, uygulamanın çözemeyeceği bir şifreleme yöntemi kullanıyor. Excel’de parolayı kaldırıp dosyayı yeniden açın.',
+    errDiskChanged:
+      'Çalışma kitabı açıldıktan sonra diskte değişti — lütfen Farklı Kaydet’i kullanın.',
+    errSaveUnreadable:
+      'Kaydedilen sonuç yeniden açılamadığından özgün dosyanın üzerine yazılmadı. Özgün dosya değişmedi ve düzenlemeleriniz hâlâ ekranda.',
+    errSaveUnreadableReason:
+      'Neden: {reason}\n\nNedeni bulmamıza yardımcı olmak için "Nedeni kopyala"yı seçip Geri bildirim gönder’e yapıştırın.',
+    btnCopyReason: 'Nedeni kopyala',
+    btnCloseDialog: 'Kapat',
+    menuFile: 'Dosya',
+    menuOpenWorkbook: 'Çalışma Kitabını Aç…',
+    menuSave: 'Kaydet',
+    menuSaveAs: 'Farklı Kaydet…',
+    menuExportPdf: 'PDF Olarak Dışa Aktar…',
+    menuPrint: 'Yazdır…',
+    menuClose: 'Kapat',
+    menuQuit: 'Çıkış',
+    menuEdit: 'Düzen',
+    menuUndo: 'Geri Al',
+    menuRedo: 'Yinele',
+    closeUnsavedMsg: '{count} kaydedilmemiş değişiklik',
+    closeUnsavedDetail: 'Kaydetmeden kapatırsanız bu değişiklikler kaybolur.',
+    btnDontSave: 'Kaydetme',
+    btnCancel: 'İptal',
+    csvSaveAsNotice:
+      'CSV dosyaları biçimlendirmeyi koruyamaz — .xlsx olarak kaydetmek tüm değişikliklerinizi korur.',
+    menuExportCsv: 'CSV Olarak Dışa Aktar…',
+    menuExportOds: 'ODS olarak dışa aktar…',
+    filterOds: 'OpenDocument Elektronik Tablosu (.ods)',
+    errOdsOriginalTarget: 'Özgün ODS dosyasının üzerine yazılamaz. Farklı bir ad seçin.',
+    errOdsEncrypted:
+      'Parola korumalı çalışma kitapları ODS olarak dışa aktarılamaz. Önce parolayı kaldırın.',
+    odsLossMsg: 'Her şey ODS’ye kaydedilemez',
+    odsLossDetail:
+      'Bu çalışma kitabı ODS’nin tutamadığı özellikler kullanıyor. Bunlar dışa aktarılan kopyaya alınmaz:',
+    odsLossFormulas: 'Yalnızca değer olarak tutulan formüller: {count}',
+    odsLossCharts: 'Grafikler: {count}',
+    odsLossImages: 'Görseller: {count}',
+    odsLossConditionalFormats: 'Koşullu biçimlendirme kuralları: {count}',
+    odsLossValidations: 'Veri doğrulama kuralları: {count}',
+    odsLossPivots: 'Pivot tablolar: {count}',
+    odsLossComments: 'Açıklamalar: {count}',
+    odsLossMacros: 'Makrolar: {count}',
+    odsLossShapes: 'Şekiller ve metin kutuları: {count}',
+    odsLossSlicers: 'Dilimleyiciler: {count}',
+    odsLossSparklines: 'Mini grafikler: {count}',
+    odsContinueBtn: 'Devam et',
+    errOdsExportFailed: 'ODS dışa aktarma başarısız oldu: {message}',
+    errOdsReopenFailed:
+      'Dışa aktarılan ODS dosyası yeniden açılamadığı için kaldırıldı. Çalışma kitabı değişmedi.',
+    filterCsv: 'CSV (Virgülle Ayrılmış)',
+    filterPdfActiveSheet: 'PDF (Geçerli sayfa)',
+    csvFormulaLossMsg: 'Bu sayfada CSV’nin koruyamayacağı formüller var.',
+    csvFormulaLossDetail:
+      'CSV yalnızca düz değerleri korur — formüller mevcut sonuçlarına dönüşür ve biçimlendirme kaybolur.',
+    csvKeepXlsxBtn: '.xlsx Olarak Kaydet',
+    csvContinueBtn: 'CSV Olarak Devam Et',
+    csvActiveSheetOnlyNotice:
+      'CSV dosyaları tek sayfa tutar — yalnızca etkin sayfa “{name}” dışa aktarılacak.',
+    csvKeepFormatMsg: 'CSV biçiminde kaydetmeye devam edilsin mi?',
+    csvKeepFormatDetail:
+      'CSV yalnızca tek bir sayfanın düz değerlerini korur — formüller, biçimlendirme ve diğer sayfalar .csv dosyasına kaydedilmez.',
+    saveAsNeedsExtension: 'Dosya adına bir uzantı ekleyin, örneğin rapor.xlsx veya rapor.ods.',
   },
   ja: {
     filterSpreadsheets: 'スプレッドシート',
@@ -461,6 +667,10 @@ const tMain = createI18n({
       'ブックを開いた後にディスク上で変更されています — 名前を付けて保存を使用してください。',
     errSaveUnreadable:
       '保存結果を開き直せなかったため、元のファイルは上書きしていません。元のファイルはそのままで、編集内容は画面に残っています。',
+    errSaveUnreadableReason:
+      '理由: {reason}\n\n「理由をコピー」を選んで「フィードバックを送る」に貼り付けていただくと、原因の調査に役立ちます。',
+    btnCopyReason: '理由をコピー',
+    btnCloseDialog: '閉じる',
     menuFile: 'ファイル',
     menuOpenWorkbook: 'ブックを開く…',
     menuSave: '保存',
@@ -479,7 +689,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'CSV 形式は書式を保持できません。.xlsx として保存すると変更をすべて保持できます。',
     menuExportCsv: 'CSV をエクスポート…',
+    menuExportOds: 'ODS としてエクスポート…',
+    filterOds: 'OpenDocument スプレッドシート (.ods)',
+    errOdsOriginalTarget: '元の ODS ファイルは上書きできません。別の名前を選んでください。',
+    errOdsEncrypted:
+      '暗号化されたブックは ODS にエクスポートできません。先にパスワードを解除してください。',
+    odsLossMsg: 'すべてを ODS に保存できません',
+    odsLossDetail:
+      'このブックの次の機能は ODS に保存できないため、エクスポートしたコピーには含まれません:',
+    odsLossFormulas: '値のみ残る数式: {count}',
+    odsLossCharts: 'グラフ: {count}',
+    odsLossImages: '画像: {count}',
+    odsLossConditionalFormats: '条件付き書式の規則: {count}',
+    odsLossValidations: 'データ入力規則: {count}',
+    odsLossPivots: 'ピボットテーブル: {count}',
+    odsLossComments: 'コメント: {count}',
+    odsLossMacros: 'マクロ: {count}',
+    odsLossShapes: '図形とテキスト ボックス: {count}',
+    odsLossSlicers: 'スライサー: {count}',
+    odsLossSparklines: 'スパークライン: {count}',
+    odsContinueBtn: '続行',
+    errOdsExportFailed: 'ODS へのエクスポートに失敗しました: {message}',
+    errOdsReopenFailed:
+      'エクスポートした ODS ファイルを開き直せなかったため削除しました。ブックは変更されていません。',
     filterCsv: 'CSV (コンマ区切り)',
+    filterPdfActiveSheet: 'PDF (現在のシート)',
     csvFormulaLossMsg: 'このシートには CSV 形式では保持できない数式が含まれています。',
     csvFormulaLossDetail:
       'CSV は値のみを保持します。数式は現在の計算結果に置き換えられ、書式も失われます。',
@@ -490,6 +724,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'CSV 形式のまま保存しますか?',
     csvKeepFormatDetail:
       'CSV は 1 枚のシートの値のみを保持します。数式、書式、追加のシートは .csv ファイルには保存されません。',
+    saveAsNeedsExtension: 'ファイル名に拡張子を付けてください。例: 報告書.xlsx、報告書.ods',
   },
   ko: {
     filterSpreadsheets: '스프레드시트',
@@ -523,6 +758,10 @@ const tMain = createI18n({
       '통합 문서가 열린 후 디스크에서 변경되었습니다. 다른 이름으로 저장을 사용하세요.',
     errSaveUnreadable:
       '저장한 결과를 다시 열 수 없어 원래 파일을 덮어쓰지 않았습니다. 원래 파일은 그대로이고, 편집한 내용은 화면에 남아 있습니다.',
+    errSaveUnreadableReason:
+      '까닭: {reason}\n\n"까닭 복사"를 누른 뒤 의견 보내기에 붙여 넣어 주시면 원인을 찾는 데 도움이 됩니다.',
+    btnCopyReason: '까닭 복사',
+    btnCloseDialog: '닫기',
     menuFile: '파일',
     menuOpenWorkbook: '통합 문서 열기…',
     menuSave: '저장',
@@ -541,7 +780,28 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'CSV 형식은 서식을 저장할 수 없습니다. .xlsx로 저장하면 모든 변경 내용이 유지됩니다.',
     menuExportCsv: 'CSV 내보내기…',
+    menuExportOds: 'ODS로 내보내기…',
+    filterOds: 'OpenDocument 스프레드시트 (.ods)',
+    errOdsOriginalTarget: '원본 ODS 파일은 덮어쓸 수 없습니다. 다른 이름을 선택하세요.',
+    errOdsEncrypted: '암호가 걸린 워크북은 ODS로 내보낼 수 없습니다. 먼저 암호를 풀어 주세요.',
+    odsLossMsg: 'ODS에 모두 담을 수 없습니다',
+    odsLossDetail: '이 워크북에 있는 다음 기능은 ODS에 담지 못해 내보낸 사본에서 빠집니다:',
+    odsLossFormulas: '값만 남는 수식: {count}',
+    odsLossCharts: '차트: {count}',
+    odsLossImages: '그림: {count}',
+    odsLossConditionalFormats: '조건부 서식 규칙: {count}',
+    odsLossValidations: '데이터 유효성 검사 규칙: {count}',
+    odsLossPivots: '피벗 테이블: {count}',
+    odsLossComments: '메모: {count}',
+    odsLossMacros: '매크로: {count}',
+    odsLossShapes: '도형·글상자: {count}',
+    odsLossSlicers: '슬라이서: {count}',
+    odsLossSparklines: '스파크라인: {count}',
+    odsContinueBtn: '계속',
+    errOdsExportFailed: 'ODS 내보내기에 실패했습니다: {message}',
+    errOdsReopenFailed: '내보낸 ODS 파일을 다시 열지 못해 지웠습니다. 워크북은 그대로입니다.',
     filterCsv: 'CSV (쉼표로 분리)',
+    filterPdfActiveSheet: 'PDF (현재 시트)',
     csvFormulaLossMsg: '현재 시트에 CSV 형식이 유지할 수 없는 수식이 포함되어 있습니다.',
     csvFormulaLossDetail:
       'CSV는 값만 유지합니다 — 수식은 현재 계산 결과로 바뀌고 서식은 손실됩니다.',
@@ -552,6 +812,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'CSV 형식으로 계속 저장하시겠습니까?',
     csvKeepFormatDetail:
       'CSV는 시트 하나의 값만 유지합니다 — 수식, 서식, 추가 시트는 .csv 파일에 저장되지 않습니다.',
+    saveAsNeedsExtension: '파일 이름에 확장자를 붙여 주세요. 예: 보고서.xlsx, 보고서.ods',
   },
   fr: {
     filterSpreadsheets: 'Feuilles de calcul',
@@ -586,6 +847,10 @@ const tMain = createI18n({
       'Le classeur a été modifié sur le disque après son ouverture — utilisez Enregistrer sous.',
     errSaveUnreadable:
       "Le résultat enregistré n'a pas pu être rouvert ; le fichier d'origine n'a donc pas été écrasé. Il est intact et vos modifications sont toujours à l'écran.",
+    errSaveUnreadableReason:
+      'Raison : {reason}\n\nChoisissez « Copier la raison » et collez-la dans Envoyer un commentaire pour nous aider à trouver la cause.',
+    btnCopyReason: 'Copier la raison',
+    btnCloseDialog: 'Fermer',
     menuFile: 'Fichier',
     menuOpenWorkbook: 'Ouvrir un classeur…',
     menuSave: 'Enregistrer',
@@ -604,7 +869,32 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Le format CSV ne conserve pas la mise en forme — enregistrez en .xlsx pour conserver toutes vos modifications.',
     menuExportCsv: 'Exporter en CSV…',
+    menuExportOds: 'Exporter au format ODS…',
+    filterOds: 'Classeur OpenDocument (.ods)',
+    errOdsOriginalTarget:
+      'Le fichier ODS d’origine ne peut pas être écrasé. Choisissez un autre nom.',
+    errOdsEncrypted:
+      'Un classeur protégé par mot de passe ne peut pas être exporté en ODS. Retirez d’abord le mot de passe.',
+    odsLossMsg: 'Tout ne peut pas être enregistré au format ODS',
+    odsLossDetail:
+      'Ce classeur utilise des fonctions qu’ODS ne peut pas contenir. Elles seront absentes de la copie exportée :',
+    odsLossFormulas: 'Formules réduites à leur valeur : {count}',
+    odsLossCharts: 'Graphiques : {count}',
+    odsLossImages: 'Images : {count}',
+    odsLossConditionalFormats: 'Règles de mise en forme conditionnelle : {count}',
+    odsLossValidations: 'Règles de validation des données : {count}',
+    odsLossPivots: 'Tableaux croisés dynamiques : {count}',
+    odsLossComments: 'Commentaires : {count}',
+    odsLossMacros: 'Macros : {count}',
+    odsLossShapes: 'Formes et zones de texte : {count}',
+    odsLossSlicers: 'Segments : {count}',
+    odsLossSparklines: 'Graphiques sparkline : {count}',
+    odsContinueBtn: 'Continuer',
+    errOdsExportFailed: 'L’export ODS a échoué : {message}',
+    errOdsReopenFailed:
+      'Le fichier ODS exporté n’a pas pu être rouvert et a été supprimé. Le classeur est inchangé.',
     filterCsv: 'CSV (délimité par des virgules)',
+    filterPdfActiveSheet: 'PDF (feuille active)',
     csvFormulaLossMsg:
       'Cette feuille contient des formules que le format CSV ne peut pas conserver.',
     csvFormulaLossDetail:
@@ -616,6 +906,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Continuer à enregistrer au format CSV ?',
     csvKeepFormatDetail:
       "Le CSV ne conserve que les valeurs d'une seule feuille — les formules, la mise en forme et les feuilles supplémentaires ne sont pas enregistrées dans le fichier .csv.",
+    saveAsNeedsExtension:
+      'Ajoutez une extension au nom du fichier, par exemple rapport.xlsx ou rapport.ods.',
   },
   de: {
     filterSpreadsheets: 'Tabellenkalkulationen',
@@ -650,6 +942,10 @@ const tMain = createI18n({
       'Die Arbeitsmappe wurde nach dem Öffnen auf dem Datenträger geändert — verwenden Sie stattdessen „Speichern unter“.',
     errSaveUnreadable:
       'Das gespeicherte Ergebnis ließ sich nicht wieder öffnen, daher wurde die Originaldatei nicht überschrieben. Sie ist unverändert, und Ihre Änderungen sind noch auf dem Bildschirm.',
+    errSaveUnreadableReason:
+      'Grund: {reason}\n\nWählen Sie „Grund kopieren“ und fügen Sie ihn unter „Feedback senden“ ein, damit wir die Ursache finden können.',
+    btnCopyReason: 'Grund kopieren',
+    btnCloseDialog: 'Schließen',
     menuFile: 'Datei',
     menuOpenWorkbook: 'Arbeitsmappe öffnen…',
     menuSave: 'Speichern',
@@ -668,7 +964,32 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'CSV-Dateien können keine Formatierung speichern – als .xlsx speichern, um alle Änderungen zu behalten.',
     menuExportCsv: 'CSV exportieren…',
+    menuExportOds: 'Als ODS exportieren…',
+    filterOds: 'OpenDocument-Tabelle (.ods)',
+    errOdsOriginalTarget:
+      'Die ursprüngliche ODS-Datei darf nicht überschrieben werden. Wählen Sie einen anderen Namen.',
+    errOdsEncrypted:
+      'Arbeitsmappen mit Kennwort können nicht als ODS exportiert werden. Entfernen Sie zuerst das Kennwort.',
+    odsLossMsg: 'Nicht alles lässt sich als ODS speichern',
+    odsLossDetail:
+      'Diese Arbeitsmappe nutzt Funktionen, die ODS nicht aufnehmen kann. Sie fehlen in der exportierten Kopie:',
+    odsLossFormulas: 'Formeln nur als Werte: {count}',
+    odsLossCharts: 'Diagramme: {count}',
+    odsLossImages: 'Bilder: {count}',
+    odsLossConditionalFormats: 'Regeln für bedingte Formatierung: {count}',
+    odsLossValidations: 'Datenüberprüfungsregeln: {count}',
+    odsLossPivots: 'Pivot-Tabellen: {count}',
+    odsLossComments: 'Kommentare: {count}',
+    odsLossMacros: 'Makros: {count}',
+    odsLossShapes: 'Formen und Textfelder: {count}',
+    odsLossSlicers: 'Datenschnitte: {count}',
+    odsLossSparklines: 'Sparklines: {count}',
+    odsContinueBtn: 'Weiter',
+    errOdsExportFailed: 'Der ODS-Export ist fehlgeschlagen: {message}',
+    errOdsReopenFailed:
+      'Die exportierte ODS-Datei ließ sich nicht erneut öffnen und wurde entfernt. Die Arbeitsmappe ist unverändert.',
     filterCsv: 'CSV (Trennzeichen-getrennt)',
+    filterPdfActiveSheet: 'PDF (aktuelles Tabellenblatt)',
     csvFormulaLossMsg: 'Dieses Blatt enthält Formeln, die das CSV-Format nicht speichern kann.',
     csvFormulaLossDetail:
       'CSV speichert nur reine Werte – Formeln werden durch ihre aktuellen Ergebnisse ersetzt, und die Formatierung geht verloren.',
@@ -679,6 +1000,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Weiter im CSV-Format speichern?',
     csvKeepFormatDetail:
       'CSV speichert nur die Werte eines einzelnen Blatts – Formeln, Formatierungen und weitere Blätter werden nicht in der .csv-Datei gespeichert.',
+    saveAsNeedsExtension:
+      'Fügen Sie dem Dateinamen eine Erweiterung hinzu, zum Beispiel Bericht.xlsx oder Bericht.ods.',
   },
   es: {
     filterSpreadsheets: 'Hojas de cálculo',
@@ -713,6 +1036,10 @@ const tMain = createI18n({
     errDiskChanged: 'El libro cambió en el disco después de abrirse; usa Guardar como en su lugar.',
     errSaveUnreadable:
       'No se pudo volver a abrir el resultado guardado, así que no se sobrescribió el archivo original. El original no cambió y tus ediciones siguen en pantalla.',
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nElija «Copiar motivo» y péguelo en Enviar comentarios para ayudarnos a encontrar la causa.',
+    btnCopyReason: 'Copiar motivo',
+    btnCloseDialog: 'Cerrar',
     menuFile: 'Archivo',
     menuOpenWorkbook: 'Abrir libro…',
     menuSave: 'Guardar',
@@ -731,7 +1058,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'El formato CSV no conserva el formato: guarda como .xlsx para conservar todos tus cambios.',
     menuExportCsv: 'Exportar a CSV…',
+    menuExportOds: 'Exportar como ODS…',
+    filterOds: 'Hoja de cálculo OpenDocument (.ods)',
+    errOdsOriginalTarget: 'No se puede sobrescribir el archivo ODS original. Elija otro nombre.',
+    errOdsEncrypted:
+      'Un libro protegido con contraseña no se puede exportar a ODS. Quite primero la contraseña.',
+    odsLossMsg: 'No todo se puede guardar en ODS',
+    odsLossDetail:
+      'Este libro usa funciones que ODS no puede contener. Se omitirán en la copia exportada:',
+    odsLossFormulas: 'Fórmulas conservadas solo como valores: {count}',
+    odsLossCharts: 'Gráficos: {count}',
+    odsLossImages: 'Imágenes: {count}',
+    odsLossConditionalFormats: 'Reglas de formato condicional: {count}',
+    odsLossValidations: 'Reglas de validación de datos: {count}',
+    odsLossPivots: 'Tablas dinámicas: {count}',
+    odsLossComments: 'Comentarios: {count}',
+    odsLossMacros: 'Macros: {count}',
+    odsLossShapes: 'Formas y cuadros de texto: {count}',
+    odsLossSlicers: 'Segmentaciones de datos: {count}',
+    odsLossSparklines: 'Minigráficos: {count}',
+    odsContinueBtn: 'Continuar',
+    errOdsExportFailed: 'La exportación a ODS falló: {message}',
+    errOdsReopenFailed:
+      'El archivo ODS exportado no se pudo volver a abrir y se eliminó. El libro no ha cambiado.',
     filterCsv: 'CSV (delimitado por comas)',
+    filterPdfActiveSheet: 'PDF (hoja actual)',
     csvFormulaLossMsg: 'Esta hoja contiene fórmulas que el formato CSV no puede conservar.',
     csvFormulaLossDetail:
       'El CSV solo conserva valores: las fórmulas se sustituyen por sus resultados actuales y el formato se pierde.',
@@ -742,6 +1093,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: '¿Seguir guardando en formato CSV?',
     csvKeepFormatDetail:
       'CSV solo conserva los valores de una única hoja: las fórmulas, el formato y las hojas adicionales no se guardan en el archivo .csv.',
+    saveAsNeedsExtension:
+      'Añada una extensión al nombre del archivo, por ejemplo informe.xlsx o informe.ods.',
   },
   th: {
     filterSpreadsheets: 'สเปรดชีต',
@@ -774,6 +1127,10 @@ const tMain = createI18n({
     errDiskChanged: 'เวิร์กบุ๊กถูกเปลี่ยนแปลงบนดิสก์หลังจากเปิด — โปรดใช้บันทึกเป็นแทน',
     errSaveUnreadable:
       'ไม่สามารถเปิดผลที่บันทึกได้อีกครั้ง จึงไม่ได้เขียนทับไฟล์ต้นฉบับ ไฟล์ต้นฉบับยังคงเดิมและการแก้ไขของคุณยังอยู่บนหน้าจอ',
+    errSaveUnreadableReason:
+      'สาเหตุ: {reason}\n\nเลือก "คัดลอกสาเหตุ" แล้ววางใน ส่งข้อเสนอแนะ เพื่อช่วยให้เราหาต้นเหตุได้',
+    btnCopyReason: 'คัดลอกสาเหตุ',
+    btnCloseDialog: 'ปิด',
     menuFile: 'ไฟล์',
     menuOpenWorkbook: 'เปิดเวิร์กบุ๊ก…',
     menuSave: 'บันทึก',
@@ -792,7 +1149,29 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'ไฟล์ CSV ไม่สามารถเก็บการจัดรูปแบบได้ — บันทึกเป็น .xlsx เพื่อเก็บการเปลี่ยนแปลงทั้งหมดของคุณ',
     menuExportCsv: 'ส่งออก CSV…',
+    menuExportOds: 'ส่งออกเป็น ODS…',
+    filterOds: 'สเปรดชีต OpenDocument (.ods)',
+    errOdsOriginalTarget: 'เขียนทับไฟล์ ODS ต้นฉบับไม่ได้ กรุณาเลือกชื่ออื่น',
+    errOdsEncrypted: 'ส่งออกสมุดงานที่ใส่รหัสผ่านเป็น ODS ไม่ได้ กรุณาถอดรหัสผ่านก่อน',
+    odsLossMsg: 'บันทึกทุกอย่างลง ODS ไม่ได้',
+    odsLossDetail:
+      'สมุดงานนี้มีฟีเจอร์ที่ ODS เก็บไม่ได้ ฟีเจอร์เหล่านี้จะไม่ถูกใส่ในสำเนาที่ส่งออก:',
+    odsLossFormulas: 'สูตรที่เหลือเพียงค่า: {count}',
+    odsLossCharts: 'แผนภูมิ: {count}',
+    odsLossImages: 'รูปภาพ: {count}',
+    odsLossConditionalFormats: 'กฎการจัดรูปแบบตามเงื่อนไข: {count}',
+    odsLossValidations: 'กฎการตรวจสอบข้อมูล: {count}',
+    odsLossPivots: 'ตารางสรุปข้อมูล: {count}',
+    odsLossComments: 'ความคิดเห็น: {count}',
+    odsLossMacros: 'มาโคร: {count}',
+    odsLossShapes: 'รูปร่างและกล่องข้อความ: {count}',
+    odsLossSlicers: 'ตัวแบ่งส่วนข้อมูล: {count}',
+    odsLossSparklines: 'เส้นแบบประกายไฟ: {count}',
+    odsContinueBtn: 'ดำเนินการต่อ',
+    errOdsExportFailed: 'ส่งออก ODS ล้มเหลว: {message}',
+    errOdsReopenFailed: 'เปิดไฟล์ ODS ที่ส่งออกใหม่ไม่ได้ จึงลบไฟล์นั้นแล้ว สมุดงานไม่เปลี่ยนแปลง',
     filterCsv: 'CSV (คั่นด้วยเครื่องหมายจุลภาค)',
+    filterPdfActiveSheet: 'PDF (เวิร์กชีตปัจจุบัน)',
     csvFormulaLossMsg: 'ชีตนี้มีสูตรที่รูปแบบ CSV เก็บไว้ไม่ได้',
     csvFormulaLossDetail:
       'CSV เก็บเฉพาะค่าเท่านั้น — สูตรจะถูกแทนที่ด้วยผลลัพธ์ปัจจุบัน และการจัดรูปแบบจะหายไป',
@@ -803,6 +1182,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'บันทึกเป็นรูปแบบ CSV ต่อไปหรือไม่',
     csvKeepFormatDetail:
       'CSV เก็บเฉพาะค่าของชีตเดียวเท่านั้น — สูตร การจัดรูปแบบ และชีตอื่น ๆ จะไม่ถูกบันทึกลงในไฟล์ .csv',
+    saveAsNeedsExtension: 'เพิ่มนามสกุลให้ชื่อไฟล์ เช่น report.xlsx หรือ report.ods',
   },
   id: {
     filterSpreadsheets: 'Lembar bentang',
@@ -835,6 +1215,10 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja berubah di disk setelah dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil simpanan tidak dapat dibuka kembali, jadi file asli tidak ditimpa. File asli tidak berubah dan suntingan Anda masih ada di layar.',
+    errSaveUnreadableReason:
+      'Alasan: {reason}\n\nPilih "Salin alasan" lalu tempelkan di Kirim masukan untuk membantu kami menemukan penyebabnya.',
+    btnCopyReason: 'Salin alasan',
+    btnCloseDialog: 'Tutup',
     menuFile: 'File',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -853,7 +1237,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'File CSV tidak dapat menyimpan pemformatan — simpan sebagai .xlsx untuk mempertahankan semua perubahan Anda.',
     menuExportCsv: 'Ekspor CSV…',
+    menuExportOds: 'Ekspor sebagai ODS…',
+    filterOds: 'Spreadsheet OpenDocument (.ods)',
+    errOdsOriginalTarget: 'File ODS asli tidak boleh ditimpa. Pilih nama lain.',
+    errOdsEncrypted:
+      'Buku kerja yang dilindungi kata sandi tidak dapat diekspor sebagai ODS. Hapus kata sandi terlebih dahulu.',
+    odsLossMsg: 'Tidak semua dapat disimpan ke ODS',
+    odsLossDetail:
+      'Buku kerja ini memakai fitur yang tidak dapat dimuat ODS. Fitur itu akan dihilangkan dari salinan yang diekspor:',
+    odsLossFormulas: 'Rumus yang hanya menyisakan nilai: {count}',
+    odsLossCharts: 'Bagan: {count}',
+    odsLossImages: 'Gambar: {count}',
+    odsLossConditionalFormats: 'Aturan format bersyarat: {count}',
+    odsLossValidations: 'Aturan validasi data: {count}',
+    odsLossPivots: 'Tabel pivot: {count}',
+    odsLossComments: 'Komentar: {count}',
+    odsLossMacros: 'Makro: {count}',
+    odsLossShapes: 'Bentuk dan kotak teks: {count}',
+    odsLossSlicers: 'Pemotong: {count}',
+    odsLossSparklines: 'Grafik mini: {count}',
+    odsContinueBtn: 'Lanjutkan',
+    errOdsExportFailed: 'Ekspor ODS gagal: {message}',
+    errOdsReopenFailed:
+      'File ODS hasil ekspor tidak dapat dibuka lagi, jadi file itu dihapus. Buku kerja tidak berubah.',
     filterCsv: 'CSV (dipisahkan koma)',
+    filterPdfActiveSheet: 'PDF (lembar saat ini)',
     csvFormulaLossMsg: 'Lembar ini berisi rumus yang tidak dapat disimpan dalam format CSV.',
     csvFormulaLossDetail:
       'CSV hanya menyimpan nilai — rumus diganti dengan hasil saat ini, dan pemformatan akan hilang.',
@@ -864,6 +1272,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Terus menyimpan dalam format CSV?',
     csvKeepFormatDetail:
       'CSV hanya menyimpan nilai dari satu lembar — rumus, pemformatan, dan lembar tambahan tidak disimpan ke file .csv.',
+    saveAsNeedsExtension:
+      'Tambahkan ekstensi pada nama berkas, misalnya laporan.xlsx atau laporan.ods.',
   },
   ru: {
     filterSpreadsheets: 'Электронные таблицы',
@@ -897,6 +1307,10 @@ const tMain = createI18n({
     errDiskChanged: 'Книга была изменена на диске после открытия — используйте «Сохранить как».',
     errSaveUnreadable:
       'Сохранённый результат не удалось открыть снова, поэтому исходный файл не перезаписан. Он не изменился, а ваши правки остаются на экране.',
+    errSaveUnreadableReason:
+      'Причина: {reason}\n\nНажмите «Скопировать причину» и вставьте её в «Отправить отзыв» — это поможет нам найти неполадку.',
+    btnCopyReason: 'Скопировать причину',
+    btnCloseDialog: 'Закрыть',
     menuFile: 'Файл',
     menuOpenWorkbook: 'Открыть книгу…',
     menuSave: 'Сохранить',
@@ -915,7 +1329,30 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Формат CSV не сохраняет форматирование — сохраните в .xlsx, чтобы не потерять изменения.',
     menuExportCsv: 'Экспорт в CSV…',
+    menuExportOds: 'Экспорт в ODS…',
+    filterOds: 'Таблица OpenDocument (.ods)',
+    errOdsOriginalTarget: 'Нельзя перезаписать исходный файл ODS. Выберите другое имя.',
+    errOdsEncrypted: 'Книгу с паролем нельзя экспортировать в ODS. Сначала снимите пароль.',
+    odsLossMsg: 'Не всё можно сохранить в ODS',
+    odsLossDetail:
+      'В этой книге есть функции, которые ODS не поддерживает. В экспортированной копии их не будет:',
+    odsLossFormulas: 'Формулы, сохранённые только как значения: {count}',
+    odsLossCharts: 'Диаграммы: {count}',
+    odsLossImages: 'Изображения: {count}',
+    odsLossConditionalFormats: 'Правила условного форматирования: {count}',
+    odsLossValidations: 'Правила проверки данных: {count}',
+    odsLossPivots: 'Сводные таблицы: {count}',
+    odsLossComments: 'Примечания: {count}',
+    odsLossMacros: 'Макросы: {count}',
+    odsLossShapes: 'Фигуры и надписи: {count}',
+    odsLossSlicers: 'Срезы: {count}',
+    odsLossSparklines: 'Спарклайны: {count}',
+    odsContinueBtn: 'Продолжить',
+    errOdsExportFailed: 'Не удалось экспортировать в ODS: {message}',
+    errOdsReopenFailed:
+      'Экспортированный файл ODS не удалось открыть снова, поэтому он удалён. Книга не изменена.',
     filterCsv: 'CSV (разделители — запятые)',
+    filterPdfActiveSheet: 'PDF (текущий лист)',
     csvFormulaLossMsg: 'Этот лист содержит формулы, которые формат CSV не сохраняет.',
     csvFormulaLossDetail:
       'CSV сохраняет только значения — формулы заменяются текущими результатами, а форматирование теряется.',
@@ -926,6 +1363,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Продолжить сохранение в формате CSV?',
     csvKeepFormatDetail:
       'CSV сохраняет только значения одного листа — формулы, форматирование и дополнительные листы не сохраняются в файле .csv.',
+    saveAsNeedsExtension: 'Добавьте расширение к имени файла, например отчёт.xlsx или отчёт.ods.',
   },
   ar: {
     filterSpreadsheets: 'جداول البيانات',
@@ -957,6 +1395,10 @@ const tMain = createI18n({
     errDiskChanged: 'تم تغيير المصنف على القرص بعد فتحه — استخدم «حفظ باسم» بدلاً من ذلك.',
     errSaveUnreadable:
       'تعذّر فتح النتيجة المحفوظة مرة أخرى، لذا لم تتم الكتابة فوق الملف الأصلي. الملف الأصلي لم يتغير وتعديلاتك ما زالت على الشاشة.',
+    errSaveUnreadableReason:
+      'السبب: {reason}\n\nاختر "نسخ السبب" ثم الصقه في إرسال ملاحظات لمساعدتنا في معرفة أصل المشكلة.',
+    btnCopyReason: 'نسخ السبب',
+    btnCloseDialog: 'إغلاق',
     menuFile: 'ملف',
     menuOpenWorkbook: 'فتح مصنف…',
     menuSave: 'حفظ',
@@ -974,7 +1416,28 @@ const tMain = createI18n({
     btnCancel: 'إلغاء',
     csvSaveAsNotice: 'ملفات CSV لا تحتفظ بالتنسيق — احفظ بصيغة ‎.xlsx للاحتفاظ بجميع تغييراتك.',
     menuExportCsv: 'تصدير CSV…',
+    menuExportOds: 'تصدير بصيغة ODS…',
+    filterOds: 'جدول بيانات OpenDocument ‎(.ods)',
+    errOdsOriginalTarget: 'لا يمكن استبدال ملف ODS الأصلي. اختر اسمًا آخر.',
+    errOdsEncrypted: 'لا يمكن تصدير مصنف محمي بكلمة مرور بصيغة ODS. أزل كلمة المرور أولًا.',
+    odsLossMsg: 'لا يمكن حفظ كل شيء بصيغة ODS',
+    odsLossDetail: 'يستخدم هذا المصنف ميزات لا تستوعبها صيغة ODS. ستُستبعد من النسخة المصدّرة:',
+    odsLossFormulas: 'الصيغ المحفوظة كقيم فقط: {count}',
+    odsLossCharts: 'المخططات: {count}',
+    odsLossImages: 'الصور: {count}',
+    odsLossConditionalFormats: 'قواعد التنسيق الشرطي: {count}',
+    odsLossValidations: 'قواعد التحقق من البيانات: {count}',
+    odsLossPivots: 'الجداول المحورية: {count}',
+    odsLossComments: 'التعليقات: {count}',
+    odsLossMacros: 'وحدات الماكرو: {count}',
+    odsLossShapes: 'الأشكال ومربعات النص: {count}',
+    odsLossSlicers: 'مقسّمات طريقة العرض: {count}',
+    odsLossSparklines: 'خطوط المؤشر: {count}',
+    odsContinueBtn: 'متابعة',
+    errOdsExportFailed: 'فشل تصدير ODS: {message}',
+    errOdsReopenFailed: 'تعذر إعادة فتح ملف ODS المصدّر فحُذف. المصنف لم يتغير.',
     filterCsv: 'CSV (محدد بفواصل)',
+    filterPdfActiveSheet: 'PDF (الورقة الحالية)',
     csvFormulaLossMsg: 'تحتوي هذه الورقة على صيغ لا يمكن لتنسيق CSV الاحتفاظ بها.',
     csvFormulaLossDetail: 'يحتفظ CSV بالقيم فقط — تُستبدل الصيغ بنتائجها الحالية ويُفقد التنسيق.',
     csvKeepXlsxBtn: 'حفظ بصيغة .xlsx',
@@ -984,6 +1447,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'هل تريد متابعة الحفظ بتنسيق CSV؟',
     csvKeepFormatDetail:
       'يحتفظ CSV بقيم ورقة واحدة فقط — لا تُحفظ الصيغ والتنسيق والأوراق الإضافية في ملف .csv.',
+    saveAsNeedsExtension: 'أضف امتدادًا إلى اسم الملف، مثل report.xlsx أو report.ods.',
   },
   pt: {
     filterSpreadsheets: 'Planilhas',
@@ -1017,6 +1481,10 @@ const tMain = createI18n({
     errDiskChanged: 'A pasta de trabalho foi alterada no disco após ser aberta — use Salvar Como.',
     errSaveUnreadable:
       'Não foi possível reabrir o resultado salvo, então o arquivo original não foi substituído. O original está intacto e suas edições continuam na tela.',
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nEscolha "Copiar motivo" e cole em Enviar comentários para nos ajudar a encontrar a causa.',
+    btnCopyReason: 'Copiar motivo',
+    btnCloseDialog: 'Fechar',
     menuFile: 'Arquivo',
     menuOpenWorkbook: 'Abrir Pasta de Trabalho…',
     menuSave: 'Salvar',
@@ -1035,7 +1503,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Arquivos CSV não mantêm a formatação — salve como .xlsx para manter todas as suas alterações.',
     menuExportCsv: 'Exportar CSV…',
+    menuExportOds: 'Exportar como ODS…',
+    filterOds: 'Planilha OpenDocument (.ods)',
+    errOdsOriginalTarget: 'O arquivo ODS original não pode ser substituído. Escolha outro nome.',
+    errOdsEncrypted:
+      'Uma pasta de trabalho protegida por senha não pode ser exportada como ODS. Remova a senha primeiro.',
+    odsLossMsg: 'Nem tudo pode ser salvo em ODS',
+    odsLossDetail:
+      'Esta pasta de trabalho usa recursos que o ODS não comporta. Eles ficarão de fora da cópia exportada:',
+    odsLossFormulas: 'Fórmulas mantidas apenas como valores: {count}',
+    odsLossCharts: 'Gráficos: {count}',
+    odsLossImages: 'Imagens: {count}',
+    odsLossConditionalFormats: 'Regras de formatação condicional: {count}',
+    odsLossValidations: 'Regras de validação de dados: {count}',
+    odsLossPivots: 'Tabelas dinâmicas: {count}',
+    odsLossComments: 'Comentários: {count}',
+    odsLossMacros: 'Macros: {count}',
+    odsLossShapes: 'Formas e caixas de texto: {count}',
+    odsLossSlicers: 'Segmentações de dados: {count}',
+    odsLossSparklines: 'Minigráficos: {count}',
+    odsContinueBtn: 'Continuar',
+    errOdsExportFailed: 'Falha ao exportar em ODS: {message}',
+    errOdsReopenFailed:
+      'O arquivo ODS exportado não pôde ser aberto novamente e foi removido. A pasta de trabalho não foi alterada.',
     filterCsv: 'CSV (separado por vírgulas)',
+    filterPdfActiveSheet: 'PDF (planilha atual)',
     csvFormulaLossMsg: 'Esta planilha contém fórmulas que o formato CSV não pode manter.',
     csvFormulaLossDetail:
       'O CSV mantém apenas valores — as fórmulas são substituídas pelos resultados atuais e a formatação é perdida.',
@@ -1046,6 +1538,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Continuar salvando no formato CSV?',
     csvKeepFormatDetail:
       'O CSV mantém apenas os valores de uma única planilha — fórmulas, formatação e planilhas adicionais não são salvas no arquivo .csv.',
+    saveAsNeedsExtension:
+      'Adicione uma extensão ao nome do arquivo, por exemplo relatório.xlsx ou relatório.ods.',
   },
   it: {
     filterSpreadsheets: 'Fogli di calcolo',
@@ -1080,6 +1574,10 @@ const tMain = createI18n({
       "La cartella di lavoro è stata modificata sul disco dopo l'apertura — usa Salva con nome.",
     errSaveUnreadable:
       "Non è stato possibile riaprire il risultato salvato, quindi il file originale non è stato sovrascritto. L'originale è invariato e le modifiche sono ancora sullo schermo.",
+    errSaveUnreadableReason:
+      'Motivo: {reason}\n\nScegli "Copia motivo" e incollalo in Invia feedback per aiutarci a trovare la causa.',
+    btnCopyReason: 'Copia motivo',
+    btnCloseDialog: 'Chiudi',
     menuFile: 'File',
     menuOpenWorkbook: 'Apri cartella di lavoro…',
     menuSave: 'Salva',
@@ -1098,7 +1596,32 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'I file CSV non conservano la formattazione: salva come .xlsx per mantenere tutte le modifiche.',
     menuExportCsv: 'Esporta CSV…',
+    menuExportOds: 'Esporta come ODS…',
+    filterOds: 'Foglio di calcolo OpenDocument (.ods)',
+    errOdsOriginalTarget:
+      'Non è possibile sovrascrivere il file ODS originale. Scegli un altro nome.',
+    errOdsEncrypted:
+      'Una cartella di lavoro protetta da password non può essere esportata in ODS. Rimuovi prima la password.',
+    odsLossMsg: 'Non tutto può essere salvato in ODS',
+    odsLossDetail:
+      'Questa cartella di lavoro usa funzioni che ODS non può contenere. Saranno omesse dalla copia esportata:',
+    odsLossFormulas: 'Formule mantenute solo come valori: {count}',
+    odsLossCharts: 'Grafici: {count}',
+    odsLossImages: 'Immagini: {count}',
+    odsLossConditionalFormats: 'Regole di formattazione condizionale: {count}',
+    odsLossValidations: 'Regole di convalida dati: {count}',
+    odsLossPivots: 'Tabelle pivot: {count}',
+    odsLossComments: 'Commenti: {count}',
+    odsLossMacros: 'Macro: {count}',
+    odsLossShapes: 'Forme e caselle di testo: {count}',
+    odsLossSlicers: 'Filtri dati: {count}',
+    odsLossSparklines: 'Grafici sparkline: {count}',
+    odsContinueBtn: 'Continua',
+    errOdsExportFailed: 'Esportazione ODS non riuscita: {message}',
+    errOdsReopenFailed:
+      'Il file ODS esportato non è stato riaperto e quindi è stato eliminato. La cartella di lavoro è invariata.',
     filterCsv: 'CSV (delimitato da virgole)',
+    filterPdfActiveSheet: 'PDF (foglio corrente)',
     csvFormulaLossMsg: 'Questo foglio contiene formule che il formato CSV non può conservare.',
     csvFormulaLossDetail:
       'Il CSV conserva solo i valori: le formule vengono sostituite dai risultati attuali e la formattazione viene persa.',
@@ -1109,6 +1632,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Continuare a salvare in formato CSV?',
     csvKeepFormatDetail:
       'Il CSV conserva solo i valori di un singolo foglio: formule, formattazione e fogli aggiuntivi non vengono salvati nel file .csv.',
+    saveAsNeedsExtension:
+      'Aggiungi un’estensione al nome del file, ad esempio report.xlsx o report.ods.',
   },
   pl: {
     filterSpreadsheets: 'Arkusze kalkulacyjne',
@@ -1142,6 +1667,10 @@ const tMain = createI18n({
     errDiskChanged: 'Skoroszyt został zmieniony na dysku po otwarciu — użyj polecenia Zapisz jako.',
     errSaveUnreadable:
       'Nie udało się ponownie otworzyć zapisanego wyniku, więc oryginalny plik nie został nadpisany. Oryginał jest bez zmian, a Twoje edycje nadal są na ekranie.',
+    errSaveUnreadableReason:
+      'Przyczyna: {reason}\n\nWybierz „Kopiuj przyczynę” i wklej ją w Wyślij opinię, aby pomóc nam znaleźć źródło problemu.',
+    btnCopyReason: 'Kopiuj przyczynę',
+    btnCloseDialog: 'Zamknij',
     menuFile: 'Plik',
     menuOpenWorkbook: 'Otwórz skoroszyt…',
     menuSave: 'Zapisz',
@@ -1160,7 +1689,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Pliki CSV nie zachowują formatowania — zapisz jako .xlsx, aby zachować wszystkie zmiany.',
     menuExportCsv: 'Eksportuj CSV…',
+    menuExportOds: 'Eksportuj jako ODS…',
+    filterOds: 'Arkusz OpenDocument (.ods)',
+    errOdsOriginalTarget: 'Nie można nadpisać oryginalnego pliku ODS. Wybierz inną nazwę.',
+    errOdsEncrypted:
+      'Skoroszytu chronionego hasłem nie można wyeksportować do ODS. Najpierw usuń hasło.',
+    odsLossMsg: 'Nie wszystkiego można zapisać w ODS',
+    odsLossDetail:
+      'Ten skoroszyt używa funkcji, których ODS nie mieści. Zostaną pominięte w wyeksportowanej kopii:',
+    odsLossFormulas: 'Formuły zachowane tylko jako wartości: {count}',
+    odsLossCharts: 'Wykresy: {count}',
+    odsLossImages: 'Obrazy: {count}',
+    odsLossConditionalFormats: 'Reguły formatowania warunkowego: {count}',
+    odsLossValidations: 'Reguły sprawdzania danych: {count}',
+    odsLossPivots: 'Tabele przestawne: {count}',
+    odsLossComments: 'Komentarze: {count}',
+    odsLossMacros: 'Makra: {count}',
+    odsLossShapes: 'Kształty i pola tekstowe: {count}',
+    odsLossSlicers: 'Fragmentatory: {count}',
+    odsLossSparklines: 'Wykresy przebiegu w czasie: {count}',
+    odsContinueBtn: 'Kontynuuj',
+    errOdsExportFailed: 'Eksport do ODS nie powiódł się: {message}',
+    errOdsReopenFailed:
+      'Nie udało się ponownie otworzyć wyeksportowanego pliku ODS, więc został usunięty. Skoroszyt jest niezmieniony.',
     filterCsv: 'CSV (rozdzielany przecinkami)',
+    filterPdfActiveSheet: 'PDF (bieżący arkusz)',
     csvFormulaLossMsg: 'Ten arkusz zawiera formuły, których format CSV nie zachowuje.',
     csvFormulaLossDetail:
       'CSV zachowuje tylko wartości — formuły są zastępowane bieżącymi wynikami, a formatowanie jest tracone.',
@@ -1171,6 +1724,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Kontynuować zapisywanie w formacie CSV?',
     csvKeepFormatDetail:
       'CSV zachowuje tylko wartości jednego arkusza — formuły, formatowanie i dodatkowe arkusze nie są zapisywane w pliku .csv.',
+    saveAsNeedsExtension:
+      'Dodaj rozszerzenie do nazwy pliku, na przykład raport.xlsx lub raport.ods.',
   },
   cs: {
     filterSpreadsheets: 'Tabulky',
@@ -1204,6 +1759,10 @@ const tMain = createI18n({
     errDiskChanged: 'Sešit byl po otevření změněn na disku — použijte místo toho Uložit jako.',
     errSaveUnreadable:
       'Uložený výsledek nešlo znovu otevřít, proto původní soubor nebyl přepsán. Původní soubor je beze změny a vaše úpravy jsou stále na obrazovce.',
+    errSaveUnreadableReason:
+      'Důvod: {reason}\n\nZvolte „Kopírovat důvod“ a vložte jej do Odeslat zpětnou vazbu, pomůžete nám tak najít příčinu.',
+    btnCopyReason: 'Kopírovat důvod',
+    btnCloseDialog: 'Zavřít',
     menuFile: 'Soubor',
     menuOpenWorkbook: 'Otevřít sešit…',
     menuSave: 'Uložit',
@@ -1222,7 +1781,29 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Soubory CSV nezachovávají formátování — uložením jako .xlsx zachováte všechny změny.',
     menuExportCsv: 'Exportovat CSV…',
+    menuExportOds: 'Exportovat jako ODS…',
+    filterOds: 'Sešit OpenDocument (.ods)',
+    errOdsOriginalTarget: 'Původní soubor ODS nelze přepsat. Zvolte jiný název.',
+    errOdsEncrypted: 'Sešit chráněný heslem nelze exportovat do ODS. Nejprve odeberte heslo.',
+    odsLossMsg: 'Ne vše lze uložit do ODS',
+    odsLossDetail: 'Tento sešit používá funkce, které ODS nepojme. V exportované kopii nebudou:',
+    odsLossFormulas: 'Vzorce ponechané jen jako hodnoty: {count}',
+    odsLossCharts: 'Grafy: {count}',
+    odsLossImages: 'Obrázky: {count}',
+    odsLossConditionalFormats: 'Pravidla podmíněného formátování: {count}',
+    odsLossValidations: 'Pravidla ověření dat: {count}',
+    odsLossPivots: 'Kontingenční tabulky: {count}',
+    odsLossComments: 'Komentáře: {count}',
+    odsLossMacros: 'Makra: {count}',
+    odsLossShapes: 'Obrazce a textová pole: {count}',
+    odsLossSlicers: 'Průřezy: {count}',
+    odsLossSparklines: 'Minigrafy: {count}',
+    odsContinueBtn: 'Pokračovat',
+    errOdsExportFailed: 'Export do ODS selhal: {message}',
+    errOdsReopenFailed:
+      'Exportovaný soubor ODS se nepodařilo znovu otevřít, a proto byl odstraněn. Sešit zůstal nezměněn.',
     filterCsv: 'CSV (oddělený čárkami)',
+    filterPdfActiveSheet: 'PDF (aktuální list)',
     csvFormulaLossMsg: 'Tento list obsahuje vzorce, které formát CSV nezachová.',
     csvFormulaLossDetail:
       'CSV zachovává pouze hodnoty — vzorce se nahradí aktuálními výsledky a formátování se ztratí.',
@@ -1233,6 +1814,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Pokračovat v ukládání ve formátu CSV?',
     csvKeepFormatDetail:
       'CSV zachovává pouze hodnoty jednoho listu — vzorce, formátování a další listy se do souboru .csv neuloží.',
+    saveAsNeedsExtension:
+      'Přidejte k názvu souboru příponu, například sestava.xlsx nebo sestava.ods.',
   },
   nl: {
     filterSpreadsheets: 'Spreadsheets',
@@ -1267,6 +1850,10 @@ const tMain = createI18n({
       'De werkmap is op de schijf gewijzigd nadat deze was geopend — gebruik Opslaan als.',
     errSaveUnreadable:
       'Het opgeslagen resultaat kon niet opnieuw worden geopend, dus het oorspronkelijke bestand is niet overschreven. Het origineel is ongewijzigd en je bewerkingen staan nog op het scherm.',
+    errSaveUnreadableReason:
+      'Reden: {reason}\n\nKies "Reden kopiëren" en plak deze in Feedback sturen om ons te helpen de oorzaak te vinden.',
+    btnCopyReason: 'Reden kopiëren',
+    btnCloseDialog: 'Sluiten',
     menuFile: 'Bestand',
     menuOpenWorkbook: 'Werkmap openen…',
     menuSave: 'Opslaan',
@@ -1285,7 +1872,32 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'CSV-bestanden bewaren geen opmaak — sla op als .xlsx om al uw wijzigingen te behouden.',
     menuExportCsv: 'CSV exporteren…',
+    menuExportOds: 'Exporteren als ODS…',
+    filterOds: 'OpenDocument-werkblad (.ods)',
+    errOdsOriginalTarget:
+      'Het oorspronkelijke ODS-bestand kan niet worden overschreven. Kies een andere naam.',
+    errOdsEncrypted:
+      'Een werkmap met wachtwoord kan niet als ODS worden geëxporteerd. Verwijder eerst het wachtwoord.',
+    odsLossMsg: 'Niet alles kan in ODS worden opgeslagen',
+    odsLossDetail:
+      'Deze werkmap gebruikt functies die ODS niet kan bevatten. Ze ontbreken in de geëxporteerde kopie:',
+    odsLossFormulas: 'Formules alleen als waarden: {count}',
+    odsLossCharts: 'Grafieken: {count}',
+    odsLossImages: 'Afbeeldingen: {count}',
+    odsLossConditionalFormats: 'Regels voor voorwaardelijke opmaak: {count}',
+    odsLossValidations: 'Regels voor gegevensvalidatie: {count}',
+    odsLossPivots: 'Draaitabellen: {count}',
+    odsLossComments: 'Opmerkingen: {count}',
+    odsLossMacros: "Macro's: {count}",
+    odsLossShapes: 'Vormen en tekstvakken: {count}',
+    odsLossSlicers: 'Slicers: {count}',
+    odsLossSparklines: 'Sparklines: {count}',
+    odsContinueBtn: 'Doorgaan',
+    errOdsExportFailed: 'Exporteren naar ODS is mislukt: {message}',
+    errOdsReopenFailed:
+      'Het geëxporteerde ODS-bestand kon niet opnieuw worden geopend en is verwijderd. De werkmap is ongewijzigd.',
     filterCsv: 'CSV (kommagescheiden)',
+    filterPdfActiveSheet: 'PDF (huidig werkblad)',
     csvFormulaLossMsg: 'Dit blad bevat formules die het CSV-formaat niet kan bewaren.',
     csvFormulaLossDetail:
       'CSV bewaart alleen waarden — formules worden vervangen door hun huidige resultaten en opmaak gaat verloren.',
@@ -1296,6 +1908,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Doorgaan met opslaan in CSV-indeling?',
     csvKeepFormatDetail:
       'CSV bewaart alleen de waarden van één blad — formules, opmaak en extra bladen worden niet in het .csv-bestand opgeslagen.',
+    saveAsNeedsExtension:
+      'Voeg een extensie toe aan de bestandsnaam, bijvoorbeeld rapport.xlsx of rapport.ods.',
   },
   ms: {
     filterSpreadsheets: 'Hamparan',
@@ -1327,6 +1941,10 @@ const tMain = createI18n({
     errDiskChanged: 'Buku kerja telah diubah pada cakera selepas dibuka — gunakan Simpan Sebagai.',
     errSaveUnreadable:
       'Hasil yang disimpan tidak dapat dibuka semula, jadi fail asal tidak ditulis ganti. Fail asal tidak berubah dan suntingan anda masih pada skrin.',
+    errSaveUnreadableReason:
+      'Sebab: {reason}\n\nPilih "Salin sebab" dan tampalkan dalam Hantar maklum balas untuk membantu kami mencari puncanya.',
+    btnCopyReason: 'Salin sebab',
+    btnCloseDialog: 'Tutup',
     menuFile: 'Fail',
     menuOpenWorkbook: 'Buka Buku Kerja…',
     menuSave: 'Simpan',
@@ -1345,7 +1963,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'Fail CSV tidak dapat menyimpan pemformatan — simpan sebagai .xlsx untuk mengekalkan semua perubahan anda.',
     menuExportCsv: 'Eksport CSV…',
+    menuExportOds: 'Eksport sebagai ODS…',
+    filterOds: 'Hamparan OpenDocument (.ods)',
+    errOdsOriginalTarget: 'Fail ODS asal tidak boleh ditimpa. Pilih nama lain.',
+    errOdsEncrypted:
+      'Buku kerja yang dilindungi kata laluan tidak boleh dieksport sebagai ODS. Buang kata laluan dahulu.',
+    odsLossMsg: 'Bukan semua boleh disimpan ke ODS',
+    odsLossDetail:
+      'Buku kerja ini menggunakan ciri yang tidak dapat dimuatkan oleh ODS. Ciri itu akan ditinggalkan dalam salinan yang dieksport:',
+    odsLossFormulas: 'Formula yang dikekalkan sebagai nilai sahaja: {count}',
+    odsLossCharts: 'Carta: {count}',
+    odsLossImages: 'Imej: {count}',
+    odsLossConditionalFormats: 'Peraturan pemformatan bersyarat: {count}',
+    odsLossValidations: 'Peraturan pengesahan data: {count}',
+    odsLossPivots: 'Jadual pangsi: {count}',
+    odsLossComments: 'Komen: {count}',
+    odsLossMacros: 'Makro: {count}',
+    odsLossShapes: 'Bentuk dan kotak teks: {count}',
+    odsLossSlicers: 'Penghiris: {count}',
+    odsLossSparklines: 'Garis percikan: {count}',
+    odsContinueBtn: 'Teruskan',
+    errOdsExportFailed: 'Eksport ODS gagal: {message}',
+    errOdsReopenFailed:
+      'Fail ODS yang dieksport tidak dapat dibuka semula, jadi fail itu dipadamkan. Buku kerja tidak berubah.',
     filterCsv: 'CSV (dipisahkan koma)',
+    filterPdfActiveSheet: 'PDF (helaian semasa)',
     csvFormulaLossMsg:
       'Helaian ini mengandungi formula yang tidak dapat disimpan dalam format CSV.',
     csvFormulaLossDetail:
@@ -1357,6 +1999,8 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'Terus simpan dalam format CSV?',
     csvKeepFormatDetail:
       'CSV hanya menyimpan nilai satu helaian — formula, pemformatan dan helaian tambahan tidak disimpan ke fail .csv.',
+    saveAsNeedsExtension:
+      'Tambahkan sambungan pada nama fail, contohnya laporan.xlsx atau laporan.ods.',
   },
   he: {
     filterSpreadsheets: 'גיליונות אלקטרוניים',
@@ -1388,6 +2032,10 @@ const tMain = createI18n({
     errDiskChanged: 'חוברת העבודה השתנתה בדיסק לאחר פתיחתה — השתמש בשמירה בשם.',
     errSaveUnreadable:
       'לא ניתן היה לפתוח שוב את התוצאה שנשמרה, ולכן הקובץ המקורי לא נדרס. הקובץ המקורי לא השתנה והעריכות שלך עדיין על המסך.',
+    errSaveUnreadableReason:
+      'הסיבה: {reason}\n\nבחרו "העתקת הסיבה" והדביקו אותה בשליחת משוב כדי לעזור לנו למצוא את מקור הבעיה.',
+    btnCopyReason: 'העתקת הסיבה',
+    btnCloseDialog: 'סגירה',
     menuFile: 'קובץ',
     menuOpenWorkbook: 'פתיחת חוברת עבודה…',
     menuSave: 'שמירה',
@@ -1405,7 +2053,29 @@ const tMain = createI18n({
     btnCancel: 'ביטול',
     csvSaveAsNotice: 'קובצי CSV אינם שומרים עיצוב — שמרו כ‑.xlsx כדי לשמור על כל השינויים.',
     menuExportCsv: 'ייצוא CSV…',
+    menuExportOds: 'ייצוא כ-ODS…',
+    filterOds: 'גיליון OpenDocument ‎(.ods)',
+    errOdsOriginalTarget: 'לא ניתן לדרוס את קובץ ה-ODS המקורי. בחרו שם אחר.',
+    errOdsEncrypted: 'לא ניתן לייצא חוברת עבודה מוגנת בסיסמה כ-ODS. הסירו תחילה את הסיסמה.',
+    odsLossMsg: 'לא הכול יכול להישמר ב-ODS',
+    odsLossDetail: 'חוברת עבודה זו משתמשת ביכולות ש-ODS אינו יכול להכיל. הן יושמטו מהעותק המיוצא:',
+    odsLossFormulas: 'נוסחאות שנשמרות כערכים בלבד: {count}',
+    odsLossCharts: 'תרשימים: {count}',
+    odsLossImages: 'תמונות: {count}',
+    odsLossConditionalFormats: 'כללי עיצוב מותנה: {count}',
+    odsLossValidations: 'כללי אימות נתונים: {count}',
+    odsLossPivots: 'טבלאות ציר: {count}',
+    odsLossComments: 'הערות: {count}',
+    odsLossMacros: 'פקודות מאקרו: {count}',
+    odsLossShapes: 'צורות ותיבות טקסט: {count}',
+    odsLossSlicers: 'כלי פריסה: {count}',
+    odsLossSparklines: 'תרשימים זעירים: {count}',
+    odsContinueBtn: 'המשך',
+    errOdsExportFailed: 'ייצוא ODS נכשל: {message}',
+    errOdsReopenFailed:
+      'לא ניתן היה לפתוח מחדש את קובץ ה-ODS המיוצא, ולכן הוא נמחק. חוברת העבודה לא השתנתה.',
     filterCsv: 'CSV (מופרד באמצעות פסיקים)',
+    filterPdfActiveSheet: 'PDF (הגיליון הנוכחי)',
     csvFormulaLossMsg: 'גיליון זה מכיל נוסחאות שתבנית CSV אינה יכולה לשמור.',
     csvFormulaLossDetail:
       'CSV שומר ערכים בלבד — נוסחאות מוחלפות בתוצאות הנוכחיות שלהן, והעיצוב אובד.',
@@ -1415,6 +2085,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'להמשיך לשמור בתבנית CSV?',
     csvKeepFormatDetail:
       'CSV שומר רק את הערכים של גיליון אחד — נוסחאות, עיצוב וגיליונות נוספים אינם נשמרים בקובץ ה-.csv.',
+    saveAsNeedsExtension: 'הוסיפו סיומת לשם הקובץ, למשל report.xlsx או report.ods.',
   },
   hi: {
     filterSpreadsheets: 'स्प्रेडशीट',
@@ -1448,6 +2119,10 @@ const tMain = createI18n({
       'खोले जाने के बाद कार्यपुस्तिका डिस्क पर बदल गई — इसके बजाय इस रूप में सहेजें का उपयोग करें।',
     errSaveUnreadable:
       'सहेजा गया परिणाम फिर से नहीं खुल सका, इसलिए मूल फ़ाइल को अधिलेखित नहीं किया गया। मूल फ़ाइल अपरिवर्तित है और आपके संपादन अभी भी स्क्रीन पर हैं।',
+    errSaveUnreadableReason:
+      'कारण: {reason}\n\n"कारण कॉपी करें" चुनें और उसे फ़ीडबैक भेजें में चिपकाएँ, इससे हमें वजह ढूँढने में मदद मिलेगी।',
+    btnCopyReason: 'कारण कॉपी करें',
+    btnCloseDialog: 'बंद करें',
     menuFile: 'फ़ाइल',
     menuOpenWorkbook: 'कार्यपुस्तिका खोलें…',
     menuSave: 'सहेजें',
@@ -1466,7 +2141,31 @@ const tMain = createI18n({
     csvSaveAsNotice:
       'CSV फ़ाइलें फ़ॉर्मेटिंग सहेज नहीं सकतीं — सभी बदलाव बनाए रखने के लिए .xlsx के रूप में सहेजें।',
     menuExportCsv: 'CSV निर्यात करें…',
+    menuExportOds: 'ODS के रूप में निर्यात करें…',
+    filterOds: 'OpenDocument स्प्रेडशीट (.ods)',
+    errOdsOriginalTarget: 'मूल ODS फ़ाइल को अधिलेखित नहीं किया जा सकता। दूसरा नाम चुनें।',
+    errOdsEncrypted:
+      'पासवर्ड से सुरक्षित वर्कबुक को ODS में निर्यात नहीं किया जा सकता। पहले पासवर्ड हटाएँ।',
+    odsLossMsg: 'सब कुछ ODS में सहेजा नहीं जा सकता',
+    odsLossDetail:
+      'यह वर्कबुक ऐसी सुविधाएँ इस्तेमाल करती है जो ODS में नहीं आ सकतीं। वे निर्यात की गई प्रति से छूट जाएँगी:',
+    odsLossFormulas: 'केवल मान के रूप में रखे गए सूत्र: {count}',
+    odsLossCharts: 'चार्ट: {count}',
+    odsLossImages: 'चित्र: {count}',
+    odsLossConditionalFormats: 'सशर्त स्वरूपण नियम: {count}',
+    odsLossValidations: 'डेटा सत्यापन नियम: {count}',
+    odsLossPivots: 'पिवट तालिकाएँ: {count}',
+    odsLossComments: 'टिप्पणियाँ: {count}',
+    odsLossMacros: 'मैक्रो: {count}',
+    odsLossShapes: 'आकृतियाँ और टेक्स्ट बॉक्स: {count}',
+    odsLossSlicers: 'स्लाइसर: {count}',
+    odsLossSparklines: 'स्पार्कलाइन: {count}',
+    odsContinueBtn: 'जारी रखें',
+    errOdsExportFailed: 'ODS निर्यात विफल: {message}',
+    errOdsReopenFailed:
+      'निर्यात की गई ODS फ़ाइल दोबारा नहीं खुल सकी, इसलिए उसे हटा दिया गया। वर्कबुक अपरिवर्तित है।',
     filterCsv: 'CSV (अल्पविराम द्वारा सीमांकित)',
+    filterPdfActiveSheet: 'PDF (वर्तमान शीट)',
     csvFormulaLossMsg: 'इस शीट में ऐसे सूत्र हैं जिन्हें CSV प्रारूप सहेज नहीं सकता।',
     csvFormulaLossDetail:
       'CSV केवल मान रखता है — सूत्र उनके वर्तमान परिणामों से बदल दिए जाते हैं और फ़ॉर्मेटिंग खो जाती है।',
@@ -1477,6 +2176,7 @@ const tMain = createI18n({
     csvKeepFormatMsg: 'CSV प्रारूप में सहेजना जारी रखें?',
     csvKeepFormatDetail:
       'CSV केवल एक शीट के मान रखता है — सूत्र, स्वरूपण और अतिरिक्त शीट .csv फ़ाइल में सहेजे नहीं जाते।',
+    saveAsNeedsExtension: 'फ़ाइल नाम में एक्सटेंशन जोड़ें, जैसे report.xlsx या report.ods.',
   },
   'zh-TW': {
     filterSpreadsheets: '電子試算表',
@@ -1508,6 +2208,10 @@ const tMain = createI18n({
     errDiskChanged: '活頁簿在開啟後被磁碟上的變更覆蓋——請改用另存新檔。',
     errSaveUnreadable:
       '無法重新開啟儲存結果，因此沒有覆寫原始檔案。原始檔案保持不變，編輯內容仍在畫面上。',
+    errSaveUnreadableReason:
+      '原因：{reason}\n\n選擇「複製原因」，再貼到「傳送意見回饋」中，可以協助我們找出原因。',
+    btnCopyReason: '複製原因',
+    btnCloseDialog: '關閉',
     menuFile: '檔案',
     menuOpenWorkbook: '開啟活頁簿…',
     menuSave: '儲存',
@@ -1525,7 +2229,28 @@ const tMain = createI18n({
     btnCancel: '取消',
     csvSaveAsNotice: 'CSV 格式不保留樣式等格式修改——另存為 .xlsx 可保留全部內容。',
     menuExportCsv: '匯出 CSV…',
+    menuExportOds: '匯出為 ODS…',
+    filterOds: 'OpenDocument 試算表 (.ods)',
+    errOdsOriginalTarget: '不能覆寫原始 ODS 檔案。請選擇其他名稱。',
+    errOdsEncrypted: '受密碼保護的活頁簿無法匯出為 ODS。請先移除密碼。',
+    odsLossMsg: '無法全部儲存到 ODS',
+    odsLossDetail: '此活頁簿中的下列功能無法存入 ODS,匯出的副本將不包含它們:',
+    odsLossFormulas: '僅保留值的公式:{count}',
+    odsLossCharts: '圖表:{count}',
+    odsLossImages: '圖片:{count}',
+    odsLossConditionalFormats: '條件式格式規則:{count}',
+    odsLossValidations: '資料驗證規則:{count}',
+    odsLossPivots: '樞紐分析表:{count}',
+    odsLossComments: '註解:{count}',
+    odsLossMacros: '巨集:{count}',
+    odsLossShapes: '圖案和文字方塊:{count}',
+    odsLossSlicers: '交叉分析篩選器:{count}',
+    odsLossSparklines: '走勢圖:{count}',
+    odsContinueBtn: '繼續',
+    errOdsExportFailed: 'ODS 匯出失敗:{message}',
+    errOdsReopenFailed: '匯出的 ODS 檔案無法重新開啟,已將其刪除。活頁簿未受影響。',
     filterCsv: 'CSV (逗號分隔)',
+    filterPdfActiveSheet: 'PDF (目前工作表)',
     csvFormulaLossMsg: '目前工作表包含公式,CSV 格式無法保留。',
     csvFormulaLossDetail: 'CSV 只保留純文字值——公式會被取代為目前計算結果,格式也會遺失。',
     csvKeepXlsxBtn: '另存為 .xlsx',
@@ -1533,6 +2258,7 @@ const tMain = createI18n({
     csvActiveSheetOnlyNotice: 'CSV 檔案只包含一張工作表——只會匯出目前工作表「{name}」。',
     csvKeepFormatMsg: '要繼續以 CSV 格式儲存嗎?',
     csvKeepFormatDetail: 'CSV 只保留單張工作表的純值——公式、格式和其他工作表不會存入 .csv 檔案。',
+    saveAsNeedsExtension: '請在檔案名稱後加上副檔名，例如 報告.xlsx、報告.ods。',
   },
 })
 const tm = (key: Parameters<typeof tMain>[1], params?: Parameters<typeof tMain>[2]) =>
@@ -1552,6 +2278,15 @@ interface SessionInfo {
   /// Set when the session opened a converted copy (.xls import): the
   /// first save routes through Save As, defaulting to this .xlsx path.
   readonly suggestSaveAs?: string
+  /// Opened from an .ods conversion: the document keeps saying that saving
+  /// writes an .xlsx, and how many formulas the conversion kept as values.
+  /// A restored copy records the count in its recovery metadata.
+  readonly odsConverted?: boolean
+  readonly formulasDropped?: number
+  /// The original .ods this session was opened from (decision 0119). It is
+  /// only ever read, so no ODS export may write to it — not even after the
+  /// session's first Save As moved it onto a new .xlsx.
+  readonly odsSourcePath?: string
   /// The shell's "New spreadsheet" backing file in a temp directory: like an
   /// import the first Save is a Save As, but AutoSave and the recovery copy
   /// keep running (keyed on suggestSaveAs), and a quiet save writes in place.
@@ -1836,6 +2571,129 @@ async function saveFileDialog(event: IpcMainInvokeEvent, options: SaveDialogOpti
   )
 }
 
+/** The .xlsx-shaped document path a session's Save As defaults are built from. */
+function workbookSuggestion(session: SessionInfo): string {
+  return (
+    session.suggestSaveAs ??
+    (session.csvSourcePath === undefined ? undefined : saveAsDefaultFor(session.csvSourcePath)) ??
+    session.restoreTarget ??
+    session.path
+  )
+}
+
+/** The ODS export's default: the workbook's base name and folder, plus .ods. */
+async function suggestedOdsPath(session: SessionInfo): Promise<string> {
+  const source = workbookSuggestion(session)
+  const name = basename(source)
+  const stem = name.slice(0, name.length - extname(name).length) || name
+  const candidate = join(dirname(source), `${stem}.ods`)
+  // An .ods-converted session's base name points back at the protected
+  // original; offer the next free name instead of a target it must refuse.
+  if (
+    session.odsSourcePath !== undefined &&
+    (await sameFilePath(candidate, session.odsSourcePath))
+  ) {
+    return uniquePathIn(dirname(candidate), basename(candidate))
+  }
+  return candidate
+}
+
+/** Both paths resolved through symlinks where they exist, then case-folded on Windows. */
+async function canonicalPath(path: string): Promise<string> {
+  const absolute = resolvePath(path)
+  try {
+    return await realpath(absolute)
+  } catch {
+    try {
+      return join(await realpath(dirname(absolute)), basename(absolute))
+    } catch {
+      return absolute
+    }
+  }
+}
+
+async function sameFilePath(a: string, b: string): Promise<boolean> {
+  const [left, right] = [await canonicalPath(a), await canonicalPath(b)]
+  // The original-protection rule is deliberately case-insensitive everywhere:
+  // refusing a name the person can freely change is cheaper than writing over
+  // the original on a case-insensitive volume.
+  return left.toLowerCase() === right.toLowerCase()
+}
+
+/** Dialogs that omit the extension (some Linux desktops) still write .ods. */
+function odsTargetPath(path: string): string {
+  return /\.ods$/i.test(path) ? path : `${path}.ods`
+}
+
+/** The ODS export's own save dialog; undefined when the person cancels. */
+async function askOdsTarget(
+  event: IpcMainInvokeEvent,
+  defaultPath: string,
+): Promise<string | undefined> {
+  const selection = await saveFileDialog(event, {
+    defaultPath,
+    filters: [{ name: tm('filterOds'), extensions: ['ods'] }],
+  })
+  if (selection.canceled || !selection.filePath) return undefined
+  return odsTargetPath(selection.filePath)
+}
+
+const ODS_LOSS_LABELS: Record<OdsLossKind, Parameters<typeof tMain>[1]> = {
+  formulas: 'odsLossFormulas',
+  charts: 'odsLossCharts',
+  images: 'odsLossImages',
+  conditionalFormats: 'odsLossConditionalFormats',
+  validations: 'odsLossValidations',
+  pivots: 'odsLossPivots',
+  comments: 'odsLossComments',
+  macros: 'odsLossMacros',
+  shapes: 'odsLossShapes',
+  slicers: 'odsLossSlicers',
+  sparklines: 'odsLossSparklines',
+}
+
+/** One warning listing only what this workbook actually loses, then Continue/Cancel. */
+async function confirmOdsLoss(
+  parent: BrowserWindow | undefined,
+  losses: readonly OdsLoss[],
+): Promise<boolean> {
+  const detail = [
+    tm('odsLossDetail'),
+    '',
+    ...losses.map((loss) => `• ${tm(ODS_LOSS_LABELS[loss.kind], { count: loss.count })}`),
+  ].join('\n')
+  const options = {
+    type: 'warning' as const,
+    message: tm('odsLossMsg'),
+    detail,
+    buttons: [tm('odsContinueBtn'), tm('btnCancel')],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  }
+  const { response } =
+    parent && !parent.isDestroyed()
+      ? await dialog.showMessageBox(parent, options)
+      : await dialog.showMessageBox(options)
+  return response === 0
+}
+
+async function showOdsMessage(
+  parent: BrowserWindow | undefined,
+  type: 'error' | 'warning',
+  message: string,
+): Promise<void> {
+  const options = {
+    type,
+    message,
+    buttons: [tm('btnCloseDialog')],
+    defaultId: 0,
+    noLink: true,
+  }
+  if (parent && !parent.isDestroyed()) await dialog.showMessageBox(parent, options)
+  else await dialog.showMessageBox(options)
+}
+
 /** Split-view save-guard outcome: 'overwrite' = the user confirmed replacing
  *  a sibling copy's change on disk, so this write skips the legacy
  *  external-change check for the document path. */
@@ -1920,6 +2778,7 @@ function registerSheetsSession(webContents: WebContents, client: XlsxSidecarClie
   webContents.once('destroyed', () => {
     const entry = sheetsTabs.get(webContents.id)
     sheetsTabs.delete(webContents.id)
+    saveAsExportTargets.forget(webContents.id)
     // before the sessions are cleared below: a clean close drops the copies it wrote
     if (entry) settleTabRecoveryOnClose(webContents.id, entry)
     else tabRecovery.delete(webContents.id)
@@ -2016,6 +2875,11 @@ interface UnsavedNewWorkbook {
   restored?: boolean
   /** a CSV or converted workbook's copy: the file it came from (see SessionInfo) */
   originalPath?: string
+  /** the copy came from an .ods conversion: the restored tab keeps its footer notice */
+  odsConverted?: boolean
+  formulasDropped?: number
+  /** the original .ods the copy came from (never an export target) */
+  odsSourcePath?: string
 }
 const unsavedNewWorkbooks = new Map<string, UnsavedNewWorkbook>()
 
@@ -2055,6 +2919,9 @@ export function unmarkSheetsUnsavedNew(openPath: string): void {
 }
 
 const mcpWritablePaths = new Map<number, Set<string>>()
+
+/** Save As › PDF targets the dialog returned, accepted once by the PDF export */
+const saveAsExportTargets = new SaveAsExportTargets()
 
 /** MCP save_session: the shell resolved this path for the tab, so a dialog-free save may write it */
 export function authorizeMcpSheetWrite(wcId: number, filePath: string): void {
@@ -2105,7 +2972,16 @@ export function setSheetsPasswordPrompt(
 
 /** forward an application-menu File command into the sheets renderer */
 export function sendSheetsMenuAction(
-  action: 'open' | 'save' | 'save-as' | 'print' | 'export-pdf' | 'export-csv' | 'undo' | 'redo',
+  action:
+    | 'open'
+    | 'save'
+    | 'save-as'
+    | 'print'
+    | 'export-pdf'
+    | 'export-csv'
+    | 'export-ods'
+    | 'undo'
+    | 'redo',
 ): void {
   activeSheetsWebContents?.send(IPC_CHANNELS.menuAction, action)
 }
@@ -2284,6 +3160,8 @@ async function writeSessionCopy(
   produce: (target: string) => Promise<unknown>,
   options: { ignoreSizeLimit?: boolean } = {},
 ): Promise<boolean> {
+  // a headless export's hidden view converts the file and goes; it keeps no copy
+  if (isHeadlessMode()) return false
   const identity = sessionRecoveryIdentity(session)
   if (identity === null) return false
   if (session.automaticRecoveryDisabled && !options.ignoreSizeLimit) return false
@@ -2311,6 +3189,13 @@ async function writeSessionCopy(
       ...(session.recoveryOriginalPath === undefined
         ? {}
         : { originalPath: session.recoveryOriginalPath }),
+      // a converted .ods keeps its formula count in the copy, so a restore
+      // shows the same footer line (0 needs no record: absent reads as 0)
+      ...(session.odsConverted &&
+      session.formulasDropped !== undefined &&
+      session.formulasDropped > 0
+        ? { formulasDropped: session.formulasDropped }
+        : {}),
     },
   )
   if (result !== 'written') return false
@@ -2438,6 +3323,9 @@ async function recoveredOpenFor(
   contents: WebContents | undefined,
   parent: BrowserWindow | undefined,
 ): Promise<PreparedWorkbookOpen | null> {
+  // a headless export converts the file on disk: no one is there to answer the
+  // prompt (whose Esc restores), and a copy it neither uses nor settles stays as it was
+  if (isHeadlessMode()) return null
   const identity = fileRecoveryIdentity(path)
   const key = recoveryStore.copyPath(identity)
   const decided = contents ? decidedOpens.get(contents.id) : undefined
@@ -2539,9 +3427,15 @@ export async function openSheetsUntitledCopy(
   const copy = request.copy
   const ext = isUntitledIdentity(copy) ? copy.ext : untitledWorkbookExt(copy.filePath)
   // an untitled copy that names its original file came from a CSV or converted workbook
+  const copyInfo = isUntitledIdentity(copy) ? recoveryStore.copyInfo(copy) : null
   const originalPath = isUntitledIdentity(copy)
-    ? (request.saveAsDefaultPath ?? recoveryStore.copyInfo(copy)?.originalPath ?? undefined)
+    ? (request.saveAsDefaultPath ?? copyInfo?.originalPath ?? undefined)
     : undefined
+  // a copy of an .ods document keeps its footer notice (decision 0119): the
+  // original's extension says the session runs on a converted .xlsx, and the
+  // copy's metadata says how many formulas were kept as values
+  const odsConverted = originalPath?.toLowerCase().endsWith('.ods') === true
+  const formulasDropped = odsConverted ? (copyInfo?.formulasDropped ?? 0) : undefined
   const offered =
     originalPath !== undefined ? saveAsDefaultFor(originalPath) : request.saveAsDefaultPath
   const stem =
@@ -2559,6 +3453,9 @@ export async function openSheetsUntitledCopy(
     recovery: request.copy,
     restored: true,
     ...(originalPath === undefined ? {} : { originalPath }),
+    ...(odsConverted ? { odsConverted } : {}),
+    ...(formulasDropped === undefined ? {} : { formulasDropped }),
+    ...(odsConverted && originalPath !== undefined ? { odsSourcePath: originalPath } : {}),
   })
   queueWorkbookForView(contents, staged.openPath)
   nudgeQueuedWorkbook(contents)
@@ -2626,6 +3523,15 @@ function readJson<T>(path: string, fallback: T): T {
 
 const SETTINGS_PATH = () => userDataPath('ai-settings.json')
 
+/**
+ * The only write of the settings file: keys and tokens go to disk sealed
+ * (decision 0063), and fields a newer build wrote stay as they are.
+ */
+function writeAiSettingsFile(settings: unknown): void {
+  const stored = readJson<unknown>(SETTINGS_PATH(), {})
+  writeJsonAtomic(SETTINGS_PATH(), sealAiSecrets(withStoredUnknownFields(settings, stored)))
+}
+
 // Dev-only automation hooks: a fixed CDP port for driving the app from test
 // scripts, and a workbook path that bypasses the native file dialog.
 const debugPort = app.isPackaged ? undefined : process.env.XLSX_DEBUG_PORT
@@ -2681,6 +3587,7 @@ function startCaptureServer(): void {
         action === 'print' ||
         action === 'export-pdf' ||
         action === 'export-csv' ||
+        action === 'export-ods' ||
         action === 'undo' ||
         action === 'redo'
       ) {
@@ -2901,7 +3808,8 @@ const attachmentTextCache = new Map<string, { stamp: string; text: string }>()
 
 function statAttachment(filePath: string): { meta?: AttachmentMeta; error?: string } {
   const name = basename(filePath)
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  // a draw.io picture that holds its diagram is read as diagram text
+  const ext = diagramPictureExtOf(filePath) ?? name.split('.').pop()?.toLowerCase() ?? ''
   if (!ATTACHABLE_EXTS.has(ext)) return { error: `${name}: ${tm('errUnsupportedExt', { ext })}` }
   try {
     const stat = statSync(filePath)
@@ -2961,7 +3869,8 @@ async function extractAttachmentText(filePath: string): Promise<string> {
   const stamp = `${stat.mtimeMs}:${stat.size}`
   const cached = attachmentTextCache.get(filePath)
   if (cached && cached.stamp === stamp) return cached.text
-  if (stat.size > attachableMaxBytes(extname(filePath))) throw new Error(tm('errFileTooLarge'))
+  const capExt = diagramPictureExtOfName(filePath) ?? extname(filePath)
+  if (stat.size > attachableMaxBytes(capExt)) throw new Error(tm('errFileTooLarge'))
   const parsed = await parseFileToText(filePath)
   if (!parsed.ok || parsed.kind !== 'text' || parsed.text == null) {
     throw new Error(parsed.error ?? tm('errParseFailed'))
@@ -3099,22 +4008,29 @@ export function registerSheetsIpc(): void {
   // owns its channel the way pdf does.
   ipcMain.handle(
     IPC_CHANNELS.aiGenerateImage,
-    (event, op: { prompt?: unknown; aspectRatio?: unknown }) =>
-      // ends with its tab, or when the tab's AI run is stopped
-      withMediaCallSignal(event.sender, (signal) =>
-        generateImageTool(
-          SETTINGS_PATH(),
-          {
-            prompt: String(op?.prompt ?? ''),
-            ...(op?.aspectRatio ? { aspectRatio: String(op.aspectRatio) } : {}),
-          },
-          {
-            mediaRoots: sheetsMediaRoots(event.sender.id),
-            context: { path: 'screen', statuses: sharedSubscriptionStatuses() },
-            signal,
-          },
-        ),
-      ),
+    (event, op: { prompt?: unknown; aspectRatio?: unknown; model?: unknown }) => {
+      // the model the user named, as given: the shared tool decides whether the route offers it
+      const model = typeof op?.model === 'string' ? op.model.trim() : ''
+      // ends with its tab, or when the tab's AI run is stopped; refused while AI is turned off
+      return screenMediaCall(
+        event.sender,
+        (signal) =>
+          generateImageTool(
+            SETTINGS_PATH(),
+            {
+              prompt: String(op?.prompt ?? ''),
+              ...(op?.aspectRatio ? { aspectRatio: String(op.aspectRatio) } : {}),
+              ...(model ? { model } : {}),
+            },
+            {
+              mediaRoots: sheetsMediaRoots(event.sender.id),
+              context: { path: 'screen', statuses: sharedSubscriptionStatuses() },
+              signal,
+            },
+          ),
+        (error) => ({ error, errorCode: 'unavailable' as const }),
+      )
+    },
   )
 
   // What the image and search tools can do right now. Registered here for the
@@ -3214,7 +4130,10 @@ export function registerSheetsIpc(): void {
       const selection = await openFileDialog(event, {
         properties: ['openFile'],
         filters: [
-          { name: tm('filterSpreadsheets'), extensions: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv'] },
+          {
+            name: tm('filterSpreadsheets'),
+            extensions: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv', 'ods'],
+          },
         ],
       })
       if (selection.canceled || !selection.filePaths[0]) return null
@@ -3252,6 +4171,9 @@ export function registerSheetsIpc(): void {
       recoveryIdentity: converted?.recoveryIdentity ?? prepared.recoveryIdentity,
       recoveryOriginalPath: converted?.recoveryOriginalPath ?? prepared.recoveryOriginalPath,
       unsavedRestore: prepared.unsavedRestore,
+      odsConverted: prepared.odsConverted,
+      formulasDropped: prepared.formulasDropped,
+      odsSourcePath: prepared.odsSourcePath,
     })
     // The sidecar open itself can also outlive the tab after the pre-open
     // check. Close the newly registered session instead of stranding it in
@@ -3291,6 +4213,39 @@ export function registerSheetsIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.reopenWorkbook, async (event, path: unknown) => {
     const validated = z.string().min(1).parse(path)
+    // A converted, restored, new or decrypted workbook is more than its path:
+    // re-open the twin of the session being continued, so Save still knows
+    // the copy is a copy and the original keeps its protection.
+    const entry = sessionFor(event)
+    const previous = sessionToContinue(entry.sessions.values(), validated)
+    if (previous !== null) {
+      if (!existsSync(previous.path)) throw new Error('Workbook file not found.')
+      const result = await openWorkbookSession(
+        entry.client,
+        previous.path,
+        entry.sessions,
+        continuedOpenOptions(previous),
+      )
+      const twin = entry.sessions.get(result.sessionId)
+      if (event.sender.isDestroyed()) {
+        // The tab closed while the twin was opening; its sessions are already
+        // cleaned up, so this one has to go the same way.
+        entry.sessions.delete(result.sessionId)
+        if (twin !== undefined) {
+          await cleanupSessionResources({
+            tempRoot: app.getPath('temp'),
+            snapshotPath: twin.snapshotPath,
+            importTempDir: previous.importTempDir,
+            closeSidecar: () => entry.client.close(result.sessionId),
+          })
+        }
+        return null
+      }
+      if (twin !== undefined && previous.importTempDir !== undefined) {
+        entry.sessions.set(result.sessionId, { ...twin, importTempDir: previous.importTempDir })
+      }
+      return result
+    }
     // A crash re-open targets the file the user already has open, so a
     // missing/deleted file is a real failure rather than a reason to pop the
     // picker at someone who did not ask to open anything.
@@ -3624,10 +4579,37 @@ export function registerSheetsIpc(): void {
     return workbookPivotDefinitionSchema.parse(parsePivotDefinition(pivotXml, cacheXml))
   })
 
+  ipcMain.handle(IPC_CHANNELS.readWorkbookQueries, async (event, input: unknown) => {
+    const entry = sessionFor(event)
+    const request = workbookQueriesRequestSchema.parse(input)
+    const session = entry.sessions.get(request.sessionId)
+    if (!session) throw new Error('Unknown workbook session.')
+    // existence from the manifest, so a missing part reads as absent rather than as a sidecar error
+    const manifest = z
+      .object({ entries: z.array(z.object({ name: z.string() })) })
+      .parse(await entry.client.archiveManifest(session.snapshotPath))
+    const names = new Set(manifest.entries.map((e) => e.name))
+    return workbookQueriesResultSchema.parse(
+      await listWorkbookQueries((path) =>
+        names.has(path)
+          ? readArchiveEntryText(entry.client, session.snapshotPath, path)
+          : Promise.resolve(undefined),
+      ),
+    )
+  })
+
   ipcMain.handle(IPC_CHANNELS.exportPdf, async (event, input: unknown) => {
     sessionFor(event)
     const request = workbookExportPdfRequestSchema.parse(input)
-    const result = await exportPdf(event, request)
+    // Save As › PDF: only the path this tab's Save As dialog just returned
+    // skips the export's own dialog
+    if (
+      request.saveAsPath !== undefined &&
+      !saveAsExportTargets.take(event.sender.id, request.saveAsPath)
+    ) {
+      throw new Error('export target was not authorized')
+    }
+    const result = await exportPdf(event, request, request.saveAsPath)
     if (!result.canceled && result.path) openGeneratedFile(result.path)
     return result
   })
@@ -3635,6 +4617,14 @@ export function registerSheetsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.printWorkbook, async (event, input: unknown) => {
     sessionFor(event)
     return printWorkbook(event, workbookExportPdfRequestSchema.parse(input))
+  })
+
+  // The Print dialog's shared layout panel: same print HTML, arranged in main.
+  registerSheetsPrintLayoutIpc({
+    ipcMain,
+    assertSender: (event) => {
+      sessionFor(event as unknown as IpcMainInvokeEvent)
+    },
   })
 
   ipcMain.handle(IPC_CHANNELS.listPrinters, async (event) => {
@@ -3702,6 +4692,102 @@ export function registerSheetsIpc(): void {
     return { canceled: false, path: targetPath }
   })
 
+  ipcMain.handle(IPC_CHANNELS.exportOds, async (event, input: unknown) => {
+    const entry = sessionFor(event)
+    const request = workbookExportOdsRequestSchema.parse(input)
+    // The pending edits ride along as a save request. An upload they refer to
+    // is taken here, before anything can return early, so a refused or
+    // canceled export does not leave it waiting in memory.
+    const pending =
+      request.workbook === undefined || request.workbook.sessionId !== request.sessionId
+        ? undefined
+        : resolveTransferredEdits(entry, request.workbook)
+    const session = entry.sessions.get(request.sessionId)
+    if (!session) throw new Error('Unknown workbook session.')
+    const parent = dialogParent(event)
+
+    // A password workbook runs on a plaintext temp copy; exporting it as an
+    // unprotected ODS would write that plaintext where the user expects a
+    // locked document (decision 0119).
+    if (session.password !== undefined) {
+      await showOdsMessage(parent, 'error', tm('errOdsEncrypted'))
+      return { canceled: true, reason: 'encrypted' }
+    }
+
+    // Save As › ODS: only the path this tab's Save As dialog just returned
+    // skips the export's own dialog.
+    let targetPath: string | undefined
+    if (request.targetPath !== undefined) {
+      if (!saveAsExportTargets.take(event.sender.id, request.targetPath)) {
+        throw new Error('export target was not authorized')
+      }
+      targetPath = odsTargetPath(request.targetPath)
+    }
+
+    // The original .ods the session was converted from is read-only for this
+    // session. Refuse it and ask for another name instead of choosing one.
+    for (;;) {
+      if (targetPath === undefined) {
+        targetPath = await askOdsTarget(event, await suggestedOdsPath(session))
+        if (targetPath === undefined) return { canceled: true, reason: 'canceled' }
+      }
+      if (
+        session.odsSourcePath === undefined ||
+        !(await sameFilePath(targetPath, session.odsSourcePath))
+      ) {
+        break
+      }
+      await showOdsMessage(parent, 'error', tm('errOdsOriginalTarget'))
+      targetPath = undefined
+    }
+
+    // The sidecar converts a real .xlsx package. With edits pending, that
+    // package is a private copy written through the save writer — the same
+    // one a skill's template uses: no dialog, no session swap, the opened
+    // file and its recovery copy untouched. The export is a copy of what is
+    // on screen, and the workbook stays as unsaved as it was.
+    const copyDirectory =
+      pending === undefined
+        ? undefined
+        : join(app.getPath('temp'), 'genoffice-imports', randomUUID())
+    let outcome: Awaited<ReturnType<typeof exportWorkbookAsOds>>
+    try {
+      let sourcePath = session.snapshotPath
+      if (pending !== undefined && copyDirectory !== undefined) {
+        await mkdir(copyDirectory, { recursive: true })
+        sourcePath = join(copyDirectory, 'export.xlsx')
+        await writeWorkbookTo(entry.client, session, pending, sourcePath)
+      }
+      outcome = await exportWorkbookAsOds({
+        sidecar: entry.client,
+        sourcePath,
+        targetPath,
+        confirmLoss: (losses) => confirmOdsLoss(parent, losses),
+      })
+    } catch (error) {
+      outcome = {
+        status: 'failed',
+        message: error instanceof Error ? error.message : String(error),
+      }
+    } finally {
+      if (copyDirectory !== undefined) {
+        await cleanupImportTempDirectory(app.getPath('temp'), copyDirectory).catch(() => undefined)
+      }
+    }
+    if (outcome.status === 'exported') {
+      return { canceled: false, path: outcome.path, ...outcome.result }
+    }
+    if (outcome.status === 'unreadable') {
+      await showOdsMessage(parent, 'error', tm('errOdsReopenFailed'))
+      return { canceled: true, reason: 'unreadable' }
+    }
+    if (outcome.status === 'failed') {
+      await showOdsMessage(parent, 'error', tm('errOdsExportFailed', { message: outcome.message }))
+      return { canceled: true, reason: 'failed' }
+    }
+    return { canceled: true, reason: 'canceled' }
+  })
+
   // AI create_document: dialog-free — the file lands in the default save
   // folder under a unique sanitized name and opens in a new tab. xlsx/csv
   // write the renderer-serialized worksheet data here (xlsx through the same
@@ -3712,6 +4798,9 @@ export function registerSheetsIpc(): void {
     async (event, input: unknown): Promise<WorkbookCreateDocumentResult> => {
       sessionFor(event)
       const request = workbookCreateDocumentRequestSchema.parse(input)
+      // a type whose editor is turned off is refused before anything is made (spec 7.4)
+      const refusal = aiCreateRefusal(request.type)
+      if (refusal) return { ok: false, error: refusal }
       try {
         if (request.type === 'csv') {
           const fileName = `${sanitizeGeneratedFileBase(request.title)}.csv`
@@ -3808,42 +4897,70 @@ export function registerSheetsIpc(): void {
       const macroEnabled = /\.xlsm$/i.test(
         session.suggestSaveAs ?? session.restoreTarget ?? session.path,
       )
-      const ext = macroEnabled ? 'xlsm' : 'xlsx'
       // a new workbook whose panel has a project is offered in that folder (spec 6);
       // a restored one keeps offering where its original was
       const projectDir =
         session.unsavedNew && session.suggestSaveAs !== undefined && !session.recoveryOriginalPath
           ? await runtime.newDocumentDir?.(event.sender.id)
           : null
+      // PDF/ODS (copies) only on an explicit Save As: a first Save can be the
+      // save-before-close, which a copy must not answer
+      const offerCopies = request.mode === 'save-as'
+      const suggestion =
+        (projectDir && session.suggestSaveAs !== undefined
+          ? join(projectDir, basename(session.suggestSaveAs))
+          : undefined) ??
+        session.suggestSaveAs ??
+        session.csvSourcePath?.replace(/\.[^.]+$/, '.xlsx') ??
+        session.restoreTarget ??
+        session.path
       const selection = await saveFileDialog(event, {
-        defaultPath:
-          (projectDir && session.suggestSaveAs !== undefined
-            ? join(projectDir, basename(session.suggestSaveAs))
-            : undefined) ??
-          session.suggestSaveAs ??
-          session.csvSourcePath?.replace(/\.[^.]+$/, '.xlsx') ??
-          session.restoreTarget ??
-          session.path,
-        filters: macroEnabled
-          ? [{ name: tm('filterXlsm'), extensions: ['xlsm'] }]
-          : [
-              { name: tm('filterXlsx'), extensions: ['xlsx'] },
-              { name: tm('filterCsv'), extensions: ['csv'] },
-            ],
+        // with copy formats on offer the suggestion carries no extension: the
+        // file type chosen in the dialog supplies it
+        defaultPath: offerCopies ? sheetsSaveAsSuggestion(suggestion) : suggestion,
+        // the workbook's own type first, then the copies (CSV, ODS, PDF)
+        filters: sheetsSaveAsFilters(macroEnabled, offerCopies, (key) => tm(key)),
         // CSV import: explain why the save goes through .xlsx (CSV keeps values only)
         ...(session.csvImport
           ? { title: tm('csvSaveAsNotice'), message: tm('csvSaveAsNotice') }
           : {}),
       })
       if (selection.canceled || !selection.filePath) return { canceled: true }
+      const pick = resolveSheetsSaveAsPick(selection.filePath, macroEnabled, offerCopies)
+      // Some Linux dialogs do not append the chosen filter's extension. A bare
+      // name cannot tell the workbook apart from a CSV/ODS/PDF copy, and
+      // guessing the workbook would silently write an .xlsx after the person
+      // picked the ODS filter; ask for an extension instead of saving.
+      if (pick.kind === 'needs-extension') {
+        const parent = dialogParent(event)
+        const options = {
+          type: 'warning' as const,
+          message: tm('saveAsNeedsExtension'),
+          buttons: [tm('btnCloseDialog')],
+          defaultId: 0,
+          noLink: true,
+        }
+        if (parent && !parent.isDestroyed()) await dialog.showMessageBox(parent, options)
+        else await dialog.showMessageBox(options)
+        return { canceled: true }
+      }
       // A CSV pick can't ride the xlsx pipeline: hand the path back so the
       // renderer serializes the active sheet through the CSV export channel.
-      if (!macroEnabled && selection.filePath.toLowerCase().endsWith('.csv')) {
-        return { canceled: true, csvSaveAsPath: selection.filePath }
+      if (pick.kind === 'csv') return { canceled: true, csvSaveAsPath: pick.path }
+      // An ODS pick is a copy as well: the renderer asks the ODS export to
+      // write it, and the session keeps its .xlsx path.
+      if (pick.kind === 'ods') {
+        saveAsExportTargets.authorize(event.sender.id, pick.path)
+        return { canceled: true, odsSaveAsPath: pick.path }
       }
-      targetPath = selection.filePath.toLowerCase().endsWith(`.${ext}`)
-        ? selection.filePath
-        : `${selection.filePath}.${ext}`
+      // A PDF pick is a copy too: the renderer lays out the active sheet and
+      // the PDF export writes it here without asking again. The session, its
+      // path and its pending edits stay as they are.
+      if (pick.kind === 'pdf') {
+        saveAsExportTargets.authorize(event.sender.id, pick.path)
+        return { canceled: true, pdfSaveAsPath: pick.path }
+      }
+      targetPath = pick.path
     } else if (session.restoreTarget !== undefined) {
       // Restored crash-recovery copy: the restore prompt was the confirmation,
       // so Save writes straight back to the original — unless someone else
@@ -3929,8 +5046,13 @@ export function registerSheetsIpc(): void {
     }
     let stagedOpen: SidecarOpenResult
     try {
+      // The previous session is still resident while its save reopens, so a
+      // large workbook opens slower here than it did the first time; give it
+      // the headroom the archive commands of the same save get.
       stagedOpen = sidecarOpenResultSchema.parse(
-        await client.open(stagedPath, getUiLang(), systemShortDate()),
+        await client.open(stagedPath, getUiLang(), systemShortDate(), {
+          timeoutMs: SAVE_REOPEN_TIMEOUT_MS,
+        }),
       )
     } catch (error) {
       const stagedBytes = await stat(stagedPath).then(
@@ -3940,12 +5062,20 @@ export function registerSheetsIpc(): void {
       await rm(stagedPath, { force: true }).catch(() => undefined)
       console.warn('[sheets] the saved workbook did not reopen; the target was left as is:', error)
       const failure = describeReopenFailure(error)
+      const sourceFormat = sessionSourceFormat(session)
       appendSaveFailure(join(app.getPath('userData'), SAVE_FAILURE_LOG_FILE), {
         failure,
-        sourceFormat: sessionSourceFormat(session),
+        sourceFormat,
         stagedBytes,
         appVersion: app.getVersion(),
       })
+      if (request.quiet !== true && !isHeadlessMode()) {
+        await showSaveUnreadableDialog(
+          dialogParent(event),
+          reopenFailureNote(failure),
+          sourceFormat,
+        )
+      }
       throw new Error(`${tm('errSaveUnreadable')} ${reopenFailureNote(failure)}`, {
         cause: error,
       })
@@ -4010,6 +5140,7 @@ export function registerSheetsIpc(): void {
             importTempDir: session.importTempDir,
             restoreTarget: targetPath,
             password: session.password,
+            odsSourcePath: session.odsSourcePath,
             staged,
           }
         : csvInPlace
@@ -4020,6 +5151,7 @@ export function registerSheetsIpc(): void {
               // the CSV stays open: later edits keep writing the same copy slot
               recoveryIdentity: session.recoveryIdentity,
               recoveryOriginalPath: session.recoveryOriginalPath,
+              odsSourcePath: session.odsSourcePath,
               staged,
             }
           : quietUnsavedNew
@@ -4030,9 +5162,14 @@ export function registerSheetsIpc(): void {
                 recoveryIdentity: session.recoveryIdentity,
                 recoveryOriginalPath: session.recoveryOriginalPath,
                 unsavedRestore: session.unsavedRestore,
+                odsSourcePath: session.odsSourcePath,
+                // still the converted copy of an .ods: the notice and its
+                // dropped-formula count stay with it across the quiet save
+                odsConverted: session.odsConverted,
+                formulasDropped: session.formulasDropped,
                 staged,
               }
-            : { staged },
+            : { odsSourcePath: session.odsSourcePath, staged },
     )
     if (quietUnsavedNew && session.suggestSaveAs !== undefined) {
       // the temp path must not reach the title or recents; the recovery copy
@@ -4251,7 +5388,7 @@ export function registerSheetsIpc(): void {
       sessionFor(event)
       const validatedPath = z.string().min(1).max(1024).parse(filePath)
       const name = basename(validatedPath)
-      const ext = name.split('.').pop()?.toLowerCase() ?? ''
+      const ext = diagramPictureExtOf(validatedPath) ?? name.split('.').pop()?.toLowerCase() ?? ''
       if (!ATTACHABLE_EXTS.has(ext)) return { ok: false, error: tm('errUnsupportedExt', { ext }) }
       if (ATTACHABLE_IMAGE_EXTS.has(ext)) {
         return { ok: false, error: tm('errImageNoText') }
@@ -4328,8 +5465,7 @@ export function registerSheetsAiIpc(): void {
   ensureSubscriptionIpc(ipcMain, {
     getSettings: () => aiSettingsFromStored(readJson<unknown>(SETTINGS_PATH(), {})),
     setMeteredAccepted: (provider, accepted) => {
-      writeJsonAtomic(
-        SETTINGS_PATH(),
+      writeAiSettingsFile(
         withMeteredAccepted(readJson<unknown>(SETTINGS_PATH(), {}), provider, accepted),
       )
       broadcastAiSettingsChanged()
@@ -4362,12 +5498,10 @@ export function registerSheetsAiIpc(): void {
   ipcMain.handle(IPC_CHANNELS.aiSetSettings, async (event, input: unknown) => {
     sessionFor(event)
     const settings = aiSettingsInputSchema.parse(input)
-    // the live model lists are the main process's (decision 0087): the file's copy is kept
+    // the live model lists (decision 0087) and the CLIs turned off (decision 0114) are the
+    // main process's: the file's copy is kept
     const stored = aiSettingsFromStored(readJson<unknown>(SETTINGS_PATH(), {}))
-    writeJsonAtomic(
-      SETTINGS_PATH(),
-      sealAiSecrets(withStoredKeyModels(settings as AiSettings, stored)),
-    )
+    writeAiSettingsFile(withStoredMainFields(settings as AiSettings, stored))
     broadcastAiSettingsChanged()
   })
 
@@ -4418,6 +5552,15 @@ export function registerSheetsAiIpc(): void {
     const controller = new AbortController()
     entry.aiStreams.set(requestId, controller)
     const unwatchSender = abortOnDestroyed(event.sender, controller)
+    // one turn of the tab's chat is running AI work: turning AI off stops it the way Stop does
+    const senderId = event.sender.id
+    const unregisterJob = registerAiJob({
+      kind: 'chat',
+      stop: () => {
+        controller.abort()
+        abortMediaCalls(senderId)
+      },
+    })
     // wire-activity keepalive: lets the renderer's silence watchdog tell a slow turn from a dead one
     let lastPing = 0
     const ping = () => {
@@ -4456,6 +5599,7 @@ export function registerSheetsAiIpc(): void {
         send(aiStreamErrorChunk(requestId, err))
       }
     } finally {
+      unregisterJob()
       unwatchSender()
       entry.aiStreams.delete(requestId)
     }
@@ -4980,6 +6124,11 @@ async function snapshotWorkbook(path: string): Promise<string> {
 }
 
 /** a fresh snapshot path in the session temp dir; nothing is written there yet */
+/** A save's output opens as part of that save, so it gets the limit the save's
+ *  archive commands get (xlsx-sidecar-client ARCHIVE_TIMEOUT_MS), not the 30s
+ *  of a plain open. */
+const SAVE_REOPEN_TIMEOUT_MS = 180_000
+
 async function reserveSnapshotPath(): Promise<string> {
   const dir = join(app.getPath('temp'), 'genoffice-sheets-sessions')
   await mkdir(dir, { recursive: true })
@@ -5038,6 +6187,12 @@ async function openWorkbookSession(
     recoveryIdentity?: RecoveryIdentity | undefined
     recoveryOriginalPath?: string | undefined
     unsavedRestore?: boolean | undefined
+    /// Opened from an .ods conversion: the footer says saving writes an .xlsx
+    /// and how many formulas were kept as values.
+    odsConverted?: boolean | undefined
+    formulasDropped?: number | undefined
+    /// The original .ods this converted copy came from (never an export target).
+    odsSourcePath?: string | undefined
     /// A save's output already opened by the sidecar: it is this session's
     /// snapshot as it stands, so neither the copy nor the open is repeated.
     staged?: { snapshotPath: string; opened: SidecarOpenResult } | undefined
@@ -5056,6 +6211,9 @@ async function openWorkbookSession(
     recoveryIdentity,
     recoveryOriginalPath,
     unsavedRestore,
+    odsConverted,
+    formulasDropped,
+    odsSourcePath,
     staged,
   } = options ?? {}
   // Snapshot first, then the sidecar opens the snapshot (not the live path):
@@ -5094,6 +6252,9 @@ async function openWorkbookSession(
       sheetNames: new Map(opened.sheets.map((sheet) => [sheet.id, sheet.name])),
       automaticRecoveryDisabled,
       ...(suggestSaveAs === undefined ? {} : { suggestSaveAs }),
+      ...(odsConverted ? { odsConverted: true } : {}),
+      ...(formulasDropped === undefined ? {} : { formulasDropped }),
+      ...(odsSourcePath === undefined ? {} : { odsSourcePath }),
       ...(csvImport ? { csvImport } : {}),
       ...(csvSourcePath === undefined ? {} : { csvSourcePath }),
       ...(csvSourceSha === undefined ? {} : { csvSourceSha }),
@@ -5118,6 +6279,8 @@ async function openWorkbookSession(
       fileBytes: snapshotStat.size,
       readOnly: false,
       needsSaveAs: suggestSaveAs !== undefined,
+      ...(odsConverted ? { odsConverted: true } : {}),
+      ...(formulasDropped === undefined ? {} : { formulasDropped }),
       ...(unsavedNew ? { unsavedNew: true } : {}),
       ...(csvSourcePath === undefined ? {} : { csvPath: csvSourcePath }),
       ...(emptyCsv ? { emptyCsv: true } : {}),
@@ -5168,17 +6331,19 @@ function legacyCsvCharset(): string | undefined {
   return byLang[getUiLang()]
 }
 
-/// .xls open path: an HTML table export is read here, a real container goes to
-/// the sidecar. Excel sniffs content over the extension, which is why these
-/// mislabelled exports open there instead of being called broken files.
+/// .xls and .ods open path: an HTML table export is read here, a real container
+/// goes to the sidecar. Excel sniffs content over the extension, which is why
+/// these mislabelled exports open there instead of being called broken files.
+/// Returns the formulas the conversion could not translate (0 for the HTML path).
 async function convertLegacyImport(
   client: XlsxSidecarClient,
   path: string,
   targetPath: string,
-): Promise<void> {
+): Promise<number> {
   const conversion = await convertLegacyWorkbook(client, path, targetPath, legacyCsvCharset())
-  if (conversion === 'html-too-large') throw new Error(tm('errFileTooLarge'))
-  if (conversion === 'html-no-table') throw new Error(tm('errHtmlNoTable'))
+  if (conversion.kind === 'html-too-large') throw new Error(tm('errFileTooLarge'))
+  if (conversion.kind === 'html-no-table') throw new Error(tm('errHtmlNoTable'))
+  return conversion.formulasDropped
 }
 
 /** a CFB container: an encrypted .xlsx/.xlsm, or any .xls */
@@ -5191,6 +6356,31 @@ async function hasCfbHeader(path: string): Promise<boolean> {
   } finally {
     await handle.close()
   }
+}
+
+/// A save whose output did not reopen. The toast and the status bar cut a long
+/// line short, so the reason at the end of the message never reached a report;
+/// the dialog shows it in full and copies it for one.
+async function showSaveUnreadableDialog(
+  parent: BrowserWindow | undefined,
+  reason: string,
+  sourceFormat: string,
+): Promise<void> {
+  const options = {
+    type: 'warning' as const,
+    message: tm('errSaveUnreadable'),
+    detail: tm('errSaveUnreadableReason', { reason }),
+    buttons: [tm('btnCopyReason'), tm('btnCloseDialog')],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  }
+  const { response } =
+    parent && !parent.isDestroyed()
+      ? await dialog.showMessageBox(parent, options)
+      : await dialog.showMessageBox(options)
+  if (response !== 0) return
+  clipboard.writeText(`${tm('errSaveUnreadable')} ${reason} (${sourceFormat}, ${app.getVersion()})`)
 }
 
 async function showEncryptedOpenFailure(parent: BrowserWindow | undefined): Promise<void> {
@@ -5291,9 +6481,15 @@ interface PreparedWorkbookOpen {
   recoveryIdentity?: RecoveryIdentity
   recoveryOriginalPath?: string
   unsavedRestore?: boolean
+  /// The copy came from an .ods: the document keeps saying that saving writes
+  /// an .xlsx, and how many formulas the conversion kept as values only.
+  odsConverted?: boolean
+  formulasDropped?: number
+  /// The original .ods the copy was converted from; no export may write there.
+  odsSourcePath?: string
 }
 
-/// .xls and .tsv open as a converted copy in the temp dir; the session
+/// .xls, .ods and .tsv open as a converted copy in the temp dir; the session
 /// remembers the original's .xlsx sibling as the Save As default. .csv converts
 /// the same way but keeps its file identity, so Save writes values back to it.
 /// Resolves null when an encrypted file's open was cancelled or refused.
@@ -5320,6 +6516,18 @@ async function prepareWorkbookForOpen(
       ...(unsavedNew.originalPath === undefined
         ? {}
         : { recoveryOriginalPath: unsavedNew.originalPath }),
+      // a copy of an .ods document keeps its footer notice (converted .xlsx)
+      ...(unsavedNew.odsConverted
+        ? {
+            odsConverted: true,
+            ...(unsavedNew.formulasDropped === undefined
+              ? {}
+              : { formulasDropped: unsavedNew.formulasDropped }),
+            ...(unsavedNew.odsSourcePath === undefined
+              ? {}
+              : { odsSourcePath: unsavedNew.odsSourcePath }),
+          }
+        : {}),
     }
     // An untitled copy of a .csv/.tsv/.xls (a skill template's, spec 5.7) is
     // converted beside itself in its own temp folder: the session edits the
@@ -5357,7 +6565,7 @@ async function prepareWorkbookForOpen(
   // An encrypted file never has a recovery copy: it is not written for one.
   const encrypted = await prepareEncryptedWorkbook(client, path, extension, parent)
   if (encrypted !== undefined) return encrypted
-  if (extension !== 'csv' && extension !== 'tsv' && extension !== 'xls') {
+  if (extension !== 'csv' && extension !== 'tsv' && extension !== 'xls' && extension !== 'ods') {
     // Unsaved work from a lost session is settled before the file's content
     // loads (recoveredOpenFor). Restoring opens the copy with restoreTarget
     // pointing back at the original, so a plain Save writes straight back
@@ -5376,6 +6584,7 @@ async function prepareWorkbookForOpen(
   await mkdir(directory, { recursive: true })
   const openPath = join(directory, `${stem}.xlsx`)
   let emptyCsv = false
+  let formulasDropped = 0
   try {
     if (extension === 'csv' || extension === 'tsv') {
       const csvStat = await stat(path)
@@ -5394,16 +6603,17 @@ async function prepareWorkbookForOpen(
       emptyCsv = converted.empty
       await writeFile(openPath, converted.buffer)
     } else {
-      await convertLegacyImport(client, path, openPath)
+      formulasDropped = await convertLegacyImport(client, path, openPath)
     }
   } catch (error) {
     await cleanupImportTempDirectory(app.getPath('temp'), directory)
     throw error
   }
   // CSV keeps its file identity: Save writes the values back to the original
-  // .csv (Excel's behavior), so no Save As detour is suggested. Legacy .xls and
-  // view-only .tsv route the first save through Save As to a fresh .xlsx —
-  // writing values back to a .tsv would need a tab serializer this path lacks.
+  // .csv (Excel's behavior), so no Save As detour is suggested. Legacy .xls,
+  // .ods and view-only .tsv route the first save through Save As to a fresh
+  // .xlsx — writing values back to a .tsv would need a tab serializer this
+  // path lacks, and an .ods cannot hold the workbook bytes at all.
   return extension === 'csv'
     ? {
         openPath,
@@ -5412,7 +6622,14 @@ async function prepareWorkbookForOpen(
         csvSourcePath: path,
         ...(emptyCsv ? { emptyCsv: true } : {}),
       }
-    : { openPath, importTempDir: directory, suggestSaveAs: path.replace(/\.[^.]+$/, '.xlsx') }
+    : {
+        openPath,
+        importTempDir: directory,
+        suggestSaveAs: path.replace(/\.[^.]+$/, '.xlsx'),
+        ...(extension === 'ods'
+          ? { odsConverted: true, formulasDropped, odsSourcePath: path }
+          : {}),
+      }
 }
 
 /** shell-injected items appended to the File menu (e.g. Back to Home) */
@@ -5445,7 +6662,7 @@ function installApplicationMenu(): void {
   const labels = appMenuLabels(getUiLang())
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
-      ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+      ...(process.platform === 'darwin' ? [macAppMenuTemplate(labels)] : []),
       {
         label: tm('menuFile'),
         submenu: [
@@ -5483,6 +6700,10 @@ function installApplicationMenu(): void {
           {
             label: tm('menuExportCsv'),
             click: () => sendMenuAction('export-csv'),
+          },
+          {
+            label: tm('menuExportOds'),
+            click: () => sendMenuAction('export-ods'),
           },
           { type: 'separator' },
           // tab mode: the item closes the focused tab or window, never the app,

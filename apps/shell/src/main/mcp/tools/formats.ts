@@ -22,7 +22,8 @@
 export type SessionFamily = 'docx' | 'pptx' | 'xlsx'
 
 /** every family the app can edit, including ones MCP does not drive yet */
-export type EditorFamily = SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'epub'
+export type EditorFamily =
+  SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'epub' | 'drawio'
 
 export interface McpFormats {
   /** format the headless `create_*` tool writes, when exposed */
@@ -66,9 +67,9 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
   {
     family: 'xlsx',
     label: 'spreadsheet',
-    // .tsv opens as a converted copy and saves as .xlsx, so it is an open-only
-    // format: it must not appear in editorSave
-    editorOpen: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv'],
+    // .tsv and .ods open as converted copies and save as .xlsx, so they are
+    // open-only formats: they must not appear in editorSave
+    editorOpen: ['xlsx', 'xlsm', 'xls', 'csv', 'tsv', 'ods'],
     // the interactive Save As also offers .xlsm/.csv; the explicit-path save the
     // MCP bridge uses writes .xlsx only (sheets-main.ts forces the extension),
     // so mcp.save stays xlsx until that pipeline is widened
@@ -114,7 +115,8 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
   {
     family: 'xmind',
     label: 'mind map',
-    editorOpen: ['xmind'],
+    // a FreeMind / Freeplane map opens as a new map, saved as .xmind
+    editorOpen: ['xmind', 'mm'],
     editorSave: ['xmind'],
     // the map menu's three exports: picture of a sheet, PDF, Markdown outline
     editorExport: ['png', 'pdf', 'md'],
@@ -141,6 +143,18 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
     editorExport: [],
     // no `mcp` block: an open book is listed, read, saved and closed through
     // open_documents only (epub_translate and epub_status are the command line's)
+  },
+  {
+    family: 'drawio',
+    label: 'diagram',
+    // a Visio drawing opens as a new, untitled diagram made from it: open-only
+    editorOpen: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+    // a diagram is saved back in the format it was opened in; a new one as .drawio
+    editorSave: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+    editorExport: ['png', 'svg', 'pdf'],
+    // no `mcp` block: there is no session, generator or file reader for
+    // diagrams; an open diagram is listed, read, saved and closed through
+    // open_documents and read and edited through read_diagram / apply_diagram_ops
   },
 ]
 

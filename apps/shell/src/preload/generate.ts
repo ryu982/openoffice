@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type { AiTargetKind, GenerateWindowApi, GenerateWindowState } from '../shared/generate-api'
-import { GENERATE_CHANNELS } from '../shared/generate-api'
+import { GENERATE_CHANNELS, GENERATE_CHOICE } from '../shared/generate-api'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -56,3 +56,23 @@ const api: GenerateWindowApi = {
 }
 
 contextBridge.exposeInMainWorld('aiOfficeGenerateWindow', api)
+
+// whether AI is on (the AI "make" hides while it is off): read and heard, never changed here
+type ChoiceSeen = { off: string[]; aiFeatures: boolean; locked: false }
+function choiceOf(raw: unknown): ChoiceSeen {
+  const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const off = Array.isArray(obj.off)
+    ? obj.off.filter((id): id is string => typeof id === 'string')
+    : []
+  return { off, aiFeatures: obj.aiFeatures !== false, locked: false }
+}
+contextBridge.exposeInMainWorld(GENERATE_CHOICE.bridgeKey, {
+  get: async () => choiceOf(await ipcRenderer.invoke(GENERATE_CHOICE.get).catch(() => null)),
+  onChange: (listener: (choice: ChoiceSeen) => void) => {
+    const handler = (_event: IpcRendererEvent, raw: unknown) => listener(choiceOf(raw))
+    ipcRenderer.on(GENERATE_CHOICE.changed, handler)
+    return () => {
+      ipcRenderer.removeListener(GENERATE_CHOICE.changed, handler)
+    }
+  },
+})

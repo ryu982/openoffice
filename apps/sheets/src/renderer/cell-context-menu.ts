@@ -40,7 +40,7 @@ import { NUMBER_FORMAT_LABEL, numberFormatCategories } from './number-format'
 import { collectPickListValues, filterCriteriaForText } from './pick-from-list'
 import type { UniverRuntime } from './univer-state'
 import { visualPasteDisabled$ } from './visual-arrange-actions'
-import type { Observable } from 'rxjs'
+import { BehaviorSubject, combineLatest, map, type Observable } from 'rxjs'
 
 export const SHELL_COMMAND_ID = 'genoffice.ctx.shell-command'
 export const PASTE_SPECIAL_OPEN_COMMAND_ID = 'sheets.paste-special.open'
@@ -49,6 +49,12 @@ export const PICK_FROM_LIST_COMMAND_ID = 'genoffice.ctx.pick-from-list'
 export const FILTER_MENU_ID = 'genoffice.ctx.filter'
 export const NUMBER_FORMAT_MENU_ID = 'genoffice.ctx.number-format'
 export const CLEAR_FILTER_MENU_ID = 'genoffice.ctx.clear-filter'
+
+/**
+ * True while AI is turned off in Settings: the entries that use AI leave the
+ * menus, and come back when it is turned on (App.tsx feeds it).
+ */
+export const aiMenuHidden$ = new BehaviorSubject(false)
 
 export type FilterBy = 'value' | 'fill' | 'font'
 
@@ -70,6 +76,8 @@ export interface ContextMenuNode {
   readonly params?: Record<string, unknown>
   readonly children?: readonly ContextMenuLeaf[]
   readonly disabled$?: Observable<boolean>
+  /** uses AI: hidden while AI is turned off */
+  readonly aiOnly?: boolean
 }
 
 const shell = (
@@ -98,7 +106,10 @@ export function cellContextMenuLayout(): readonly ContextMenuNode[] {
     params: { by },
   })
   return [
-    shell('genoffice.ctx.ask-ai', 'aiAskBtn', 'ai-ask-selection', ContextMenuGroup.OTHERS, -1),
+    {
+      ...shell('genoffice.ctx.ask-ai', 'aiAskBtn', 'ai-ask-selection', ContextMenuGroup.OTHERS, -1),
+      aiOnly: true,
+    },
     {
       id: PASTE_SPECIAL_OPEN_COMMAND_ID,
       title: t('appCtxPasteSpecial'),
@@ -368,11 +379,16 @@ function loadMenuLocale(localeService: LocaleService, lang: Lang): void {
   } as unknown as ILocales)
 }
 
-function toMenuItem(
+/** One entry as Univer's menu takes it (exported for its tests). */
+export function toMenuItem(
   accessor: IAccessor,
   node: ContextMenuNode | ContextMenuLeaf,
 ): IMenuButtonItem | IMenuSelectorItem {
-  const hidden$ = getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET)
+  const sheetHidden$ = getMenuHiddenObservable(accessor, UniverInstanceType.UNIVER_SHEET)
+  const hidden$ =
+    'aiOnly' in node && node.aiOnly
+      ? combineLatest([sheetHidden$, aiMenuHidden$]).pipe(map(([sheet, ai]) => sheet || ai))
+      : sheetHidden$
   if ('children' in node && node.children) {
     return { id: node.id, type: MenuItemType.SUBITEMS, title: localeKey(node.titleKey), hidden$ }
   }

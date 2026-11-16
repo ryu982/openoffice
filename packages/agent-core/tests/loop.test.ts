@@ -9,6 +9,7 @@ import {
   invalidArgumentFields,
   missingRequiredFields,
   runtimePreamble,
+  walkArgumentFields,
   type AgentMessage,
   type AgentSkill,
   type AgentStreamCallbacks,
@@ -329,7 +330,11 @@ describe('AgentLoop', () => {
     for (let i = 0; i < 14; i++) await flush()
     // the first turn seeds the signature; three identical repeats abort the run
     expect(transport.requests).toHaveLength(4)
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('kept repeating'))
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('kept repeating'), {
+      kind: 'repeating',
+      executed: 4,
+      mutated: false,
+    })
     expect(onDone).not.toHaveBeenCalled()
     expect(loop.busy).toBe(false)
     // the failed run rolled back out of history
@@ -395,7 +400,11 @@ describe('AgentLoop', () => {
     loop.run('go')
     for (let i = 0; i < 20; i++) await flush()
     expect(transport.requests).toHaveLength(8)
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('Every tool call failed'))
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('Every tool call failed'), {
+      kind: 'tool-errors',
+      executed: 0,
+      mutated: false,
+    })
   })
 
   it('a successful tool call resets the failed-turn streak', async () => {
@@ -1575,8 +1584,61 @@ describe('AgentLoop compaction', () => {
     loop.run('x')
     for (let i = 0; i < 6; i++) await flush()
     expect(onError).toHaveBeenCalledTimes(1)
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('missing required arguments'))
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('missing required arguments'), {
+      kind: 'tool-input',
+      faults: { missing: 3 },
+      tools: ['apply_ops'],
+      executed: 0,
+      mutated: false,
+    })
     expect(transport.requests).toHaveLength(3)
+  })
+
+  it('says what it stopped over: each fault of the streak, the tools named, what the run had done', async () => {
+    const bad = [
+      { id: 'b1', name: 'apply_ops', input: {}, truncated: true },
+      { id: 'b2', name: 'apply_ops', input: {}, inputError: 'Unexpected token' },
+      { id: 'b3', name: 'made_up', input: {}, truncated: true },
+    ]
+    const transport = scriptedTransport([
+      (cb: AgentStreamCallbacks) => {
+        cb.onToolCall({ id: 'ok', name: 'apply_ops', input: { ops: [] } })
+        cb.onDone()
+      },
+      // an unusable turn before a good one is not part of the streak that stops the run
+      (cb: AgentStreamCallbacks) => {
+        cb.onToolCall({ id: 'early', name: 'apply_ops', input: {} })
+        cb.onDone()
+      },
+      (cb: AgentStreamCallbacks) => {
+        cb.onToolCall({ id: 'ok2', name: 'apply_ops', input: { ops: [] } })
+        cb.onDone()
+      },
+      ...bad.map((call) => (cb: AgentStreamCallbacks) => {
+        cb.onToolCall(call)
+        cb.onDone()
+      }),
+    ])
+    const skill = makeSkill(() => ({ output: 'done', summary: 'edit', mutated: true }))
+    skill.tools = [
+      {
+        name: 'apply_ops',
+        description: 'd',
+        inputSchema: { type: 'object', properties: {}, required: ['ops'] },
+      },
+    ]
+    const onError = vi.fn()
+    const loop = new AgentLoop({ transport, skill, events: { onError } })
+    loop.run('x')
+    for (let i = 0; i < 16; i++) await flush()
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0]![1]).toEqual({
+      kind: 'tool-input',
+      faults: { truncated: 2, unparseable: 1 },
+      tools: ['apply_ops', 'unknown'],
+      executed: 2,
+      mutated: true,
+    })
   })
 
   it('tools without a required list, and optional fields, are not checked', () => {
@@ -1946,6 +2008,145 @@ describe('AgentLoop compaction', () => {
     expect(coerceArgumentFields(undefined, same)).toBe(same)
   })
 
+  it('coerceArgumentFields reads the words true and false in a boolean field', () => {
+    const tool = {
+      name: 'import_attachment',
+      description: 'd',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          attachment: { type: 'string' },
+          continue_request: { type: 'boolean' },
+          either: { type: ['boolean', 'string'] },
+        },
+      },
+    }
+    expect(coerceArgumentFields(tool, { attachment: 'true', continue_request: 'true' })).toEqual({
+      attachment: 'true',
+      continue_request: true,
+    })
+    expect(coerceArgumentFields(tool, { continue_request: ' False ' })).toEqual({
+      continue_request: false,
+    })
+    // any other word is left for invalidArgumentFields to report
+    expect(coerceArgumentFields(tool, { continue_request: 'yes' })).toEqual({
+      continue_request: 'yes',
+    })
+    expect(invalidArgumentFields(tool, { continue_request: 'yes' })).toHaveLength(1)
+    // a field that takes a string keeps the string
+    expect(coerceArgumentFields(tool, { either: 'true' })).toEqual({ either: 'true' })
+    const same = { continue_request: true }
+    expect(coerceArgumentFields(tool, same)).toBe(same)
+  })
+
+  describe('walkArgumentFields', () => {
+    const tool = {
+      name: 'style_paragraphs',
+      description: '',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          styles: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                size: { type: 'number' },
+                border: { type: 'object', properties: { width: { type: 'number' } } },
+                tabs: {
+                  type: 'array',
+                  items: { type: 'object', properties: { at_mm: { type: 'number' } } },
+                },
+              },
+            },
+          },
+          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+        },
+      },
+    }
+
+    it('visits the input and every declared value under it, outside in, with its path', () => {
+      const seen: string[] = []
+      walkArgumentFields(
+        tool,
+        {
+          title: 't',
+          styles: [{ size: 1, border: { width: 2 }, tabs: [{ at_mm: 3 }] }],
+          rows: [['a']],
+          stray: { size: 9 },
+        },
+        (value, schema, path) => {
+          seen.push(`${path || '(input)'}:${String(schema.type)}`)
+          return value
+        },
+      )
+      expect(seen).toEqual([
+        '(input):object',
+        'title:string',
+        'styles:array',
+        'styles[0]:object',
+        'styles[0].size:number',
+        'styles[0].border:object',
+        'styles[0].border.width:number',
+        'styles[0].tabs:array',
+        'styles[0].tabs[0]:object',
+        'styles[0].tabs[0].at_mm:number',
+        'rows:array',
+        'rows[0]:array',
+        'rows[0][0]:string',
+      ])
+    })
+
+    it('puts what the visit returns in place of the value, at any depth', () => {
+      const input = {
+        title: 't',
+        styles: [{ size: '12', border: { width: '0.5' }, tabs: [{ at_mm: '40' }] }, { size: 9 }],
+      }
+      const out = walkArgumentFields(tool, input, (value, schema) =>
+        schema.type === 'number' && typeof value === 'string' ? Number(value) : value,
+      )
+      expect(out).toEqual({
+        title: 't',
+        styles: [{ size: 12, border: { width: 0.5 }, tabs: [{ at_mm: 40 }] }, { size: 9 }],
+      })
+      expect(input.styles[0]!.size).toBe('12')
+      expect((out.styles as unknown[])[1]).toBe(input.styles[1])
+    })
+
+    it('goes on into the object the visit returned, so a renamed key is walked', () => {
+      const out = walkArgumentFields(tool, { styles: [{ fontSize: '14' }] }, (value, schema) => {
+        if (schema.type === 'number' && typeof value === 'string') return Number(value)
+        if (typeof value !== 'object' || value === null || !('fontSize' in value)) return value
+        const { fontSize, ...rest } = value as Record<string, unknown>
+        return { ...rest, size: fontSize }
+      })
+      expect(out).toEqual({ styles: [{ size: 14 }] })
+    })
+
+    it('leaves a key the schema does not declare alone and does not visit it', () => {
+      const paths: string[] = []
+      const input = { stray: { size: '9' }, styles: [{ stray: '1' }] }
+      const out = walkArgumentFields(tool, input, (value, _schema, path) => {
+        paths.push(path)
+        return value
+      })
+      expect(paths).toEqual(['', 'styles', 'styles[0]'])
+      expect(out).toBe(input)
+    })
+
+    it('hands the input back as it came for a tool without a schema to walk', () => {
+      const input = { size: '9' }
+      const visit = vi.fn((value: unknown) => value)
+      expect(walkArgumentFields(undefined, input, visit)).toBe(input)
+      expect(
+        walkArgumentFields({ name: 'bare', description: '', inputSchema: {} }, input, visit),
+      ).toBe(input)
+      expect(visit).toHaveBeenCalledTimes(1)
+      expect(walkArgumentFields(tool, input, () => 'nothing')).toBe(input)
+    })
+  })
+
   it('the loop hands the handler the coerced arguments instead of a retry', async () => {
     const transport = scriptedTransport([
       (cb) => {
@@ -2085,7 +2286,10 @@ describe('AgentLoop compaction', () => {
     for (let i = 0; i < 6; i++) await flush()
     expect(executed).toHaveLength(0)
     expect(transport.requests).toHaveLength(3)
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('retries stopped'))
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining('retries stopped'),
+      expect.objectContaining({ kind: 'tool-input', faults: { unparseable: 3 } }),
+    )
     expect(onDone).not.toHaveBeenCalled()
     expect(loop.busy).toBe(false)
   })
@@ -2185,6 +2389,102 @@ describe('AgentLoop: verifyResponse (claimed-action guard)', () => {
     expect(loop.busy).toBe(false)
   })
 
+  it('waits for a check that answers later, and drops it when the conversation is reset meanwhile', async () => {
+    let answer: (correction: string | null) => void = () => {}
+    const verifyResponse = vi.fn(
+      () =>
+        new Promise<string | null>((resolve) => {
+          answer = resolve
+        }),
+    )
+    const transport = scriptedTransport([
+      claimText,
+      (cb) => {
+        cb.onDelta('Fixed it')
+        cb.onDone()
+      },
+    ])
+    const onDone = vi.fn()
+    const loop = new AgentLoop({
+      transport,
+      skill: { ...makeSkill(), verifyResponse },
+      events: { onDone },
+    })
+    loop.run('x')
+    await flush()
+    expect(transport.requests).toHaveLength(1)
+    expect(onDone).not.toHaveBeenCalled()
+    answer('measure again')
+    await flush()
+    await flush()
+    expect(transport.requests).toHaveLength(2)
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ text: 'Fixed it' }))
+
+    const stale = new AgentLoop({
+      transport: scriptedTransport([claimText, claimText]),
+      skill: { ...makeSkill(), verifyResponse },
+      events: { onDone },
+    })
+    onDone.mockClear()
+    stale.run('x')
+    await flush()
+    stale.reset()
+    answer('measure again')
+    await flush()
+    expect(stale.messages).toEqual([])
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('ends the run at once when stopped while a check never answers', async () => {
+    const transport = scriptedTransport([claimText, claimText])
+    const onDone = vi.fn()
+    const loop = new AgentLoop({
+      transport,
+      skill: { ...makeSkill(), verifyResponse: () => new Promise<string | null>(() => {}) },
+      events: { onDone },
+    })
+    loop.run('x')
+    await flush()
+    expect(loop.busy).toBe(true)
+    loop.cancel()
+    await flush()
+    expect(loop.busy).toBe(false)
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(onDone).toHaveBeenCalledWith(
+      expect.objectContaining({ cancelled: true, text: 'I have selected the row for you' }),
+    )
+    expect(transport.requests).toHaveLength(1)
+  })
+
+  it('ends the run at once when stopped while a check is slow, and drops its late answer', async () => {
+    let answer: (correction: string | null) => void = () => {}
+    const transport = scriptedTransport([claimText, claimText])
+    const onDone = vi.fn()
+    const loop = new AgentLoop({
+      transport,
+      skill: {
+        ...makeSkill(),
+        verifyResponse: () =>
+          new Promise<string | null>((resolve) => {
+            answer = resolve
+          }),
+      },
+      events: { onDone },
+    })
+    loop.run('x')
+    await flush()
+    loop.cancel()
+    await flush()
+    expect(loop.busy).toBe(false)
+    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ cancelled: true }))
+    answer('measure again')
+    await flush()
+    await flush()
+    expect(onDone).toHaveBeenCalledTimes(1)
+    expect(transport.requests).toHaveLength(1)
+    expect(loop.messages.map((m) => m.role)).toEqual(['user', 'assistant'])
+  })
+
   it('passes successful and failed executions with their ok flag', async () => {
     const transport = scriptedTransport([
       (cb) => {
@@ -2265,22 +2565,22 @@ describe('composeSkills', () => {
     expect(() => composeSkills('x', '', [make('a'), make('b')]).tools).toThrow(/duplicate/)
   })
 
-  it('verifyResponse returns the first non-null correction across skills', () => {
-    const make = (id: string, correction: string | null): AgentSkill => ({
+  it('verifyResponse returns the first non-null correction across skills', async () => {
+    const make = (id: string, correction: string | null, later = false): AgentSkill => ({
       id,
       systemPrompt: '',
       tools: [],
       executeTool: () => ({ output: '', summary: '' }),
-      verifyResponse: () => correction,
+      verifyResponse: () => (later ? Promise.resolve(correction) : correction),
     })
     const merged = composeSkills('x', '', [
-      make('a', null),
-      make('b', 'fix from b'),
+      make('a', null, true),
+      make('b', 'fix from b', true),
       make('c', 'fix from c'),
     ])
-    expect(merged.verifyResponse?.('text', [])).toBe('fix from b')
+    expect(await merged.verifyResponse?.('text', [])).toBe('fix from b')
     const clean = composeSkills('y', '', [make('a', null)])
-    expect(clean.verifyResponse?.('text', [])).toBeNull()
+    expect(await clean.verifyResponse?.('text', [])).toBeNull()
   })
 })
 

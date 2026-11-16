@@ -5,6 +5,7 @@
 
 import type {
   AiSubscriptionProviderId,
+  AiSubscriptionUsage,
   SubscriptionLaunchResult,
   SubscriptionLoginMode,
   SubscriptionMeteredResult,
@@ -43,4 +44,9 @@ export interface SubscriptionApi {
   ): Promise<SubscriptionMeteredResult>
   /** the statuses changed (any window, any cause); returns an unsubscribe */
   onChanged(handler: (statuses: SubscriptionStatusMap) => void): () => void
+  /** usage a request outside the chat stream (a picture) reported, sent to every window; returns an unsubscribe */
+  onUsage(handler: (usage: AiSubscriptionUsage[]) => void): () => void
 }
+
+/** main → every window: (AiSubscriptionUsage[]) the usage a picture request reported, the chat chunk's `subscription-usage` shape */
+export const SUBSCRIPTION_USAGE_CHANNEL = 'ai:subscription-usage-update'

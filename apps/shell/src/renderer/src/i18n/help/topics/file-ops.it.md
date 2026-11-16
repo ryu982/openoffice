@@ -26,6 +26,8 @@ Regole: l'estensione viene conservata automaticamente; i caratteri non ammessi, 
 ## Salva e Salva con nome
 
 - **⌘S / ctrl+S** salva il file corrente; un file senza titolo chiede prima percorso e nome.
+- Nella maggior parte degli editor, l’elenco dei tipi di file della finestra Salva con nome offre anche i formati di esportazione (PDF, immagini, altri formati di documento). Sceglierne uno scrive solo una copia; il documento aperto e la sua scheda restano sul file originale. Le immagini di più pagine vengono divise in `nome-01.png`, `nome-02.png`, ….
+- **Docs**: l’elenco Salva con nome offre anche .hwp e .hwpx (File ▸ Esporta come documento HWP… fa lo stesso). Se qualcosa non può essere trasferito, come commenti, equazioni o caselle di testo, viene segnalato prima di scrivere il file.
 - **Salva con nome…** scrive un file nuovo e lascia intatto l'originale; le modifiche successive riguardano il file nuovo.
 - Ogni salvataggio è atomico (file temporaneo + rinomina); un'uscita a metà scrittura non può corrompere il file.
 - Il salvataggio automatico segue l’interruttore di ogni editor; un nuovo documento senza file proprio inizia dopo il primo salvataggio (vedi [Avvio rapido](help://getting-started)).
@@ -44,7 +46,17 @@ Regole: l'estensione viene conservata automaticamente; i caratteri non ammessi, 
 
 ## Stampa
 
-File ▸ Stampa… in ogni editor (⌘P/ctrl+P) apre la finestra di stampa di sistema; i PDF si stampano con l'ordine delle pagine e le rotazioni correnti.
+File ▸ Stampa (⌘P/ctrl+P) apre una finestra di stampa in ogni editor. Docs, PDF, Sheets, Slides e Markdown hanno la sezione **Disposizione delle pagine** nella solita finestra di stampa, HWP nell'anteprima di stampa, e HTML, mappa mentale e diagramma in una nuova piccola finestra di stampa. Se in Disposizione delle pagine non scegli nulla, si stampa esattamente come prima.
+
+- **Disposizione**: scegli Una pagina per foglio, Più pagine per foglio (2, 4, 6, 9 o 16), Opuscolo (rilegatura a sinistra o a destra), Manifesto (fogli in larghezza e in altezza, sovrapposizione, linee di taglio) o Etichette (una pagina per etichetta o la stessa pagina su ogni etichetta, etichetta iniziale, formato A4 comune o misure personalizzate).
+- **Solo facciate dispari, solo facciate pari, ordine inverso**: le facciate si contano dopo la disposizione, su ciò che esce davvero dalla stampante. Servono con le stampanti senza fronte-retro: stampa i fronti, gira la carta e stampa i retro.
+- **Riduci per adattare alla carta**: si riducono solo le pagine più grandi della carta scelta; quelle più piccole non vengono ingrandite. Sheets e Markdown usano i propri campi di carta e scala.
+- **Scala di grigi e risoluzione immagine**: stampando con le opzioni di Disposizione delle pagine, ogni pagina viene trasformata in immagine prima di andare alla stampante. La risoluzione si sceglie tra Automatica, 150, 300 o 600 dpi.
+- **Solo la selezione**: Docs e Markdown stampano solo il testo selezionato, reimpaginato dalla prima pagina; Slides stampa le diapositive selezionate e PDF le pagine selezionate. Sheets stampa l'intervallo selezionato come prima.
+- **Schema della disposizione e anteprima del risultato**: lo schema mostra subito dove finisce ogni numero di pagina sul foglio, e **Anteprima del risultato** mostra ciò che è stato davvero prodotto. Con **Salva il risultato disposto in PDF** puoi stampare la stessa disposizione su un altro PC o in tipografia.
+- **Finestra di stampa di sistema**: per un opuscolo scegli il fronte-retro capovolgendo sul lato corto. Lascia invariati l'intervallo di pagine e le pagine per foglio nella finestra di sistema.
+
+I PDF si stampano con l'ordine delle pagine e le rotazioni correnti.
 
 ## Dove finiscono i file senza titolo
 

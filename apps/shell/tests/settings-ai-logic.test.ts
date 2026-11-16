@@ -12,6 +12,7 @@ import {
   aiSelectionChoices,
   aiSelectionValue,
   changeAiSettings,
+  chatGptImageConnectShown,
   initialAdvancedProvider,
   mediaKeyProviders,
   mediaSelection,
@@ -282,6 +283,8 @@ describe('the GitHub read token', () => {
         openai: { apiKey: 'sk-test', model: 'gpt-test' },
       },
     })
+    // the providers as the settings file holds them: JSON keeps no undefined field
+    const storedProviders = JSON.parse(JSON.stringify(initial.providers)) as AiSettings['providers']
     const file = { stored: initial, writes: 0 }
     vi.stubGlobal('window', {
       aiOffice: {
@@ -300,7 +303,7 @@ describe('the GitHub read token', () => {
     expect(file.stored).toMatchObject({
       provider: 'codex',
       maxOutputTokens: 9216,
-      providers: initial.providers,
+      providers: storedProviders,
     })
 
     expect(await changeAiSettings((current) => withReadUrlGithubToken(current, ''))).not.toBeNull()
@@ -308,7 +311,7 @@ describe('the GitHub read token', () => {
     expect(file.stored).toMatchObject({
       provider: 'codex',
       maxOutputTokens: 9216,
-      providers: initial.providers,
+      providers: storedProviders,
     })
     expect(file.writes).toBe(2)
   })
@@ -366,10 +369,10 @@ describe('a change saved at once', () => {
 })
 
 describe('the Advanced key pane', () => {
-  it('lists no id outside the catalog and not Claude, and keeps Codex for its path', () => {
+  it('lists no id outside the catalog, and keeps both CLIs for the path of a custom install', () => {
     const listed = advancedProviderIds([...AI_PROVIDERS, { id: 'retired-provider' }])
     expect(listed).not.toContain('retired-provider')
-    expect(listed).not.toContain('claude-code')
+    expect(listed).toContain('claude-code')
     expect(listed).toContain('codex')
     expect(listed).toContain('custom')
     expect(listed).toContain('openai')
@@ -379,9 +382,11 @@ describe('the Advanced key pane', () => {
     expect(initialAdvancedProvider({ provider: 'openai' }, AI_PROVIDERS)).toBe('openai')
     expect(initialAdvancedProvider({ provider: 'codex' }, AI_PROVIDERS)).toBe('codex')
     const first = initialAdvancedProvider({ provider: 'auto' }, AI_PROVIDERS)
-    expect(first).toBe(AI_PROVIDERS.find((m) => !['claude-code', 'codex'].includes(m.id))!.id)
-    // a subscription or an unknown id selected: the pane still opens on a key provider
-    expect(initialAdvancedProvider({ provider: 'claude-code' }, AI_PROVIDERS)).toBe(first)
+    expect(first).toBe(AI_PROVIDERS.find((m) => !m.needsCliPath)!.id)
+    // a CLI selected: its own pane opens, where its path is
+    expect(initialAdvancedProvider({ provider: 'claude-code' }, AI_PROVIDERS)).toBe('claude-code')
+    // an unknown id: the pane still opens on a key provider
+    expect(initialAdvancedProvider({ provider: 'retired' as never }, AI_PROVIDERS)).toBe(first)
     expect(initialAdvancedProvider({ provider: 'retired-provider' as never }, AI_PROVIDERS)).toBe(
       first,
     )
@@ -391,10 +396,51 @@ describe('the Advanced key pane', () => {
     const withKey = withOpenAiKey(settingsWith({ provider: 'auto' }))
     expect(initialAdvancedProvider(withKey, AI_PROVIDERS)).toBe('openai')
     expect(initialAdvancedProvider({ ...withKey, provider: 'claude-code' }, AI_PROVIDERS)).toBe(
-      'openai',
+      'claude-code',
     )
     // the stored selection still comes first
     expect(initialAdvancedProvider({ ...withKey, provider: 'codex' }, AI_PROVIDERS)).toBe('codex')
+  })
+})
+
+describe('the ChatGPT plan line under image generation', () => {
+  const states: AiSubscriptionStatus['state'][] = [
+    'checking',
+    'not-installed',
+    'signed-out',
+    'ready',
+    'metered',
+    'error',
+    'off',
+  ]
+  // the capability report: unavailable, available, or not read (yet, or no bridge)
+  const reports = [false, true, null] as const
+
+  it('shows only for ChatGPT ready, Codex not ready and image generation unavailable', () => {
+    for (const chatgpt of states) {
+      for (const codex of states) {
+        for (const report of reports) {
+          const statuses = {
+            'claude-code': status('claude-code', 'ready'),
+            chatgpt: status('chatgpt', chatgpt),
+            codex: status('codex', codex),
+          }
+          expect(
+            chatGptImageConnectShown(statuses, report),
+            `chatgpt=${chatgpt} codex=${codex} report=${report}`,
+          ).toBe(chatgpt === 'ready' && codex !== 'ready' && report === false)
+        }
+      }
+    }
+  })
+
+  it('a Codex metered login is not a subscription one, and a missing status is not ready', () => {
+    const chatgpt = status('chatgpt', 'ready')
+    expect(
+      chatGptImageConnectShown({ chatgpt, codex: status('codex', 'metered', true) }, false),
+    ).toBe(true)
+    expect(chatGptImageConnectShown({ chatgpt }, false)).toBe(true)
+    expect(chatGptImageConnectShown({ codex: status('codex', 'signed-out') }, false)).toBe(false)
   })
 })
 

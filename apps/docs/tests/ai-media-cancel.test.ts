@@ -46,9 +46,9 @@ vi.mock('@genoffice/ai-search', async () => ({
   generateImageTool: (...args: unknown[]) => generateImageTool(...args),
   analyzeMediaTool: (...args: unknown[]) => analyzeMediaTool(...args),
   documentMediaRoots: () => [],
-  // the Codex CLI image backend is registered when the AI IPC is: this test is only
+  // the Codex image generator is registered when the AI IPC is: this test is only
   // about cancellation, so a stub generator and a no-op registration are enough
-  createCodexImageCliGenerator: () => async () => ({ bytes: new Uint8Array(), mime: 'image/png' }),
+  createCodexImageGenerator: () => ({ generate: async () => null, models: async () => null }),
   registerCodexImageGenerator: () => {},
 }))
 
@@ -56,6 +56,10 @@ vi.mock('@genoffice/ai-search', async () => ({
 vi.mock('@genoffice/ai-provider/subscription', () => ({
   ensureSubscriptionIpc: () => ({}),
   sharedSubscriptionStatuses: () => ({}),
+  // docs-main gates these with the AI switch (editor choice); never called here
+  detectSubscriptionLogin: async () => ({}),
+  listSubscriptionModels: async () => [],
+  subscriptionStatusErrorText: () => '',
 }))
 vi.mock('@genoffice/ai-provider/codex-app-server', () => ({
   shutdownCodexAppServers: () => {},

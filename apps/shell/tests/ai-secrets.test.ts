@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SEALED_PREFIX, setAiSecretCodec } from '@genoffice/ai-provider'
 import { normalizeFileSearchSettings } from '../src/main/file-index/rerank'
 import {
@@ -11,8 +11,10 @@ import {
   openFileSearchKeys,
   sealFileSearchKeys,
   holdsPlainSecrets,
+  REVEAL_REQUEST_ENV,
   revealAnswer,
   revealRequestOf,
+  revealRequestText,
   safeStorageCodec,
   sealStoredAiSettings,
   sealingKeyOnDisk,
@@ -141,6 +143,22 @@ describe('the reveal entry', () => {
       expect(revealRequestOf(text), text.slice(0, 30)).toBeNull()
     }
     expect(JSON.parse(revealAnswer(null, codec)).status).toBe('error')
+  })
+
+  it('takes the request from the environment, where Windows delivers it, else from stdin', async () => {
+    // the terminal command's name for it (packages/cli/src/secrets.ts)
+    expect(REVEAL_REQUEST_ENV).toBe('GENOFFICE_REVEAL_REQUEST')
+    const stdin = vi.fn(async () => '["from-stdin"]')
+    expect(await revealRequestText({ [REVEAL_REQUEST_ENV]: '["from-env"]' }, stdin)).toBe(
+      '["from-env"]',
+    )
+    expect(stdin).not.toHaveBeenCalled()
+    expect(await revealRequestText({}, stdin)).toBe('["from-stdin"]')
+    expect(await revealRequestText({ [REVEAL_REQUEST_ENV]: '' }, stdin)).toBe('["from-stdin"]')
+    // an oversized variable reads as no request, the same bound stdin has
+    expect(
+      await revealRequestText({ [REVEAL_REQUEST_ENV]: 'x'.repeat(2 * 1024 * 1024 + 1) }, stdin),
+    ).toBe('')
   })
 
   it('runs before the single-instance lock and any window', () => {

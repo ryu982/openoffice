@@ -91,9 +91,11 @@
     }
   },
   "dependencies": {
+    "@genoffice/docx2hwp": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/font-metrics": "*",
     "@genoffice/odt-engine": "*",
+    "@genoffice/print-layout": "*",
     "electron-updater": "^6.8.9",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",

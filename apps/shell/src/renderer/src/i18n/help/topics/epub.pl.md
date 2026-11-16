@@ -12,7 +12,7 @@ Edytor e-booków otwiera książki EPUB (`.epub`) na karcie. Możesz czytać ksi
 
 ## Czytanie
 
-- Panel **Spis treści** po lewej pokazuje spis treści książki. Kliknij pozycję, aby do niej przejść. Książka bez spisu treści dostaje listę swoich rozdziałów.
+- Panel **Spis treści** po lewej pokazuje spis treści książki. Kliknij pozycję, aby do niej przejść. Książka bez spisu treści dostaje listę swoich rozdziałów. Przeciągnij wewnętrzną krawędź panelu, aby zmienić jego szerokość; kliknij krawędź dwukrotnie, aby wrócić do pierwotnej szerokości. Panel wyszukiwania ma tę samą szerokość.
 - Każdy rozdział przewija się w górę i w dół. Przewijaj dalej za koniec rozdziału, aby przejść do następnego, albo przed jego początek, aby wrócić. Wiersz stanu pokazuje, w którym rozdziale jesteś.
 - Karta **Widok** zmienia rozmiar tekstu i interlinię oraz włącza i wyłącza **Widok ciemny**. Te ustawienia zmieniają tylko ekran, nigdy książkę, i dotyczą wszystkich książek.
 - Miejsce, w którym skończyłeś czytać, jest zapamiętywane osobno dla każdego pliku, w folderze danych aplikacji, a nie w książce.
@@ -47,7 +47,7 @@ Edytor e-booków otwiera książki EPUB (`.epub`) na karcie. Możesz czytać ksi
 ## Panel AI
 
 - Pytaj o książkę, poproś o streszczenie rozdziału albo o poprawienie lub przeredagowanie jego tekstu. AI czyta spis treści i rozdziały książki oraz wyszukuje w niej tekst.
-- Zmiany wprowadzone przez AI pojawiają się od razu, a jedno cofnięcie (Ctrl+Z) wycofuje wszystko, co AI zmieniła w danej turze. AI może pogrubić tekst lub zapisać go kursywą, ale nie może dodawać obrazów, tabel ani rozdziałów.
+- Zmiany wprowadzone przez AI pojawiają się od razu, zmienione bloki są oznaczone na żółto, a **Cofnij te zmiany** na karcie pod odpowiedzią wycofuje wszystko, co AI zmieniła w danej turze (o ile książki potem nie edytowano). AI może pogrubić tekst lub zapisać go kursywą, ale nie może dodawać obrazów, tabel ani rozdziałów.
 - Tekst książki jest dla AI materiałem, a nie poleceniami.
 - Napisz „Przetłumacz tę książkę na francuski”, a AI otworzy okno tłumaczenia z już wybranym tym językiem. Nic nie zostanie wysłane, dopóki nie klikniesz **Rozpocznij**.
 - Książki EPUB można też załączać w panelu AI innych edytorów, wybierać przez `@` i znajdować wyszukiwaniem plików na stronie głównej.
@@ -67,6 +67,7 @@ Edytor e-booków otwiera książki EPUB (`.epub`) na karcie. Możesz czytać ksi
 - To, co już przetłumaczono, jest zachowywane. Jeśli zatrzymasz tłumaczenie, wybierz **Eksportuj to, co już przetłumaczono** (reszta zostaje w języku oryginału) albo **Kontynuuj później**. Gdy otworzysz książkę z niedokończonym tłumaczeniem, GenOffice zaproponuje jego dokończenie. **Przetłumacz od nowa** najpierw usuwa zachowane tłumaczenie na ten język.
 - Zachowane tłumaczenia są liczone w Ustawienia ▸ Ogólne ▸ **Zapisane wyniki AI** razem z wynikami dokumentów PDF, a **Usuń wszystko** usuwa także je.
 - To samo tłumaczenie można też uruchomić z [poleceń terminala](help://cli) jako `ieumoffice epub translate`.
+- Wybierz **Prosty język** w polu **Tryb**, aby napisać książkę od nowa prostymi słowami w wybranym języku. Wyniki to **Książka w prostym języku** i **Oryginał, a po nim prosty język**; ich tytuł ma w tym języku oznaczenie wersji w prostym języku, a nazwa pliku ma je w języku interfejsu, by różniła się od nazwy tłumaczenia. Język to na początku język interfejsu; może to być też język książki. Wersja w prostym języku jest przechowywana osobno od tłumaczeń, jej dokończenie jest proponowane osobno, a polecenia terminala jej nie tworzą.
 
 ## Jeszcze nieobsługiwane
 

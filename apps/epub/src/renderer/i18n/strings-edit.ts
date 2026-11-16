@@ -20,6 +20,7 @@ import { he } from './edit/he'
 import { hi } from './edit/hi'
 import { zhTW } from './edit/zh-TW'
 import { vi } from './edit/vi'
+import { tr } from './edit/tr'
 
 /** User-visible strings: editing: formatting, undo, find and replace, save and close prompts */
 export const editStrings = defineStrings({
@@ -44,4 +45,5 @@ export const editStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

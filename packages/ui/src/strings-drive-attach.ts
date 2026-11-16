@@ -255,4 +255,15 @@ export const DRIVE_ATTACH_STRINGS: Record<Lang, DriveAttachStrings> = {
     pickFailed: 'Không mở được cửa sổ của Google. Hãy thử lại',
     busy: 'Cửa sổ của Google đã mở trên trình duyệt',
   },
+  tr: {
+    label: "Google Drive'dan ekle",
+    skipped: '{n} dosya eklenmedi (okunamayan bir biçim ya da 20 dosyadan fazla)',
+    failed: "Drive'dan {n} dosya alınamadı",
+    disconnected: 'Google Drive bağlantısı kesildi',
+    training: 'Önce Ayarlar → Entegrasyonlar → Google Drive bölümünde model eğitimini onaylayın',
+    freeAi:
+      'Drive dosyaları, onlarla eğitim yapabilecek ücretsiz bir AI bağlantısına verilmez. Önce başka bir AI seçin',
+    pickFailed: 'Google penceresi açılamadı. Yeniden deneyin',
+    busy: 'Drive penceresi zaten açık',
+  },
 }

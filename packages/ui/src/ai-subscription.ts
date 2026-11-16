@@ -89,6 +89,8 @@ export type AiSubscriptionCardAction =
   | 'switch-account'
   | 'logout'
   | 'manage-usage'
+  | 'turn-off'
+  | 'turn-on'
 
 /**
  * The two actions on the account of a signed-in CLI: sign in with another
@@ -103,6 +105,14 @@ export const AI_SUBSCRIPTION_ACCOUNT_ACTIONS = [
 export function isAiSubscriptionAccountAction(action: AiSubscriptionCardAction): boolean {
   return (AI_SUBSCRIPTION_ACCOUNT_ACTIONS as readonly AiSubscriptionCardAction[]).includes(action)
 }
+
+/** The states of a CLI the Settings card can turn off in this app (decision 0114) */
+const OFF_SWITCH_STATES: readonly AiSubscriptionState[] = [
+  'signed-out',
+  'ready',
+  'metered',
+  'error',
+]
 
 /** What only the card in Settings shows; every other card leaves both off */
 export interface AiSubscriptionCardOptions {
@@ -126,6 +136,11 @@ export interface AiSubscriptionCardOptions {
   readonly cancelLogin?: boolean | undefined
   /** the host can open ChatGPT's usage settings: the connected ChatGPT card links there */
   readonly manageUsage?: boolean | undefined
+  /**
+   * the host can turn a CLI off in this app and back on (the Settings card,
+   * decision 0114). Without it an off card says where that is done.
+   */
+  readonly offSwitch?: boolean | undefined
   /**
    * a browser sign-in has gone on for `AI_SIGNING_IN_STALLED_MS` without an
    * answer: the way to the CLI's window becomes a button, with why to press it
@@ -207,8 +222,9 @@ const STATUS_ERROR_KEYS: Record<SubscriptionStatusErrorKind, AiSubscriptionStrin
 
 /**
  * The spec table of connection states: what one provider's card shows in each
- * of the six. `options` adds what belongs to the Settings card alone: the
- * signed-in account, and the two actions on it.
+ * of them. `options` adds what belongs to the Settings card alone: the
+ * signed-in account, the two actions on it, and the switch that turns the CLI
+ * off in this app.
  */
 export function aiSubscriptionCardView(
   status: AiSubscriptionStatus,
@@ -216,11 +232,36 @@ export function aiSubscriptionCardView(
 ): AiSubscriptionCardView {
   // ChatGPT reached directly has no program: no install, no update, no window of its own
   if (status.provider === 'chatgpt') return chatGptCardView(status, options)
+  const view = cliCardView(status, options)
+  if (!options.offSwitch) return view
+  // off: the Settings card turns it back on (elsewhere the card says that is where)
+  if (status.state === 'off') {
+    return { ...view, noteKeys: ['offNote'], actions: ['turn-on'], links: [] }
+  }
+  if (status.signingIn || !OFF_SWITCH_STATES.includes(status.state)) return view
+  // beside sign-out, which reaches the whole PC, one line says this reaches the app alone
+  const signedIn = status.state === 'ready' || status.state === 'metered'
+  return {
+    ...view,
+    noteKeys: signedIn ? [...view.noteKeys, 'offSwitchNote'] : view.noteKeys,
+    actions: [...view.actions, 'turn-off'],
+  }
+}
+
+function cliCardView(
+  status: AiSubscriptionStatus,
+  options: AiSubscriptionCardOptions,
+): AiSubscriptionCardView {
   const terminalWindows = options.terminalWindows !== false
   if (status.signingIn) return signingInCardView(status, terminalWindows, options)
   const view = connectionCardView(status, terminalWindows)
   if (status.state === 'not-installed' && !terminalWindows) {
-    return { ...view, noteKeys: [], actions: ['install-help'], links: ['install-help'] }
+    return {
+      ...view,
+      noteKeys: desktopAppNoteOf(status.provider),
+      actions: ['install-help', 'recheck'],
+      links: ['install-help'],
+    }
   }
   if (view.detailKey && subscriptionStatusErrorKind(status) === 'needs-update') {
     // the copy a Linux terminal under WSL updates is not the one Windows runs;
@@ -248,6 +289,43 @@ export function aiSubscriptionCardView(
     actions: options.accountActions
       ? [...view.actions, ...AI_SUBSCRIPTION_ACCOUNT_ACTIONS]
       : view.actions,
+  }
+}
+
+/**
+ * OpenAI's answers when the ChatGPT account belongs to a workspace that does not
+ * let another app spend its plan. No workspace setting can allow this app: plan
+ * use outside ChatGPT is offered only on personal plans, so pressing sign-in
+ * again leads to the same page. The chatgpt note says so instead of pointing at
+ * a consent choice the user never had.
+ */
+const CHATGPT_WORKSPACE_POLICY_OAUTH_ERRORS: ReadonlySet<string> = new Set([
+  '3p_delegated_access_policy_denied',
+])
+
+/**
+ * What the ChatGPT card says after a sign-in that ended without a connection:
+ * why, when the main side knows; the plain "did not finish" otherwise (it ran
+ * out of time, or an older main side gave no reason).
+ */
+function chatGptLoginFailedNoteKey(status: AiSubscriptionStatus): AiSubscriptionStringKey {
+  const failure = status.loginFailure
+  // a workspace that does not allow third-party plan use has nothing the user can
+  // allow, whether OpenAI refused at the callback or at the token endpoint
+  if (failure?.oauthError && CHATGPT_WORKSPACE_POLICY_OAUTH_ERRORS.has(failure.oauthError)) {
+    return 'chatgptLoginWorkspacePolicyNote'
+  }
+  // the browser came back with an error: most often the user did not allow the app
+  if (failure?.step === 'callback-error') return 'chatgptLoginNotAllowedNote'
+  switch (failure?.reason) {
+    case 'no-plan':
+      return 'chatgptLoginNoPlanNote'
+    case 'denied':
+      return 'chatgptLoginDeniedNote'
+    case 'network':
+      return 'chatgptLoginNetworkNote'
+    default:
+      return 'chatgptLoginUnfinishedNote'
   }
 }
 
@@ -317,7 +395,7 @@ function chatGptCardView(
         statusKey: 'cardSignedOut',
         noteKeys:
           status.loginUnfinished === true
-            ? ['chatgptLoginUnfinishedNote', 'loginNote']
+            ? [chatGptLoginFailedNoteKey(status), 'loginNote']
             : ['chatgptLoginNote', 'loginNote'],
         actions: ['login'],
         links: [],
@@ -372,6 +450,10 @@ function connectionCardView(
   }
 }
 
+function desktopAppNoteOf(provider: AiSubscriptionProviderId): AiSubscriptionStringKey[] {
+  return provider === 'claude-code' ? ['claudeDesktopNote'] : []
+}
+
 function connectionCardParts(
   status: AiSubscriptionStatus,
   terminalWindows: boolean,
@@ -385,8 +467,9 @@ function connectionCardParts(
         ...base,
         tone: 'neutral',
         statusKey: 'cardNotInstalled',
-        noteKeys: ['installNote', 'installReturnNote'],
-        actions: ['install', 'install-help'],
+        noteKeys: [...desktopAppNoteOf(status.provider), 'installNote', 'installReturnNote'],
+        // installed some other way (the vendor's guide, a terminal): the user can ask again
+        actions: ['install', 'recheck', 'install-help'],
       }
     case 'signed-out': {
       // the browser hands back a code, not the sign-in, when it cannot reach the
@@ -438,6 +521,15 @@ function connectionCardParts(
             noteKeys: ['meteredWarning', 'meteredMeaning'],
             actions: ['accept-metered'],
           }
+    case 'off':
+      // turned off in this app: nothing was asked, so there is no login to show
+      return {
+        ...base,
+        tone: 'neutral',
+        statusKey: 'cardOff',
+        noteKeys: ['offElsewhereNote'],
+        actions: [],
+      }
     case 'error': {
       const kind = subscriptionStatusErrorKind(status)
       const outdated = subscriptionNeedsUpdate(status)
@@ -449,7 +541,7 @@ function connectionCardParts(
         ...base,
         tone: 'error',
         statusKey: 'cardError',
-        noteKeys: [],
+        noteKeys: kind === 'needs-update' ? desktopAppNoteOf(status.provider) : [],
         ...(outdated
           ? { detailKey: 'cardErrNeedsUpdateVersion', detailParams: outdated }
           : { detailKey: STATUS_ERROR_KEYS[kind ?? 'failed'] }),
@@ -511,6 +603,17 @@ export function aiConnectPromptView(choice: AiProviderChoice): AiConnectPromptVi
     }
   }
   const providerName = aiProviderDisplayName(choice.provider)
+  // turned off in this app on purpose: the way back is the switch in Settings, not a sign-in
+  if (choice.reason === 'off-in-app') {
+    return {
+      titleKey: 'connectOffTitle',
+      bodyKey: 'connectOffBody',
+      providerName,
+      providers: [],
+      settings: true,
+      free: false,
+    }
+  }
   if (isSubscriptionProvider(choice.provider)) {
     return {
       titleKey: 'connectProviderTitle',
@@ -543,6 +646,7 @@ export const AI_BLOCKED_RUN_KINDS = [
   'not-connected',
   'free-limit',
   'free-tier-model',
+  'off-in-app',
 ] as const satisfies readonly AiRunErrorKind[]
 
 export type AiBlockedRunKind = (typeof AI_BLOCKED_RUN_KINDS)[number]
@@ -633,6 +737,9 @@ export function aiRunErrorText(
     case 'signed-out':
       return aiSubscriptionText(lang, 'errSignedOut', { provider })
     case 'rate-limit':
+      // OpenAI: this error may be a limit set for this app, not the whole
+      // plan, and it does not tell when usage comes back
+      if (cause.provider === 'chatgpt') return aiSubscriptionText(lang, 'errChatGptAppLimit')
       return hasTime
         ? aiSubscriptionText(lang, 'errRateLimitReset', { provider, time })
         : aiSubscriptionText(lang, 'errRateLimit', { provider })
@@ -652,6 +759,8 @@ export function aiRunErrorText(
         : aiSubscriptionText(lang, 'errFreeLimit')
     case 'free-tier-model':
       return aiSubscriptionText(lang, 'errFreeTierModel')
+    case 'off-in-app':
+      return aiSubscriptionText(lang, 'errOffInApp', { provider })
     case 'context-limit':
       return aiContextText(lang, 'errContextLimit')
     default:

@@ -20,6 +20,7 @@ import { he } from './drive/he'
 import { hi } from './drive/hi'
 import { zhTW } from './drive/zh-TW'
 import { vi } from './drive/vi'
+import { tr } from './drive/tr'
 
 /**
  * Google Drive on the home screen and in Settings (decision 0033). Sharded per language; `zh` defines the key set.
@@ -46,6 +47,7 @@ export const driveUiStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })
 
 export type DriveStringKey = keyof typeof zh

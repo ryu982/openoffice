@@ -2,7 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { createSlidesSkill, type DeckAccess } from '../src/renderer/ai/slides-skill'
+import {
+  createSlidesSkill,
+  IMAGE_GEN_CHATGPT_NOTE,
+  type DeckAccess,
+} from '../src/renderer/ai/slides-skill'
 import { createFilesSkill } from '../src/renderer/ai/files-skill'
 import type { RenderSlide, PlacedBox } from '@genoffice/pptx-render'
 import type { AgentToolCall } from '../src/shared/ipc'
@@ -211,5 +215,68 @@ describe('attachment:// references (r182 family: embed the original file, never 
     )
     expect(r.mutated).toBeFalsy()
     expect(api().replacePictureUrl).not.toHaveBeenCalled()
+  })
+})
+
+describe('generate_image', () => {
+  it('passes a model the user named to the bridge and offers it as an optional input', async () => {
+    const generateImage = vi.fn(async () => ({ error: 'stop here' }))
+    ;(window as unknown as { slidesApi: Record<string, unknown> }).slidesApi.generateImage =
+      generateImage
+    const skill = createSlidesSkill(mkAccess())
+    const tool = skill.tools.find((entry) => entry.name === 'generate_image')!
+    expect(tool.inputSchema.properties).toHaveProperty('model')
+    expect(tool.inputSchema.required).toEqual(['prompt'])
+    await skill.executeTool!({
+      id: 't',
+      name: 'generate_image',
+      input: { prompt: 'a kite', model: 'gpt-image-2' },
+    })
+    expect(generateImage).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: 'a kite', model: 'gpt-image-2' }),
+    )
+  })
+
+  it("passes the image tool's note on to the model with the URL", async () => {
+    ;(window as unknown as { slidesApi: Record<string, unknown> }).slidesApi.generateImage = vi.fn(
+      async () => ({
+        url: 'file:///generated/kite.png',
+        note: 'Codex picks the image model on this route',
+      }),
+    )
+    const r = await createSlidesSkill(mkAccess()).executeTool!({
+      id: 't',
+      name: 'generate_image',
+      input: { prompt: 'a kite', model: 'gpt-image-2' },
+    })
+    expect(r.isError).toBeFalsy()
+    expect(r.output).toContain('\nNote: Codex picks the image model on this route')
+  })
+
+  it('does not tie reference-image edits to a key provider', () => {
+    const tools = createSlidesSkill(mkAccess()).tools
+    const text = JSON.stringify(
+      tools.filter((entry) => ['generate_image', 'replace_image'].includes(entry.name)),
+    )
+    expect(text).toContain('referenceImageUrls')
+    expect(text).not.toMatch(/key provider|api key/i)
+  })
+
+  it('tells the model the ChatGPT plan path while generate_image is hidden', () => {
+    const off = createSlidesSkill({
+      ...mkAccess(),
+      imageGenAvailable: () => false,
+    } as DeckAccess)
+    expect(off.tools.map((entry) => entry.name)).not.toContain('generate_image')
+    expect(off.systemPrompt).toContain(IMAGE_GEN_CHATGPT_NOTE)
+    expect(IMAGE_GEN_CHATGPT_NOTE).toContain(
+      'Codex program signed in with the same ChatGPT account',
+    )
+    const mediaOnly = createSlidesSkill({
+      ...mkAccess(),
+      mediaAnalysisAvailable: () => false,
+    } as DeckAccess)
+    expect(mediaOnly.systemPrompt).not.toContain(IMAGE_GEN_CHATGPT_NOTE)
+    expect(createSlidesSkill(mkAccess()).systemPrompt).not.toContain(IMAGE_GEN_CHATGPT_NOTE)
   })
 })

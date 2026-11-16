@@ -152,6 +152,13 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     mindmap:
       'Hãy tạo một sơ đồ tư duy từ tài liệu đính kèm. Đặt chủ đề chính ở giữa và sắp xếp các ý quan trọng thành các nhánh.',
   },
+  tr: {
+    slides:
+      'Ekli dosyalardan bir sunum hazırla. Ana noktaları düzenleyip başlıkları net slaytlara dönüştür.',
+    html: 'Ekli dosyalardan bir web sayfası (HTML) hazırla. Ana noktaları kolay okunacak biçimde yerleştir.',
+    mindmap:
+      'Ekli dosyalardan bir zihin haritası hazırla. Ana konuyu merkeze koy ve kilit noktaları dallar hâlinde düzenle.',
+  },
 }
 
 export function defaultGeneratePrompt(lang: Lang, kind: AiTargetKind): string {

@@ -159,6 +159,41 @@ describe('marks of changes', () => {
     expect(marksOnPage()).toEqual([])
   })
 
+  it('tells the panel whether marks are shown, so it can drop its button when a user edit took them off', () => {
+    const { plugin, userEdit } = open(['가격 표', '금액'])
+    expect(plugin.hasMarks()).toEqual({ ok: true, shown: false })
+    plugin.replaceText('금액', '합계', null)
+    expect(plugin.hasMarks()).toEqual({ ok: true, shown: true })
+    userEdit()
+    expect(plugin.hasMarks()).toEqual({ ok: true, shown: false })
+    plugin.replaceText('가격', '값', null)
+    plugin.clearMarks()
+    expect(plugin.hasMarks()).toEqual({ ok: true, shown: false })
+  })
+
+  it('draws the marks in the light colours of the shared mark tokens: the page is paper white in every theme', () => {
+    // the first value of each is the light theme's
+    const tokens = readFileSync(require.resolve('@genoffice/ui/tokens.css'), 'utf8')
+    /** the first value of a token, as `rgb(r g b / a%)` writes it */
+    const token = (name: string) => {
+      const at = tokens.indexOf(`${name}:`)
+      return tokens.slice(tokens.indexOf('rgb(', at) + 4, tokens.indexOf(')', at))
+    }
+    const rgba = (value: string) => {
+      const [r, g, b, a] = value
+        .split(/[\s/%]+/)
+        .filter(Boolean)
+        .map(Number)
+      return `rgba(${r}, ${g}, ${b}, ${a! / 100})`
+    }
+    const { plugin } = open(['금액'])
+    plugin.replaceText('금액', '합계', null)
+    const box = document.querySelector<HTMLElement>('.ieum-change-marks > div')!
+    // jsdom keeps the colour as it was set
+    expect(box.style.background).toBe(rgba(token('--color-ai-changed-bg')))
+    expect(box.style.boxShadow).toBe(`inset 0 -2px 0 ${rgba(token('--color-ai-changed-line'))}`)
+  })
+
   it('gives the panel no list of marks in what a change returns', () => {
     const { plugin } = open(['가 가'])
     const result = plugin.replaceAllText('가', '나')

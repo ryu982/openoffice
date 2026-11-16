@@ -12,10 +12,12 @@ Setiap editor mempunyai pengikatan kekunci sendiri, dan hanya sebahagian kecil d
 | Ciutkan / Kembangkan reben — setiap editor                           | ⌥⌘R   | Ctrl+F1         |
 | Reben kompak — Docs sahaja                                           | ⌥⌘K   | Ctrl+Alt+K      |
 | Buka helaian Pintasan Papan Kekunci — Word sahaja                    | ⌘/    | Ctrl+/          |
+| Buka Tetapan — semua tab kecuali Word                                | ⌘,    | Ctrl+,          |
 
 - **F1 membuka manual ini**, bukan helaian pintasan. Kekunci itu milik menu aplikasi, jadi ia berfungsi dari Word, Sheets, Slides, PDF mahupun tab Laman Utama.
 - **Kekunci suis reben ialah `Ctrl+F1`, atau `⌥⌘R` pada macOS.** Menekan `F1` kosong tidak melakukan apa-apa — F1 ialah manualnya, dan kekunci reben sengaja tidak berkongsi denyut itu. `Ctrl+F1` juga diterima pada macOS, walaupun `⌥⌘R` ialah kekunci yang digunakan oleh Office for Mac.
 - **Helaian Pintasan Papan Kekunci milik Word sahaja** (`⌘/`). Ia menyenaraikan tepat jadual Word di bawah ini. Tiada editor lain mempunyai helaian seperti itu.
+- **`⌘,` membuka Tetapan** (`Ctrl+,` pada Windows dan Linux), seperti kebanyakan apl Mac. Dalam tab Word kombinasi ini kekal sebagai subskrip, jadi buka Tetapan daripada menu aplikasi pada Mac, atau daripada Menu (☰) ▸ Tetapan… pada Windows dan Linux.
 
 ![Helaian Pintasan Papan Kekunci milik Word sahaja: tindakan di sebelah kiri, pintasan kekunci di sebelah kanan, dikumpulkan mengikut kumpulan Fail, Edit, Pemformatan Teks, Pemformatan Perenggan, Sisip, Semakan & Alat, dan Paparan](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Pintasan penapis Excel, Ctrl+Shift+L, tidak melakukan apa-apa pada Windows atau 
 
 ### Tetingkap
 
-| Tindakan                                                              | macOS            | Windows / Linux     |
-| --------------------------------------------------------------------- | ---------------- | ------------------- |
-| Simpan buku kerja                                                     | ⌘S               | Ctrl+S              |
-| Simpan Sebagai                                                        | ⇧⌘S              | Ctrl+Shift+S        |
-| Buka buku kerja                                                       | ⌘O               | Ctrl+O              |
-| Cetak                                                                 | ⌘P               | Ctrl+P              |
-| Tutup buku kerja (macOS) / Keluar daripada aplikasi (Windows & Linux) | ⌘W               | Ctrl+Q              |
-| Buka Panduan Pengguna                                                 | F1               | F1                  |
-| Zum masuk                                                             | ⌘=               | Ctrl+=              |
-| Zum dengan roda tetikus                                               | ⌘ + roda tetikus | Ctrl + roda tetikus |
-| Tunjuk atau sorok formula dalam sel                                   | ⌘`               | Ctrl+`              |
-| Kembangkan atau ciutkan bar formula                                   | ⌘⇧U              | Ctrl+Shift+U        |
+| Tindakan                                                                              | macOS            | Windows / Linux     |
+| ------------------------------------------------------------------------------------- | ---------------- | ------------------- |
+| Simpan buku kerja                                                                     | ⌘S               | Ctrl+S              |
+| Simpan Sebagai                                                                        | ⇧⌘S              | Ctrl+Shift+S        |
+| Buka buku kerja                                                                       | ⌘O               | Ctrl+O              |
+| Cetak                                                                                 | ⌘P               | Ctrl+P              |
+| Tutup buku kerja (macOS) / Keluar daripada aplikasi (Windows & Linux)                 | ⌘W               | Ctrl+Q              |
+| Buka Panduan Pengguna                                                                 | F1               | F1                  |
+| Zum masuk                                                                             | ⌘=               | Ctrl+=              |
+| Zum dengan roda tetikus                                                               | ⌘ + roda tetikus | Ctrl + roda tetikus |
+| Tunjuk atau sorok formula dalam sel                                                   | ⌘`               | Ctrl+`              |
+| Kembangkan atau ciutkan bar formula                                                   | ⌘⇧U              | Ctrl+Shift+U        |
+| Jalankan butang Bar Alat Capaian Pantas mengikut kedudukan (pertama hingga kesepuluh) |                  | Alt+1 … Alt+0       |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Kekunci ini berfungsi apabila tab HWP/HWPX berada di hadapan dan dokumen mempuny
 | Cari seterusnya    | ⌃L          | Ctrl+L                       |
 | Cari ke belakang   | ⌃Q, L       | Ctrl+Q, L                    |
 | Pergi ke           | ⌥G          | Alt+G                        |
+| Ke awal dokumen    | ⌃⇞          | Ctrl+PageUp                  |
+| Ke akhir dokumen   | ⌃⇟          | Ctrl+PageDown                |
 | Bandingkan dokumen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Aksara
@@ -757,3 +762,5 @@ Hanya berfungsi apabila kursor berada dalam sel jadual yang kosong. Ada kekunci 
 | Pergi ke tab Utama (di luar jadual)        | ⇧⌘H   | Ctrl+Shift+H    |
 
 Kekunci yang ditulis `Ctrl+N,T` bermaksud tekan Ctrl+N, lepaskan, kemudian tekan T. `F5 → S` bermaksud pilih blok sel dengan F5 kemudian tekan S. `Ctrl+1 … Ctrl+0` ialah gaya pertama hingga kesepuluh dokumen; `Ctrl+Alt+1 … Ctrl+Alt+0` menggunakan gaya yang sama. Apabila blok sel dipilih, `Ctrl+Shift+S` (pada macOS `⇧⌘S`) ialah jumlah blok; di luar itu kekunci ini menyimpan sebagai.
+
+Dengan tetikus, seperti dalam Hangul, klik dua kali memilih satu perkataan, klik tiga kali seluruh perenggan, dan klik dua kali lalu tahan dan seret meluaskan pilihan perkataan demi perkataan. Ini juga berlaku semasa menyunting pengepala, pengaki atau nota kaki. Menyalin blok sel (`Ctrl+C`) menyalin teks sel dan jadual itu sendiri, jadi apabila ditampal dalam badan teks, jadual yang sama dibina semula. Menampal dengan kursor sahaja dalam sel jadual lain membuka dialog Paste Cells: tulis ganti bermula dari sel itu (sel yang terkeluar dari jadual dibuang) atau sisipkan sel di atas, di bawah, di kiri atau di kanan.

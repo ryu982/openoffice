@@ -12,10 +12,12 @@ Každý editor má vlastní přiřazení kláves a funguje všude jen několik z
 | Složit / rozbalit pás — každý editor                       | ⌥⌘R   | Ctrl+F1         |
 | Kompaktní pás — jen Docs                                   | ⌥⌘K   | Ctrl+Alt+K      |
 | Otevřít list Klávesové zkratky — pouze Word                | ⌘/    | Ctrl+/          |
+| Otevřít nastavení — všechny karty kromě Wordu              | ⌘,    | Ctrl+,          |
 
 - **F1 otevírá tuto příručku**, ne list zkratek. Patří do menu aplikace, takže funguje z Wordu, Sheets, Slides, PDF i panelu Home.
 - **Přepínač pásu je `Ctrl+F1`, nebo `⌥⌘R` na macOS.** Samotné `F1` nic neudělá — F1 je příručka a klávesa pásu ji záměrně nesdílí. `Ctrl+F1` se na macOS také přijímá, ale `⌥⌘R` je klávesa, kterou používá Office pro Mac.
 - **List Klávesové zkratky existuje jen ve Wordu** (`⌘/`). Vypisuje přesně tabulku Wordu níže. Jiný editor ho nemá.
+- **`⌘,` otevře nastavení** (`Ctrl+,` ve Windows a Linuxu), jako ve většině aplikací pro Mac. Na kartě Word zůstává tato zkratka dolním indexem, proto tam nastavení otevřete z nabídky aplikace na Macu nebo přes Nabídka (☰) ▸ Nastavení… ve Windows a Linuxu.
 
 ![List Klávesové zkratky ve Wordu: akce vlevo, klávesová zkratka vpravo, seskupeno podle Soubor, Úpravy, Formátování textu, Formátování odstavce, Vkládání, Kontrola a nástroje, Zobrazení](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Zkratka filtru Excelu, Ctrl+Shift+L, na Windows ani Linuxu nedělá nic. Na macO
 
 ### Okno
 
-| Akce                                                      | macOS         | Windows / Linux  |
-| --------------------------------------------------------- | ------------- | ---------------- |
-| Uložit sešit                                              | ⌘S            | Ctrl+S           |
-| Uložit jako                                               | ⇧⌘S           | Ctrl+Shift+S     |
-| Otevřít sešit                                             | ⌘O            | Ctrl+O           |
-| Tisk                                                      | ⌘P            | Ctrl+P           |
-| Zavřít sešit (macOS) / Ukončit aplikaci (Windows a Linux) | ⌘W            | Ctrl+Q           |
-| Otevřít uživatelskou příručku                             | F1            | F1               |
-| Přiblížit                                                 | ⌘=            | Ctrl+=           |
-| Přiblížení kolečkem myši                                  | ⌘ + posouvání | Ctrl + posouvání |
-| Zobrazit nebo skrýt vzorce v buňkách                      | ⌘`            | Ctrl+`           |
-| Rozbalit nebo sbalit řádek vzorců                         | ⌘⇧U           | Ctrl+Shift+U     |
+| Akce                                                            | macOS         | Windows / Linux  |
+| --------------------------------------------------------------- | ------------- | ---------------- |
+| Uložit sešit                                                    | ⌘S            | Ctrl+S           |
+| Uložit jako                                                     | ⇧⌘S           | Ctrl+Shift+S     |
+| Otevřít sešit                                                   | ⌘O            | Ctrl+O           |
+| Tisk                                                            | ⌘P            | Ctrl+P           |
+| Zavřít sešit (macOS) / Ukončit aplikaci (Windows a Linux)       | ⌘W            | Ctrl+Q           |
+| Otevřít uživatelskou příručku                                   | F1            | F1               |
+| Přiblížit                                                       | ⌘=            | Ctrl+=           |
+| Přiblížení kolečkem myši                                        | ⌘ + posouvání | Ctrl + posouvání |
+| Zobrazit nebo skrýt vzorce v buňkách                            | ⌘`            | Ctrl+`           |
+| Rozbalit nebo sbalit řádek vzorců                               | ⌘⇧U           | Ctrl+Shift+U     |
+| Spustit tlačítko panelu Rychlý přístup podle pozice (1. až 10.) |               | Alt+1 … Alt+0    |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Tyto klávesy fungují, když je karta HWP/HWPX vpředu a dokument má fokus. Dv
 | Najít další           | ⌃L          | Ctrl+L                       |
 | Hledat zpět           | ⌃Q, L       | Ctrl+Q, L                    |
 | Přejít na             | ⌥G          | Alt+G                        |
+| Na začátek dokumentu  | ⌃⇞          | Ctrl+PageUp                  |
+| Na konec dokumentu    | ⌃⇟          | Ctrl+PageDown                |
 | Porovnat dokumenty    | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Znak
@@ -757,3 +762,5 @@ Fungují jen tehdy, když je kurzor v prázdné buňce tabulky. Samostatné klá
 | Přejít na kartu Domů (mimo tabulku) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Klávesa zapsaná jako `Ctrl+N,T` znamená: stiskněte Ctrl+N, uvolněte a potom stiskněte T. `F5 → S` znamená vybrat blok buněk klávesou F5 a potom stisknout S. `Ctrl+1 … Ctrl+0` označují první až desátý styl dokumentu; `Ctrl+Alt+1 … Ctrl+Alt+0` použijí stejné styly. Když je vybraný blok buněk, `Ctrl+Shift+S` (v macOS `⇧⌘S`) je součet bloku; jinde tato klávesa ukládá jako.
+
+Myší, stejně jako v Hangulu, dvojklik vybere slovo, trojklik celý odstavec a dvojklik s podrženým tlačítkem a tažením rozšiřuje výběr po slovech. Platí to i při úpravách záhlaví, zápatí nebo poznámky pod čarou. Zkopírováním bloku buněk (`Ctrl+C`) se zkopíruje text buněk i samotná tabulka, takže vložením do textu vznikne stejná tabulka znovu. Vložení, když je kurzor jen v buňce jiné tabulky, otevře okno Paste Cells: přepsat od této buňky (buňky mimo tabulku se zahodí) nebo buňky vložit nad, pod, vlevo či vpravo.

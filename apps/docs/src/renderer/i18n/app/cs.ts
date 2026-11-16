@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const cs = {
+  appLegacyDocImported:
+    'Soubor .{ext} byl otevřen jako převedená kopie .docx. Původní soubor zůstává beze změny; uložením vznikne nový soubor .docx.',
   appScTitle: 'Klávesové zkratky',
   appScFilter: 'Hledat zkratky',
   appScNone: 'Žádné odpovídající zkratky',
@@ -54,6 +56,7 @@ export const cs = {
   appVerticalTextNotice:
     'Tento dokument obsahuje svislý text (zatím se zobrazuje vodorovně; ukládání není ovlivněno)',
   appNewDocCreated: 'Prázdný dokument vytvořen. Popište v panelu AI vlevo, co má vygenerovat.',
+  appNewDocCreatedNoAi: 'Byl vytvořen prázdný dokument.',
   appNewFailed: 'Dokument se nepodařilo vytvořit: {error}',
   appSaveFailed: 'Uložení se nezdařilo: {error}',
   appAutoSavedAt: 'Automaticky uloženo ({time})',
@@ -94,6 +97,9 @@ export const cs = {
   appPrintRangeAll: 'Všechny stránky',
   appPrintRangeCurrent: 'Aktuální stránka',
   appPrintRangeCustom: 'Vlastní rozsah',
+  appPrintRangeSelection: 'Výběr',
+  appPrintSelectionPreparing: 'Rozdělování výběru na stránky…',
+  appPrintSelectionFailed: 'Výběr se nepodařilo rozdělit na stránky: {error}',
   appPrintRangeHint: 'např. 1,3,5-8',
   appPrintPageCount: 'Stránek: {n}',
   appPrintNoPages: 'Žádné stránky k tisku',
@@ -350,6 +356,9 @@ export const cs = {
   appAiBadgeTip: 'Používá AI',
   appTranslate: 'Přeložit',
   appTranslateTo: 'Přeložit do jazyka {lang}',
+  appEasyWords: 'Vysvětlit jednoduše',
+  appEasyWordsPrompt:
+    'Vysvětlete vybraný text česky tak, aby mu porozuměli i lidé, kteří potřebují snadno srozumitelný text (děti, starší lidé, lidé, kteří se učí česky). Používejte běžná slova a krátké věty a zachovejte všechna fakta, čísla a podmínky. Dokument neupravujte: „{text}“',
   redactMenuLabel: 'Skrýt výběr před AI',
   redactDialogDesc:
     'Slova zůstanou v dokumentu i v souboru; model uvidí jen zástupný symbol. Pojmenujte ho, aby věděl, co zastupuje.',
@@ -380,6 +389,7 @@ export const cs = {
   appLangHindi: 'hindi',
   appLangTraditionalChinese: 'tradiční čínština',
   appLangVietnamese: 'vietnamština',
+  appLangTurkish: 'turečtina',
   appWrapTextMenu: 'Obtékání textu',
   appViewImage: 'Zobrazit obrázek',
   appSaveImageAs: 'Uložit obrázek jako…',
@@ -581,4 +591,10 @@ export const cs = {
   appMergeSourceLoaded: 'Načteno {name} ({n} záznamů)',
   appMergeWritten: 'Zapsáno dokumentů: {n}',
   appMergeNothingToWrite: 'Není co zapsat',
+  appExportingHwp: 'Exportuje se dokument HWP…',
+  appExportedHwp: 'Dokument HWP byl exportován: {path}',
+  appExportHwpFailed: 'Export do HWP se nezdařil: {error}',
+  appExportHwpCanceled: 'Export do HWP byl zrušen',
+  appExportHwpReadback:
+    'Tento dokument nelze přesně zapsat jako .hwp. Zkuste ho uložit jako .hwpx.',
 } satisfies Record<keyof typeof zh, string>

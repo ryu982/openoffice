@@ -1,6 +1,7 @@
 import { open, readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
+import { diagramFormatOf, readDiagramText } from './diagram'
 import { docToText } from './doc'
 import { docxToText } from './docx'
 import { epubToText } from './epub'
@@ -12,6 +13,7 @@ import { pptxToText } from './pptx'
 import { xlsxToText } from './xlsx'
 import { xmindToText } from './xmind'
 import { readZipTextParts } from './zip-text-parts'
+import { decodeCsvBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { redactHtmlSource } from './html-redaction'
 import { redactMarkdownSource } from './markdown-redaction'
 
@@ -69,12 +71,24 @@ const FATAL_UTF8_DECODER = new TextDecoder('utf-8', { fatal: true })
 const WINDOWS_1252_DECODER = new TextDecoder('windows-1252')
 
 /**
+ * Whether the bytes open with a UTF-32LE or UTF-32BE BOM. Neither
+ * `decodeTextBytes` nor `decodeCsvBuffer` can decode UTF-32, and a
+ * UTF-32LE BOM (`FF FE 00 00`) is also a valid UTF-16LE BOM followed by two
+ * NUL bytes, so this must be checked before any UTF-16 handling runs.
+ */
+function isUtf32BomDeclared(bytes: Buffer | Uint8Array): boolean {
+  if (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff) return true // UTF-32BE
+  if (bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0) return true // UTF-32LE
+  return false
+}
+
+/**
  * BOM-aware text decode; invalid UTF-8 falls back to windows-1252 so callers
  * index what survives. null only for a BOM-declared UTF-32 file.
  */
 function decodeTextBytes(bytes: Buffer): string | null {
+  if (isUtf32BomDeclared(bytes)) return null
   if (bytes[0] === 0xff && bytes[1] === 0xfe) {
-    if (bytes[2] === 0 && bytes[3] === 0) return null // UTF-32LE BOM
     return bytes.toString('utf16le', 2)
   }
   if (bytes[0] === 0xfe && bytes[1] === 0xff) {
@@ -209,11 +223,36 @@ export async function parseFileToText(
   opts: ParseFileOptions = {},
 ): Promise<ParsedFile> {
   const ext = extname(filePath).slice(1).toLowerCase()
+  // a draw.io diagram is named first: `.drawio.png` and `.drawio.svg` are read
+  // as diagram text, not by their last extension
+  if (diagramFormatOf(filePath)) {
+    try {
+      const read = readDiagramText(filePath, await readFile(filePath))
+      if (read.ok) return { ok: true, kind: 'text', text: read.text }
+      // a picture that only carries the name is the picture it is: read on by
+      // its last extension below
+      if (read.reason !== 'no_original') {
+        return {
+          ok: false,
+          kind: 'text',
+          error: `Cannot read diagram (${read.reason}): ${read.message}`,
+        }
+      }
+    } catch (e) {
+      return { ok: false, kind: 'text', error: e instanceof Error ? e.message : String(e) }
+    }
+  }
   const imageMime = IMAGE_MIMES[ext]
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
   try {
     if (TEXT_EXTS.has(ext)) {
-      const text = decodeTextBytes(await readFile(filePath))
+      const bytes = await readFile(filePath)
+      const text =
+        ext === 'csv' || ext === 'tsv'
+          ? isUtf32BomDeclared(bytes)
+            ? null
+            : decodeCsvBuffer(bytes)
+          : decodeTextBytes(bytes)
       if (text === null) {
         return {
           ok: false,

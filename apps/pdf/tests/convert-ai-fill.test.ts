@@ -309,3 +309,41 @@ describe('EPUB dialog: Fill with AI', () => {
     expect(q(el, '[data-ai-state]')?.textContent).toBe(en.cvAiNoText)
   })
 })
+
+describe('EPUB dialog: Fill with AI while AI is turned off', () => {
+  /** the window's editor-choice bridge, as the preload exposes it (read and follow) */
+  function choiceBridge(aiFeatures: boolean) {
+    const listeners = new Set<(c: { off: string[]; aiFeatures: boolean; locked: false }) => void>()
+    const source = {
+      get: vi.fn(async () => ({ off: [], aiFeatures, locked: false as const })),
+      onChange: (listener: (c: { off: string[]; aiFeatures: boolean; locked: false }) => void) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+    }
+    vi.stubGlobal('aiOfficeEditorChoice', source)
+    return {
+      set: (on: boolean) => {
+        for (const listener of listeners) listener({ off: [], aiFeatures: on, locked: false })
+      },
+    }
+  }
+
+  it('has no button while AI is off, and gets it back when AI is turned on', async () => {
+    const choice = choiceBridge(false)
+    const { el } = await render({
+      settings: { subscriptionNoticeSeen: true },
+      statuses: statusesOf('ready', 'ready'),
+    })
+    expect(q(el, '[data-action="ai-fill"]')).toBeNull()
+    // the rest of the book information stays
+    expect(q(el, '[data-field="title"]')).not.toBeNull()
+    await act(async () => choice.set(true))
+    await settle()
+    expect(q(el, '[data-action="ai-fill"]')?.textContent).toBe(en.cvAiFill)
+    await act(async () => choice.set(false))
+    await settle()
+    expect(q(el, '[data-action="ai-fill"]')).toBeNull()
+    expect(bridge.api.aiStream).not.toHaveBeenCalled()
+  })
+})

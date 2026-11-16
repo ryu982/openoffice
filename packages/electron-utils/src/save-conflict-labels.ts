@@ -145,6 +145,12 @@ export const SAVE_CONFLICT_STRINGS = defineStrings({
     overwrite: 'Ghi đè',
     cancel: 'Hủy',
   } satisfies Keys,
+  tr: {
+    message: 'Bu belge başka bir yerde değiştirildi.',
+    detail: 'Yine de kaydedip diskteki değişikliklerin üzerine yazılsın mı?',
+    overwrite: 'Üzerine yaz',
+    cancel: 'İptal',
+  } satisfies Keys,
 })
 
 const t = createI18n(SAVE_CONFLICT_STRINGS)

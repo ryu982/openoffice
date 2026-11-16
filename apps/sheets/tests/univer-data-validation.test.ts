@@ -1,4 +1,5 @@
 import { DataValidationRenderMode } from '@univerjs/core'
+import { AddDataValidationMutation, DataValidationModel } from '@univerjs/data-validation'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -9,7 +10,11 @@ import {
   shouldShowDataValidationDropdown,
 } from '../src/renderer/data-validation-dropdown'
 import { stripInvalidDataMarker } from '../src/renderer/data-validation-marker'
-import { resolveDvListSource, toUniverDvRule } from '../src/renderer/univer-sync'
+import {
+  applyDataValidations,
+  resolveDvListSource,
+  toUniverDvRule,
+} from '../src/renderer/univer-sync'
 
 const listRule = {
   ranges: [{ startRow: 1, startColumn: 4, endRow: 100, endColumn: 4 }],
@@ -91,6 +96,28 @@ describe('toUniverDvRule', () => {
     expect(resolveDvListSource('tblStaff[BADGE]', undefined)).toBe('tblStaff[BADGE]')
     expect(resolveDvListSource('otherName', file)).toBe('otherName')
     expect(resolveDvListSource('$AK$3:$AK$5', file)).toBe('$AK$3:$AK$5')
+  })
+})
+
+describe('validation rules read from the file', () => {
+  it('reach Univer as loaded rules, which its row re-measure ignores', () => {
+    const model = new DataValidationModel({ error: vi.fn() } as never)
+    const sources: string[] = []
+    model.ruleChange$.subscribe((change) => sources.push(change.source))
+    const runtime = {
+      univerAPI: {
+        syncExecuteCommand: (id: string, params: never) => {
+          expect(id).toBe(AddDataValidationMutation.id)
+          AddDataValidationMutation.handler({ get: () => model } as never, params)
+        },
+      },
+    }
+    const state = { appliedDvSheets: new Set<string>(), file: { sha256: 'abc' } }
+
+    applyDataValidations(runtime as never, state as never, 'sheet-1', [listRule] as never)
+
+    expect(model.getRules('file-abc', 'sheet-1')).toHaveLength(1)
+    expect(sources).toEqual(['patched'])
   })
 })
 

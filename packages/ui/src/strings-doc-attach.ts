@@ -91,4 +91,8 @@ export const DOC_ATTACH_STRINGS: Record<Lang, DocAttachStrings> = {
     label: 'Đính kèm từ tài liệu GenOffice',
     busy: 'Cửa sổ danh sách tài liệu đã mở',
   },
+  tr: {
+    label: 'GenOffice belgelerinden ekle',
+    busy: 'Belge listesi penceresi zaten açık',
+  },
 }

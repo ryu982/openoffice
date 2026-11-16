@@ -21,6 +21,9 @@ import {
   DriveAttachButton,
   type DriveAttachPicked,
   DocAttachButton,
+  McpPermissionCard,
+  McpServerButton,
+  useMcpWindow,
   NO_SKILL_USE,
   SentSkillChips,
   skillChipRefsOf,
@@ -40,6 +43,7 @@ import {
   useProjectPanel,
   type ProjectPanel,
   type ProjectMemoryLine,
+  useSubscriptionUsageUpdates,
 } from '@genoffice/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
@@ -52,7 +56,10 @@ import {
   type IpcStreamError,
   type KbFileInfo,
   composeWithDrive,
+  windowMcpState,
+  windowMcpUsableServers,
   type MindMapTreeNode,
+  toolStepLabel,
 } from '@genoffice/agent-core'
 import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
 import { localModelCapabilities } from '@genoffice/ai-provider/browser'
@@ -65,10 +72,12 @@ import type {
 import { redactTextBetween, type RedactableNode } from './redact-view'
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { Transaction } from '@tiptap/pm/state'
 import { captureRollbackSnapshot, restoreRollbackSnapshot } from './rollback-snapshot'
-import { countWords, findNumId, type NumIds } from './protocol'
+import { countWords, findNumId, isBlankDocument, type NumIds } from './protocol'
 import { DOC_NAV_SCHEME, navigateToBlock, parseDocNavHref } from './doc-nav'
 import {
+  carryDocSeen,
   markDocSeen,
   type AiCommentsAccess,
   type AiDocExtras,
@@ -102,6 +111,15 @@ import { waitForFullContent } from '../phased-content'
 import { currentDocGeneration } from '../file-actions'
 import { createFilesSkill } from './files-skill'
 import { boundChatHistory } from './chat-retention'
+import {
+  afterRollback,
+  clearAiMarksTransaction,
+  countAiMarkedBlocks,
+  hasLaterAppliedRun,
+  isAiMarksClear,
+  runChangesState,
+  type DocsRunChanges,
+} from './run-changes'
 import { createElectronTransport } from './transport'
 import {
   isBlockedRunCause,
@@ -112,11 +130,11 @@ import {
 } from './run-state'
 import { useSubscriptionConnection } from './subscription-client'
 import { useI18n, t as tModule, aiLangDirective, type StringKey } from '../i18n/locale'
-import { createFileNav, Markdown } from '@genoffice/ui'
+import { AiChangesCard, createFileNav, Markdown } from '@genoffice/ui'
 import {
   AiComposer,
   AiScopeQuote,
-  AiTypingIndicator,
+  AiReplyProgress,
   docMentionActions,
   type AiComposerDocs,
   type AiScopeQuoteData,
@@ -224,8 +242,10 @@ interface ChatEntry {
   /** interactive mind map from generate_mindmap's side-channel display (session-only;
    * the persisted transcript keeps the tool call, so a reopened file can regenerate) */
   mindmap?: MindMapTreeNode
-  /** document state before this turn's first edit — rendered as an inline roll-back action */
+  /** document state before this turn's first edit — what the changes card rolls back to */
   snapshot?: ProseMirrorNode
+  /** what the run changed, for its changes card; set on the run's last reply when it edited */
+  changes?: DocsRunChanges
   /** attachments consumed from the composer by this user message (read-only echo chips) */
   attachments?: AttachmentMeta[]
   /** the selection this user message targeted, frozen at send */
@@ -568,9 +588,13 @@ export function AiPanel({
   })
   const msgQueueRef = useRef(msgQueue)
   msgQueueRef.current = msgQueue
+  /** this window's MCP servers (user MCP spec 7.5); the chips name the ones not usable now */
+  const mcpWindow = useMcpWindow()
   /** the skills called with `/` or `$`: the list, the chips and the text a request gets */
   const skills = useComposerSkills({
     lang,
+    editor: 'docs',
+    usableMcpServers: mcpWindow.state?.usableServers(),
     // a chip whose skill has a template runs in a new tab (spec 5.7)
     onTemplateSkill: (request) => skillTemplatesRef.current.onTemplateSkill(request),
   })
@@ -598,6 +622,14 @@ export function AiPanel({
     cards: skillCards,
     busy,
     send: (text, use) => runWith(text, text, undefined, undefined, use),
+    // a template skill called in a document with content asks where to run
+    hasContent: () => !isBlankDocument(editorRef.current),
+    // a template copy that brought the asking document: it goes in as an attachment
+    attach: async (paths) => {
+      const added = await window.desktop.addAttachmentPaths(paths)
+      mergeAttachments(added)
+      return (added?.accepted.length ?? 0) > 0
+    },
     onTaken: () => {
       if (!open) onExpand?.()
     },
@@ -811,6 +843,12 @@ export function AiPanel({
   }, [settings, subscription.statuses])
   /** rate-limit windows the subscription CLI reported (newest per provider and window) */
   const [subscriptionUsage, setSubscriptionUsage] = useState<AiSubscriptionUsage[]>([])
+  // usage a picture request reported reaches every window (the chat stream only its own)
+  useSubscriptionUsageUpdates(
+    () => window.aiOfficeSubscription,
+    setSubscriptionUsage,
+    mergeSubscriptionUsage,
+  )
   /** the last turn's input was cut to fit a limit: the user is told, never silently */
   const [inputTruncated, setInputTruncated] = useState(false)
   /** structured copy of the transport's latest failure, matched to the loop's error by its text */
@@ -850,8 +888,8 @@ export function AiPanel({
   const notesAccessRef = useRef(notesAccess)
   notesAccessRef.current = notesAccess
 
-  /** drop every aiChanged flag; silent = skip undo history (auto-accept path) */
-  const clearAiHighlights = (silent = false) => {
+  /** drop every aiChanged flag when the AI's revisions are accepted */
+  const clearAiHighlights = () => {
     const view = editorRef.current.view
     let tr = view.state.tr
     let touched = false
@@ -861,13 +899,73 @@ export function AiPanel({
         touched = true
       }
     })
-    if (silent) tr = tr.setMeta('addToHistory', false)
     if (touched) {
       view.dispatch(tr)
       // AI-pipeline housekeeping, not a user edit: keep the freshness baseline current
       markDocSeen(editorRef.current)
     }
   }
+  /** the page shows the yellow marks of the last run (tracking off) */
+  const [marksShown, setMarksShown] = useState(false)
+  const marksShownRef = useRef(marksShown)
+  marksShownRef.current = marksShown
+  /** Take the last run's marks off the page: no edit, no undo step, no revision. */
+  const clearMarks = () => {
+    marksShownRef.current = false
+    setMarksShown(false)
+    const ed = editorRef.current
+    const before = ed.state.doc
+    const tr = clearAiMarksTransaction(ed.view.state)
+    if (!tr) return
+    ed.view.dispatch(tr)
+    // the AI saw the marked document: it saw this one (a user edit since still counts)
+    carryDocSeen(ed, before)
+  }
+  /**
+   * What the finished run changed, for its last reply: nothing when it made no edit.
+   * With tracking off its blocks keep their marks, counted here; with tracking on the
+   * revisions show the changes and the card names no count. Refs only: the loop keeps
+   * the closure of the first render.
+   */
+  const takeRunChanges = (): { changes: DocsRunChanges } | Record<string, never> => {
+    if (!runSnapshotRef.current) return {}
+    if (trackChangesRef.current) return { changes: { state: 'applied' } }
+    const count = countAiMarkedBlocks(editorRef.current.state.doc)
+    if (count > 0) {
+      marksShownRef.current = true
+      setMarksShown(true)
+    }
+    return { changes: { state: 'applied', ...(count > 0 ? { count } : {}) } }
+  }
+  /**
+   * A new run or chat starts without the last run's marks. With tracking off no block
+   * keeps one either way (a redo can bring a cleared one back); with tracking on the
+   * yellow under the revisions stays for the Review tab, as before.
+   */
+  const dropRunMarks = () => {
+    if (marksShownRef.current || !trackChangesRef.current) clearMarks()
+  }
+  // the marks go once the user edits the document (they would point astray) or something
+  // else took them off; housekeeping that keeps no undo step is not the user's edit
+  useEffect(() => {
+    if (!marksShown || busy) return
+    const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+      if (!transaction.docChanged || isAiMarksClear(transaction)) return
+      if (transaction.getMeta('addToHistory') !== false) {
+        // after this transaction is applied, not inside its dispatch
+        window.setTimeout(() => {
+          if (marksShownRef.current) clearMarks()
+        }, 0)
+      } else if (countAiMarkedBlocks(transaction.doc) === 0) {
+        marksShownRef.current = false
+        setMarksShown(false)
+      }
+    }
+    editor.on('transaction', onTransaction)
+    return () => {
+      editor.off('transaction', onTransaction)
+    }
+  }, [editor, marksShown, busy])
   /** instruction of the in-flight run */
   const instructionRef = useRef('')
   /** document state before the run's first edit — attached to the turn's final
@@ -898,6 +996,8 @@ export function AiPanel({
     skillsRef.current.restoreHistory(
       msgs.map((m) => (m.role === 'user' ? skillChipRefsOf(m.skills) : undefined)),
     )
+    // a reopened conversation starts with no MCP choices of another chat (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     // restore model context: follow-ups after reopening a file continue the previous conversation (only when the loop is idle with no history)
     loopRef.current?.restore(msgs.map((m) => ({ role: m.role, text: m.text })))
   }
@@ -1169,10 +1269,13 @@ export function AiPanel({
         createFilesSkill(availableAttachments),
         // the person's skills: use_skill, read_skill_file, propose_skill (app-run tools)
         ...panelUserSkills({
+          editor: 'docs',
           lang: () => langRef.current,
           messages: () => loopRef.current?.messages ?? [],
           // a template skill the model used offers its new document (spec 5.7)
           onUsed: (skill) => skillTemplatesRef.current.onUsed(skill),
+          // use_skill names the MCP servers it expects that are not usable now (spec 8)
+          mcpServerUsable: (name) => windowMcpUsableServers().has(name),
           onProposal: (proposal) => {
             skillCardsRef.current.add(proposal)
             patchLastAssistant((last) => ({
@@ -1191,18 +1294,15 @@ export function AiPanel({
           patchLastAssistant((last) => ({
             tools: [
               ...(last.tools ?? []),
-              { name: call.name, summary: call.name.replace(/[_-]+/g, ' '), running: true },
+              { name: call.name, summary: toolStepLabel(call.name), running: true },
             ],
           }))
         },
         onToolExecuted: ({ call, execution, snapshotBefore }) => {
           // The run's first pre-edit state wins so one roll-back undoes the whole run
           if (snapshotBefore && !runSnapshotRef.current) runSnapshotRef.current = snapshotBefore
-          if (execution.mutated) {
-            // tracking off: accept immediately (same tick, so the yellow never paints);
-            // tracking on: revisions stay pending, handled in the Review tab
-            if (!trackChangesRef.current) clearAiHighlights(true)
-          }
+          // tracking off: the edit is accepted, its yellow marks stay until the next run (or
+          // the card's clear); tracking on: revisions stay pending, handled in the Review tab
           // mind maps ride the UI-only display side channel onto the message
           const display = execution.display
           const mindmap = display?.kind === 'mindmap' ? display.tree : undefined
@@ -1254,6 +1354,8 @@ export function AiPanel({
           const finalText = truncated
             ? [baseText, tModule('aiTruncatedNote')].filter(Boolean).join('\n\n')
             : baseText
+          // outside the updater: it reads the document and shows the marks once
+          const runChanges = takeRunChanges()
           patchLastAssistant((last) => ({
             streaming: false,
             turnLimit,
@@ -1261,6 +1363,7 @@ export function AiPanel({
             // A stop mid-tool can leave a running placeholder behind — drop it
             tools: last.tools?.filter((tl) => !tl.running),
             snapshot: runSnapshotRef.current ?? undefined,
+            ...runChanges,
           }))
           setBusy(false)
           // App listens: a run that generated content into a never-saved document
@@ -1278,6 +1381,8 @@ export function AiPanel({
         onError: (error) => {
           const errorCause = runErrorCauseOf(streamErrorRef.current, error)
           streamErrorRef.current = null
+          // outside the updater: it reads the document and shows the marks once
+          const runChanges = takeRunChanges()
           setChat((prev) => {
             const next = [...prev]
             const last = next.at(-1)
@@ -1289,6 +1394,7 @@ export function AiPanel({
                 ...(errorCause ? { errorCause } : {}),
                 tools: last.tools?.filter((tl) => !tl.running),
                 snapshot: runSnapshotRef.current ?? undefined,
+                ...runChanges,
               }
             }
             return boundChatHistory(next)
@@ -1498,6 +1604,7 @@ export function AiPanel({
     runToolsRef.current = []
     runSnapshotRef.current = null
     runUsageRef.current = undefined
+    dropRunMarks()
     stickToBottomRef.current = true
     setChat((prev) =>
       boundChatHistory([
@@ -1627,6 +1734,8 @@ export function AiPanel({
     }
     abandonWriter()
     loopRef.current?.reset()
+    // servers off in this chat and "always allow in this chat" go too (user MCP spec 7.6)
+    windowMcpState()?.newConversation()
     sendGate.reset()
     setInputTruncated(false)
     setBusy(false)
@@ -1643,6 +1752,7 @@ export function AiPanel({
     setAttachments([])
     setAttachNotice(null)
     sentAttachmentsRef.current = []
+    dropRunMarks()
   }
 
   /** "New chat": a new chat of the chosen project, or (no project) today's reset (spec 5.3.7) */
@@ -1755,12 +1865,15 @@ export function AiPanel({
 
   const rollback = (entryIdx: number, snapshot: ProseMirrorNode) => {
     restoreRollbackSnapshot(editor, snapshot)
-    // The document rewound to before this turn, so this and every later
-    // rollback point now describe discarded futures
-    setChat((prev) =>
-      prev.map((e, i) => (i >= entryIdx && e.snapshot ? { ...e, snapshot: undefined } : e)),
-    )
+    // the point is from before the run's first edit, so it carries no marks
+    marksShownRef.current = false
+    setMarksShown(false)
+    // The document rewound to before this turn: this and every later run are taken
+    // back, and their rollback points now describe discarded futures
+    setChat((prev) => afterRollback(prev, entryIdx))
   }
+  /** the newest run that changed the document: the marks on the page are its */
+  const lastChangesIdx = chat.map((entry) => entry.changes !== undefined).lastIndexOf(true)
 
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   useEffect(() => () => resizeCleanupRef.current?.(), [])
@@ -1955,8 +2068,8 @@ export function AiPanel({
             entry.role === 'assistant' &&
             !entry.streaming &&
             turnEnded &&
-            // edits-only turns have no text but still carry the rollback point
-            !!(entry.text || entry.error || entry.snapshot)
+            // an edits-only turn has no text to copy; the last one still offers the retry
+            !!(entry.text || entry.error || (isLast && entry.changes))
           return (
             <div
               key={i}
@@ -1969,16 +2082,12 @@ export function AiPanel({
               {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                 <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
               )}
-              {entry.role === 'assistant' && !entry.text && entry.streaming ? (
-                <span className="ai-typing-row">
-                  <AiTypingIndicator
-                    label={entry.tools?.length ? t('aiWorking') : t('aiThinking')}
-                  />
-                </span>
-              ) : entry.role === 'assistant' ? (
-                <div dir="auto">
-                  <Markdown text={entry.text} navs={chatNavs} />
-                </div>
+              {entry.role === 'assistant' ? (
+                entry.text && (
+                  <div dir="auto">
+                    <Markdown text={entry.text} navs={chatNavs} />
+                  </div>
+                )
               ) : (
                 <span dir="auto">{entry.text}</span>
               )}
@@ -2022,6 +2131,21 @@ export function AiPanel({
                   onContinueWith={continueWith}
                 />
               )}
+              {entry.changes && (
+                <AiChangesCard
+                  lang={lang}
+                  state={runChangesState(entry.changes, entry.snapshot)}
+                  count={entry.changes.count}
+                  canRevert={!busy}
+                  revertsLater={hasLaterAppliedRun(chat, i)}
+                  onRevert={() => {
+                    if (entry.snapshot) rollback(i, entry.snapshot)
+                  }}
+                  // the marks are the newest run's: only its card clears them
+                  onClearMarks={marksShown && i === lastChangesIdx ? clearMarks : null}
+                />
+              )}
+              <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
               {showToolbar && (
                 <div className="ai-msg-toolbar">
                   {entry.text && (
@@ -2080,17 +2204,6 @@ export function AiPanel({
                       </svg>
                     </button>
                   )}
-                  {entry.snapshot && (
-                    <>
-                      {/* hairline between reply actions (icons) and the document action (icon+label);
-                          CSS shows it only when an icon button actually precedes it */}
-                      <span className="ai-rollback-sep" aria-hidden />
-                      <RollbackButton
-                        disabled={busy}
-                        onClick={() => rollback(i, entry.snapshot!)}
-                      />
-                    </>
-                  )}
                 </div>
               )}
               {entry.turnLimit && isLast && !busy && (
@@ -2102,6 +2215,8 @@ export function AiPanel({
           )
         })}
         {skillTemplates.notes}
+        {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
+        <McpPermissionCard lang={lang} />
       </div>
 
       <div className="ai-composer">
@@ -2331,6 +2446,7 @@ export function AiPanel({
               </button>
               <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
               <DocAttachButton lang={lang} onPicked={attachFromDrive} />
+              <McpServerButton lang={lang} />
               <button
                 className={`ai-track-btn${trackOn ? ' on' : ''}`}
                 onClick={toggleTrackChanges}
@@ -2401,31 +2517,6 @@ function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12.4 2.4 2.4 4.6-5" />
     </svg>
-  )
-}
-
-/** Quiet roll-back action in the message toolbar: restores the document to before the run's edits */
-function RollbackButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
-  const { t: tr } = useI18n()
-  return (
-    <button type="button" className="ai-rollback-btn" disabled={disabled} onClick={onClick}>
-      {/* 24-canvas glyph at 18px (optical parity with the toolbar icons): stroke 1.5 paints 1.125px (1:16) */}
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M5.91026 4L2.5 7.14791L5.91026 10.8205" />
-        <path d="M3.96154 7.41028H15.1636C18.5169 7.41028 21.3646 10.1484 21.4953 13.5C21.6334 17.0416 18.707 20.0769 15.1636 20.0769H6.88384" />
-      </svg>
-      {tr('aiRollback')}
-    </button>
   )
 }
 

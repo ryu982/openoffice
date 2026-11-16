@@ -68,6 +68,7 @@ export default defineConfig({
           '@genoffice/ai-search',
           '@genoffice/file-parse',
           '@genoffice/electron-utils',
+          '@genoffice/print-layout',
           'opentype.js',
         ],
       }),

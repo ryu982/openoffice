@@ -1,6 +1,7 @@
 import type { Lang } from '@genoffice/i18n'
 import type { SkillProposal } from '@genoffice/agent-core'
-import type { AgentCodexWebSearch } from '@genoffice/ai-provider/agent-session'
+import type { AiRunErrorKind } from '@genoffice/ai-provider'
+import type { AgentCodexWebSearch, AgentProgramProblem } from '@genoffice/ai-provider/agent-session'
 
 /**
  * The agent window (decision 0032): channels and the shapes the window and the
@@ -36,6 +37,11 @@ export const AGENT_CHANNELS = {
   templateAsIs: 'agent-window:template-as-is',
   /** "make a blank template": the candidate's copy in a template preview tab */
   templateBlank: 'agent-window:template-blank',
+  /**
+   * main → every window: the subscription statuses changed (`SUBSCRIPTION_IPC_CHANNELS.changed`,
+   * named here so the agent preload imports no AI package); the window reads its connections again
+   */
+  statusesChanged: 'ai:subscription-changed',
 } as const
 
 export type AgentProvider = 'claude-code' | 'codex'
@@ -74,7 +80,9 @@ export const DEFAULT_AGENT_PREFS: AgentPrefs = {
 }
 
 /** The connection of each program as the window needs it to offer a start */
-export type AgentConnection = 'ready' | 'metered-accepted' | 'unavailable' | 'checking' | 'blocked'
+/** `off`: the person turned the program off in this app (decision 0114) */
+export type AgentConnection =
+  'ready' | 'metered-accepted' | 'unavailable' | 'checking' | 'blocked' | 'off'
 
 /** Codex's own web search in an agent session: cached results, live, or off (one type, the session's) */
 export type { AgentCodexWebSearch }
@@ -197,16 +205,86 @@ export type AgentTemplateBlank =
   { ok: true; tabId: string; previewId: string } | { ok: false; reason: string }
 
 export type AgentStartResponse =
-  | { ok: true; sessionId: string; skills: AgentSessionSkill[] }
   | {
-      ok: false
-      reason: 'bad-folder' | 'not-connected' | 'start-failed' | 'not-accepted' | 'provider-blocked'
-      kind?: string | undefined
+      ok: true
+      sessionId: string
+      skills: AgentSessionSkill[]
+      /**
+       * the person's MCP servers attached that keep received content inside: this window
+       * cannot keep it, and the start warning names them (user MCP spec 9)
+       */
+      mcpKeepInside?: string[] | undefined
+      /** project notes the instructions carry only the start of, by file name; absent when none */
+      instructionsTruncated?: string[] | undefined
     }
+  | { ok: false; failure: AgentStartFailure }
+
+/** The run errors of a start that the window has a message for */
+export const AGENT_RUN_ERROR_KINDS = [
+  'unsafe-tools',
+  'sandbox-unavailable',
+  'rate-limit',
+  'signed-out',
+  'metered-not-accepted',
+  'needs-update',
+  'not-installed',
+  'off-in-app',
+] as const satisfies ReadonlyArray<AiRunErrorKind | 'sandbox-unavailable'>
+export type AgentRunErrorKind = (typeof AGENT_RUN_ERROR_KINDS)[number]
+
+export type AgentPrepareStep =
+  'session-folder' | 'app-tools' | 'user-mcp' | 'skills' | 'instructions'
+
+export type AgentStartFailure =
+  | { reason: 'bad-folder' | 'not-connected' | 'not-accepted' | 'provider-blocked' }
+  | { reason: 'invalid-request' }
+  | { reason: 'run-error'; kind: AgentRunErrorKind }
+  | { reason: 'program-problem'; problem: AgentProgramProblem }
+  | { reason: 'prepare-failed'; step: AgentPrepareStep }
+  /** the window closed, or the app quit, before the session was running */
+  | { reason: 'stopped' }
+  | { reason: 'unknown' }
+
+/**
+ * A short code for a failure the person may report: identifier-like words
+ * only, so the diagnostic record can keep it as it is.
+ */
+export function agentStartFailureCode(failure: AgentStartFailure): string {
+  switch (failure.reason) {
+    case 'run-error':
+      return failure.kind
+    case 'prepare-failed':
+      return `prepare ${failure.step}`
+    case 'program-problem': {
+      const { problem } = failure
+      switch (problem.type) {
+        case 'exited':
+          return problem.exitCode === undefined ? 'exited' : `exited ${problem.exitCode}`
+        case 'no-answer':
+          return `no-answer ${problem.step.replace(/\//g, '.')}`
+        case 'refused':
+          return `refused ${problem.step.replace(/\//g, '.')}${problem.code === undefined ? '' : ` ${problem.code}`}`
+        default:
+          return problem.type
+      }
+    }
+    default:
+      return failure.reason
+  }
+}
 
 /** What a tool line or a permission request shows; paths and commands are shown as they are */
 export interface AgentActionView {
-  kind: 'read' | 'write' | 'command' | 'app-tool' | 'skill' | 'web-search' | 'web-fetch' | 'other'
+  kind:
+    | 'read'
+    | 'write'
+    | 'command'
+    | 'app-tool'
+    | 'mcp-tool'
+    | 'skill'
+    | 'web-search'
+    | 'web-fetch'
+    | 'other'
   tool: string
   command?: string | undefined
   /** a shorter reading of the command for the progress line; the full one stays in `command` */
@@ -217,6 +295,8 @@ export interface AgentActionView {
   target?: string | undefined
   /** the site of a page address, when it has one */
   host?: string | undefined
+  /** the person's MCP server an `mcp-tool` request calls; its input is in `target` */
+  server?: string | undefined
 }
 
 export type AgentEventView =
@@ -239,6 +319,8 @@ export interface AgentWindowApi {
   getInit(): Promise<AgentInit>
   getTheme(): Promise<'light' | 'dark' | 'system'>
   onThemeChanged(handler: (theme: 'light' | 'dark' | 'system') => void): () => void
+  /** a program was checked, signed in or out, or turned off or on in this app */
+  onStatusesChanged(handler: () => void): () => void
   /** the folder dialog; null when cancelled */
   pickFolder(): Promise<string | null>
   setPrefs(prefs: Partial<AgentPrefs>): Promise<AgentPrefs>

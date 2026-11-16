@@ -16,7 +16,8 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { localEndpointFieldsOf } from './local-profile'
-import { AI_SUBSCRIPTION_PROVIDERS, readUrlSettingsOf } from './providers'
+import { aiEffortOf, aiModelEffortsOf } from './effort'
+import { AI_SUBSCRIPTION_PROVIDERS, readUrlSettingsOf, sanitizeSubscriptionOff } from './providers'
 import { AI_PROVIDER_ADAPTERS, normalizeBaseUrl } from './registry'
 import type {
   AiCustomEndpoint,
@@ -94,6 +95,12 @@ function sanitizeProviderConfig(input: unknown): AiProviderConfig {
   }
   const cliPath = sanitizeCliPath(raw.cliPath)
   if (cliPath !== undefined) config.cliPath = cliPath
+  // a level of the fixed list or nothing: the Claude bridge hands it to `--effort`
+  const effort = aiEffortOf(raw.effort)
+  if (effort !== undefined) config.effort = effort
+  // known levels only; the request path reads it, and a save takes the file's table instead
+  const modelEfforts = aiModelEffortsOf(raw.modelEfforts)
+  if (modelEfforts !== undefined) config.modelEfforts = modelEfforts
   return config
 }
 
@@ -151,6 +158,7 @@ function sanitizeCustomEndpoints(raw: unknown): AiCustomEndpoint[] {
       apiKey: config.apiKey,
       model: config.model,
       ...(models && models.length > 0 ? { models } : {}),
+      ...(config.effort ? { effort: config.effort } : {}),
       // local-only fields: bounded, and dropped rather than rejecting the endpoint
       ...localEndpointFieldsOf(e),
     })
@@ -201,6 +209,10 @@ export function sanitizeAiSettings(input: unknown): AiSettings | null {
     }
     settings.meteredAccepted = accepted
   }
+  // what a renderer read from the file rides on its run requests and can only stop more;
+  // a save keeps the stored value (decision 0114: only the main process turns a CLI off or on)
+  const subscriptionOff = sanitizeSubscriptionOff(raw.subscriptionOff)
+  if (subscriptionOff) settings.subscriptionOff = subscriptionOff
   if (typeof raw.headlessSubscriptionEnabled === 'boolean') {
     settings.headlessSubscriptionEnabled = raw.headlessSubscriptionEnabled
   }

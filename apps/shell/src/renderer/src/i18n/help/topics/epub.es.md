@@ -12,7 +12,7 @@ El editor de libros electrónicos abre libros EPUB (`.epub`) en una pestaña. Pu
 
 ## Leer
 
-- El panel **Contenido** de la izquierda muestra la tabla de contenido del libro. Haga clic en una entrada para ir allí. Un libro que no la tiene recibe una lista de sus capítulos.
+- El panel **Contenido** de la izquierda muestra la tabla de contenido del libro. Haga clic en una entrada para ir allí. Un libro que no la tiene recibe una lista de sus capítulos. Arrastre el borde interior del panel para cambiar su ancho; haga doble clic en el borde para volver al ancho original. El panel de búsqueda usa el mismo ancho.
 - Cada capítulo se desplaza hacia arriba y hacia abajo. Siga desplazándose más allá del final de un capítulo para pasar al siguiente, o más allá de su inicio para volver al anterior. La línea de estado muestra en qué capítulo se encuentra.
 - La pestaña **Vista** cambia el tamaño del texto y el interlineado, y activa o desactiva la **Vista oscura**. Estos ajustes solo cambian la pantalla, nunca el libro, y se aplican a todos los libros.
 - El punto donde dejó de leer se recuerda para cada archivo, en la carpeta de datos de la aplicación y no dentro del libro.
@@ -47,7 +47,7 @@ El editor de libros electrónicos abre libros EPUB (`.epub`) en una pestaña. Pu
 ## Panel de IA
 
 - Pregunte sobre el libro, pida un resumen de un capítulo o que se corrija o reescriba su texto. La IA lee la tabla de contenido y los capítulos del libro y encuentra texto en él.
-- Los cambios de la IA aparecen al instante, y un solo deshacer (Ctrl+Z) revierte todo lo que cambió en ese turno. La IA puede poner texto en negrita o cursiva, pero no puede añadir imágenes, tablas ni capítulos.
+- Los cambios de la IA aparecen al instante, los bloques cambiados se marcan en amarillo y **Deshacer estos cambios**, en la tarjeta bajo su respuesta, revierte todo lo que cambió en ese turno (siempre que el libro no se haya editado después). La IA puede poner texto en negrita o cursiva, pero no puede añadir imágenes, tablas ni capítulos.
 - El texto del libro es material para la IA, no instrucciones para ella.
 - Pida «Traduce este libro al francés» y la IA abrirá la ventana de traducción con ese idioma ya indicado. No se envía nada hasta que pulse **Empezar**.
 - Los libros EPUB también se pueden adjuntar en el panel de IA de los demás editores, elegir con `@` y encontrar con la búsqueda de archivos de Inicio.
@@ -67,6 +67,7 @@ El editor de libros electrónicos abre libros EPUB (`.epub`) en una pestaña. Pu
 - Lo ya traducido se conserva. Si se detiene, elija **Exportar lo traducido hasta ahora** (el resto queda en el idioma original) o **Continuar más tarde**. Al abrir un libro con una traducción sin terminar, GenOffice ofrece continuarla. **Volver a traducir desde el principio** borra primero la traducción conservada para ese idioma.
 - Las traducciones conservadas cuentan en Configuración ▸ General ▸ **Resultados de IA guardados**, junto con las de los documentos PDF, y **Eliminar todo** también las borra.
 - La misma traducción también puede ejecutarse desde la [línea de comandos](help://cli) como `ieumoffice epub translate`.
+- Elija **Lectura fácil** en **Modo** para reescribir el libro con palabras sencillas en el idioma elegido. Los resultados son un **Libro en lectura fácil** y **Original seguido de la lectura fácil**; su título lleva en ese idioma la marca de versión de lectura fácil, y su nombre de archivo la lleva en el idioma de la interfaz, para distinguirse del de una traducción. El idioma es al principio el de la interfaz y puede ser el del libro. La lectura fácil se guarda aparte de las traducciones, se ofrece continuarla por separado y los comandos de terminal no la crean.
 
 ## Todavía no disponible
 

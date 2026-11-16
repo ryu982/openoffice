@@ -58,7 +58,7 @@ Každý příkaz je nástroj. Zajímavé jsou tyto:
 Požadavek z příkazu `ieumoffice` nebo od klienta MCP jste v aplikaci nenapsali vy, a proto s ním GenOffice zachází opatrně.
 
 - **Vyhledávání** funguje vždy a ve výchozím stavu je zdarma. Klíč poskytovatele vyhledávání se použije jen tehdy, pokud jste nějaký vybrali.
-- **Generování obrázku** potřebuje klíč poskytovatele obrázků. V této verzi předplatné obrázky negeneruje.
+- **Generování obrázku** se řídí volbou generování obrázků v nastavení. Výchozí volba Tarif ChatGPT (program Codex) používá váš tarif ChatGPT přes program Codex a **nepoužije se, dokud to nepovolíte** (viz níže). Jinak se použije klíč nastaveného poskytovatele obrázků. Model, který agent uvede, se použije, pokud ho tato cesta nabízí.
 - **Popis obrázku** používá poskytovatele s klíčem, pokud je nastaven. Vaše předplatné Claude nebo Codex se **nepoužije, dokud to nepovolíte**.
 - **Video a zvuk** potřebují poskytovatele s klíčem, který podporuje video.
 

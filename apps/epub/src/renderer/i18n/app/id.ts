@@ -30,6 +30,7 @@ export const id = {
   darkView: 'Tampilan gelap',
   toc: 'Daftar isi',
   tocEmpty: 'Buku ini tidak punya daftar isi',
+  sideResize: 'Ubah lebar panel',
   statusChapter: 'Bab {n}/{total}',
   prevChapter: 'Bab sebelumnya',
   nextChapter: 'Bab berikutnya',

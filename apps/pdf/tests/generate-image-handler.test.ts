@@ -110,6 +110,31 @@ describe('pdf:generate-image handler', () => {
     })
   })
 
+  it('passes a named model on to the image tool and leaves it out otherwise', async () => {
+    generateImageTool.mockResolvedValue({ url: 'file:///fake/out.png' })
+    sharedSubscriptionStatuses.mockReturnValue(STATUSES)
+    createPdfView('/docs/report.pdf')
+    const send = (op: unknown) =>
+      handlers.get(PDF_CHANNELS.generateImage)!({ sender: lastContents }, op)
+
+    await send({ prompt: 'a red kite', model: 'gpt-image-2' })
+    expect(generateImageTool.mock.calls[0]![1]).toEqual({
+      prompt: 'a red kite',
+      aspectRatio: undefined,
+      model: 'gpt-image-2',
+    })
+    await send({ prompt: 'a red kite' })
+    expect(generateImageTool.mock.calls[1]![1]).toEqual({
+      prompt: 'a red kite',
+      aspectRatio: undefined,
+    })
+    // a non-string or blank model from the renderer is not a model name
+    await send({ prompt: 'a red kite', model: 42 })
+    await send({ prompt: 'a red kite', model: '   ' })
+    expect(generateImageTool.mock.calls[2]![1]).not.toHaveProperty('model')
+    expect(generateImageTool.mock.calls[3]![1]).not.toHaveProperty('model')
+  })
+
   it('normalises a malformed request instead of throwing', async () => {
     generateImageTool.mockResolvedValue({ error: 'prompt must not be empty' })
     sharedSubscriptionStatuses.mockReturnValue({})

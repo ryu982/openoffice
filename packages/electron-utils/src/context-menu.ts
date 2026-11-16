@@ -28,7 +28,7 @@ const EN: ContextMenuLabels = {
   saveImageAs: 'Save Image As…',
 }
 
-// One shared table instead of 7 keys × 20 languages duplicated into every
+// One shared table instead of 7 keys × every UI language duplicated into each
 // app's main-process dictionary; strings match the docs Edit menu.
 const LABELS: Record<string, ContextMenuLabels> = {
   zh: {
@@ -202,6 +202,15 @@ const LABELS: Record<string, ContextMenuLabels> = {
     viewImage: 'Xem ảnh',
     copyImage: 'Sao chép ảnh',
     saveImageAs: 'Lưu ảnh thành…',
+  },
+  tr: {
+    cut: 'Kes',
+    copy: 'Kopyala',
+    paste: 'Yapıştır',
+    selectAll: 'Tümünü seç',
+    viewImage: 'Resmi görüntüle',
+    copyImage: 'Resmi kopyala',
+    saveImageAs: 'Resmi farklı kaydet…',
   },
   'zh-TW': {
     cut: '剪下',

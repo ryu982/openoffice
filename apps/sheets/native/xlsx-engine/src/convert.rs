@@ -2,28 +2,85 @@
 //! and writes a minimal .xlsx with values, formulas, and date number formats.
 //! What the binary layer of an .xls holds beyond cells comes along too — the
 //! drawing group's embedded pictures with their anchors, merges, column
-//! widths and hand-set row heights (see `xls_biff` and `escher`). Styles
-//! beyond date formats are not carried over — the converted file is a fresh
+//! widths, hand-set row heights, and the cell formatting — fonts, fills,
+//! borders, alignment, number formats (see `xls_biff`, `xls_styles` and
+//! `escher`), and the print settings — page setup, margins, header/footer,
+//! manual breaks, print area and titles (see `xls_print`). Charts and
+//! conditional formats are not carried over — the converted file is a fresh
 //! workbook, not a byte-preserving edit.
+//!
+//! ODF spreadsheets convert through the same calamine path, with two things
+//! the reader cannot give: the OpenFormula in `table:formula` is translated to
+//! Excel syntax (`odf_formula`) and the merges, column widths and row heights
+//! calamine's ODS reader does not expose are read from the package itself
+//! (`odf_layout`). A formula that cannot be translated is dropped and the cell
+//! keeps its cached value; `formulas_dropped` reports how many (decision 0119).
 
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use calamine::{Data, Dimensions, Reader, Sheets, open_workbook_auto};
+use calamine::{Data, Dimensions, Reader, SheetVisible, Sheets, open_workbook_auto};
 
 use crate::SidecarError;
 use crate::escher::{self, Blip, BlipKind};
+use crate::odf_cell_styles::{ValueKind, XlsxStyles};
+use crate::odf_drawing_parts::{DrawingWriter, SheetGeometry};
+use crate::odf_drawings::{self, OdfDrawings};
+use crate::odf_formula;
+use crate::odf_layout::{self, OdsSheetLayout};
+use crate::odf_pivots::{Pivots, SourceCell};
+use crate::odf_sheet_format::{self, OdsFormats};
+use crate::odf_sheet_parts::{self, OdfSheetXml};
 use crate::spreadsheetml;
 use crate::xls_biff::{self, XlsSheetBinary};
+use crate::xls_print;
+use crate::xls_styles::XlsStyles;
 use crate::xlsx_package::{
-    SheetArt, SheetSpec, cell_reference, escape_xml, iso_serial, worksheet_document, write_package,
+    PackageExtras, STYLES_XML, SheetArt, SheetExtras, SheetSpec, cell_reference, escape_xml,
+    iso_serial, worksheet_document, write_package_with,
 };
+
+/// `s` indices the converter wrote: per cell, per row, and the column spans.
+#[derive(Default)]
+struct SheetStyles {
+    cells: HashMap<(u32, u32), u16>,
+    rows: HashMap<u32, u16>,
+}
+
+/// Row heights for one sheet: sizes the file sets row by row, spans too wide to
+/// expand into one entry per row, and the sheet default a grid-wide span stood
+/// for.
+#[derive(Default)]
+struct RowHeights {
+    explicit: HashMap<u32, (u16, bool)>,
+    /// `(first, last, twips)` of a repeated span that is kept as a range; the
+    /// writer consults it for the rows it emits.
+    spans: Vec<(u32, u32, u16)>,
+    /// `sheetFormatPr/@defaultRowHeight` in points, when a span stood for the
+    /// sheet's own height rather than for a set of edited rows.
+    default_points: Option<f64>,
+}
+
+impl RowHeights {
+    /// The height `row` carries, an explicit entry winning over a wide span.
+    fn height(&self, row: u32) -> Option<(u16, bool)> {
+        self.explicit.get(&row).copied().or_else(|| {
+            self.spans
+                .iter()
+                .find(|(first, last, _)| (*first..=*last).contains(&row))
+                .map(|(_, _, twips)| (*twips, true))
+        })
+    }
+}
 
 pub struct ConvertResult {
     pub sheets: usize,
     pub cells: usize,
+    /// Cells whose ODF formula could not be translated and was therefore
+    /// dropped, leaving only the cached value (decision 0119).
+    pub formulas_dropped: u32,
 }
 
 /// Why the reader refused a file, when the refusal is about the container and
@@ -89,79 +146,470 @@ pub fn convert_to_xlsx(source: &Path, target: &Path) -> Result<ConvertResult, Si
     // The binary layer only exists for real .xls containers; ODF and XML
     // spreadsheets convert without it.
     let binary = xls_biff::read_xls_binary(source);
+    // ODF keeps merges, sizing and formula syntax in places calamine's ODS
+    // reader does not look, so the package is read a second time for them.
+    let odf = matches!(&workbook, Sheets::Ods(_));
+    let layouts = if odf {
+        odf_layout::read_layouts(source).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    // Formatting, structure and print setup are a third reading of the
+    // package, and as best-effort as the second: a document this cannot
+    // follow still opens with its values.
+    let mut formats: Option<OdsFormats> = if odf {
+        odf_sheet_format::read_formats(source).ok()
+    } else {
+        None
+    };
+    let mut odf_styles = formats.as_ref().map(|formats| XlsxStyles::new(&formats.book));
+    // The pivot tables came with that reading. Each one needs the header row
+    // of the range it reads, which is taken as its sheet goes by.
+    let mut pivots = formats
+        .as_mut()
+        .map(|formats| Pivots::new(std::mem::take(&mut formats.pivots), &names))
+        .unwrap_or_default();
+    // Pictures, shapes and charts are a fourth reading, skipped outright for
+    // a document that holds none. A drawing this cannot follow is left out;
+    // it never stops the cells from opening.
+    let drawings: Option<OdfDrawings> = if odf {
+        odf_drawings::read_drawings(source)
+            .ok()
+            .filter(|drawings| !drawings.is_empty())
+    } else {
+        None
+    };
+    let mut drawing_writer = match &drawings {
+        Some(_) => DrawingWriter::new(source).ok(),
+        None => None,
+    };
+    let mut odf_art: Vec<Option<SheetArt>> = Vec::new();
+    let mut package_extras = PackageExtras::default();
+    let mut sheet_names_xml = String::new();
+    // The names the document defines travel with it, so a formula that
+    // mentions one keeps calculating instead of being cut down to its value.
+    let (odf_names, odf_defined_names) = if odf {
+        odf_defined_names(workbook.defined_names())
+    } else {
+        (odf_formula::Names::default(), String::new())
+    };
 
     let mut sheet_xmls: Vec<String> = Vec::new();
     let mut cells = 0usize;
+    let mut formulas_dropped = 0u32;
     for (index, name) in names.iter().enumerate() {
         let range = workbook
             .worksheet_range(name)
             .map_err(|error| SidecarError::Workbook(format!("Sheet {name}: {error}")))?;
+        if !pivots.is_empty() {
+            pivots.observe(index, |row, column| match range.get_value((row, column)) {
+                Some(Data::String(text)) => SourceCell::Text(text),
+                Some(Data::Float(number)) => SourceCell::Number(*number),
+                Some(Data::Int(number)) => SourceCell::Number(*number as f64),
+                Some(Data::Empty) | None => SourceCell::Empty,
+                Some(_) => SourceCell::Other,
+            });
+        }
         let formulas = workbook.worksheet_formula(name).ok();
-        let mut formula_map: HashMap<(u32, u32), String> = HashMap::new();
+        // A cell's entry is `Some` with the Excel spelling of its formula, or
+        // `Some(None)` when the source had one the translation dropped.
+        let mut formula_map: HashMap<(u32, u32), Option<String>> = HashMap::new();
         if let Some(formula_range) = formulas {
             let (start_row, start_col) = formula_range.start().unwrap_or((0, 0));
             for (row, column, formula) in formula_range.used_cells() {
                 if formula.is_empty() {
                     continue;
                 }
-                formula_map.insert(
-                    (start_row + row as u32, start_col + column as u32),
-                    formula.clone(),
-                );
+                let position = (start_row + row as u32, start_col + column as u32);
+                if odf {
+                    let translated = odf_formula::translate_with(formula, &odf_names);
+                    if translated.is_none() {
+                        formulas_dropped += 1;
+                    }
+                    formula_map.insert(position, translated);
+                } else {
+                    formula_map.insert(position, Some(formula.clone()));
+                }
             }
         }
+        let layout = layouts.get(index);
+        // An array formula keeps its result range: written as an ordinary
+        // formula it would be evaluated for its own cell alone and change the
+        // answer.
+        let arrays: HashMap<(u32, u32), String> = layout
+            .map(|layout| {
+                layout
+                    .arrays
+                    .iter()
+                    .map(|(start, end)| {
+                        let first = cell_reference(start.0, start.1);
+                        let last = cell_reference(end.0, end.1);
+                        let range = if first == last {
+                            first
+                        } else {
+                            format!("{first}:{last}")
+                        };
+                        (*start, range)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         let sheet_binary = binary.as_ref().and_then(|b| b.sheets.get(index));
-        let columns = sheet_binary.map(cols_xml).unwrap_or_default();
-        let heights = match sheet_binary {
-            Some(sheet) => sheet
-                .row_heights
-                .iter()
-                .map(|(row, twips, custom)| (*row, (*twips, *custom)))
-                .collect(),
-            None => HashMap::new(),
+        let styles = binary.as_ref().map(|b| &b.styles);
+        let mut odf_parts: Option<OdfSheetXml> = match (&formats, &mut odf_styles) {
+            (Some(formats), Some(xlsx)) => Some(odf_sheet_parts::build(
+                index,
+                formats,
+                layout,
+                xlsx,
+                range.end(),
+                &odf_names,
+            )),
+            _ => None,
+        };
+        let columns = match (sheet_binary, styles) {
+            (Some(sheet), Some(styles)) => cols_xml(sheet, styles),
+            // The sheet parts already decided which columns need an entry;
+            // none at all means every column has the default width, not that
+            // the widths are still to be written.
+            _ => match odf_parts.as_ref() {
+                Some(parts) => parts.cols.clone(),
+                None => layout.map(odf_cols_xml).unwrap_or_default(),
+            },
+        };
+        let mut sheet_styles = match (sheet_binary, styles) {
+            (Some(sheet), Some(styles)) => sheet_styles(sheet, styles),
+            _ => SheetStyles::default(),
+        };
+        if let (Some(parts), Some(formats), Some(xlsx)) =
+            (&mut odf_parts, &formats, &mut odf_styles)
+        {
+            sheet_styles.cells = std::mem::take(&mut parts.cell_styles);
+            sheet_styles.rows = std::mem::take(&mut parts.row_styles);
+            // A cell with a value takes the format of its own style, with a
+            // date or time format where the style has none for one.
+            if let Some(sheet_format) = formats.sheets.get(index) {
+                let (start_row, start_col) = range.start().unwrap_or((0, 0));
+                // Most cells share a handful of styles; the index of each is
+                // looked up once.
+                let mut known: HashMap<(u32, ValueKind), u16> = HashMap::new();
+                let mut assign = |position: (u32, u32), kind: ValueKind| {
+                    match sheet_format.cell_style(position.0, position.1) {
+                        Some(id) => {
+                            let xf = *known.entry((id, kind)).or_insert_with(|| {
+                                xlsx.cell(&formats.book, formats.name(id), kind)
+                            });
+                            sheet_styles.cells.insert(position, xf);
+                        }
+                        // No style of its own: the cell keeps what a merge
+                        // it sits under gave it, if anything.
+                        None => {}
+                    }
+                };
+                for (row, column, value) in range.used_cells() {
+                    let kind = match value {
+                        Data::DateTimeIso(text) => match odf_date_serial(text) {
+                            Some(serial) if serial.fract() == 0.0 => ValueKind::Date,
+                            Some(_) => ValueKind::DateTime,
+                            None => ValueKind::Plain,
+                        },
+                        Data::DateTime(datetime) => {
+                            if datetime.as_f64().fract() == 0.0 {
+                                ValueKind::Date
+                            } else {
+                                ValueKind::DateTime
+                            }
+                        }
+                        Data::DurationIso(_) => ValueKind::Time,
+                        _ => ValueKind::Plain,
+                    };
+                    assign((start_row + row as u32, start_col + column as u32), kind);
+                }
+                for position in formula_map.keys() {
+                    let covered = range
+                        .get_value((position.0, position.1))
+                        .is_some_and(|value| *value != Data::Empty);
+                    if !covered {
+                        assign(*position, ValueKind::Plain);
+                    }
+                }
+            }
+            // Link text takes the link colour unless its style names one.
+            for (position, xf) in std::mem::take(&mut parts.link_styles) {
+                sheet_styles.cells.insert(position, xf);
+            }
+        }
+        // A height Excel fitted to the row's fonts is not flagged as set by
+        // hand, but it still differs from the sheet default: a title row in a
+        // large font keeps its height, as an .xlsx keeps its ht without
+        // customHeight.
+        let used_rows = match (range.start(), range.end()) {
+            (Some(start), Some(end)) => Some((start.0, end.0)),
+            _ => None,
+        };
+        let heights: RowHeights = match sheet_binary {
+            Some(sheet) => RowHeights {
+                explicit: sheet
+                    .row_heights
+                    .iter()
+                    .filter(|(_, twips, custom)| {
+                        *custom
+                            || sheet
+                                .default_row_twips
+                                .is_some_and(|default| default != *twips)
+                    })
+                    .map(|(row, twips, custom)| (u32::from(*row), (*twips, *custom)))
+                    .collect(),
+                ..RowHeights::default()
+            },
+            None => layout
+                .map(|layout| odf_row_heights(layout, used_rows))
+                .unwrap_or_default(),
         };
         let mut tail = match &mut workbook {
             Sheets::Xls(reader) => {
                 merges_xml(&reader.merge_cells_by_sheet_name(name).unwrap_or_default())
             }
-            _ => String::new(),
+            // calamine reports no merges for ODF; `odf_layout` read them out
+            // of the package instead.
+            _ => layout.map(odf_merges_xml).unwrap_or_default(),
         };
+        let sheet_drawing = match (&drawings, &mut drawing_writer) {
+            (Some(drawings), Some(writer)) => drawings
+                .sheets
+                .get(index)
+                .filter(|sheet| !sheet.shapes.is_empty())
+                .and_then(|sheet| {
+                    writer.sheet_art(&sheet.shapes, &drawings.styles, &SheetGeometry::new(sheet))
+                }),
+            _ => None,
+        };
+        // Protection and the filter precede the merges; rules, links, the
+        // print setup, the drawing and the notes' drawing follow them, in
+        // that order.
+        if let Some(parts) = &odf_parts {
+            tail.insert_str(0, &parts.before_merges);
+            tail.push_str(&parts.after_merges);
+        }
+        if sheet_drawing.is_some() {
+            // the drawing part is written beside this sheet, always rId1 there
+            tail.push_str(r#"<drawing r:id="rId1"/>"#);
+        }
+        if let Some(id) = odf_parts
+            .as_ref()
+            .and_then(|parts| parts.extras.legacy_drawing.as_ref())
+        {
+            tail.push_str(&format!(r#"<legacyDrawing r:id="{id}"/>"#));
+        }
+        // The extension list closes the worksheet.
+        if let Some(parts) = &odf_parts {
+            tail.push_str(&parts.extensions);
+        }
+        if sheet_drawing
+            .as_ref()
+            .is_some_and(|art| !art.copied.is_empty())
+        {
+            package_extras.source = Some(source.to_path_buf());
+        }
+        odf_art.push(sheet_drawing);
+        // printOptions … colBreaks follow mergeCells and precede drawing
+        if let Some(sheet) = sheet_binary {
+            tail.push_str(&sheet.print.tail_xml());
+        }
         if sheet_binary.is_some_and(|sheet| sheet.drawing.is_some()) {
             // the drawing part is written beside this sheet, always rId1 there
             tail.push_str(r#"<drawing r:id="rId1"/>"#);
         }
-        let (xml, sheet_cells) = worksheet_xml(&range, &formula_map, &columns, &tail, &heights);
+        let (xml, sheet_cells) = worksheet_xml(
+            &range,
+            &formula_map,
+            &columns,
+            &tail,
+            &heights,
+            &sheet_styles,
+            odf,
+            &arrays,
+            &RowExtras {
+                attributes: odf_parts.as_ref().map(|parts| &parts.row_attributes),
+                rich: odf_parts.as_ref().map(|parts| &parts.rich),
+            },
+        );
+        // sheetPr is the worksheet's first child, ahead of the dimension the
+        // document opens with
+        let xml = match sheet_binary.map(|sheet| sheet.print.sheet_pr_xml()) {
+            Some(sheet_pr) if !sheet_pr.is_empty() => {
+                xml.replacen("<dimension ", &format!("{sheet_pr}<dimension "), 1)
+            }
+            _ => xml,
+        };
+        let xml = match &odf_parts {
+            Some(parts) => with_sheet_head(xml, parts),
+            None => xml,
+        };
+        if let Some(parts) = odf_parts {
+            sheet_names_xml.push_str(&parts.defined_names);
+            package_extras.sheets.push(parts.extras);
+        } else {
+            package_extras.sheets.push(SheetExtras::default());
+        }
         cells += sheet_cells;
         sheet_xmls.push(xml);
     }
 
     let mut media_names: HashMap<usize, String> = HashMap::new();
-    let art: Vec<Option<SheetArt>> = names
-        .iter()
-        .enumerate()
-        .map(|(index, _)| {
-            let binary = binary.as_ref()?;
-            let sheet = binary.sheets.get(index)?;
-            let drawing = sheet.drawing.as_ref()?;
-            sheet_art(sheet, drawing, &binary.blips, &mut media_names)
-        })
-        .collect();
+    let art: Vec<Option<SheetArt>> = if odf {
+        odf_art
+    } else {
+        names
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                let binary = binary.as_ref()?;
+                let sheet = binary.sheets.get(index)?;
+                let drawing = sheet.drawing.as_ref()?;
+                sheet_art(sheet, drawing, &binary.blips, &mut media_names)
+            })
+            .collect()
+    };
 
+    // An ODF table says whether it is shown in its style; calamine reads
+    // that. A workbook needs one visible sheet, so a document that hides
+    // every table is opened with all of them showing.
+    let visibility: Vec<SheetVisible> = if odf {
+        workbook
+            .sheets_metadata()
+            .iter()
+            .map(|sheet| sheet.visible)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let any_visible = visibility
+        .iter()
+        .any(|visible| matches!(visible, SheetVisible::Visible));
     let sheets: Vec<SheetSpec> = names
         .iter()
-        .map(|name| SheetSpec {
+        .enumerate()
+        .map(|(index, name)| SheetSpec {
             name: name.clone(),
-            state: None,
+            state: match visibility.get(index).filter(|_| any_visible) {
+                Some(SheetVisible::Hidden) => Some("hidden"),
+                Some(SheetVisible::VeryHidden) => Some("veryHidden"),
+                _ => None,
+            },
         })
         .collect();
-    write_package(target, &sheets, "", &sheet_xmls, &art)?;
+    let styles_xml = if let Some(styles) = &odf_styles {
+        styles.xml()
+    } else if odf {
+        ods_styles_xml()
+    } else {
+        match &binary {
+            Some(binary) if !binary.styles.is_empty() => binary.styles.styles_xml(),
+            _ => STYLES_XML.to_string(),
+        }
+    };
+    let defined_names = if odf {
+        format!("{odf_defined_names}{sheet_names_xml}")
+    } else {
+        binary
+            .as_ref()
+            .map(|binary| print_defined_names(&binary.print_names, &names))
+            .unwrap_or_default()
+    };
+    if let Some(formats) = &formats {
+        // The sheet the document was saved on is the one it opens on.
+        let active = formats
+            .views
+            .active
+            .as_deref()
+            .and_then(|active| names.iter().position(|name| name == active))
+            .filter(|index| sheets.get(*index).is_some_and(|sheet| sheet.state.is_none()))
+            .unwrap_or(0);
+        package_extras.book_views =
+            format!(r#"<bookViews><workbookView activeTab="{active}"/></bookViews>"#);
+    }
+    pivots.write(&names, &mut package_extras);
+    write_package_with(
+        target,
+        &sheets,
+        &defined_names,
+        &sheet_xmls,
+        &art,
+        &styles_xml,
+        &package_extras,
+    )?;
     Ok(ConvertResult {
         sheets: names.len(),
         cells,
+        formulas_dropped,
     })
 }
 
+/// Puts the parts that open a worksheet where the schema wants them: `sheetPr`
+/// ahead of the dimension, the views right after it, and the outline depth on
+/// `sheetFormatPr`.
+fn with_sheet_head(mut xml: String, parts: &OdfSheetXml) -> String {
+    if !parts.sheet_pr.is_empty() {
+        xml = xml.replacen("<dimension ", &format!("{}<dimension ", parts.sheet_pr), 1);
+    }
+    let Some(dimension) = xml.find("<dimension ") else {
+        return xml;
+    };
+    let Some(end) = xml[dimension..].find("/>").map(|offset| dimension + offset + 2) else {
+        return xml;
+    };
+    let mut head = parts.sheet_views.clone();
+    if !parts.sheet_format.is_empty() {
+        if xml[end..].starts_with("<sheetFormatPr ") {
+            xml.insert_str(end + "<sheetFormatPr".len(), &parts.sheet_format);
+        } else {
+            head.push_str(&format!(
+                r#"<sheetFormatPr defaultRowHeight="15"{}/>"#,
+                parts.sheet_format
+            ));
+        }
+    }
+    xml.insert_str(end, &head);
+    xml
+}
+
+/// What an ODF sheet adds to the rows `worksheet_xml` writes.
+#[derive(Default)]
+struct RowExtras<'a> {
+    /// Extra attributes per row: hidden, outline level, collapsed.
+    attributes: Option<&'a HashMap<u32, String>>,
+    /// `<is>` content for cells whose text has runs.
+    rich: Option<&'a HashMap<(u32, u32), String>>,
+}
+
 /// `<mergeCells>` for the ranges calamine reports, or nothing at zero.
+/// The sheet-scoped `_xlnm.Print_Area` / `_xlnm.Print_Titles` names, one
+/// of each per sheet (the first NAME record wins, as in Excel).
+fn print_defined_names(print_names: &[xls_print::XlsPrintName], sheets: &[String]) -> String {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = String::new();
+    for name in print_names {
+        let Some(sheet_name) = sheets.get(name.sheet) else {
+            continue;
+        };
+        if !seen.insert((name.sheet, name.titles)) {
+            continue;
+        }
+        let builtin = if name.titles {
+            "_xlnm.Print_Titles"
+        } else {
+            "_xlnm.Print_Area"
+        };
+        out.push_str(&format!(
+            r#"<definedName name="{builtin}" localSheetId="{}">{}</definedName>"#,
+            name.sheet,
+            escape_xml(&xls_print::print_name_formula(sheet_name, &name.areas)),
+        ));
+    }
+    out
+}
+
 fn merges_xml(merges: &[Dimensions]) -> String {
     if merges.is_empty() {
         return String::new();
@@ -182,11 +630,286 @@ fn merges_xml(merges: &[Dimensions]) -> String {
     )
 }
 
+/// `<mergeCells>` for the spans `odf_layout` read out of the package, already
+/// in sheet coordinates.
+fn odf_merges_xml(layout: &OdsSheetLayout) -> String {
+    if layout.merges.is_empty() {
+        return String::new();
+    }
+    let cells: String = layout
+        .merges
+        .iter()
+        .map(|(start, end)| {
+            format!(
+                r#"<mergeCell ref="{}:{}"/>"#,
+                cell_reference(start.0, start.1),
+                cell_reference(end.0, end.1),
+            )
+        })
+        .collect();
+    format!(
+        r#"<mergeCells count="{}">{cells}</mergeCells>"#,
+        layout.merges.len()
+    )
+}
+
+/// `<cols>` for the widths `odf_layout` resolved, one entry per span. ODF says
+/// a width per column, so a span LibreOffice wrote as one repeated column goes
+/// out as one entry rather than one per column.
+fn odf_cols_xml(layout: &OdsSheetLayout) -> String {
+    if layout.columns.is_empty() {
+        return String::new();
+    }
+    let entries: String = layout
+        .columns
+        .iter()
+        .map(|(first, last, width)| {
+            format!(
+                r#"<col min="{}" max="{}" width="{:.2}" customWidth="1"/>"#,
+                first + 1,
+                last + 1,
+                width,
+            )
+        })
+        .collect();
+    format!("<cols>{entries}</cols>")
+}
+
+/// Row heights from the spans `odf_layout` resolved, as OOXML twips (1/20
+/// point), the unit `worksheet_xml` writes `ht` in. A height the file sets is
+/// by definition a custom one.
+///
+/// A span repeated across thousands of rows is not expanded into one entry per
+/// row — that would write a `row` element for most of the grid. When it covers
+/// the sheet's empty tail (or reaches the last grid row) it is the sheet's own
+/// default height and goes out through `sheetFormatPr`; when it sits over rows
+/// with data it is kept as a range the writer applies to the rows it emits.
+fn odf_row_heights(layout: &OdsSheetLayout, used: Option<(u32, u32)>) -> RowHeights {
+    let mut heights = RowHeights::default();
+    for (first, last, points) in &layout.row_heights {
+        let twips = (points * 20.0).round().clamp(0.0, f64::from(u16::MAX)) as u16;
+        if last.saturating_sub(*first) >= MAX_REPEATED_STYLE_ROWS {
+            let outside_used = match used {
+                Some((start, end)) => *last < start || *first > end,
+                None => true,
+            };
+            if *last >= odf_layout::MAX_ROW - 1 || outside_used {
+                heights.default_points = Some(*points);
+            } else {
+                heights.spans.push((*first, *last, twips));
+            }
+            continue;
+        }
+        for row in *first..=*last {
+            heights.explicit.insert(row, (twips, true));
+        }
+    }
+    heights
+}
+
+/// How many rows one repeated row style may stand for before it is read as the
+/// sheet default instead of a set of edited rows.
+const MAX_REPEATED_STYLE_ROWS: u32 = 4_096;
+
+/// The `s` index of the time number format `ods_styles_xml` adds.
+const ODS_TIME_STYLE: u16 = 3;
+
+/// The minimal stylesheet plus one cell format for ODS times. `[h]:mm:ss`
+/// brackets the hours so a duration past 24 hours reads as `30:00:00` instead
+/// of wrapping to `06:00:00`. Built from `STYLES_XML` so the two stay
+/// identical apart from that one format.
+fn ods_styles_xml() -> String {
+    STYLES_XML
+        .replace(
+            r#"<fonts count="1">"#,
+            r#"<numFmts count="1"><numFmt numFmtId="164" formatCode="[h]:mm:ss"/></numFmts><fonts count="1">"#,
+        )
+        .replace(r#"<cellXfs count="3">"#, r#"<cellXfs count="4">"#)
+        .replace(
+            "</cellXfs>",
+            r#"<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>"#,
+        )
+}
+
+/// An ISO 8601 duration (`PT13H30M`, `P1DT2H`) as a fraction of a day — the
+/// serial Excel shows through a time number format. `None` keeps the text:
+/// a duration this does not recognise is not guessed at.
+fn duration_serial(text: &str) -> Option<f64> {
+    let mut rest = text.strip_prefix('P')?;
+    let mut days = 0.0f64;
+    let mut hours = 0.0f64;
+    let mut minutes = 0.0f64;
+    let mut seconds = 0.0f64;
+    let mut in_time = false;
+    let mut seen = false;
+    while let Some(character) = rest.chars().next() {
+        if character == 'T' {
+            in_time = true;
+            rest = &rest[1..];
+            continue;
+        }
+        let end = rest
+            .find(|candidate: char| !(candidate.is_ascii_digit() || candidate == '.'))
+            .unwrap_or(rest.len());
+        let number: f64 = rest[..end].parse().ok()?;
+        let unit = rest[end..].chars().next()?;
+        match (in_time, unit) {
+            (false, 'D') => days = number,
+            (true, 'H') => hours = number,
+            (true, 'M') => minutes = number,
+            (true, 'S') => seconds = number,
+            _ => return None,
+        }
+        rest = &rest[end + unit.len_utf8()..];
+        seen = true;
+    }
+    if !seen {
+        return None;
+    }
+    let serial = days + (hours * 3600.0 + minutes * 60.0 + seconds) / 86_400.0;
+    if !serial.is_finite() || serial < 0.0 {
+        return None;
+    }
+    Some(serial)
+}
+
+/// The serial of an `office:date-value`. Two shapes the shared ISO reader
+/// leaves as text are read here, because an ODF document may hold either:
+///
+/// - a time zone (`2026-03-05T10:20:30Z`, `…+09:00`). A spreadsheet date has
+///   no zone, so the clock is kept as written and the zone is dropped;
+/// - a date before March 1900. Excel counts a 29 February 1900 that no
+///   calendar has, so its serials for January and February 1900 run one
+///   behind the day count; the date keeps the day it names.
+fn odf_date_serial(text: &str) -> Option<f64> {
+    let text = strip_time_zone(text.trim());
+    if let Some(serial) = iso_serial(text) {
+        return Some(serial);
+    }
+    let (date, time) = match text.split_once('T') {
+        Some((date, time)) => (date, Some(time)),
+        None => (text, None),
+    };
+    let mut fields = date.split('-');
+    let year: u32 = fields.next()?.parse().ok()?;
+    let month: u32 = fields.next()?.parse().ok()?;
+    let day: u32 = fields.next()?.parse().ok()?;
+    if fields.next().is_some() || year != 1900 || day == 0 {
+        return None;
+    }
+    let days = match month {
+        1 if day <= 31 => day,
+        2 if day <= 28 => 31 + day,
+        _ => return None,
+    };
+    // The time of day, read off a date the shared reader accepts.
+    let fraction = match time {
+        Some(time) => iso_serial(&format!("1900-03-01T{time}"))? - 61.0,
+        None => 0.0,
+    };
+    Some(f64::from(days) + fraction)
+}
+
+/// `…Z` and `…+09:00` without the zone. Only a suffix behind the time part
+/// is a zone; the hyphens of the date are left alone.
+fn strip_time_zone(text: &str) -> &str {
+    let Some(time_start) = text.find('T') else {
+        return text;
+    };
+    if let Some(stripped) = text.strip_suffix('Z').or_else(|| text.strip_suffix('z')) {
+        return stripped;
+    }
+    match text[time_start..].rfind(['+', '-']) {
+        Some(offset) => &text[..time_start + offset],
+        None => text,
+    }
+}
+
+/// `<definedName>` elements for the names an ODF document defines, and the
+/// set a cell formula may mention. calamine hands each name over with its
+/// `table:cell-range-address` or `table:expression`; a name whose definition
+/// has no Excel spelling is left out of both.
+fn odf_defined_names(pairs: &[(String, String)]) -> (odf_formula::Names, String) {
+    let mut names = odf_formula::Names::default();
+    let mut xml = String::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut pending: Vec<&(String, String)> = Vec::new();
+    let mut accept = |name: &str, formula: &str, names: &mut odf_formula::Names| {
+        xml.push_str(&format!(
+            r#"<definedName name="{}">{}</definedName>"#,
+            escape_xml(name),
+            escape_xml(formula),
+        ));
+        names.insert(name);
+    };
+    for pair in pairs {
+        let (name, definition) = pair;
+        if !is_excel_name(name) || !seen.insert(name.to_uppercase()) {
+            continue;
+        }
+        match odf_formula::excel_range(definition) {
+            Some(range) => accept(name, &range, &mut names),
+            None => pending.push(pair),
+        }
+    }
+    // An expression may mention another name, so the rest is retried until a
+    // pass adds none.
+    loop {
+        let before = pending.len();
+        pending.retain(|(name, definition)| {
+            match odf_formula::translate_expression(definition, &names) {
+                Some(formula) => {
+                    accept(name, &formula, &mut names);
+                    false
+                }
+                None => true,
+            }
+        });
+        if pending.len() == before {
+            break;
+        }
+    }
+    (names, xml)
+}
+
+/// A name Excel accepts as written. The built-in names another application
+/// stores under Excel's own prefix (`_xlnm.Print_Area`) need a sheet scope
+/// this conversion does not carry, so they stay behind.
+fn is_excel_name(name: &str) -> bool {
+    let mut characters = name.chars();
+    let Some(first) = characters.next() else {
+        return false;
+    };
+    (first.is_alphabetic() || first == '_')
+        && !name.starts_with("_xl")
+        && characters.all(|character| character.is_alphanumeric() || matches!(character, '_' | '.'))
+}
+
+/// A duration with its sign: a negative time (`-PT06H00M00S`) is a negative
+/// fraction of a day, not text.
+fn signed_duration_serial(text: &str) -> Option<f64> {
+    match text.strip_prefix('-') {
+        Some(rest) => duration_serial(rest).map(|serial| -serial),
+        None => duration_serial(text),
+    }
+}
+
+/// The strings a spreadsheet stores as an error result. An ODF package keeps
+/// an error cell as `office:value-type="string"` holding one of these, so the
+/// cell is written back as an error rather than as text a dependent formula
+/// would read as a string.
+fn is_error_literal(text: &str) -> bool {
+    matches!(
+        text,
+        "#NULL!" | "#DIV/0!" | "#VALUE!" | "#REF!" | "#NAME?" | "#NUM!" | "#N/A"
+    )
+}
+
 /// `<cols>` from the sheet's COLINFO entries. LibreOffice echoes the sheet's
 /// default width as one span covering every column; a span that wide is the
 /// default, not a custom width, and goes back out only through the anchor
 /// arithmetic.
-fn cols_xml(sheet: &XlsSheetBinary) -> String {
+fn cols_xml(sheet: &XlsSheetBinary, styles: &XlsStyles) -> String {
     let custom: Vec<_> = sheet
         .col_infos
         .iter()
@@ -198,8 +921,15 @@ fn cols_xml(sheet: &XlsSheetBinary) -> String {
     let entries: String = custom
         .iter()
         .map(|(first, last, width)| {
+            let style = sheet
+                .col_styles
+                .iter()
+                .find(|(f, l, _)| f == first && l == last)
+                .and_then(|(_, _, ixfe)| styles.cell_style(*ixfe))
+                .map(|s| format!(r#" style="{s}""#))
+                .unwrap_or_default();
             format!(
-                r#"<col min="{}" max="{}" width="{:.2}" customWidth="1"/>"#,
+                r#"<col min="{}" max="{}" width="{:.2}" customWidth="1"{style}/>"#,
                 first + 1,
                 (*last).min(16383) + 1,
                 f64::from(*width) / 256.0,
@@ -207,6 +937,41 @@ fn cols_xml(sheet: &XlsSheetBinary) -> String {
         })
         .collect();
     format!("<cols>{entries}</cols>")
+}
+
+/// Every `s` the sheet's records ask for, resolved against the XF table. The
+/// general XF (index 15 in a Excel-written file, 0 in a bare one) is the
+/// default and stays implicit, so untouched cells do not pick up an `s`.
+fn sheet_styles(sheet: &XlsSheetBinary, styles: &XlsStyles) -> SheetStyles {
+    let mut out = SheetStyles::default();
+    let default = default_xf(styles);
+    for (row, col, ixfe) in &sheet.cell_styles {
+        if *ixfe == default {
+            continue;
+        }
+        if let Some(s) = styles.cell_style(*ixfe) {
+            out.cells.insert((u32::from(*row), u32::from(*col)), s);
+        }
+    }
+    for (row, ixfe) in &sheet.row_styles {
+        if *ixfe == default {
+            continue;
+        }
+        if let Some(s) = styles.cell_style(*ixfe) {
+            out.rows.insert(u32::from(*row), s);
+        }
+    }
+    out
+}
+
+/// The cell XF Excel hands unformatted cells: the first XF that is not a
+/// style XF — index 15 in Excel's own files, where 0–14 are style XFs.
+fn default_xf(styles: &XlsStyles) -> u16 {
+    styles
+        .xfs
+        .iter()
+        .position(|xf| !xf.is_style)
+        .map_or(0, |index| index as u16)
 }
 
 /// The width of one column in characters of the default font, for the anchor
@@ -330,6 +1095,8 @@ fn sheet_art(
             r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rels_xml}</Relationships>"#,
         ),
         media,
+        parts: Vec::new(),
+        copied: Vec::new(),
     })
 }
 
@@ -347,10 +1114,14 @@ fn row_span_px(sheet: &XlsSheetBinary, row: u16, offset: u16) -> f64 {
 
 fn worksheet_xml(
     range: &calamine::Range<Data>,
-    formulas: &HashMap<(u32, u32), String>,
+    formulas: &HashMap<(u32, u32), Option<String>>,
     columns: &str,
     tail: &str,
-    heights: &HashMap<u16, (u16, bool)>,
+    heights: &RowHeights,
+    styles: &SheetStyles,
+    odf: bool,
+    arrays: &HashMap<(u32, u32), String>,
+    extras: &RowExtras<'_>,
 ) -> (String, usize) {
     // Rows carrying values plus rows carrying only formulas or a height.
     let mut rows: HashMap<u32, Vec<(u32, String)>> = HashMap::new();
@@ -358,31 +1129,97 @@ fn worksheet_xml(
     let (start_row, start_col) = range.start().unwrap_or((0, 0));
     for (row, column, value) in range.used_cells() {
         let absolute = (start_row + row as u32, start_col + column as u32);
-        let formula = formulas.get(&absolute).map(String::as_str);
-        if let Some(cell) = cell_xml(absolute, value, formula) {
+        let formula = formulas
+            .get(&absolute)
+            .and_then(|entry| entry.as_deref());
+        let style = styles.cells.get(&absolute).copied();
+        // Text with runs of its own formatting is written run by run.
+        if let (Data::String(_), None, Some(runs)) = (
+            value,
+            formula,
+            extras.rich.and_then(|rich| rich.get(&absolute)),
+        ) {
+            let style = style.map(|s| format!(r#" s="{s}""#)).unwrap_or_default();
+            cells += 1;
+            rows.entry(absolute.0).or_default().push((
+                absolute.1,
+                format!(
+                    r#"<c r="{}"{style} t="inlineStr"><is>{runs}</is></c>"#,
+                    cell_reference(absolute.0, absolute.1)
+                ),
+            ));
+            continue;
+        }
+        if let Some(cell) = cell_xml(
+            absolute,
+            value,
+            formula,
+            style,
+            odf,
+            arrays.get(&absolute).map(String::as_str),
+        ) {
             cells += 1;
             rows.entry(absolute.0).or_default().push((absolute.1, cell));
         }
     }
     for (position, formula) in formulas {
+        let Some(formula) = formula else {
+            continue;
+        };
         let covered = range
             .get_value((position.0, position.1))
             .is_some_and(|v| *v != Data::Empty);
         if !covered {
             cells += 1;
+            let style = styles
+                .cells
+                .get(position)
+                .map(|s| format!(r#" s="{s}""#))
+                .unwrap_or_default();
             rows.entry(position.0).or_default().push((
                 position.1,
                 format!(
-                    r#"<c r="{}"><f>{}</f></c>"#,
+                    r#"<c r="{}"{style}><f>{}</f></c>"#,
                     cell_reference(position.0, position.1),
                     escape_xml(formula),
                 ),
             ));
         }
     }
-    for (row, (_, custom)) in heights {
-        if *custom && !rows.contains_key(&u32::from(*row)) {
-            rows.insert(u32::from(*row), Vec::new());
+    for row in heights.explicit.keys() {
+        rows.entry(*row).or_default();
+    }
+    // A formatted empty cell (borders, a fill) has no value for calamine to
+    // report; it exists only through its style.
+    for (position, style) in &styles.cells {
+        let covered = range
+            .get_value((position.0, position.1))
+            .is_some_and(|v| *v != Data::Empty)
+            || formulas.contains_key(position);
+        if !covered {
+            rows.entry(position.0).or_default().push((
+                position.1,
+                format!(
+                    r#"<c r="{}" s="{style}"/>"#,
+                    cell_reference(position.0, position.1)
+                ),
+            ));
+        }
+    }
+    for row in styles.rows.keys() {
+        rows.entry(*row).or_default();
+    }
+    if let Some(attributes) = extras.attributes {
+        for row in attributes.keys() {
+            rows.entry(*row).or_default();
+        }
+    }
+    // A wide span that none of the written rows fall in would vanish; keep its
+    // first row so the height is still carried, one element rather than one
+    // per line of the span.
+    for (first, last, _) in &heights.spans {
+        if !rows.keys().any(|row| (*first..=*last).contains(row)) {
+            rows.entry(*first).or_default();
         }
     }
 
@@ -392,81 +1229,169 @@ fn worksheet_xml(
     for row in row_numbers {
         let mut line = rows.remove(&row).unwrap_or_default();
         line.sort_unstable_by_key(|(column, _)| *column);
-        let height = match heights.get(&u16::try_from(row).unwrap_or(u16::MAX)) {
+        let height = match heights.height(row) {
             // a hand-set height goes out with the custom flag; the sheet
             // default the file echoed back stays with the reader
             Some((twips, true)) => {
-                format!(r#" ht="{:.2}" customHeight="1""#, f64::from(*twips) / 20.0)
+                format!(r#" ht="{:.2}" customHeight="1""#, f64::from(twips) / 20.0)
             }
-            _ => String::new(),
+            Some((twips, false)) => format!(r#" ht="{:.2}""#, f64::from(twips) / 20.0),
+            None => String::new(),
         };
-        body.push_str(&format!(r#"<row r="{}"{height}>"#, row + 1));
+        let row_style = match styles.rows.get(&row) {
+            Some(s) => format!(r#" s="{s}" customFormat="1""#),
+            None => String::new(),
+        };
+        let more = extras
+            .attributes
+            .and_then(|attributes| attributes.get(&row))
+            .map(String::as_str)
+            .unwrap_or("");
+        body.push_str(&format!(r#"<row r="{}"{height}{row_style}{more}>"#, row + 1));
         for (_, cell) in line {
             body.push_str(&cell);
         }
         body.push_str("</row>");
     }
 
-    let dimension = match (range.start(), range.end()) {
-        (Some(start), Some(end)) => format!(
+    // An ODF sheet's formatted empty cells count towards its extent.
+    let styled_extent = if odf {
+        styles.cells.keys().fold(None, |extent: Option<((u32, u32), (u32, u32))>, position| {
+            Some(match extent {
+                Some((low, high)) => (
+                    (low.0.min(position.0), low.1.min(position.1)),
+                    (high.0.max(position.0), high.1.max(position.1)),
+                ),
+                None => (*position, *position),
+            })
+        })
+    } else {
+        None
+    };
+    let dimension = match (range.start(), range.end(), styled_extent) {
+        (Some(start), Some(end), Some((low, high))) => format!(
+            "{}:{}",
+            cell_reference(start.0.min(low.0), start.1.min(low.1)),
+            cell_reference(end.0.max(high.0), end.1.max(high.1)),
+        ),
+        (Some(start), Some(end), None) => format!(
             "{}:{}",
             cell_reference(start.0, start.1),
             cell_reference(end.0, end.1),
         ),
+        (_, _, Some((low, high))) => format!(
+            "{}:{}",
+            cell_reference(low.0, low.1),
+            cell_reference(high.0, high.1),
+        ),
         _ => "A1:A1".into(),
     };
-    (worksheet_document(&dimension, columns, &body, tail), cells)
+    // A height repeated across the sheet's empty tail is the sheet's own
+    // default, not an edit to each of those rows.
+    let sheet_format = match heights.default_points {
+        Some(points) => {
+            format!(r#"<sheetFormatPr defaultRowHeight="{points:.2}" customHeight="1"/>"#)
+        }
+        None => String::new(),
+    };
+    (
+        worksheet_document(&dimension, &sheet_format, columns, &body, tail),
+        cells,
+    )
 }
 
-fn cell_xml(position: (u32, u32), value: &Data, formula: Option<&str>) -> Option<String> {
+fn cell_xml(
+    position: (u32, u32),
+    value: &Data,
+    formula: Option<&str>,
+    style: Option<u16>,
+    odf: bool,
+    array: Option<&str>,
+) -> Option<String> {
     let reference = cell_reference(position.0, position.1);
+    let head = match style {
+        Some(s) => format!(r#"r="{reference}" s="{s}""#),
+        None => format!(r#"r="{reference}""#),
+    };
     let formula_xml = formula
-        .map(|text| format!("<f>{}</f>", escape_xml(text)))
+        .map(|text| match array {
+            Some(range) => format!(r#"<f t="array" ref="{range}">{}</f>"#, escape_xml(text)),
+            None => format!("<f>{}</f>", escape_xml(text)),
+        })
         .unwrap_or_default();
     let cell = match value {
         Data::Empty => {
             if formula.is_none() {
                 return None;
             }
-            format!(r#"<c r="{reference}">{formula_xml}</c>"#)
+            format!(r#"<c {head}>{formula_xml}</c>"#)
         }
-        Data::String(text) => format!(
-            r#"<c r="{reference}" t="inlineStr">{formula_xml}<is><t xml:space="preserve">{}</t></is></c>"#,
+        // An ODF cell stores an error as `office:value-type="string"` holding
+        // the error text, with or without a formula in front of it (pasting
+        // values leaves only the text). Written back as a string, a dependent
+        // formula would read text where the source had `#DIV/0!`.
+        // A formula whose stored result is an empty string may be a formula
+        // that failed: one common writer keeps the error text in the cell's
+        // paragraph and an empty `office:string-value`, which is all calamine
+        // reads. Leaving the value out lets the formula speak for itself
+        // rather than pinning a blank over `#DIV/0!`.
+        Data::String(text) if odf && formula.is_some() && text.is_empty() => {
+            format!(r#"<c {head}>{formula_xml}</c>"#)
+        }
+        Data::String(text) if odf && is_error_literal(text) => format!(
+            r#"<c {head} t="e">{formula_xml}<v>{}</v></c>"#,
             escape_xml(text),
         ),
-        Data::Float(number) => format!(r#"<c r="{reference}">{formula_xml}<v>{number}</v></c>"#),
-        Data::Int(number) => format!(r#"<c r="{reference}">{formula_xml}<v>{number}</v></c>"#),
+        Data::String(text) => format!(
+            r#"<c {head} t="inlineStr">{formula_xml}<is><t xml:space="preserve">{}</t></is></c>"#,
+            escape_xml(text),
+        ),
+        Data::Float(number) => format!(r#"<c {head}>{formula_xml}<v>{number}</v></c>"#),
+        Data::Int(number) => format!(r#"<c {head}>{formula_xml}<v>{number}</v></c>"#),
         Data::Bool(flag) => format!(
-            r#"<c r="{reference}" t="b">{formula_xml}<v>{}</v></c>"#,
+            r#"<c {head} t="b">{formula_xml}<v>{}</v></c>"#,
             if *flag { 1 } else { 0 },
         ),
-        Data::DateTime(datetime) => date_cell(&reference, &formula_xml, datetime.as_f64()),
+        Data::DateTime(datetime) => date_cell(&reference, &formula_xml, datetime.as_f64(), style),
         Data::Error(error) => format!(
-            r#"<c r="{reference}" t="e">{formula_xml}<v>{}</v></c>"#,
+            r#"<c {head} t="e">{formula_xml}<v>{}</v></c>"#,
             escape_xml(&error.to_string()),
         ),
         // ODF keeps a date as ISO text (`office:date-value="2026-03-05"`) rather
         // than as a serial, so the text form is turned back into one here: left
         // as text, every imported date would sort and calculate as a string.
-        Data::DateTimeIso(text) => match iso_serial(text) {
-            Some(serial) => date_cell(&reference, &formula_xml, serial),
-            None => text_cell(&reference, &formula_xml, text),
+        Data::DateTimeIso(text) => match if odf { odf_date_serial(text) } else { iso_serial(text) } {
+            Some(serial) => date_cell(&reference, &formula_xml, serial, style),
+            None => text_cell(&head, &formula_xml, text),
         },
-        Data::DurationIso(text) => text_cell(&reference, &formula_xml, text),
+        // An ODF time (`office:time-value="PT13H30M"`) is a duration, and as
+        // text it would neither sort nor calculate; the serial with a time
+        // number format is what Excel stores for a time.
+        Data::DurationIso(text) => match signed_duration_serial(text) {
+            Some(serial) if odf => time_cell(&reference, &formula_xml, serial, style),
+            _ => text_cell(&head, &formula_xml, text),
+        },
     };
     Some(cell)
 }
 
-/// A date cell: whole serials take the short-date format, timed ones the
-/// date+time one (xf 1 / xf 2 of STYLES_XML).
-fn date_cell(reference: &str, formula_xml: &str, serial: f64) -> String {
-    let style = if serial.fract() == 0.0 { 1 } else { 2 };
+/// A time cell: a fraction of a day shown through the `[h]:mm:ss` format.
+fn time_cell(reference: &str, formula_xml: &str, serial: f64, style: Option<u16>) -> String {
+    let style = style.unwrap_or(ODS_TIME_STYLE);
     format!(r#"<c r="{reference}" s="{style}">{formula_xml}<v>{serial}</v></c>"#)
 }
 
-fn text_cell(reference: &str, formula_xml: &str, text: &str) -> String {
+/// A date cell keeps the file's own number format when it has one; otherwise
+/// whole serials take the short-date format, timed ones the date+time one
+/// (xf 1 / xf 2 of STYLES_XML).
+fn date_cell(reference: &str, formula_xml: &str, serial: f64, style: Option<u16>) -> String {
+    let style = style.unwrap_or(if serial.fract() == 0.0 { 1 } else { 2 });
+    format!(r#"<c r="{reference}" s="{style}">{formula_xml}<v>{serial}</v></c>"#)
+}
+
+fn text_cell(head: &str, formula_xml: &str, text: &str) -> String {
     format!(
-        r#"<c r="{reference}" t="inlineStr">{formula_xml}<is><t xml:space="preserve">{}</t></is></c>"#,
+        r#"<c {head} t="inlineStr">{formula_xml}<is><t xml:space="preserve">{}</t></is></c>"#,
         escape_xml(text),
     )
 }
@@ -527,6 +1452,105 @@ mod tests {
     }
 
     #[test]
+    fn carries_print_settings_from_a_legacy_workbook() {
+        // A BIFF8 file written by xlwt: fitted to one page wide on landscape
+        // A4, narrow margins, centered with gridlines, a header, a manual
+        // break before row 6, a title row Excel fitted to its large font and
+        // a row whose height was set by hand.
+        let fixture = Path::new("tests/fixtures/print-setup.xls");
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(fixture, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(sheet.contains(r#"<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension "#));
+        let tail = &sheet[sheet.find("</mergeCells>").expect("the merged title")..];
+        assert!(tail.starts_with(
+            r#"</mergeCells><printOptions horizontalCentered="1" gridLines="1"/><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.1" footer="0.1"/><pageSetup paperSize="9" "#
+        ));
+        assert!(tail.contains(r#" fitToHeight="0" "#));
+        assert!(tail.contains(r#" orientation="landscape"/>"#));
+        assert!(tail.contains("<headerFooter><oddHeader>&amp;C가</oddHeader></headerFooter>"));
+        assert!(tail.contains(r#"<rowBreaks count="1" manualBreakCount="1"><brk id="5" max="16383" man="1"/></rowBreaks>"#));
+        // fitted by Excel: the height without the hand-set flag
+        assert!(sheet.contains(r#"<row r="1" ht="26.00">"#));
+        assert!(sheet.contains(r#"<row r="4" ht="30.00" customHeight="1">"#));
+        // rows at the sheet default carry no height
+        assert!(sheet.contains(r#"<row r="2">"#));
+    }
+
+    #[test]
+    fn print_area_and_titles_become_defined_names() {
+        let names = vec![
+            xls_print::XlsPrintName {
+                sheet: 1,
+                titles: false,
+                areas: vec![xls_print::PrintRange {
+                    first_row: 0,
+                    last_row: 29,
+                    first_col: 0,
+                    last_col: 7,
+                }],
+            },
+            xls_print::XlsPrintName {
+                sheet: 1,
+                titles: true,
+                areas: vec![xls_print::PrintRange {
+                    first_row: 0,
+                    last_row: 1,
+                    first_col: 0,
+                    last_col: 0xFF,
+                }],
+            },
+            // a name scoped past the last sheet is dropped
+            xls_print::XlsPrintName {
+                sheet: 5,
+                titles: false,
+                areas: vec![],
+            },
+        ];
+        let sheets = vec!["표지".to_string(), "R&D".to_string()];
+        assert_eq!(
+            print_defined_names(&names, &sheets),
+            r#"<definedName name="_xlnm.Print_Area" localSheetId="1">'R&amp;D'!$A$1:$H$30</definedName><definedName name="_xlnm.Print_Titles" localSheetId="1">'R&amp;D'!$1:$2</definedName>"#
+        );
+    }
+
+    #[test]
+    fn carries_cell_styles_from_a_legacy_workbook() {
+        // A BIFF8 file written by LibreOffice: a merged banner with a white
+        // bold Arial on navy, a bordered yellow header row, a custom number
+        // format, a thick red bottom border, a bordered empty cell, a percent,
+        // a rotated cell and a picture.
+        let fixture = Path::new("tests/fixtures/cell-styles.xls");
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(fixture, &target).unwrap();
+
+        let styles = read_entry(&target, "xl/styles.xml");
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(styles.contains(r#"<b/>"#));
+        assert!(styles.contains(r#"<name val="Arial"/>"#));
+        assert!(styles.contains(r#"<fgColor rgb="FF003366"/>"#));
+        assert!(styles.contains(r#"<fgColor rgb="FFFFFF99"/>"#));
+        assert!(styles.contains(r#"<bottom style="thick"><color rgb="FFFF0000"/></bottom>"#));
+        assert!(styles.contains(r##"formatCode="#,##0.00&quot; TL&quot;""##));
+        assert!(
+            styles.contains(r#"<alignment horizontal="center" vertical="center" wrapText="1"/>"#)
+        );
+        assert!(styles.contains(r#"textRotation="45""#));
+        assert!(styles.contains(r#"<strike/>"#));
+        assert!(styles.contains(r#"<u/>"#));
+        let percent = styles.find(r#"numFmtId="9""#).expect("the percent xf");
+        assert!(styles[percent..].starts_with(r#"numFmtId="9" fontId="#));
+        // the bordered empty cell exists only through its style
+        assert!(sheet.contains(r#"<c r="D3" s=""#));
+        assert!(sheet.contains(r#"<c r="A1" s=""#));
+        assert!(sheet.contains(r#"<col min="1" max="1" width="28"#));
+        assert!(sheet.contains(r#"<drawing r:id="rId1"/>"#));
+    }
+
+    #[test]
     fn converts_a_calamine_readable_workbook_into_minimal_xlsx() {
         // calamine reads xlsx through the same auto-detect path as xls, so a
         // generated xlsx fixture exercises the converter end to end.
@@ -547,6 +1571,127 @@ mod tests {
         assert!(sheet.contains(r#"<c r="B2"><f>B1*2</f>"#));
         let workbook = read_entry(&target, "xl/workbook.xml");
         assert!(workbook.contains(r#"<sheet name="Data" sheetId="1" r:id="rId1"/>"#));
+    }
+
+    /// One BIFF record: type, length, payload.
+    fn biff_record(kind: u16, data: &[u8]) -> Vec<u8> {
+        let mut out = Vec::with_capacity(4 + data.len());
+        out.extend_from_slice(&kind.to_le_bytes());
+        out.extend_from_slice(&(data.len() as u16).to_le_bytes());
+        out.extend_from_slice(data);
+        out
+    }
+
+    /// A BIFF5 (Excel 5.0/95) workbook in a version 3 compound file: one sheet
+    /// named `sheet_name` with `text` in A1, both stored as raw bytes of the
+    /// code page the CODEPAGE record declares.
+    fn biff5_workbook(codepage: u16, sheet_name: &[u8], text: &[u8]) -> Vec<u8> {
+        let bof = |kind: u16| {
+            let mut data = Vec::new();
+            for value in [0x0500u16, kind, 0, 0] {
+                data.extend_from_slice(&value.to_le_bytes());
+            }
+            biff_record(0x0809, &data)
+        };
+        let globals = |sheet_offset: u32| {
+            let mut out = bof(0x0005);
+            out.extend(biff_record(0x0042, &codepage.to_le_bytes()));
+            let mut sheet = sheet_offset.to_le_bytes().to_vec();
+            sheet.extend_from_slice(&[0, 0, sheet_name.len() as u8]);
+            sheet.extend_from_slice(sheet_name);
+            out.extend(biff_record(0x0085, &sheet));
+            out.extend(biff_record(0x000A, &[]));
+            out
+        };
+        let mut book = globals(globals(0).len() as u32);
+        book.extend(bof(0x0010));
+        let mut label = Vec::new();
+        for value in [0u16, 0, 0, text.len() as u16] {
+            label.extend_from_slice(&value.to_le_bytes());
+        }
+        label.extend_from_slice(text);
+        book.extend(biff_record(0x0204, &label));
+        book.extend(biff_record(0x000A, &[]));
+        // at the mini-stream cutoff, so the stream lives in regular sectors
+        book.resize(4096, 0);
+
+        const END: u32 = 0xFFFF_FFFE;
+        const FREE: u32 = 0xFFFF_FFFF;
+        let mut file = vec![0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+        file.extend_from_slice(&[0; 16]);
+        for value in [0x3Eu16, 3, 0xFFFE, 9, 6] {
+            file.extend_from_slice(&value.to_le_bytes());
+        }
+        file.extend_from_slice(&[0; 6]);
+        // directory sectors, FAT sectors, first directory sector, transaction,
+        // mini cutoff, first mini FAT, mini FAT sectors, first DIFAT, DIFAT sectors
+        for value in [0u32, 1, 1, 0, 4096, END, 0, END, 0] {
+            file.extend_from_slice(&value.to_le_bytes());
+        }
+        file.extend_from_slice(&0u32.to_le_bytes());
+        for _ in 0..108 {
+            file.extend_from_slice(&FREE.to_le_bytes());
+        }
+        // sector 0 is the FAT, 1 the directory, 2..=9 the Book stream
+        let mut fat = vec![0xFFFF_FFFD, END, 3, 4, 5, 6, 7, 8, 9, END];
+        fat.resize(128, FREE);
+        for value in fat {
+            file.extend_from_slice(&value.to_le_bytes());
+        }
+        let entry = |name: &str, kind: u8, child: u32, start: u32, size: u64| {
+            let mut out = vec![0u8; 128];
+            let units: Vec<u8> = name
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .flat_map(u16::to_le_bytes)
+                .collect();
+            out[..units.len()].copy_from_slice(&units);
+            out[64..66].copy_from_slice(&(units.len() as u16).to_le_bytes());
+            out[66] = kind;
+            out[67] = 1;
+            out[68..72].copy_from_slice(&FREE.to_le_bytes());
+            out[72..76].copy_from_slice(&FREE.to_le_bytes());
+            out[76..80].copy_from_slice(&child.to_le_bytes());
+            out[116..120].copy_from_slice(&start.to_le_bytes());
+            out[120..128].copy_from_slice(&size.to_le_bytes());
+            out
+        };
+        file.extend(entry("Root Entry", 5, 1, END, 0));
+        file.extend(entry("Book", 2, FREE, 2, 4096));
+        let mut unused = vec![0u8; 128];
+        unused[68..80].copy_from_slice(&[0xFF; 12]);
+        file.extend_from_slice(&unused);
+        file.extend_from_slice(&unused);
+        file.extend(book);
+        file
+    }
+
+    #[test]
+    fn a_biff5_workbook_in_a_double_byte_code_page_keeps_its_text() {
+        // Excel 5.0/95 stores text as the bytes of the workbook's code page.
+        // calamine before 0.38 widened each byte as if it were UTF-16, so
+        // every Korean cell and sheet name arrived as replacement characters
+        // (2026-11-10 report, a Korean .xls that Excel itself opens fine).
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("legacy-949.xls");
+        // "명단" and "한글 이름" in code page 949
+        let sheet_name = [0xB8, 0xED, 0xB4, 0xDC];
+        let text = [0xC7, 0xD1, 0xB1, 0xDB, 0x20, 0xC0, 0xCC, 0xB8, 0xA7];
+        std::fs::write(&source, biff5_workbook(949, &sheet_name, &text)).unwrap();
+        let target = dir.path().join("converted.xlsx");
+
+        let result = convert_to_xlsx(&source, &target).unwrap();
+        assert_eq!(result.sheets, 1);
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(
+            sheet.contains(r#"<t xml:space="preserve">한글 이름</t>"#),
+            "A1 lost its Korean text: {sheet}"
+        );
+        let workbook = read_entry(&target, "xl/workbook.xml");
+        assert!(
+            workbook.contains(r#"<sheet name="명단""#),
+            "the sheet name lost its Korean text: {workbook}"
+        );
     }
 
     #[test]
@@ -666,5 +1811,449 @@ mod tests {
         };
         let message = error.to_string();
         assert!(message.contains("Unable to read the workbook"), "{message}");
+    }
+
+    /// The namespaces a minimal ODS package needs for the table markup, the
+    /// automatic styles the sizing tests declare, and the manifest.
+    const ODS_NAMESPACES: &str = r#"xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0""#;
+
+    /// A minimal valid ODS package: the `mimetype` entry first and stored, the
+    /// manifest, and the two XML parts. `body` is the inside of
+    /// `office:spreadsheet`, and the table markup in it must carry no
+    /// whitespace text nodes — calamine's ODF parser rejects any event inside
+    /// a row that is not a cell.
+    fn write_ods_fixture(path: &Path, automatic_styles: &str, body: &str) {
+        use zip::CompressionMethod;
+
+        let file = File::create(path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file(
+                "mimetype",
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )
+            .unwrap();
+        writer
+            .write_all(b"application/vnd.oasis.opendocument.spreadsheet")
+            .unwrap();
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+        let mut add = |name: &str, content: &str| {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(content.as_bytes()).unwrap();
+        };
+        add(
+            "content.xml",
+            &format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><office:document-content {ODS_NAMESPACES} office:version="1.2"><office:automatic-styles>{automatic_styles}</office:automatic-styles><office:body><office:spreadsheet>{body}</office:spreadsheet></office:body></office:document-content>"#,
+            ),
+        );
+        add(
+            "styles.xml",
+            &format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><office:document-styles {ODS_NAMESPACES} office:version="1.2"><office:styles/><office:automatic-styles/><office:master-styles/></office:document-styles>"#,
+            ),
+        );
+        add(
+            "META-INF/manifest.xml",
+            r#"<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2"><manifest:file-entry manifest:full-path="/" manifest:version="1.2" manifest:media-type="application/vnd.oasis.opendocument.spreadsheet"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/></manifest:manifest>"#,
+        );
+        writer.finish().unwrap();
+    }
+
+    #[test]
+    fn converts_ods_values_dates_times_and_error_results() {
+        let body = concat!(
+            r#"<table:table table:name="Data">"#,
+            r#"<table:table-column table:number-columns-repeated="4"/>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="string"><text:p>이름</text:p></table:table-cell>"#,
+            r#"<table:table-cell office:value-type="float" office:value="42"><text:p>42</text:p></table:table-cell>"#,
+            r#"<table:table-cell office:value-type="boolean" office:boolean-value="TRUE"><text:p>TRUE</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="date" office:date-value="2026-03-05"><text:p>2026-03-05</text:p></table:table-cell>"#,
+            r#"<table:table-cell office:value-type="time" office:time-value="PT13H30M"><text:p>13:30:00</text:p></table:table-cell>"#,
+            r##"<table:table-cell table:formula="of:=1/0" office:value-type="string" office:string-value="#DIV/0!"><text:p>#DIV/0!</text:p></table:table-cell>"##,
+            // A datetime with a zone suffix keeps its clock; the zone has no
+            // place in a spreadsheet serial.
+            r#"<table:table-cell office:value-type="date" office:date-value="2026-03-05T10:20:30Z"><text:p>2026-03-05T10:20:30Z</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("values.ods");
+        write_ods_fixture(&source, "", body);
+        let target = dir.path().join("converted.xlsx");
+        let result = convert_to_xlsx(&source, &target).unwrap();
+        assert_eq!(result.sheets, 1);
+        assert_eq!(result.formulas_dropped, 0);
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(
+            sheet.contains(
+                r#"<c r="A1" t="inlineStr"><is><t xml:space="preserve">이름</t></is></c>"#
+            ),
+            "{sheet}"
+        );
+        assert!(sheet.contains(r#"<c r="B1"><v>42</v></c>"#), "{sheet}");
+        assert!(
+            sheet.contains(r#"<c r="C1" t="b"><v>1</v></c>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<c r="A2" s="1"><v>46086</v></c>"#),
+            "{sheet}"
+        );
+        // PT13H30M is a fraction of a day with the time format, not text.
+        assert!(
+            sheet.contains(r#"<c r="B2" s="3"><v>0.5625</v></c>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<c r="C2" t="e"><f>1/0</f><v>#DIV/0!</v></c>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<c r="D2" s="2"><v>46086.43090277"#),
+            "{sheet}"
+        );
+        let styles = read_entry(&target, "xl/styles.xml");
+        assert!(styles.contains(r#"formatCode="[h]:mm:ss""#), "{styles}");
+        assert!(styles.contains(r#"<cellXfs count="4">"#), "{styles}");
+
+        // The package reads back through the same reader the app opens files
+        // with, translated formula and all.
+        let mut reopened = open_workbook_auto(&target).unwrap();
+        let range = reopened.worksheet_range("Data").unwrap();
+        assert_eq!(range.get_value((0, 1)), Some(&Data::Float(42.0)));
+        let formulas = reopened.worksheet_formula("Data").unwrap();
+        assert!(
+            formulas.used_cells().any(|(_, _, text)| text == "1/0"),
+            "{formulas:?}"
+        );
+    }
+
+    #[test]
+    fn translates_odf_formulas_and_counts_the_dropped_ones() {
+        let body = concat!(
+            r#"<table:table table:name="Data">"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="2"><text:p>2</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:formula="of:=SUM([.A1])" office:value-type="float" office:value="2"><text:p>2</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="3"><text:p>3</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:formula="of:=MyName" office:value-type="float" office:value="7"><text:p>7</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell table:formula="of:=IF([.A1]&gt;0;&quot;yes&quot;;&quot;no&quot;)" office:value-type="string" office:string-value="yes"><text:p>yes</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:formula="of:=[.A1]~[.A2]" office:value-type="float" office:value="0"><text:p>0</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("formulas.ods");
+        write_ods_fixture(&source, "", body);
+        let target = dir.path().join("converted.xlsx");
+        let result = convert_to_xlsx(&source, &target).unwrap();
+        assert_eq!(result.formulas_dropped, 2);
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(sheet.contains(r#"<f>SUM(A1)</f>"#), "{sheet}");
+        assert!(
+            sheet.contains(r#"<f>IF(A1&gt;0,&quot;yes&quot;,&quot;no&quot;)</f>"#),
+            "{sheet}"
+        );
+        assert!(!sheet.contains("of:"), "{sheet}");
+        // An undefined name and a bare union leave their values behind.
+        assert!(!sheet.contains("MyName"), "{sheet}");
+        assert!(sheet.contains(r#"<c r="B2"><v>7</v></c>"#), "{sheet}");
+        assert!(sheet.contains(r#"<c r="B3"><v>0</v></c>"#), "{sheet}");
+    }
+
+    #[test]
+    fn carries_merged_ranges_across_repeated_rows_and_cells() {
+        let body = concat!(
+            r#"<table:table table:name="Merged">"#,
+            r#"<table:table-row table:number-rows-repeated="2">"#,
+            r#"<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            // Two empty cells first: the merge starts at column C, not A.
+            r#"<table:table-cell table:number-columns-repeated="2"/>"#,
+            r#"<table:table-cell table:number-columns-spanned="2" table:number-rows-spanned="2" office:value-type="string"><text:p>merged</text:p></table:table-cell>"#,
+            r#"<table:covered-table-cell/>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="4"><text:p>4</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:number-columns-repeated="2"/>"#,
+            r#"<table:covered-table-cell/><table:covered-table-cell/>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("merged.ods");
+        write_ods_fixture(&source, "", body);
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(&source, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(
+            sheet.contains(r#"<mergeCells count="1"><mergeCell ref="C3:D4"/></mergeCells>"#),
+            "{sheet}"
+        );
+    }
+
+    #[test]
+    fn carries_explicit_column_widths_and_row_heights() {
+        let styles = concat!(
+            r#"<style:style style:name="co1" style:family="table-column"><style:table-column-properties style:column-width="1.5in"/></style:style>"#,
+            r#"<style:style style:name="ro1" style:family="table-row"><style:table-row-properties style:row-height="0.6in"/></style:style>"#,
+        );
+        let body = concat!(
+            r#"<table:table table:name="Sized">"#,
+            r#"<table:table-column table:style-name="co1" table:number-columns-repeated="2"/>"#,
+            // No style: the default width, which the file does not set.
+            r#"<table:table-column/>"#,
+            r#"<table:table-row table:style-name="ro1">"#,
+            r#"<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>"#,
+            r#"<table:table-cell office:value-type="float" office:value="2"><text:p>2</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("sized.ods");
+        write_ods_fixture(&source, styles, body);
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(&source, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        // 1.5in is 144 px at 96 dpi, i.e. (144 - 5) / 7 characters.
+        assert!(
+            sheet.contains(r#"<cols><col min="1" max="2" width="19.86" customWidth="1"/></cols>"#),
+            "{sheet}"
+        );
+        assert!(sheet.contains(r#"<row r="1" ht="43.20" customHeight="1">"#), "{sheet}");
+        // Rows the file does not size stay implicit.
+        assert!(!sheet.contains(r#"<row r="2""#), "{sheet}");
+    }
+
+    #[test]
+    fn a_string_that_is_an_error_literal_becomes_an_error_cell() {
+        let body = concat!(
+            r#"<table:table table:name="Errors">"#,
+            r#"<table:table-row>"#,
+            // A pasted value: the error text with no formula behind it.
+            r##"<table:table-cell office:value-type="string" office:string-value="#N/A"><text:p>#N/A</text:p></table:table-cell>"##,
+            r##"<table:table-cell office:value-type="string" office:string-value="#DIV/0!"><text:p>#DIV/0!</text:p></table:table-cell>"##,
+            // Text that merely mentions an error is still text.
+            r#"<table:table-cell office:value-type="string"><text:p>see #N/A here</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("errors.ods");
+        write_ods_fixture(&source, "", body);
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(&source, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(
+            sheet.contains(r#"<c r="A1" t="e"><v>#N/A</v></c>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<c r="B1" t="e"><v>#DIV/0!</v></c>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(
+                r#"<c r="C1" t="inlineStr"><is><t xml:space="preserve">see #N/A here</t></is></c>"#
+            ),
+            "{sheet}"
+        );
+    }
+
+    #[test]
+    fn keeps_a_row_height_repeated_over_a_span_too_wide_to_expand() {
+        let styles = r#"<style:style style:name="ro1" style:family="table-row"><style:table-row-properties style:row-height="1in"/></style:style>"#;
+        let body = concat!(
+            r#"<table:table table:name="Tall">"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            // Five thousand empty rows at a hand-set height: one `row` element
+            // per line would put the most of the grid into the file.
+            r#"<table:table-row table:style-name="ro1" table:number-rows-repeated="5000"><table:table-cell/></table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("tall.ods");
+        write_ods_fixture(&source, styles, body);
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(&source, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        // 1in is 72 points. The span covers the sheet's empty tail, so the
+        // height is the sheet's default rather than an edit to each row — but
+        // it must not be dropped.
+        assert!(
+            sheet.contains(r#"<sheetFormatPr defaultRowHeight="72.00" customHeight="1"/>"#),
+            "{sheet}"
+        );
+        assert!(!sheet.contains(r#"<row r="5001""#), "{sheet}");
+    }
+
+    #[test]
+    fn carries_a_row_height_repeated_over_rows_that_hold_data() {
+        let styles = r#"<style:style style:name="ro1" style:family="table-row"><style:table-row-properties style:row-height="1in"/></style:style>"#;
+        let body = concat!(
+            r#"<table:table table:name="Tall">"#,
+            r#"<table:table-row table:style-name="ro1" table:number-rows-repeated="5000">"#,
+            r#"<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("tall-data.ods");
+        write_ods_fixture(&source, styles, body);
+        let target = dir.path().join("converted.xlsx");
+        convert_to_xlsx(&source, &target).unwrap();
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        // The span sits over rows that hold data, so the rows that matter keep
+        // the height; the writer never expands the span past them.
+        assert!(
+            sheet.contains(r#"<row r="1" ht="72.00" customHeight="1">"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<row r="5000" ht="72.00" customHeight="1">"#),
+            "{sheet}"
+        );
+        assert!(!sheet.contains(r#"<row r="5001""#), "{sheet}");
+    }
+
+    #[test]
+    fn iso_durations_become_fractions_of_a_day() {
+        assert_eq!(duration_serial("PT13H30M"), Some(0.5625));
+        assert_eq!(duration_serial("PT1H"), Some(1.0 / 24.0));
+        assert_eq!(duration_serial("P1DT2H"), Some(1.0 + 2.0 / 24.0));
+        assert_eq!(duration_serial("PT0S"), Some(0.0));
+        assert_eq!(duration_serial("13:30"), None);
+        assert_eq!(duration_serial("PT"), None);
+        assert_eq!(duration_serial("PT1X"), None);
+        assert_eq!(duration_serial(""), None);
+    }
+
+    #[test]
+    fn the_ods_stylesheet_keeps_the_minimal_one_and_adds_a_time_format() {
+        let styles = ods_styles_xml();
+        assert!(styles.contains(r#"<numFmts count="1"><numFmt numFmtId="164""#));
+        assert!(styles.contains(r#"<cellXfs count="4">"#));
+        assert!(styles.starts_with(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>"#));
+        assert!(roxmltree::Document::parse(&styles).is_ok(), "{styles}");
+        // The formats the date cells use are still the minimal stylesheet's.
+        assert_eq!(styles.matches(r#"numFmtId="14""#).count(), 1, "{styles}");
+        assert_eq!(styles.matches(r#"numFmtId="22""#).count(), 1, "{styles}");
+    }
+
+    #[test]
+    fn odf_dates_keep_their_day_with_a_zone_or_before_march_1900() {
+        assert_eq!(odf_date_serial("2026-03-05"), Some(46086.0));
+        assert_eq!(odf_date_serial("2026-03-05T12:00:00Z"), Some(46086.5));
+        assert_eq!(odf_date_serial("2026-03-05T12:00:00+09:00"), Some(46086.5));
+        assert_eq!(odf_date_serial("2026-03-05T12:00:00-05:00"), Some(46086.5));
+        // Excel shows serial 15 as 15 January 1900, and that is the day the
+        // exporter wrote.
+        assert_eq!(odf_date_serial("1900-01-15"), Some(15.0));
+        assert_eq!(odf_date_serial("1900-02-28T06:00:00"), Some(59.25));
+        assert_eq!(odf_date_serial("1900-03-01"), Some(61.0));
+        assert_eq!(odf_date_serial("1899-12-31"), None);
+        assert_eq!(odf_date_serial("not a date"), None);
+        assert_eq!(signed_duration_serial("-PT06H00M00S"), Some(-0.25));
+        assert_eq!(signed_duration_serial("PT12H"), Some(0.5));
+    }
+
+    #[test]
+    fn carries_names_arrays_hidden_sheets_and_failed_formulas_from_ods() {
+        let styles = r#"<style:style style:name="ta1" style:family="table"><style:table-properties table:display="true"/></style:style><style:style style:name="ta2" style:family="table"><style:table-properties table:display="false"/></style:style>"#;
+        let body = concat!(
+            r#"<table:table table:name="Data" table:style-name="ta1">"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="2"><text:p>2</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:formula="of:=Total*Rate" office:value-type="float" office:value="0.5"><text:p>0.5</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:formula="of:=Missing+1" office:value-type="float" office:value="9"><text:p>9</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell office:value-type="float" office:value="3"><text:p>3</text:p></table:table-cell>"#,
+            // An array formula two rows high, and a single-cell one.
+            r#"<table:table-cell table:number-matrix-columns-spanned="1" table:number-matrix-rows-spanned="2" table:formula="of:=[.A1:.A2]*2" office:value-type="float" office:value="4"><text:p>4</text:p></table:table-cell>"#,
+            r#"<table:table-cell table:number-matrix-columns-spanned="1" table:number-matrix-rows-spanned="1" table:formula="of:=SUM([.A1:.A2]*[.A1:.A2])" office:value-type="float" office:value="13"><text:p>13</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"<table:table-row>"#,
+            r#"<table:table-cell/>"#,
+            r#"<table:table-cell office:value-type="float" office:value="6"><text:p>6</text:p></table:table-cell>"#,
+            // A failed formula as one common writer stores it: the error in
+            // the paragraph, an empty string as the value.
+            r##"<table:table-cell table:formula="of:=1/0" office:value-type="string" office:string-value=""><text:p>#DIV/0!</text:p></table:table-cell>"##,
+            r#"<table:table-cell table:formula="of:=COM.MICROSOFT.IFS([.A1]&gt;1;[.A2])" office:value-type="float" office:value="3"><text:p>3</text:p></table:table-cell>"#,
+            r#"</table:table-row>"#,
+            r#"</table:table>"#,
+            r#"<table:table table:name="Notes" table:style-name="ta2">"#,
+            r#"<table:table-row><table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell></table:table-row>"#,
+            r#"</table:table>"#,
+            r#"<table:named-expressions>"#,
+            r#"<table:named-range table:name="Total" table:base-cell-address="$Data.$A$1" table:cell-range-address="$Data.$A$1:.$A$2"/>"#,
+            r#"<table:named-expression table:name="Rate" table:base-cell-address="$Data.$A$1" table:expression="0.1"/>"#,
+            r#"<table:named-expression table:name="Scaled" table:base-cell-address="$Data.$A$1" table:expression="SUM(Total)*Rate"/>"#,
+            r#"<table:named-expression table:name="Odd" table:base-cell-address="$Data.$A$1" table:expression="ORG.OPENOFFICE.EASTERSUNDAY(2026)"/>"#,
+            r#"<table:named-range table:name="_xlnm.Print_Area" table:base-cell-address="$Data.$A$1" table:cell-range-address="$Data.$A$1:.$C$3"/>"#,
+            r#"</table:named-expressions>"#,
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("names.ods");
+        write_ods_fixture(&source, styles, body);
+        let target = dir.path().join("converted.xlsx");
+        let result = convert_to_xlsx(&source, &target).unwrap();
+        assert_eq!(result.formulas_dropped, 1, "only the undefined name");
+
+        let workbook = read_entry(&target, "xl/workbook.xml");
+        assert!(
+            workbook.contains(r#"<definedName name="Total">Data!$A$1:$A$2</definedName>"#),
+            "{workbook}"
+        );
+        assert!(
+            workbook.contains(r#"<definedName name="Rate">0.1</definedName>"#),
+            "{workbook}"
+        );
+        assert!(
+            workbook.contains(r#"<definedName name="Scaled">SUM(Total)*Rate</definedName>"#),
+            "{workbook}"
+        );
+        assert!(!workbook.contains("Odd"), "{workbook}");
+        assert!(!workbook.contains("_xlnm"), "{workbook}");
+        assert!(
+            workbook.contains(r#"<sheet name="Notes" sheetId="2" r:id="rId2" state="hidden"/>"#),
+            "{workbook}"
+        );
+
+        let sheet = read_entry(&target, "xl/worksheets/sheet1.xml");
+        assert!(sheet.contains("<f>Total*Rate</f>"), "{sheet}");
+        assert!(!sheet.contains("Missing"), "{sheet}");
+        assert!(
+            sheet.contains(r#"<f t="array" ref="B2:B3">A1:A2*2</f>"#),
+            "{sheet}"
+        );
+        assert!(
+            sheet.contains(r#"<f t="array" ref="C2">SUM(A1:A2*A1:A2)</f>"#),
+            "{sheet}"
+        );
+        // The failed formula keeps its formula and no value at all.
+        assert!(sheet.contains(r#"<c r="C3"><f>1/0</f></c>"#), "{sheet}");
+        assert!(
+            sheet.contains(r#"<f>_xlfn.IFS(A1&gt;1,A2)</f>"#),
+            "{sheet}"
+        );
     }
 }

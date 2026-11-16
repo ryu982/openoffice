@@ -130,8 +130,11 @@ export interface ProjectIpcDeps {
   legacyChatFor: (docPath: string) => LegacyDocumentChat | null
   /** opens a folder in Explorer / Finder */
   openFolder: (path: string) => Promise<void>
-  /** opens (or focuses) a document through the shell's file-open path; its webContents id, or null */
-  openDocument: (path: string) => number | null
+  /**
+   * opens (or focuses) a document through the shell's file-open path; its
+   * webContents id, or null. May wait for the person (an editor turned off).
+   */
+  openDocument: (path: string) => number | null | Promise<number | null>
   /** switches to the home tab; the home renderer's webContents id, or null */
   showHome: () => number | null
   /** the list, a folder or a project's place changed (the search index follows) */
@@ -367,7 +370,7 @@ export function registerProjectFolderIpc(deps: ProjectIpcDeps): ProjectIpcContro
     let opened = false
     for (const [text, path] of files) {
       if (text === null) continue
-      if (deps.openDocument(path) !== null) opened = true
+      if ((await deps.openDocument(path)) !== null) opened = true
     }
     if (prompt.foreignChats.length > 0) {
       try {
@@ -645,7 +648,7 @@ export function registerProjectFolderIpc(deps: ProjectIpcDeps): ProjectIpcContro
       const root = svc().guide.projectRoot(ref.projectId)
       if (latest && info.lastEditor !== 'home' && root) {
         const path = documentPathIn(root, latest, platform)
-        if (path) target = deps.openDocument(path)
+        if (path) target = await deps.openDocument(path)
       }
       // no document (or one that cannot be opened), or a chat last used at home
       if (target === null) target = deps.showHome()

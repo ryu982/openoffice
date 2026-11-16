@@ -38,7 +38,7 @@ describe('free model list check', () => {
     const listed = tool.listedFreeModels(source)
     expect(listed.length).toBeGreaterThan(0)
     expect(listed.every((id) => id.endsWith(':free'))).toBe(true)
-    expect(listed[0]).toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(listed[0]).toBe('nvidia/nemotron-3-ultra-550b-a55b:free')
   })
 
   it('every rejection in the file is a free model id with a date and a reason', () => {
@@ -83,6 +83,9 @@ describe('free model list check', () => {
       { id: 'a/short:free', context: 1000 },
     ])
     expect(result.gone).toEqual([])
+    // candidates alone do not fail the weekly run; they are in the report (decision 0138)
+    expect(tool.needsAction(result)).toBe(false)
+    expect(tool.reportMarkdown(result)).toContain('`a/long:free`')
   })
 
   it('names rejections OpenRouter no longer lists, without asking for action on them alone', () => {

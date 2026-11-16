@@ -6,7 +6,7 @@ import { translateIn } from './locale'
  * The texts the map itself shows, in one language: the titles new topics and
  * summaries start with, and the drawing library's context menu. The library
  * ships its own menu texts for a handful of languages; all twelve entries are
- * passed from this app's dictionaries instead, so every one of the 21
+ * passed from this app's dictionaries instead, so every one of the 22
  * languages has them.
  */
 export function mapStrings(lang: Lang): MapStrings {
@@ -32,7 +32,9 @@ export function mapStrings(lang: Lang): MapStrings {
     menuLabel: text('tbLabel'),
     menuNote: text('tbNote'),
     menuLink: text('tbLink'),
+    menuInsertPicture: text('tbPicture'),
     menuRemovePicture: text('meRemovePicture'),
+    menuAddBoundary: text('tbBoundary'),
     decoration: {
       priority: PRIORITY_LEVELS.map((n) => translateIn(lang, 'markerPriority', { n })),
       progress: PROGRESS_PERCENT.map((percent) => translateIn(lang, 'markerProgress', { percent })),

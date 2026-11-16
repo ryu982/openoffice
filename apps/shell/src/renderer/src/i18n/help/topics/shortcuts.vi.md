@@ -12,10 +12,12 @@ Mỗi trình soạn thảo có tổ hợp phím riêng, và chỉ vài tổ hợ
 | Thu gọn / mở rộng Ribbon — mọi trình soạn thảo            | ⌥⌘R   | Ctrl+F1         |
 | Ruy-băng gọn — chỉ Docs                                   | ⌥⌘K   | Ctrl+Alt+K      |
 | Mở bảng Phím tắt — chỉ Word                               | ⌘/    | Ctrl+/          |
+| Mở Cài đặt — mọi thẻ trừ Word                             | ⌘,    | Ctrl+,          |
 
 - **F1 mở sổ tay này**, không phải bảng phím tắt. Nó thuộc về menu ứng dụng, nên hoạt động như nhau kể cả từ Word, Sheets, Slides, PDF hay thẻ Trang chủ.
 - **Phím bật/tắt Ribbon là `Ctrl+F1`, hoặc `⌥⌘R` trên macOS.** Nhấn `F1` trần không làm gì — F1 là sổ tay, còn phím của Ribbon cố ý không dùng chung với nó. `Ctrl+F1` cũng được chấp nhận trên macOS, dù `⌥⌘R` mới là phím mà Office for Mac dùng.
 - **Bảng Phím tắt là của riêng Word** (`⌘/`). Nó liệt kê đúng bảng Word ở dưới đây. Không trình soạn thảo nào khác có bảng đó.
+- **`⌘,` mở Cài đặt** (`Ctrl+,` trên Windows và Linux), giống hầu hết ứng dụng Mac. Trong thẻ Word, tổ hợp này vẫn là chỉ số dưới, nên ở đó hãy mở Cài đặt từ menu ứng dụng trên Mac, hoặc từ Menu (☰) ▸ Cài đặt… trên Windows và Linux.
 
 ![Bảng Phím tắt của riêng Word: hành động ở bên trái, tổ hợp phím ở bên phải, chia theo nhóm Tệp, Chỉnh sửa, Định dạng văn bản, Định dạng đoạn văn, Chèn, Rà soát và công cụ, Xem](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Phím lọc của Excel là Ctrl+Shift+L, không làm gì trên Windows hay Linu
 
 ### Cửa sổ
 
-| Hành động                                                    | macOS         | Windows / Linux  |
-| ------------------------------------------------------------ | ------------- | ---------------- |
-| Lưu sổ làm việc                                              | ⌘S            | Ctrl+S           |
-| Lưu dưới dạng                                                | ⇧⌘S           | Ctrl+Shift+S     |
-| Mở sổ làm việc                                               | ⌘O            | Ctrl+O           |
-| In                                                           | ⌘P            | Ctrl+P           |
-| Đóng sổ làm việc (macOS) / Thoát ứng dụng (Windows và Linux) | ⌘W            | Ctrl+Q           |
-| Mở Hướng dẫn sử dụng                                         | F1            | F1               |
-| Phóng to                                                     | ⌘=            | Ctrl+=           |
-| Thu phóng bằng lăn chuột                                     | ⌘ + lăn chuột | Ctrl + lăn chuột |
-| Hiện hoặc ẩn công thức trong các ô                           | ⌘`            | Ctrl+`           |
-| Mở rộng hoặc thu gọn thanh công thức                         | ⌘⇧U           | Ctrl+Shift+U     |
+| Hành động                                                                  | macOS         | Windows / Linux  |
+| -------------------------------------------------------------------------- | ------------- | ---------------- |
+| Lưu sổ làm việc                                                            | ⌘S            | Ctrl+S           |
+| Lưu dưới dạng                                                              | ⇧⌘S           | Ctrl+Shift+S     |
+| Mở sổ làm việc                                                             | ⌘O            | Ctrl+O           |
+| In                                                                         | ⌘P            | Ctrl+P           |
+| Đóng sổ làm việc (macOS) / Thoát ứng dụng (Windows và Linux)               | ⌘W            | Ctrl+Q           |
+| Mở Hướng dẫn sử dụng                                                       | F1            | F1               |
+| Phóng to                                                                   | ⌘=            | Ctrl+=           |
+| Thu phóng bằng lăn chuột                                                   | ⌘ + lăn chuột | Ctrl + lăn chuột |
+| Hiện hoặc ẩn công thức trong các ô                                         | ⌘`            | Ctrl+`           |
+| Mở rộng hoặc thu gọn thanh công thức                                       | ⌘⇧U           | Ctrl+Shift+U     |
+| Chạy nút trên Thanh công cụ Truy nhập Nhanh theo vị trí (thứ 1 đến thứ 10) |               | Alt+1 … Alt+0    |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Các phím này hoạt động khi thẻ HWP/HWPX ở phía trước và tài li
 | Tìm tiếp           | ⌃L          | Ctrl+L                       |
 | Tìm ngược          | ⌃Q, L       | Ctrl+Q, L                    |
 | Đi tới             | ⌥G          | Alt+G                        |
+| Về đầu tài liệu    | ⌃⇞          | Ctrl+PageUp                  |
+| Về cuối tài liệu   | ⌃⇟          | Ctrl+PageDown                |
 | So sánh tài liệu   | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Ký tự
@@ -757,3 +762,5 @@ Chỉ hoạt động khi con trỏ ở trong một ô bảng trống. Có phím 
 | Đi tới thẻ Trang chủ (ngoài bảng) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Phím ghi là `Ctrl+N,T` nghĩa là nhấn Ctrl+N, nhả ra rồi nhấn T. `F5 → S` nghĩa là chọn khối ô bằng F5 rồi nhấn S. `Ctrl+1 … Ctrl+0` là kiểu thứ nhất đến thứ mười của tài liệu; `Ctrl+Alt+1 … Ctrl+Alt+0` áp dụng cùng các kiểu đó. Khi chọn một khối ô, `Ctrl+Shift+S` (trên macOS `⇧⌘S`) là tổng khối; ngoài khối, phím này lưu thành tên mới.
+
+Với chuột, giống như trong Hangul, nhấp đúp chọn một từ, nhấp ba lần chọn cả đoạn, còn nhấp đúp rồi giữ và kéo sẽ mở rộng vùng chọn theo từng từ. Điều này cũng áp dụng khi sửa đầu trang, chân trang hoặc chú thích cuối trang. Sao chép một khối ô (`Ctrl+C`) sẽ sao chép cả chữ trong ô lẫn chính bảng, nên khi dán vào phần thân văn bản sẽ tạo lại đúng bảng đó. Dán khi chỉ đặt con trỏ trong một ô của bảng khác sẽ mở hộp thoại Paste Cells: ghi đè bắt đầu từ ô đó (các ô vượt ra ngoài bảng bị bỏ) hoặc chèn các ô ở trên, dưới, bên trái hoặc bên phải.

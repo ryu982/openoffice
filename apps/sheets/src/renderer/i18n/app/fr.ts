@@ -513,6 +513,7 @@ export const fr = {
   appGridlinesHidden: 'Quadrillage masqué.',
   appGridlinesShown: 'Quadrillage affiché.',
   appShowingFormulas: 'Affichage des formules — basculez à nouveau pour les valeurs.',
+  appShowingFormulasActive: 'Formules affichées',
   appShowingValues: 'Affichage des valeurs calculées.',
   appTraceNoFormula: "Repérer les antécédents : la cellule active n'a pas de formule.",
   appTraceNoRefs: "Repérer les antécédents : cette formule n'a aucune référence de cellule.",
@@ -613,6 +614,9 @@ export const fr = {
     "L'export CSV nécessite un classeur entièrement chargé — attendez la fin du chargement.",
   appCsvExportTooLarge: 'La feuille est trop grande pour être exportée en CSV.',
   appCsvExportCanceled: 'Export CSV annulé.',
+  appOdsExported: '{path} exporté.',
+  appOdsExportCanceled: 'Export ODS annulé.',
+  appOdsExportFailed: 'L’export ODS a échoué.',
   appCsvExported: '{path} exporté.',
   appCsvExportedActiveOnly:
     "Les fichiers CSV ne contiennent qu'une seule feuille — la feuille active « {name} » a été exportée vers {path}.",
@@ -650,6 +654,10 @@ export const fr = {
     'La feuille de styles de ce classeur manque de structure de base ; les modifications de style ne peuvent pas être enregistrées.',
   appSaveErrPackageGuard:
     "L'enregistrement modifierait la structure du package du classeur — interrompu pour protéger le fichier.",
+  appSaveErrSheetNotFound:
+    'Une feuille visée par cet enregistrement est introuvable dans le classeur — l’enregistrement a été interrompu et le fichier est resté inchangé.',
+  appSaveErrSheetNameReused:
+    'Une nouvelle feuille porte l’ancien nom d’une feuille renommée, l’enregistrement est donc impossible. Donnez provisoirement un autre nom à la nouvelle feuille, enregistrez, puis renommez-la. Le fichier est resté inchangé.',
   appSaveErrChartUnsupported:
     'Ce type de graphique ne prend pas en charge cette modification ; enregistrement interrompu — annulez la modification du graphique.',
   appSaveErrMoveOverlap:
@@ -765,6 +773,13 @@ export const fr = {
   appSaveAs: 'Enregistrer sous',
   appUndo: 'Annuler',
   appRedo: 'Rétablir',
+  appQuickAccessCustomize: 'Personnaliser la barre d’outils Accès rapide',
+  appQuickAccessHint:
+    'Appuyez sur Alt et un chiffre pour exécuter le bouton situé à cette position en partant de la gauche.',
+  appQuickAccessMoveEarlier: 'Déplacer vers le début',
+  appQuickAccessMoveLater: 'Déplacer vers la fin',
+  appQuickAccessReset: 'Rétablir les valeurs par défaut',
+  appQuickAccessFull: 'La barre d’outils contient au maximum 10 boutons.',
   appUnsavedEditOne: '● {count} modification non enregistrée',
   appUnsavedEditMany: '● {count} modifications non enregistrées',
   appSavedState: 'Enregistré',
@@ -1227,6 +1242,8 @@ export const fr = {
   appRefreshAll: 'Actualiser tout',
   appWorkbookNoPivot: 'Aucun tableau croisé dans ce classeur.',
   appRefreshAllTitle: 'Actualiser tous les tableaux croisés',
+  appQueriesConnections: 'Requêtes et connexions',
+  appQueriesConnectionsTitle: 'Lister les requêtes et connexions de données du classeur',
   appErrorCheckingDetail: 'Rechercher les valeurs d’erreur de la feuille',
   appErrorsFound: '{count} erreurs — à {cell} : {value}',
   appCheckingErrors: 'Recherche d’erreurs dans toute la feuille…',
@@ -1629,4 +1646,9 @@ export const fr = {
   appSpellUnavailable: "La correction orthographique n'est pas disponible dans cette fenêtre.",
   appSpellReplaceAll: 'Tout remplacer par « {suggestion} »',
   appSpellChangedAll: '{count} cellules de « {word} » corrigées.',
+
+  // ── ODS import ──
+  appOdsImportNotice:
+    "L'ODS a été ouvert en tant que copie xlsx. L'enregistrement écrira un fichier xlsx.",
+  appOdsFormulasDropped: 'Seules les valeurs de {count} formules ont été conservées.',
 } satisfies Record<keyof typeof zh, string>

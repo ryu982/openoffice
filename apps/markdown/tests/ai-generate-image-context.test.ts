@@ -113,6 +113,21 @@ describe('markdown:ai-generate-image', () => {
     expect(options).not.toHaveProperty('notLoggedInError')
   })
 
+  it('hands a model the user named to the image tool unchanged', async () => {
+    generateImageTool.mockClear()
+    const view = createMarkdownView(null)
+    const handler = handlers.get(MARKDOWN_CHANNELS.aiGenerateImage)!
+    await handler(
+      { sender: view.webContents as never },
+      { prompt: 'a lighthouse at dusk', model: 'gpt-image-2' },
+    )
+    expect(generateImageTool.mock.calls.at(-1)![1]).toEqual({
+      prompt: 'a lighthouse at dusk',
+      aspectRatio: undefined,
+      model: 'gpt-image-2',
+    })
+  })
+
   describe('cancelling', () => {
     /** a request that stays in flight until the test answers it */
     function startRequest() {

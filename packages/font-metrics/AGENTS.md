@@ -24,7 +24,7 @@ PC에 설치된 글꼴 파일에서 수치를 읽는다. 세로 메트릭(`famil
 - 앱이 직접 싣고 다니는 글꼴(디자인 템플릿 글꼴 폴더)은 시스템 폴더에 없으므로 호출자가 `configureExtraFontDirs([dir])`로 폴더를 알려 준다. 그 폴더는 한 단계만, 시스템 폴더 다음에 훑는다. 그 폴더를 보는 것은 세로 메트릭 `familyVerticalMetrics`(워드 편집기)와 글꼴 목록의 패밀리 정보 `familyInfoFor`(워드·엑셀·파워포인트 편집기) 둘뿐이다. `findSystemFont`, `findFontCovering`, `isFamilyInstalled`, `advanceWidths`는 언제나 시스템 폴더만 본다. shell 안에서는 여러 편집기가 한 프로세스를 나눠 쓰므로, 이렇게 나누지 않으면 PDF 편집기까지 템플릿 글꼴을 찾게 된다. 부르면 색인과 패밀리 정보 스캔, 못 찾은 패밀리 기억이 처음부터 다시 만들어진다. 부르지 않으면 예전처럼 시스템 폴더만 본다. Docs 메인 프로세스가 `templateFontsDir`로 부른다.
 - 세로 메트릭은 `font-vertical-metrics.json`에 글꼴 경로·수정 시각·크기와 함께 남긴다. 파싱 결과가 `null`인 것(테이블이 없는 글꼴)은 저장하지만, 읽다가 난 예외는 저장하지 않고 다음 호출에서 다시 시도한다. Windows의 글꼴 파일 잠금처럼 일시적일 수 있기 때문이다. 설치되지 않은 패밀리는 프로세스 안에서만 기억한다.
 - 스타일은 토큰 점수(`styleScore`)로 고른다. `demibold`를 `bold`보다 먼저 떼고, `oblique`는 `italic`으로 접고, 원하는 토큰이 없으면 Regular 계열을 앞세운다. 부분 문자열 비교로 바꾸면 Semibold가 Bold 요청에 같이 걸린다.
-- `findFontCovering`은 색상 이모지 글꼴(`sbix`, `COLR`, `CBDT`, `CBLC` 테이블)을 뺀다. 화면에는 보이지만 PDF 텍스트 개체로 내장할 수 없다.
+- `findFontCovering`은 색상 이모지 글꼴(`sbix`, `COLR`, `CBDT`, `CBLC` 테이블)을 뺀다. 화면에는 보이지만 PDF 텍스트 개체로 내장할 수 없다. `truetypeOnly`를 주면 CFF 글꼴도 건너뛰고 덮는 TrueType 글꼴을 찾을 때까지 계속 본다. 번역 PDF 쓰기(`packages/pdf-structure`)가 쓴다. PDF 편집기는 CFF도 넣을 수 있으므로 주지 않는다.
 
 ## 테스트
 

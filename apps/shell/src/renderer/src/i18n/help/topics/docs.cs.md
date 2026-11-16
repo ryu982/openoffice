@@ -51,6 +51,7 @@ Klikněte pravým tlačítkem kamkoli do textu — nabídka se přizpůsobí tom
 - **Schránka**: vystřihnout / kopírovat / vložit / **vložit jako čistý text**.
 - **Písmo, odstavec**: změna řady a velikosti, tučné/kurzíva/podtržené, zarovnání/odsazení/řádkování bez cestování na pásek.
 - **Synonyma**: vypíše synonyma vybraného slova; kliknutím na jedno ho nahradíte.
+- **Vysvětlit jednoduše** (AI): pošle výběr do panelu AI, aby ho vysvětlil jednoduchými slovy v jazyce rozhraní, a hned to spustí. Bez výběru je vypnuté a text skrytý před AI se neposílá.
 - **Přeložit** (AI): přeloží výběr do cílového jazyka (angličtina, zjednodušená čínština, japonština, korejština, francouzština, němčina, španělština, ...) přes panel AI.
 - **Nový komentář**: připojí komentář k výběru.
 - **Pravopis** (u chybně napsaného slova): navržené náhrady, ignorovat vše, přidat do slovníku, nastavit jazyk kontroly.
@@ -75,7 +76,7 @@ Klikněte pravým tlačítkem kamkoli do textu — nabídka se přizpůsobí tom
 ## AI
 
 - Tlačítko AI na pásku a postranní panel: přeformulovat, rozšířit, přeložit, shrnout, vložit předvolenou tabulku a libovolné vlastní pokyny.
-- Každý krok AI nejprve vytvoří snímek stavu; můžete se vrátit k libovolnému ze seznamu verzí a samotný návrat lze zase vrátit zpět.
+- Místa, která AI změnila, jsou označená žlutě. **Vrátit tyto změny** na kartě pod odpovědí vezme zpět celý tento krok (vrátí se i kroky po něm) a samotný návrat lze zase vrátit zpět.
 
 ## Ukládání a export
 
@@ -85,4 +86,4 @@ Klikněte pravým tlačítkem kamkoli do textu — nabídka se přizpůsobí tom
 
 ## Tisk
 
-ctrl+P přes systémový dialog, stránky WYSIWYG.
+ctrl+P otevře okno tisku. Zvolte tiskárnu, počet kopií, oboustranný tisk a rozsah (i výběr); v oddílu **Rozložení stránek** pak více stránek na list, brožuru, plakát, štítky, liché či sudé strany a odstíny šedi (viz [Práce se soubory](help://file-ops)).

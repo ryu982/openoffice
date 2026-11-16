@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
+import JSZip from 'jszip'
 import { beforeAll, describe, expect, it } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
 import { run, tempDir } from './helpers'
@@ -259,5 +260,433 @@ describe('ieumoffice create --type hwp', () => {
     const again = await run(['create', '--type', 'hwpx', '--ops', list, '--out', out, '--json'])
     expect(again.code).toBe(2)
     expect(again.json().error).toBe('output_exists')
+  })
+
+  it('gives a new document its look with the ops the app has for it', async () => {
+    const dir = tempDir()
+    const out = join(dir, 'plan.hwpx')
+    const title = '현장체험학습 운영 계획'
+    const r = await run([
+      'create',
+      '--type',
+      'hwpx',
+      '--ops',
+      ops(dir, [
+        {
+          op: 'insert_paragraphs',
+          where: 'end',
+          paragraphs: [title, '□ 추진 배경', '○ 교실 밖 배움을 지원함', '□ 세부 일정'],
+        },
+        {
+          op: 'insert_table',
+          where: 'after',
+          anchor: '□ 세부 일정',
+          rows: [
+            ['구분', '일시'],
+            ['1학년', '9. 12.(금)'],
+          ],
+          header: true,
+          look: 'open',
+          column_widths: [1, 3],
+          size: 11,
+        },
+        {
+          op: 'style_paragraphs',
+          styles: [
+            { name: '문서제목', size: 20, bold: true, align: 'center' },
+            { name: '중제목', size: 15, bold: true, indent: -21, space_before: 10 },
+            { name: '본문항목', size: 13, margin_left: 7, indent: -19 },
+          ],
+          apply: [
+            { style: '문서제목', find: title },
+            { style: '중제목', starts_with: '□' },
+            { style: '본문항목', starts_with: '○' },
+          ],
+        },
+        { op: 'insert_title_box', find: title, look: 'bands', color: '#1F3864' },
+        { op: 'set_page_number', position: 'bottom_center' },
+        { op: 'set_header_footer', kind: 'footer', text: '운영 계획 | {page}', size: 9 },
+        { op: 'format_cells', table: 2, borders: [{ sides: 'bottom', line: 'double' }] },
+      ]),
+      '--out',
+      out,
+      '--json',
+    ])
+    expect(r.code, r.stdout).toBe(0)
+    const doc = new HwpDocument(readFileSync(out))
+    try {
+      const styles = (JSON.parse(doc.getStyleList()) as { name: string }[]).map((s) => s.name)
+      expect(styles).toEqual(expect.arrayContaining(['문서제목', '중제목', '본문항목']))
+      // the title sits in a box of three rows now, and the schedule is the second table
+      const controls = JSON.parse(doc.getControls()) as { ctrlId: string }[]
+      expect(controls.filter((control) => control.ctrlId === 'tbl')).toHaveLength(2)
+      expect(JSON.parse(doc.getPageNumberPos(0))).toMatchObject({
+        pageNumber: { position: 5, format: 0, dash: true },
+      })
+      expect(JSON.parse(doc.getHeaderFooter(0, false, 0))).toMatchObject({ exists: true })
+    } finally {
+      doc.free()
+    }
+    expect(textOf(out).join('\n')).toContain(title)
+  })
+
+  it('writes the preview of the edited document, not the opened one (decision 0146)', async () => {
+    // a file Hangul 2024 saved: its preview text is "a" and "b", with a drawn first page
+    const hancom = readFileSync(
+      join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'apps',
+        'hwp',
+        'tests',
+        'fixtures',
+        'hancom-page-number-no-dash.hwpx',
+      ),
+    )
+    const dir = tempDir()
+    const path = write(dir, 'hancom.hwpx', hancom)
+    const r = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [{ op: 'replace_text', find: 'a', replace: '새 글' }]),
+      '--json',
+    ])
+    expect(r.code, r.stdout).toBe(0)
+    const zip = await JSZip.loadAsync(readFileSync(path))
+    expect(await zip.file('Preview/PrvText.txt')!.async('string')).toBe('새 글\r\nb\r\n')
+    // no screen to draw the page on: a blank picture, not the old page
+    const image = Buffer.from(await zip.file('Preview/PrvImage.png')!.async('uint8array'))
+    expect(image.readUInt32BE(16)).toBe(1)
+  })
+})
+
+describe('a number that counts from 1, and a number with a range', () => {
+  const REFUSED: [op: Record<string, unknown>, says: RegExp][] = [
+    [{ op: 'replace_text', find: '시행', replace: '실시', occurrence: 0 }, /occurrence must be/],
+    [
+      { op: 'insert_paragraphs', where: 'after', anchor: '시행', occurrence: 0, paragraphs: ['x'] },
+      /occurrence must be/,
+    ],
+    [{ op: 'delete_paragraph', find: '시행', occurrence: 0 }, /occurrence must be/],
+    [
+      { op: 'insert_table', where: 'after', anchor: '시행', occurrence: 0, rows: [['a']] },
+      /occurrence must be/,
+    ],
+    [{ op: 'insert_title_box', find: '시행', occurrence: 0 }, /occurrence must be/],
+    [{ op: 'format_text', find: '시행', occurrence: 0, bold: true }, /occurrence must be/],
+    [{ op: 'format_paragraph', find: '시행', occurrence: 0, bold: true }, /occurrence must be/],
+    [
+      { op: 'insert_note', kind: 'footnote', after: '시행', occurrence: 0, text: '주' },
+      /occurrence must be/,
+    ],
+    [{ op: 'insert_break', find: '시행', occurrence: 0, kind: 'page' }, /occurrence must be/],
+    [
+      {
+        op: 'insert_toc',
+        where: 'after',
+        anchor: '시행',
+        occurrence: 0,
+        entries: [{ find: '끝.', level: 1 }],
+      },
+      /occurrence must be/,
+    ],
+    [
+      { op: 'insert_toc', where: 'end', entries: [{ find: '시행', occurrence: 0, level: 1 }] },
+      /occurrence must be/,
+    ],
+    [{ op: 'refresh_toc', title: '시행', occurrence: 0 }, /occurrence must be/],
+    [
+      { op: 'insert_equations', equations: [{ find: '시행', occurrence: 0, script: 'x' }] },
+      /occurrence must be/,
+    ],
+    [
+      { op: 'insert_equations', equations: [{ find: '끝.', occurrence: 1.5, script: 'x' }] },
+      /occurrence must be/,
+    ],
+    [
+      { op: 'style_paragraphs', apply: [{ style: '바탕글', find: '시행', occurrence: 0 }] },
+      /occurrence .* must be/,
+    ],
+    [
+      { op: 'style_paragraphs', apply: [{ style: '바탕글', find: '끝.', occurrence: 1.5 }] },
+      /occurrence .* must be/,
+    ],
+    [{ op: 'read_table', table: 0 }, /no table 0/],
+    [{ op: 'read_table', table: 1, from_row: 0 }, /from_row must be a whole number from 1/],
+    [{ op: 'fill_cells', table: 0, cells: [{ row: 1, col: 1, text: 'x' }] }, /no table 0/],
+    [{ op: 'fill_cells', table: 1, cells: [{ row: 0, col: 1, text: 'x' }] }, /count from 1/],
+    [{ op: 'fill_cells', table: 1, cells: [{ row: 1, col: 0, text: 'x' }] }, /count from 1/],
+    [{ op: 'check_boxes', table: 0, cells: [{ row: 1, col: 1 }] }, /no table 0/],
+    [{ op: 'check_boxes', table: 1, cells: [{ row: 0, col: 1 }] }, /count from 1/],
+    [{ op: 'check_boxes', table: 1, cells: [{ row: 1, col: 0 }] }, /count from 1/],
+    [{ op: 'add_to_table', table: 0, what: 'rows', at: 1 }, /no table 0/],
+    [{ op: 'add_to_table', table: 1, what: 'rows', at: 0 }, /at counts from 1/],
+    [{ op: 'add_to_table', table: 1, what: 'rows', at: 1, count: 0 }, /count must be between 1/],
+    [{ op: 'remove_from_table', table: 0, what: 'rows', at: 1 }, /no table 0/],
+    [{ op: 'remove_from_table', table: 1, what: 'rows', at: 0 }, /at counts from 1/],
+    [
+      { op: 'remove_from_table', table: 1, what: 'rows', at: 1, count: 0 },
+      /count must be between 1/,
+    ],
+    [{ op: 'delete_table', table: 0 }, /no table 0/],
+    ...['table', 'from_row', 'from_col', 'to_row', 'to_col'].map(
+      (name): [Record<string, unknown>, RegExp] => [
+        { op: 'merge_cells', table: 1, from_row: 1, from_col: 1, to_row: 1, to_col: 2, [name]: 0 },
+        new RegExp(`^${name} must be a whole number from 1, not 0\\.$`),
+      ],
+    ),
+    ...['table', 'row', 'col'].map((name): [Record<string, unknown>, RegExp] => [
+      { op: 'split_cell', table: 1, row: 1, col: 1, rows: 2, cols: 1, [name]: 0 },
+      /must be whole numbers from 1/,
+    ]),
+    [
+      { op: 'split_cell', table: 1, row: 1, col: 1, rows: 0, cols: 1 },
+      /rows and cols must be 1 to 10/,
+    ],
+    [
+      { op: 'split_cell', table: 1, row: 1, col: 1, rows: 2, cols: 0 },
+      /rows and cols must be 1 to 10/,
+    ],
+    [
+      { op: 'split_cell', table: 1, row: 1, col: 1, rows: 99, cols: 1 },
+      /rows and cols must be 1 to 10/,
+    ],
+    [
+      { op: 'split_cell', table: 1, row: 1, col: 1, rows: 2, cols: 11 },
+      /rows and cols must be 1 to 10/,
+    ],
+    [{ op: 'format_cells', table: 0, background: '#EEEEEE' }, /table must be a table number/],
+    [
+      { op: 'format_cells', table: 1, cells: [{ row: 0, col: 1 }], background: '#EEEEEE' },
+      /not in it: 0\.1/,
+    ],
+    ...['from_row', 'from_col', 'to_row', 'to_col'].map(
+      (name): [Record<string, unknown>, RegExp] => [
+        {
+          op: 'format_cells',
+          table: 1,
+          range: { from_row: 1, from_col: 1, to_row: 2, to_col: 2, [name]: 0 },
+          background: '#EEEEEE',
+        },
+        /from_row, from_col, to_row and to_col, counted from 1/,
+      ],
+    ),
+    [{ op: 'check_layout', from_table: 0 }, /must be whole numbers from 1/],
+    [{ op: 'check_layout', from_table: 1, from_row: 0 }, /must be whole numbers from 1/],
+    [{ op: 'fill_field', field: 0, value: 'x' }, /no form fields|no field 0/],
+    [{ op: 'edit_note', note: 0, text: 'x' }, /no such note/],
+    [{ op: 'delete_note', note: 0 }, /no such note/],
+    [{ op: 'set_page_setup', section: 0, paper: 'A4' }, /no such section/],
+    [{ op: 'set_columns', count: 0 }, /count must be a whole number from 1 to 4/],
+    [{ op: 'set_columns', count: 5 }, /count must be a whole number from 1 to 4/],
+    [
+      { op: 'set_note_settings', kind: 'footnote', start_number: 0 },
+      /start_number must be a whole number from 1 to 9999/,
+    ],
+    [
+      { op: 'set_note_settings', kind: 'footnote', start_number: 10000 },
+      /start_number must be a whole number from 1 to 9999/,
+    ],
+    [
+      { op: 'format_paragraph', find: '끝.', list: 'number', list_level: 0 },
+      /list_level must be a whole number from 1 to 7/,
+    ],
+    [
+      { op: 'format_paragraph', find: '끝.', list: 'number', list_level: 8 },
+      /list_level must be a whole number from 1 to 7/,
+    ],
+    [{ op: 'list_paragraph_looks', from: 0 }, /from must be a whole number from 1/],
+    [{ op: 'resize_picture', picture: 0, width_mm: 50 }, /picture must be a number/],
+    [{ op: 'analyze_picture', picture: 0 }, /picture must be a number/],
+  ]
+
+  it('is refused by the tool when it is 0 or out of its range, and nothing is written', async () => {
+    const dir = tempDir()
+    const path = write(dir, 'report.hwp', report().exportHwp())
+    const noted = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [{ op: 'insert_note', kind: 'footnote', after: '끝.', text: '주석' }]),
+      '--json',
+    ])
+    expect(noted.code, noted.stdout).toBe(0)
+    const before = readFileSync(path)
+    const r = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [{ op: 'list_tables' }, ...REFUSED.map(([op]) => op)]),
+      '--best-effort',
+      '--json',
+    ])
+    expect(r.code, r.stdout).toBe(0)
+    const { detail } = r.json()
+    expect(detail.results.map((result: { op: string }) => result.op)).toEqual(['list_tables'])
+    const failures = new Map<number, { op: string; error: string; reason: string }>(
+      detail.failures.map((failure: { index: number }) => [failure.index, failure]),
+    )
+    REFUSED.forEach(([op, says], index) => {
+      const failure = failures.get(index + 1)
+      expect(failure, JSON.stringify(op)).toMatchObject({ op: op.op, reason: 'op_rejected' })
+      expect(failure!.error, JSON.stringify(op)).toMatch(says)
+    })
+    expect(readFileSync(path).equals(before)).toBe(true)
+  })
+})
+
+describe('what the read ops answer', () => {
+  const json = (output: string) => JSON.parse(output.slice(output.search(/[{[]/)).split('\n')[0]!)
+  const READS = [
+    { op: 'read_style', name: '본문 시험' },
+    { op: 'read_page_setup' },
+    { op: 'read_note_settings' },
+    { op: 'read_page_layout' },
+    { op: 'read_formatting' },
+  ]
+  const outputs = (r: Awaited<ReturnType<typeof run>>, count: number): string[] =>
+    (r.json().detail.results as { output: string }[]).slice(-count).map((result) => result.output)
+
+  it('can be handed back to the write ops as it came', async () => {
+    const dir = tempDir()
+    const path = write(dir, 'report.hwpx', report().exportHwpx())
+    const first = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [
+        { op: 'create_style', name: '본문 시험', size: 12, line_spacing: 180, margin_left: 10 },
+        { op: 'format_paragraph', find: '끝.', line_spacing: 200, margin_left: 20, size: 13 },
+        { op: 'set_page_setup', paper: 'B5', margin_left: 25, margin_top: 15 },
+        {
+          op: 'set_note_settings',
+          kind: 'footnote',
+          number_format: 'circledDigit',
+          start_number: 3,
+        },
+        { op: 'set_columns', count: 2, gap_mm: 12 },
+        ...READS,
+      ]),
+      '--json',
+    ])
+    expect(first.code, first.stdout).toBe(0)
+    const [style, setup, notes, layout, formatting] = outputs(first, READS.length).map(json)
+    expect(JSON.stringify([style, setup, notes, layout, formatting])).not.toMatch(
+      /lineSpacing"|marginLeft|marginRight|spacingBefore|spacingAfter|listLevel|englishName|nextStyle|numberFormat|startNumber|gapMm|"margins"|"id"/,
+    )
+    const look = formatting.looks.find((entry: { size: number }) => entry.size === 13)
+    expect(look).toMatchObject({ line_spacing: 200, margin_left: 20 })
+
+    const second = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [
+        { op: 'edit_style', name: '본문 시험', size: 9, line_spacing: 120, margin_left: 0 },
+        { op: 'format_paragraph', find: '끝.', line_spacing: 160, margin_left: 0, size: 10 },
+        { op: 'set_page_setup', paper: 'A4', margin_left: 30, margin_top: 20 },
+        { op: 'set_note_settings', kind: 'footnote', number_format: 'digit', start_number: 1 },
+        { op: 'set_columns', count: 1 },
+        { op: 'edit_style', name: '본문 시험', ...style },
+        { op: 'format_paragraph', find: '끝.', ...look },
+        { op: 'set_page_setup', ...setup },
+        { op: 'set_note_settings', kind: 'footnote', ...notes.footnote },
+        { op: 'set_columns', ...layout.columns },
+        ...READS,
+      ]),
+      '--json',
+    ])
+    expect(second.code, second.stdout).toBe(0)
+    expect(second.json().detail.failures ?? []).toEqual([])
+    const again = outputs(second, READS.length).map(json)
+    expect(again[0]).toEqual(style)
+    expect(again[1]).toEqual(setup)
+    expect(again[2]).toEqual(notes)
+    expect(again[3].columns).toEqual(layout.columns)
+    expect(again[4].looks.find((entry: { size: number }) => entry.size === 13)).toMatchObject({
+      line_spacing: 200,
+      margin_left: 20,
+    })
+  })
+
+  it('names the editor argument a refusal is about by the name the op declares', async () => {
+    const dir = tempDir()
+    const path = write(dir, 'report.hwp', report().exportHwp())
+    const r = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [
+        { op: 'list_tables' },
+        { op: 'format_paragraph', find: '끝.', line_spacing: 5000 },
+        { op: 'format_paragraph', find: '끝.', margin_left: 9999 },
+        { op: 'format_text', find: '끝.', char_width: 1 },
+        { op: 'insert_table', where: 'end', rows: [['a']], width_percent: 1 },
+        { op: 'format_cells', table: 1, row_height_mm: 1 },
+        { op: 'set_columns', count: 2, gap_mm: 999 },
+        { op: 'format_paragraph', find: '끝.', size: 13, font_size: 14 },
+      ]),
+      '--best-effort',
+      '--json',
+    ])
+    expect(r.code, r.stdout).toBe(0)
+    const errors = (r.json().detail.failures as { error: string; usage?: string }[]).map(
+      (failure) => failure.error,
+    )
+    expect(errors).toHaveLength(7)
+    expect(errors[0]).toMatch(/^line_spacing must be/)
+    expect(errors[1]).toMatch(/^margin_left must be/)
+    expect(errors[2]).toMatch(/^char_width must be/)
+    expect(errors[3]).toMatch(/^width_percent must be/)
+    expect(errors[4]).toMatch(/^row_height_mm must be/)
+    expect(errors[5]).toMatch(/^gap_mm must be/)
+    expect(errors[6]).toContain('unknown argument "font_size"; did you mean "size"?')
+    expect(r.json().detail.failures[6].usage).toMatch(/^Usage: format_paragraph takes find, /)
+  })
+
+  it('refuses a value that is not of the kind its argument declares, where the op once answered as done', async () => {
+    const dir = tempDir()
+    const path = write(dir, 'report.hwp', report().exportHwp())
+    const r = await run([
+      'hwp',
+      'apply',
+      path,
+      '--ops',
+      ops(dir, [
+        { op: 'list_tables' },
+        { op: 'set_page_number', position: 'bottom_center', dashes: 'no' },
+        { op: 'insert_table', where: 'end', rows: [['a']], style: 'open' },
+        { op: 'insert_equations', equations: [{ find: '끝.', script: 'x^2', keep_text: 'yes' }] },
+        { op: 'insert_title_box', find: '끝.', look: 'filled' },
+        { op: 'set_page_setup', orientation: 'sideways', margin_left: 20 },
+        { op: 'read_document' },
+        { op: 'read_page_setup' },
+      ]),
+      '--best-effort',
+      '--json',
+    ])
+    expect(r.code, r.stdout).toBe(0)
+    const errors = (r.json().detail.failures as { error: string }[]).map((failure) => failure.error)
+    expect(errors).toEqual([
+      'Nothing was changed: dashes must be true or false, not "no".',
+      expect.stringContaining('unknown argument "style"; did you mean "look"?'),
+      'Nothing was changed: equations[0].keep_text must be true or false, not "yes".',
+      'Nothing was changed: look must be one of bands, lines, box, shaded, not "filled".',
+      'Nothing was changed: orientation must be one of portrait, landscape, not "sideways".',
+    ])
+    const [text, setup] = (r.json().detail.results as { output: string }[])
+      .slice(-2)
+      .map((result) => result.output)
+    expect(text).toContain('끝.')
+    expect(setup).toContain('"margin_left":30')
   })
 })

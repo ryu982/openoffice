@@ -81,7 +81,6 @@ export const vi = {
   aiCopied: 'Đã sao chép',
   aiRegenerateTitle: 'Tạo lại',
   aiSnapshotsTitle: 'Bản chụp nhanh',
-  aiRollback: 'Khôi phục',
   aiScopeSelected: 'Đã chọn {count} đoạn',
   aiScopeEmptyDoc: 'Tài liệu trống',
   aiScopeCursor: 'Tại vị trí con trỏ',
@@ -198,4 +197,7 @@ export const vi = {
   aiMindMapReset: 'Đặt lại khung nhìn',
   aiMindMapExpand: 'Mở rộng nhánh',
   aiMindMapCollapse: 'Thu gọn nhánh',
+  aiMindMapToggleLayout: 'Đổi bố cục',
+  aiMindMapLayoutTopDown: 'Chuyển sang bố cục từ trên xuống dưới',
+  aiMindMapLayoutLeftRight: 'Chuyển sang bố cục từ trái sang phải',
 } satisfies Record<keyof typeof zh, string>

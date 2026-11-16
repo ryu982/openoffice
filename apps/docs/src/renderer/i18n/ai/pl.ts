@@ -82,7 +82,6 @@ export const pl = {
   aiCopied: 'Skopiowano',
   aiRegenerateTitle: 'Wygeneruj ponownie',
   aiSnapshotsTitle: 'Migawki wersji',
-  aiRollback: 'Przywróć',
   aiScopeSelected: 'Zaznaczono akapitów: {count}',
   aiScopeEmptyDoc: 'Pusty dokument',
   aiScopeCursor: 'Przy kursorze',
@@ -200,4 +199,7 @@ export const pl = {
   aiMindMapReset: 'Resetuj widok',
   aiMindMapExpand: 'Rozwiń gałąź',
   aiMindMapCollapse: 'Zwiń gałąź',
+  aiMindMapToggleLayout: 'Zmień układ',
+  aiMindMapLayoutTopDown: 'Przełącz na układ od góry do dołu',
+  aiMindMapLayoutLeftRight: 'Przełącz na układ od lewej do prawej',
 } satisfies Record<keyof typeof zh, string>

@@ -37,10 +37,6 @@ export const id = {
   aiRetry: 'Coba lagi',
   aiCopyReplyTitle: 'Salin balasan',
   aiRegenerateTitle: 'Buat ulang',
-  aiTurnsTitle: 'Batalkan giliran AI',
-  aiRollback: 'Kembalikan',
-  aiRollbackIncomplete:
-    'Sebagian giliran itu tidak dapat dibatalkan: riwayat urungkan peta tidak lagi menjangkau sejauh itu.',
   aiUnknownError: 'Permintaan AI gagal, coba lagi',
   aiTimeoutError: 'Respons AI kehabisan waktu',
   aiCreditsExhausted: 'Kredit habis — isi ulang di penyedia AI Anda',

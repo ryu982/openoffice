@@ -11,6 +11,8 @@ import { AiRunError } from '../run-error'
 import type { FreeConnectPage } from '../free-connect'
 import type { ChatGptConnectionRecord, ChatGptConnectionStore, ChatGptSession } from './credentials'
 import {
+  CHATGPT_CALLBACK_PATH,
+  CHATGPT_LEGACY_CALLBACK_PATH,
   CHATGPT_PLAN_SCOPE,
   chatGptAttemptValues,
   chatGptAuthorizeUrl,
@@ -21,7 +23,7 @@ import {
   revokeChatGptSession,
   verifyChatGptIdToken,
   waitForChatGptCallback,
-  type ChatGptSignInFailure,
+  type ChatGptSignInFailed,
   type ChatGptTokenSet,
   type FetchLike,
 } from './oauth'
@@ -44,7 +46,7 @@ export interface ChatGptSignInOptions {
   timeoutMs?: number | undefined
 }
 
-export type ChatGptSignInResult = { ok: true } | { ok: false; reason: ChatGptSignInFailure }
+export type ChatGptSignInResult = { ok: true } | ChatGptSignInFailed
 
 export interface ChatGptConnectionState {
   signedIn: boolean
@@ -175,6 +177,11 @@ export function createChatGptConnection(deps: ChatGptConnectionDeps): ChatGptCon
 
     async signIn(options) {
       const record = await deps.store.read()
+      // an issued client id signs in again on the path it was issued for (one stored
+      // before the path was kept was issued for the old one); a new registration takes today's
+      const callbackPath = record.clientId
+        ? (record.callbackPath ?? CHATGPT_LEGACY_CALLBACK_PATH)
+        : CHATGPT_CALLBACK_PATH
       const { verifier, challenge } = chatGptPkcePair()
       const { state, nonce } = chatGptAttemptValues()
       const callback = await waitForChatGptCallback({
@@ -186,9 +193,12 @@ export function createChatGptConnection(deps: ChatGptConnectionDeps): ChatGptCon
             nonce,
             hostId: record.hostId,
             clientId: record.clientId,
+            callbackPath,
             agentName: deps.agentName,
           }),
         state,
+        callbackPath,
+        clientId: record.clientId,
         openBrowser: options.openBrowser,
         pages: options.pages,
         signal: options.signal,
@@ -196,14 +206,20 @@ export function createChatGptConnection(deps: ChatGptConnectionDeps): ChatGptCon
       })
       if (!callback.ok) return callback
       const exchanged = await exchangeChatGptCode(
-        { code: callback.code, clientId: callback.clientId, verifier, port: callback.port },
+        {
+          code: callback.code,
+          clientId: callback.clientId,
+          verifier,
+          port: callback.port,
+          callbackPath,
+        },
         deps.fetch,
         options.signal,
         now,
       )
       if (!exchanged.ok) return exchanged
       const tokens = exchanged.tokens
-      if (!tokens.idToken) return { ok: false, reason: 'denied' }
+      if (!tokens.idToken) return { ok: false, reason: 'denied', step: 'id-token-missing' }
       let identity
       try {
         const keys = await fetchChatGptSigningKeys(deps.fetch, options.signal)
@@ -214,16 +230,27 @@ export function createChatGptConnection(deps: ChatGptConnectionDeps): ChatGptCon
           Math.floor(now() / 1000),
         )
       } catch {
-        return { ok: false, reason: options.signal?.aborted ? 'cancelled' : 'network' }
+        if (options.signal?.aborted) return { ok: false, reason: 'cancelled' }
+        return { ok: false, reason: 'network', step: 'signing-keys' }
       }
-      if (!identity) return { ok: false, reason: 'denied' }
-      // signed in, but the use of the ChatGPT plan was not allowed: nothing to run on
-      if (!tokens.scopes.includes(CHATGPT_PLAN_SCOPE)) return { ok: false, reason: 'no-plan' }
+      if (!identity) return { ok: false, reason: 'denied', step: 'id-token-invalid' }
+      // signed in, but the use of the ChatGPT plan was not allowed: nothing to run on.
+      // OpenAI documents `scope` as always in the answer and asks for the plan scope
+      // in it; a valid ID token alone does not allow plan use, so a missing field is
+      // no grant either. The step tells the two apart for whoever helps the user.
+      if (!tokens.scopes.includes(CHATGPT_PLAN_SCOPE)) {
+        return {
+          ok: false,
+          reason: 'no-plan',
+          step: tokens.scopeMissing ? 'scope-missing' : 'plan-scope-missing',
+        }
+      }
       await serial(async () => {
         const current = await deps.store.read()
         await deps.store.write({
           hostId: current.hostId,
           clientId: callback.clientId,
+          callbackPath,
           subject: identity.subject,
           session: sessionOf(tokens),
         })

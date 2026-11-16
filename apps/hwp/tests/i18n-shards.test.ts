@@ -25,7 +25,7 @@ describe('hwp renderer strings', () => {
       if (lang === 'en') continue
       expect(strings[lang].saveFailed, lang).not.toBe(strings.en.saveFailed)
       expect(strings[lang].aiEmptyBody, lang).not.toBe(strings.en.aiEmptyBody)
-      expect(strings[lang].aiRevertRefused, lang).not.toBe(strings.en.aiRevertRefused)
+      expect(strings[lang].aiUnfinishedNote, lang).not.toBe(strings.en.aiUnfinishedNote)
       expect(strings[lang].checkTitle, lang).not.toBe(strings.en.checkTitle)
     }
   })
@@ -56,7 +56,6 @@ describe('hwp renderer strings', () => {
       aiTableRowsRemoved: ['{count}'],
       aiTableColsRemoved: ['{count}'],
       aiFmtOff: ['{name}'],
-      aiChangesTitle: ['{count}'],
       aiWorkedSteps: ['{n}'],
       checkMorePlaces: ['{count}'],
       checkReplaceWith: ['{font}'],

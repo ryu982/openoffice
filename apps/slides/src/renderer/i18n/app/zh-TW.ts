@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const zhTW = {
+  appLegacyPptImported:
+    '已將 .ppt 檔案轉換為 .pptx 副本開啟。原始檔案保持不變，儲存時會寫入新的 .pptx 檔案。演講者備忘稿和動畫不會轉換。',
   redactMenuLabel: '把選中的內容對 AI 隱藏',
   redactDialogDesc:
     '選取的內容會留在文件裡，AI 讀到的卻是下面的標記。給它起個名字，AI 才知道它是什麼。',
@@ -160,6 +162,9 @@ export const zhTW = {
   appPrintLandscape: '橫向',
   appPrintFrame: '投影片加框',
   appPrintHidden: '列印隱藏投影片',
+  appPrintRangeSelected: '選取的投影片',
+  appPrintLayoutBlocked:
+    '講義和備忘稿每張紙只列印一頁。若要排列頁面，請將版面配置改為「全頁投影片」。',
   appPrintPageCount: '共 {n} 頁',
   appPrintNoPages: '沒有可列印的投影片',
   appPrintRendering: '正在產生預覽…',
@@ -169,6 +174,7 @@ export const zhTW = {
   appCtxSendToBack: '移到最下層',
   appCtxBringForward: '上移一層',
   appCtxSendBackward: '下移一層',
+  appCtxRotate: '旋轉',
   appCtxRotateLeft90: '向左旋轉 90°',
   appCtxRotateRight90: '向右旋轉 90°',
   appCtxFlipH: '水平翻轉',

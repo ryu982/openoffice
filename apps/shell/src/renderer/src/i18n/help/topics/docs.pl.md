@@ -53,6 +53,7 @@ Kliknij prawym przyciskiem w dowolnym miejscu tekstu — menu dostosowuje się d
 - **Schowek**: wytnij / kopiuj / wklej / **wklej jako czysty tekst**.
 - **Czcionka, akapit**: zmiana kroju i rozmiaru, pogrubienie/pochylenie/podkreślenie, wyrównanie/wcięcie/odstępy bez przechodzenia na wstążkę.
 - **Synonimy**: wymienia synonimy zaznaczonego słowa; kliknij jeden, aby je zastąpić.
+- **Wyjaśnij prostymi słowami** (AI): wysyła zaznaczenie do panelu AI, aby wyjaśnił je prostymi słowami w języku interfejsu, i od razu to uruchamia. Bez zaznaczenia jest wyłączone, a tekst ukryty przed AI nie jest wysyłany.
 - **Tłumacz** (AI): tłumaczy zaznaczenie na język docelowy (angielski, uproszczony chiński, japoński, koreański, francuski, niemiecki, hiszpański, ...) za pośrednictwem panelu AI.
 - **Nowy komentarz**: dodaje komentarz do zaznaczenia.
 - **Pisownia** (przy błędnie napisanym słowie): proponowane zamiany, zignoruj wszystko, dodaj do słownika, ustaw język sprawdzania.
@@ -77,7 +78,7 @@ Kliknij prawym przyciskiem w dowolnym miejscu tekstu — menu dostosowuje się d
 ## AI
 
 - Przycisk AI na wstążce i panel boczny: przepisanie, rozwinięcie, tłumaczenie, streszczenie, wstawianie tabel z gotowych wzorców oraz dowolne polecenia.
-- Każda tura AI najpierw tworzy migawkę; możesz cofnąć się do dowolnej z listy wersji, a samo cofnięcie można jeszcze cofnąć.
+- Miejsca zmienione przez AI są oznaczone na żółto. **Cofnij te zmiany** na karcie pod odpowiedzią wycofuje całą tę turę (tury po niej też są wycofywane), a samo cofnięcie można jeszcze cofnąć.
 
 ## Zapisywanie i eksport
 
@@ -87,4 +88,4 @@ Kliknij prawym przyciskiem w dowolnym miejscu tekstu — menu dostosowuje się d
 
 ## Drukowanie
 
-ctrl+P przez okno systemowe, strony WYSIWYG.
+ctrl+P otwiera okno drukowania. Wybierz drukarkę, liczbę kopii, druk dwustronny i zakres (także zaznaczenie), a w sekcji **Układ stron** kilka stron na arkusz, broszurę, plakat, etykiety, strony nieparzyste lub parzyste i skalę szarości (zobacz [Operacje na plikach](help://file-ops)).

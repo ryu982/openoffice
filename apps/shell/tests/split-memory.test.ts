@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readAppSettings } from '../src/main/app-settings'
 import {
   clearSplitMemory,
+  forgetSplitMemoryPaths,
   readSplitMemory,
   writeSplitMemory,
   type SplitMemoryOptions,
@@ -194,5 +195,33 @@ describe('injected settings access', () => {
     clearSplitMemory(injected)
     expect(stored).toEqual({})
     expect(readSplitMemory(injected)).toBeNull()
+  })
+})
+
+describe('forgetting documents declined at launch (editor turned off)', () => {
+  it('keeps the other document alone, with the arrangement values', () => {
+    seed({ version: 1, a: 'C:/a.pptx', b: 'C:/b.docx', orientation: 'stack', ratio: 0.4 })
+    forgetSplitMemoryPaths(['C:/a.pptx'], options())
+    expect(readSplitMemory(options())).toEqual({
+      version: 1,
+      a: 'C:/b.docx',
+      orientation: 'stack',
+      ratio: 0.4,
+    })
+  })
+
+  it('clears the memory when no document is left, and compares paths as told', () => {
+    seed({ version: 1, a: 'C:/A.pptx', b: 'C:/a.pptx' })
+    forgetSplitMemoryPaths(['c:/a.PPTX'], {
+      ...options(),
+      same: (x, y) => x.toLowerCase() === y.toLowerCase(),
+    })
+    expect(readSplitMemory(options())).toBeNull()
+  })
+
+  it('leaves the memory as it is when it holds none of the documents', () => {
+    seed({ version: 1, a: 'C:/a.docx' })
+    forgetSplitMemoryPaths(['C:/z.pptx'], options())
+    expect(readSplitMemory(options())).toEqual({ version: 1, a: 'C:/a.docx' })
   })
 })

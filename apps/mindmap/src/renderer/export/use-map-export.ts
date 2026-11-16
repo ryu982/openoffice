@@ -1,12 +1,18 @@
 /**
  * Export, print and the preview picture, as the editor runs them.
  *
- * - Picture (PNG) and PDF: the sheet on screen, as it is drawn (folded
+ * - Picture (PNG or SVG) and PDF: the sheet on screen, as it is drawn (folded
  *   branches folded), the whole sheet and not only the part in view.
  * - Markdown outline: every sheet of the file, from the map as it stands now
  *   (unsaved edits included, folding ignored): the engine's `sheetsToOutline`.
- * - Print: the sheet on screen on one landscape A4 page, through the system's
- *   print dialog. Print is in the File menu; the toolbar has the three exports.
+ * - Print: the sheet on screen on one landscape A4 page. Print (File menu,
+ *   Ctrl/Cmd+P, the tab menu) makes that page, then opens the print dialog
+ *   (`PrintDialog.tsx`): with nothing changed there the page goes to the
+ *   system's print dialog as before, with a page layout option on it goes to
+ *   the shared print layout. The toolbar has the four exports.
+ * - Save As lists the same four types after .xmind. Picking one writes that
+ *   export, as here, to the path the Save As dialog returned (no second
+ *   dialog); the map keeps its file and its unsaved state.
  * - The preview picture a save writes into the file: the first sheet, made
  *   only for a save that changes the file. When it cannot be made, or takes
  *   too long, the save goes ahead without one and the file keeps its old one.
@@ -14,14 +20,14 @@
  * All of them come out in the map's own colours, the same whether the app is
  * light or dark (`render.ts`).
  */
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { t as translate, type StringKey } from '../i18n/locale'
 import type { DocumentSession } from '../document/session'
 import { setThumbnailProvider } from '../document/thumbnail'
 import type { MapController } from '../map/controller'
-import type { ExportFormat, ExportResult } from '../../shared/ipc'
+import type { ExportFormat, ExportResult, MindmapPrintJob } from '../../shared/ipc'
 import { documentName, sheetExportName } from './names'
-import { pictureScale, snapshotPage, snapshotPng, thumbnailScale } from './render'
+import { pictureScale, snapshotPage, snapshotPng, snapshotSvg, thumbnailScale } from './render'
 import { type MapSnapshot, snapshotSheet, type SnapshotOptions } from './snapshot'
 
 export interface MapExportHost {
@@ -106,8 +112,19 @@ function report(say: (key: StringKey) => void, result: ExportResult): void {
 const nextTurn = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 export interface MapExport {
-  exportAs(format: ExportFormat): void
+  /** `path`: the file Save As picked for this export; the export then asks nothing */
+  exportAs(format: ExportFormat, path?: string): void
+  /** makes the page of the sheet on screen and opens the print dialog with it */
   print(): void
+}
+
+/** The print dialog, while it is open. */
+export interface MapPrintState {
+  /** the page made when Print was asked for; null while no dialog is open */
+  job: MindmapPrintJob | null
+  /** nothing changed in the dialog: the page goes to the print as before */
+  printPlain(html: string): void
+  close(): void
 }
 
 /**
@@ -115,9 +132,11 @@ export interface MapExport {
  * print run one after the other: one asked for while another runs waits for
  * it, so a menu command is never lost.
  */
-export function useMapExport(host: MapExportHost): MapExport {
+export function useMapExport(host: MapExportHost): MapExport & { printing: MapPrintState } {
   const hostRef = useRef(host)
   hostRef.current = host
+  /** the page of an open print dialog */
+  const [printJob, setPrintJob] = useState<MindmapPrintJob | null>(null)
   const queue = useRef<Promise<void>>(Promise.resolve())
   const inTurn = useCallback((task: () => Promise<void>): void => {
     queue.current = queue.current.then(task, task)
@@ -146,18 +165,23 @@ export function useMapExport(host: MapExportHost): MapExport {
   }, [])
 
   const exportAs = useCallback(
-    async (format: ExportFormat): Promise<void> => {
+    async (format: ExportFormat, path?: string): Promise<void> => {
       const current = hostRef.current
       const session = current.session
       if (!session) return
       const api = window.mindmapApi
+      const to = path === undefined ? {} : { path }
       try {
         if (format === 'markdown') {
           current.flushAll()
           const text = session.outline()
           report(
             current.say,
-            await api.exportMarkdown({ text, suggestedName: mapNameOf(session, current.path) }),
+            await api.exportMarkdown({
+              text,
+              suggestedName: mapNameOf(session, current.path),
+              ...to,
+            }),
           )
           return
         }
@@ -166,10 +190,14 @@ export function useMapExport(host: MapExportHost): MapExport {
         if (format === 'png') {
           const { snapshot } = taken
           const bytes = await snapshotPng(snapshot, pictureScale(snapshot.width, snapshot.height))
-          report(current.say, await api.exportPng({ bytes, suggestedName: taken.name }))
+          report(current.say, await api.exportPng({ bytes, suggestedName: taken.name, ...to }))
+        } else if (format === 'svg') {
+          // drawn at its own size: an SVG scales without loss
+          const svg = snapshotSvg(taken.snapshot, 1)
+          report(current.say, await api.exportSvg({ svg, suggestedName: taken.name, ...to }))
         } else {
           const html = snapshotPage(taken.snapshot)
-          report(current.say, await api.exportPdf({ html, suggestedName: taken.name }))
+          report(current.say, await api.exportPdf({ html, suggestedName: taken.name, ...to }))
         }
       } catch (error) {
         console.error('[mindmap] export failed:', error)
@@ -179,18 +207,41 @@ export function useMapExport(host: MapExportHost): MapExport {
     [activeSnapshot],
   )
 
+  /** Print: the page is made now, from the sheet as it is; the dialog then decides the route. */
   const print = useCallback(async (): Promise<void> => {
     if (!hostRef.current.session) return
     try {
       const taken = await activeSnapshot()
       if (!taken) throw new Error('the sheet is not drawn')
-      const result = await window.mindmapApi.print({ html: snapshotPage(taken.snapshot) })
-      if (!result.ok) throw new Error(result.error)
+      setPrintJob({ html: snapshotPage(taken.snapshot), suggestedName: taken.name })
     } catch (error) {
       console.error('[mindmap] print failed:', error)
       hostRef.current.say('printFailed')
     }
   }, [activeSnapshot])
+
+  /** The print as it was before the dialog: the page to the system's print dialog. */
+  const printPlain = useCallback(async (html: string): Promise<void> => {
+    try {
+      const result = await window.mindmapApi.print({ html })
+      if (!result.ok) throw new Error(result.error)
+    } catch (error) {
+      console.error('[mindmap] print failed:', error)
+      hostRef.current.say('printFailed')
+    }
+  }, [])
+
+  const printing = useMemo<MapPrintState>(
+    () => ({
+      job: printJob,
+      printPlain: (html) => {
+        setPrintJob(null)
+        inTurn(() => printPlain(html))
+      },
+      close: () => setPrintJob(null),
+    }),
+    [printJob, printPlain, inTurn],
+  )
 
   useEffect(() => {
     const api = window.mindmapApi
@@ -206,8 +257,13 @@ export function useMapExport(host: MapExportHost): MapExport {
     }
   }, [exportAs, print, inTurn])
 
-  return {
-    exportAs: (format) => inTurn(() => exportAs(format)),
-    print: () => inTurn(print),
-  }
+  // stable across renders: a save hands its Save As export pick to `exportAs`
+  const commands = useMemo<MapExport>(
+    () => ({
+      exportAs: (format, path) => inTurn(() => exportAs(format, path)),
+      print: () => inTurn(print),
+    }),
+    [exportAs, print, inTurn],
+  )
+  return { ...commands, printing }
 }

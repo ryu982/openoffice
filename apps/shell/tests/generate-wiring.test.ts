@@ -9,7 +9,7 @@ import { DEFAULT_GENERATE_PROMPTS } from '../src/shared/generate-default-prompts
  * Fixed by reading the source (index.ts needs a running Electron): the
  * generate path never reaches a provider, the shell wires it once, the tab
  * manager drops an untaken request with its tab, and every string exists in
- * all 21 languages.
+ * all 22 languages.
  */
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
@@ -83,8 +83,7 @@ describe('the shell wiring', () => {
 describe('generate strings', () => {
   const keys = Object.keys(generateStrings.zh).sort()
 
-  it('fills every key in all 21 languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('fills every key in every UI language', () => {
     for (const lang of LANGS) {
       const dict = generateStrings[lang] as Record<string, string>
       expect(Object.keys(dict).sort(), lang).toEqual(keys)

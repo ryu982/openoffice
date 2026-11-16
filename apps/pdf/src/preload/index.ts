@@ -1,6 +1,7 @@
 import type { AiPanelPrefs, AutoSaveDefault } from '@genoffice/ui'
 import { contextBridge, ipcRenderer } from 'electron'
 import { driveAiBridge } from '@genoffice/electron-utils/drive-ai-bridge'
+import { mcpToolsBridge } from '@genoffice/electron-utils/mcp-tools-bridge'
 import { outboundBridge } from '@genoffice/electron-utils/outbound-bridge'
 import { userSkillsBridge } from '@genoffice/electron-utils/user-skills-bridge'
 import {
@@ -13,9 +14,13 @@ import type { AiStreamChunk } from '@genoffice/ai-provider'
 import { SUBSCRIPTION_IPC_CHANNELS } from '@genoffice/ai-provider/browser'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import { splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
+import { createPrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
+import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 import { AI_CHANNELS, PDF_CHANNELS } from '../shared/ipc'
 import type {
   PdfApi,
+  PdfDiskFileChange,
+  PdfPrintLayoutEditor,
   PdfNoteResult,
   PdfRecoveryCopyResult,
   PdfStoreApi,
@@ -30,6 +35,7 @@ import {
   SUBSCRIPTION_CONNECT_HELP_CHANNEL,
   SUBSCRIPTION_INSTALL_HELP_CHANNEL,
   imageGenerationAvailableOf,
+  SUBSCRIPTION_USAGE_CHANNEL,
   subscriptionLaunchResultOf,
   subscriptionMeteredResultOf,
   subscriptionStatusMapOf,
@@ -76,6 +82,11 @@ const subscription: SubscriptionApi = {
       handler(subscriptionStatusMapOf(statuses))
     ipcRenderer.on(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
     return () => ipcRenderer.removeListener(SUBSCRIPTION_IPC_CHANNELS.changed, listener)
+  },
+  onUsage: (handler) => {
+    const listener = (_e: unknown, usage: unknown) => handler(Array.isArray(usage) ? usage : [])
+    ipcRenderer.on(SUBSCRIPTION_USAGE_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(SUBSCRIPTION_USAGE_CHANNEL, listener)
   },
   openInstallHelp: async (provider) => {
     await ipcRenderer.invoke(SUBSCRIPTION_INSTALL_HELP_CHANNEL, provider)
@@ -131,8 +142,11 @@ const structure: PdfStructureApi = {
 const store: PdfStoreApi = {
   docHash: (path) => outcome(PDF_CHANNELS.storeDocHash, path),
   aiReadPages: (docHash) => outcome(PDF_CHANNELS.storeAiReadPages, docHash),
-  translations: (docHash) => outcome(PDF_CHANNELS.storeTranslations, docHash),
-  translation: (docHash, lang) => outcome(PDF_CHANNELS.storeTranslation, docHash, lang),
+  // a plain translation call sends no mode, as before
+  translations: (docHash, mode) =>
+    outcome(PDF_CHANNELS.storeTranslations, docHash, ...(mode === undefined ? [] : [mode])),
+  translation: (docHash, lang, mode) =>
+    outcome(PDF_CHANNELS.storeTranslation, docHash, lang, ...(mode === undefined ? [] : [mode])),
   unfinishedJobs: (docHash) => outcome(PDF_CHANNELS.storeUnfinishedJobs, docHash),
   write: (request) => outcome(PDF_CHANNELS.storeWrite, request),
   migrate: (request) => outcome(PDF_CHANNELS.storeMigrate, request),
@@ -144,13 +158,16 @@ const store: PdfStoreApi = {
   insights: (docHash, lang) => outcome(PDF_CHANNELS.storeInsights, docHash, lang),
   deleteCounts: (docHash) => outcome(PDF_CHANNELS.storeDeleteCounts, docHash),
   pageFingerprints: (request) => outcome(PDF_CHANNELS.storePageFingerprints, request),
-  translationRecency: (docHash) => outcome(PDF_CHANNELS.storeTranslationRecency, docHash),
+  translationRecency: (docHash, mode) =>
+    outcome(PDF_CHANNELS.storeTranslationRecency, docHash, ...(mode === undefined ? [] : [mode])),
 }
 
 const api: PdfApi = {
   consumePending: () => ipcRenderer.invoke(PDF_CHANNELS.consumePending),
   openSourcePath: (path: string) => ipcRenderer.invoke('home:open-path', path),
   readFile: (path) => ipcRenderer.invoke(PDF_CHANNELS.readFile, path),
+  readFileChunk: (path: string, start: number, end: number) =>
+    ipcRenderer.invoke(PDF_CHANNELS.readFileChunk, path, start, end),
   decryptPdf: (bytes, password) => ipcRenderer.invoke(PDF_CHANNELS.decryptPdf, bytes, password),
   save: (request) => ipcRenderer.invoke(PDF_CHANNELS.save, request),
   pickAttachmentFile: () => ipcRenderer.invoke(PDF_CHANNELS.pickAttachmentFile),
@@ -174,6 +191,10 @@ const api: PdfApi = {
   pagePreviewPng: (request) => ipcRenderer.invoke(PDF_CHANNELS.pagePreviewPng, request),
   extractPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.extractPages, request),
   insertPdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.insertPdf, request),
+  copyPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.copyPages, request),
+  pastePages: (request) => ipcRenderer.invoke(PDF_CHANNELS.pastePages, request),
+  copiedPageCount: () =>
+    (ipcRenderer.invoke(PDF_CHANNELS.copiedPageCount) as Promise<number>).catch(() => 0),
   compareReadPdf: () => ipcRenderer.invoke(PDF_CHANNELS.compareReadPdf),
   compareReadOpen: (path: string, password?: string) =>
     ipcRenderer.invoke(PDF_CHANNELS.compareReadOpen, path, password),
@@ -183,10 +204,16 @@ const api: PdfApi = {
   mergePdf: (request) => ipcRenderer.invoke(PDF_CHANNELS.mergePdf, request),
   mergePages: (request) => ipcRenderer.invoke(PDF_CHANNELS.mergePages, request),
   replacePages: (request) => ipcRenderer.invoke(PDF_CHANNELS.replacePages, request),
+  restoreFile: (request) => ipcRenderer.invoke(PDF_CHANNELS.restoreFile, request),
   setPageSize: (request) => ipcRenderer.invoke(PDF_CHANNELS.setPageSize, request),
   splitPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.splitPages, request),
   cropPages: (request) => ipcRenderer.invoke(PDF_CHANNELS.cropPages, request),
   exportImages: (request) => ipcRenderer.invoke(PDF_CHANNELS.exportImages, request),
+  onExportImagesRequest: (handler) => {
+    const listener = () => handler()
+    ipcRenderer.on(PDF_CHANNELS.exportImagesRequest, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.exportImagesRequest, listener)
+  },
   convertOffice: (format) => ipcRenderer.invoke(PDF_CHANNELS.convertOffice, format),
   onConvertDialogRequest: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, request: unknown) => {
@@ -194,8 +221,8 @@ const api: PdfApi = {
       const { format, outPath } = request as { format?: unknown; outPath?: unknown }
       if (format !== 'md' && format !== 'epub') return
       if (outPath !== undefined && (typeof outPath !== 'string' || !outPath)) return
-      // only a Markdown target may be preset (Save As › Markdown)
-      if (outPath !== undefined && format !== 'md') return
+      // a preset target (Save As › Markdown / EPUB) carries its format's extension
+      if (outPath !== undefined && !outPath.toLowerCase().endsWith(`.${format}`)) return
       handler(outPath === undefined ? { format } : { format, outPath })
     }
     ipcRenderer.on(PDF_CHANNELS.convertDialogRequest, listener)
@@ -206,6 +233,12 @@ const api: PdfApi = {
     (ipcRenderer.invoke(PDF_CHANNELS.convertReleaseTarget, request) as Promise<boolean>).catch(
       () => true,
     ),
+  askBeforeConvert: async (request) => {
+    const answer: unknown = await ipcRenderer
+      .invoke(PDF_CHANNELS.convertAskBeforeOpen, request)
+      .catch(() => 'open')
+    return answer === 'cancel' || answer === 'file-only' ? answer : 'open'
+  },
   openConvertResult: (request) =>
     (ipcRenderer.invoke(PDF_CHANNELS.convertOpenResult, request) as Promise<boolean>).catch(
       () => false,
@@ -215,12 +248,14 @@ const api: PdfApi = {
       () => false,
     ),
   createDocument: (request) => ipcRenderer.invoke(PDF_CHANNELS.createDocument, request),
+  openAnnotDocument: (request) => ipcRenderer.invoke(PDF_CHANNELS.annotDocument, request),
   openInPdfTools: (path, tool) =>
     (ipcRenderer.invoke(PDF_CHANNELS.openInPdfTools, path, tool) as Promise<boolean>).catch(
       () => false,
     ),
   imageSearch: (query, maxResults) =>
     ipcRenderer.invoke(AI_CHANNELS.imageSearch, query, maxResults),
+  webSearch: (query, maxResults) => ipcRenderer.invoke(AI_CHANNELS.webSearch, query, maxResults),
   readUrl: (url, offset) => ipcRenderer.invoke(AI_CHANNELS.readUrl, url, offset),
   fetchImage: (url) => ipcRenderer.invoke(AI_CHANNELS.fetchImage, url),
   generateImage: (op) => ipcRenderer.invoke(PDF_CHANNELS.generateImage, op),
@@ -252,6 +287,13 @@ const api: PdfApi = {
       (value) => value === true,
       () => false,
     ),
+  onUsernameChanged: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, name: unknown) => {
+      if (typeof name === 'string') handler(name)
+    }
+    ipcRenderer.on(PDF_CHANNELS.authorNameChanged, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.authorNameChanged, listener)
+  },
   setDirty: (dirty) => ipcRenderer.send(PDF_CHANNELS.dirtyChanged, dirty),
   onCloseSaveRequest: (handler) => {
     const listener = (_e: unknown, opts?: { flushAll?: boolean }) =>
@@ -282,11 +324,23 @@ const api: PdfApi = {
     ipcRenderer.on(PDF_CHANNELS.printRequest, listener)
     return () => ipcRenderer.removeListener(PDF_CHANNELS.printRequest, listener)
   },
+  printLayout: createPrintLayoutBridge<PdfPrintLayoutEditor>(ipcRenderer, 'pdf'),
   onFileRenamed: (handler) => {
     const listener = (_e: Electron.IpcRendererEvent, newPath: string) => handler(newPath)
     ipcRenderer.on(PDF_CHANNELS.fileRenamed, listener)
     return () => ipcRenderer.removeListener(PDF_CHANNELS.fileRenamed, listener)
   },
+  watchDiskFile: (path) =>
+    (ipcRenderer.invoke(PDF_CHANNELS.watchDiskFile, path) as Promise<boolean>).catch(() => false),
+  onDiskFileChanged: (handler) => {
+    const listener = (_e: Electron.IpcRendererEvent, change: PdfDiskFileChange) => handler(change)
+    ipcRenderer.on(PDF_CHANNELS.diskFileChanged, listener)
+    return () => ipcRenderer.removeListener(PDF_CHANNELS.diskFileChanged, listener)
+  },
+  discardForDiskReload: (path) =>
+    (ipcRenderer.invoke(PDF_CHANNELS.discardForDiskReload, path) as Promise<boolean>).catch(
+      () => false,
+    ),
   // crash recovery; the standalone app may lack the store: a failed call is "nothing"
   recoveryState: (path) =>
     (ipcRenderer.invoke(PDF_CHANNELS.recoveryState, path) as Promise<{ unsaved: boolean }>).catch(
@@ -359,6 +413,24 @@ const api: PdfApi = {
     ipcRenderer.on(AI_CHANNELS.streamChunk, listener)
     return () => ipcRenderer.removeListener(AI_CHANNELS.streamChunk, listener)
   },
+  aiJob: {
+    begin: async (jobId) => {
+      const answer = (await ipcRenderer.invoke(PDF_CHANNELS.aiJobBegin, jobId)) as {
+        ok?: unknown
+        error?: unknown
+      } | null
+      if (answer?.ok === true) return null
+      return typeof answer?.error === 'string' ? answer.error : 'refused'
+    },
+    end: (jobId) => ipcRenderer.send(PDF_CHANNELS.aiJobEnd, jobId),
+    onStop: (handler) => {
+      const listener = (_e: Electron.IpcRendererEvent, jobId: unknown) => {
+        if (typeof jobId === 'string') handler(jobId)
+      }
+      ipcRenderer.on(PDF_CHANNELS.aiJobStop, listener)
+      return () => ipcRenderer.removeListener(PDF_CHANNELS.aiJobStop, listener)
+    },
+  },
 }
 
 // Shared project chat store (registered app-wide by the shell's main init):
@@ -379,9 +451,17 @@ contextBridge.exposeInMainWorld('aiOfficeSplit', splitPaneBridge(ipcRenderer))
 // Google Drive for this editor's AI: search and read only (decision 0033)
 contextBridge.exposeInMainWorld('aiOfficeDriveAi', driveAiBridge())
 contextBridge.exposeInMainWorld('aiOfficeOutbound', outboundBridge())
+// the person's MCP servers for this editor's AI: list and call approved tools (the shell checks each)
+contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 // the person's skills: the AI panel's `/` list and skill reads, skill cards (shell main checks each)
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 contextBridge.exposeInMainWorld('projectApi', projectApi)
+// whether AI features are on (Settings): read and follow only, this tab never changes it
+const appChoice = appChoiceBridge()
+contextBridge.exposeInMainWorld(APP_CHOICE_BRIDGE_KEY, {
+  get: appChoice.get,
+  onChange: appChoice.onChange,
+})
 // project folders (decision 0088): main identifies this window, the bridge forwards ids only
 contextBridge.exposeInMainWorld(PROJECT_FOLDER_BRIDGE_KEY, projectFolderBridge(ipcRenderer))
 

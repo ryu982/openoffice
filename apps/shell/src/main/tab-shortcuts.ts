@@ -9,6 +9,10 @@
  * it here too keeps one press from closing two tabs. Home is left to its own
  * File > Close, which closes the window.
  *
+ * Ctrl+, opens Settings on Windows and Linux, the chord macOS gives ⌘, in the
+ * app menu (where the menu accelerator takes it, so it is not handled here).
+ * The Word tab keeps it: ⌘, / Ctrl+, is subscript there.
+ *
  * Chords an editor already owns stay with the editor. Ctrl+PageUp/PageDown
  * switch worksheets in Sheets, and Ctrl+1..9 collide with Word's line spacing
  * and Sheets' cell formats and row hiding, so the tab handler does not take
@@ -24,7 +28,7 @@ export interface TabShortcutInput {
   shift: boolean
 }
 
-export type TabShortcut = 'next' | 'previous' | 'close'
+export type TabShortcut = 'next' | 'previous' | 'close' | 'settings'
 
 export function tabShortcutOf(
   input: TabShortcutInput,
@@ -36,6 +40,12 @@ export function tabShortcutOf(
     // Ctrl only: ⌘Tab is the OS app switcher and Alt+Tab is the window switcher
     if (!input.control || input.meta) return null
     return input.shift ? 'previous' : 'next'
+  }
+
+  if (input.key === ',') {
+    // macOS: the app menu's ⌘, accelerator owns it
+    if (platform === 'darwin' || input.shift) return null
+    return input.control && !input.meta ? 'settings' : null
   }
 
   if (input.key.toLowerCase() !== 'w' || input.shift) return null
@@ -52,8 +62,11 @@ export interface TabShortcutHost {
   hasTab(webContentsId: number): boolean
   /** kind of the active tab, or undefined when the list is empty */
   activeKind(): string | undefined
+  /** kind of the document tab rendered by `webContentsId` (undefined for the shell's own) */
+  kindOf(webContentsId: number): string | undefined
   cycle(direction: 1 | -1): void
   closeActive(): void
+  openSettings(): void
 }
 
 /**
@@ -72,6 +85,11 @@ export function handleTabShortcut(
   const shortcut = tabShortcutOf(input)
   if (!shortcut) return false
   if (!host.isShellContents(webContentsId) && !host.hasTab(webContentsId)) return false
+  if (shortcut === 'settings') {
+    if (host.kindOf(webContentsId) === 'docs') return false
+    host.openSettings()
+    return true
+  }
   if (shortcut === 'close') {
     if (host.activeKind() === 'home') return false
     host.closeActive()

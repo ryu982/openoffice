@@ -151,6 +151,19 @@ export function undoStackDepth(runtime: UniverRuntime | null): number {
   }
 }
 
+/// The active unit's undo entries, oldest first (a copy; the entries are
+/// Univer's own objects, so identity tells whether an entry is still there).
+export function undoStackItems(runtime: UniverRuntime | null): readonly unknown[] {
+  if (!runtime) return []
+  try {
+    const unitId = runtime.univerAPI.getActiveWorkbook()?.getId()
+    if (!unitId) return []
+    return [...(undoRedoService(runtime)._undoStacks?.get(unitId) ?? [])]
+  } catch {
+    return []
+  }
+}
+
 /// Snapshot the active unit's undo stack, rewritten against the saved file's
 /// unitId. Must run while the pre-save unit is still alive (style pool).
 /// Returns null when there is nothing carriable; never throws.

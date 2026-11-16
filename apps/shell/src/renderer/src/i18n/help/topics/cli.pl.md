@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` i `media` korzystają z tego, co skonfigurowano w aplikacji w Ustawienia ▸ AI ▸ Zaawansowane:
 
 - `search` działa zawsze. Domyślnie korzysta z bezpłatnego wyszukiwania albo z dostawcy wyszukiwania, którego klucz został wybrany.
-- `image` wymaga klucza dostawcy obrazów. W tej wersji subskrypcja nie generuje obrazów.
+- `image` korzysta z wyboru generowania obrazów w ustawieniach. Przy domyślnym wyborze, Plan ChatGPT (program Codex), rysuje w ramach Twojego planu ChatGPT za pomocą programu Codex, ale tylko jeśli zezwolono na używanie subskrypcji w automatycznych wywołaniach (**domyślnie wyłączone**; zobacz [Podłączenie z agentem programistycznym](help://mcp)). W przeciwnym razie używa klucza skonfigurowanego dostawcy obrazów. `--model` jest używany, gdy ta droga oferuje dany model; w przeciwnym razie polecenie odpowiada listą modeli, których możesz użyć. Obrazy podane przez `--ref` działają na obu drogach.
 - `media` dla obrazu korzysta z dostawcy z kluczem, jeśli jest skonfigurowany. Z subskrypcji Claude lub Codex korzysta tylko wtedy, gdy na to pozwolisz, a jest to **domyślnie wyłączone**; przełącznik i jego ograniczenia opisuje [Podłączenie z agentem programistycznym](help://mcp).
 - `media` dla wideo lub dźwięku wymaga dostawcy z kluczem obsługującego wideo.
 

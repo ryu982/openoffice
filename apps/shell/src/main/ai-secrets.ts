@@ -19,8 +19,9 @@ import { writeJsonAtomic } from '@genoffice/electron-utils/atomic-write'
  * platform opens a sealed value it can.
  *
  * The terminal command runs without Electron, so it starts this app hidden
- * with REVEAL_FLAG, hands it the sealed values on stdin and reads the plain
- * ones back on stdout (packages/cli/src/secrets.ts). That is no wider than
+ * with REVEAL_FLAG, hands it the sealed values in REVEAL_REQUEST_ENV (and on
+ * stdin, which an Electron main process on Windows never receives) and reads
+ * the plain ones back on stdout (packages/cli/src/secrets.ts). That is no wider than
  * the protection itself: any program running as the same user can ask DPAPI.
  */
 
@@ -173,6 +174,14 @@ export function fileSearchHoldsPlainKeys(stored: unknown): boolean {
 
 /** The hidden entry the terminal command starts to open sealed values */
 export const REVEAL_FLAG = '--reveal-ai-secrets'
+/**
+ * The request (the JSON list of sealed values) as the terminal command passes
+ * it. An Electron main process on Windows sees its stdin end at once with
+ * nothing read, so a request sent only there arrived as "bad request" and the
+ * command read every sealed key as empty. The environment reaches it; stdin
+ * stays the way in for a request this variable does not carry.
+ */
+export const REVEAL_REQUEST_ENV = 'GENOFFICE_REVEAL_REQUEST'
 export const MAX_REVEAL_VALUES = 64
 const MAX_SEALED_LENGTH = 16_384
 const MAX_STDIN_BYTES = 2 * 1024 * 1024
@@ -231,9 +240,21 @@ function readStdin(): Promise<string> {
   })
 }
 
+/** The request text: the environment's when it carries one, stdin otherwise */
+export async function revealRequestText(
+  env: NodeJS.ProcessEnv = process.env,
+  stdin: () => Promise<string> = readStdin,
+): Promise<string> {
+  const fromEnv = env[REVEAL_REQUEST_ENV]
+  if (typeof fromEnv === 'string' && fromEnv !== '') {
+    return Buffer.byteLength(fromEnv) > MAX_STDIN_BYTES ? '' : fromEnv
+  }
+  return stdin()
+}
+
 /** The whole hidden run: read the request, print one line, return the exit code */
 export async function runRevealEntry(codec: AiSecretCodec): Promise<number> {
-  const line = revealAnswer(revealRequestOf(await readStdin()), codec) + '\n'
+  const line = revealAnswer(revealRequestOf(await revealRequestText()), codec) + '\n'
   await new Promise<void>((resolve) => {
     const bail = setTimeout(resolve, 2000)
     process.stdout.write(line, () => {

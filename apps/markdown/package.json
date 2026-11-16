@@ -63,6 +63,7 @@
   },
   "author": "GenOffice",
   "dependencies": {
+    "@genoffice/print-layout": "*",
     "@tiptap/extension-mathematics": "3.31.0",
     "katex": "^0.18.2",
     "json5": "^2.2.3",

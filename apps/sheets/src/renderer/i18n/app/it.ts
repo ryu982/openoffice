@@ -495,6 +495,7 @@ export const it = {
   appGridlinesHidden: 'Griglia nascosta.',
   appGridlinesShown: 'Griglia visualizzata.',
   appShowingFormulas: 'Formule visualizzate — attiva/disattiva di nuovo per i valori.',
+  appShowingFormulasActive: 'Formule visualizzate',
   appShowingValues: 'Valori calcolati visualizzati.',
   appTraceNoFormula: 'Individua precedenti: la cella attiva non contiene una formula.',
   appTraceNoRefs: 'Individua precedenti: questa formula non ha riferimenti di cella.',
@@ -590,6 +591,9 @@ export const it = {
     "L'esportazione in CSV richiede la cartella di lavoro completamente caricata — attendi la fine del caricamento.",
   appCsvExportTooLarge: 'Il foglio è troppo grande per essere esportato come CSV.',
   appCsvExportCanceled: 'Esportazione CSV annullata.',
+  appOdsExported: '{path} esportato.',
+  appOdsExportCanceled: 'Esportazione ODS annullata.',
+  appOdsExportFailed: 'Esportazione ODS non riuscita.',
   appCsvExported: '{path} esportato.',
   appCsvExportedActiveOnly:
     'I file CSV contengono un solo foglio — il foglio attivo “{name}” è stato esportato in {path}.',
@@ -626,6 +630,10 @@ export const it = {
     'Il foglio di stile di questa cartella di lavoro manca della struttura di base; le modifiche di stile non possono essere salvate.',
   appSaveErrPackageGuard:
     'Il salvataggio cambierebbe la struttura del pacchetto della cartella di lavoro — interrotto per proteggere il file.',
+  appSaveErrSheetNotFound:
+    'Un foglio a cui fa riferimento questo salvataggio non è stato trovato nella cartella di lavoro: il salvataggio è stato interrotto e il file è rimasto invariato.',
+  appSaveErrSheetNameReused:
+    'Un nuovo foglio usa il vecchio nome di un foglio rinominato, quindi non è possibile salvare. Assegna per ora un altro nome al nuovo foglio, salva e poi rinominalo. Il file è rimasto invariato.',
   appSaveErrChartUnsupported:
     'Questo tipo di grafico non supporta tale modifica; salvataggio interrotto — annulla la modifica del grafico.',
   appSaveErrMoveOverlap:
@@ -738,6 +746,13 @@ export const it = {
   appSaveAs: 'Salva con nome',
   appUndo: 'Annulla',
   appRedo: 'Ripeti',
+  appQuickAccessCustomize: 'Personalizza barra di accesso rapido',
+  appQuickAccessHint:
+    'Premi Alt e un numero per eseguire il pulsante in quella posizione, contando da sinistra.',
+  appQuickAccessMoveEarlier: 'Sposta verso l’inizio',
+  appQuickAccessMoveLater: 'Sposta verso la fine',
+  appQuickAccessReset: 'Ripristina impostazioni predefinite',
+  appQuickAccessFull: 'La barra contiene al massimo 10 pulsanti.',
   appUnsavedEditOne: '● {count} modifica non salvata',
   appUnsavedEditMany: '● {count} modifiche non salvate',
   appSavedState: 'Salvato',
@@ -1201,6 +1216,8 @@ export const it = {
   appRefreshAll: 'Aggiorna tutti',
   appWorkbookNoPivot: 'Nessuna tabella pivot in questa cartella.',
   appRefreshAllTitle: 'Aggiorna tutte le tabelle pivot',
+  appQueriesConnections: 'Query e connessioni',
+  appQueriesConnectionsTitle: 'Elenca le query e le connessioni dati della cartella di lavoro',
   appErrorCheckingDetail: 'Cerca valori di errore nel foglio',
   appErrorsFound: '{count} errori — in {cell}: {value}',
   appCheckingErrors: 'Ricerca errori in corso su tutto il foglio…',
@@ -1600,4 +1617,8 @@ export const it = {
   appSpellUnavailable: 'Il controllo ortografico non è disponibile in questa finestra.',
   appSpellReplaceAll: 'Sostituisci tutto con «{suggestion}»',
   appSpellChangedAll: 'Corrette {count} celle di «{word}».',
+
+  // ── ODS import ──
+  appOdsImportNotice: "L'ODS è stato aperto come copia xlsx. Il salvataggio scriverà un file xlsx.",
+  appOdsFormulasDropped: 'Di {count} formule sono stati mantenuti solo i valori.',
 } satisfies Record<keyof typeof zh, string>

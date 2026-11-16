@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const th = {
+  appLegacyPptImported:
+    'เปิดไฟล์ .ppt เป็นสำเนา .pptx ที่แปลงแล้ว ไฟล์ต้นฉบับไม่เปลี่ยนแปลง การบันทึกจะเขียนเป็นไฟล์ .pptx ใหม่ บันทึกย่อของผู้บรรยายและภาพเคลื่อนไหวจะไม่ถูกนำมาด้วย',
   redactMenuLabel: 'ซ่อนส่วนที่เลือกจาก AI',
   redactDialogDesc:
     'เนื้อหาที่เลือกยังอยู่ในเอกสารและไฟล์ แต่ AI จะเห็นเพียงตัวแทนด้านล่าง ตั้งชื่อเพื่อให้ AI รู้ว่าแทนอะไร',
@@ -167,6 +169,9 @@ export const th = {
   appPrintLandscape: 'แนวนอน',
   appPrintFrame: 'ใส่กรอบสไลด์',
   appPrintHidden: 'พิมพ์สไลด์ที่ซ่อน',
+  appPrintRangeSelected: 'สไลด์ที่เลือก',
+  appPrintLayoutBlocked:
+    'เอกสารประกอบและหน้าบันทึกย่อพิมพ์หนึ่งหน้าต่อแผ่น หากต้องการจัดวางหน้า ให้เลือก สไลด์เต็มหน้า',
   appPrintPageCount: 'ทั้งหมด {n} หน้า',
   appPrintNoPages: 'ไม่มีสไลด์ที่จะพิมพ์',
   appPrintRendering: 'กำลังสร้างตัวอย่าง…',
@@ -176,6 +181,7 @@ export const th = {
   appCtxSendToBack: 'ย้ายไปไว้ข้างหลังสุด',
   appCtxBringForward: 'นำไปข้างหน้า',
   appCtxSendBackward: 'ย้ายไปข้างหลัง',
+  appCtxRotate: 'หมุน',
   appCtxRotateLeft90: 'หมุนซ้าย 90°',
   appCtxRotateRight90: 'หมุนขวา 90°',
   appCtxFlipH: 'พลิกแนวนอน',

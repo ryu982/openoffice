@@ -13,10 +13,14 @@ const TARGET_DPI = 200
  * Upper bound on total raster pixels across all pages. A 200 DPI US-Letter
  * page is ~3.7 MP, so ~40 such pages print at full target quality; larger
  * documents scale down toward (never below) the 150 DPI baseline. This keeps
- * the JPEG data URLs held alive until the dialog closes within ~tens of MB
+ * the JPEG images held alive until the dialog closes within ~tens of MB
  * instead of pushing the renderer out of memory on long scanned PDFs.
  */
 const MAX_PRINT_PIXELS = 150_000_000
+/** Per-canvas pixel bound, so one huge drawing cannot OOM the renderer. */
+const MAX_PAGE_PIXELS = MAX_PRINT_PIXELS
+/** JPEG quality of the printed page images. */
+const PRINT_JPEG_QUALITY = 0.92
 
 /** How long to wait for the dialog to report back before giving up. Chromium
     and Electron both fire `afterprint`, but a suppressed print (blocked popup,
@@ -42,9 +46,13 @@ export function printScaleForAreas(areas: number[]): number {
 }
 
 /**
- * Sequentially render pages as JPEG images into a print-only container (canvas discarded
- * immediately to avoid keeping full-doc hi-res bitmaps in memory), then hand off to the
- * system print dialog; clean up after it closes (including cancel).
+ * Render pages in order as JPEG images into a print-only container, then hand
+ * off to the system print dialog; clean up after it closes (including cancel).
+ * Page n+1 renders while page n is encoded with the async `toBlob` into an
+ * object URL and starts decoding, on two alternating canvases emptied as soon
+ * as their image is out. This replaced a synchronous `toDataURL` per page that
+ * held the renderer and kept base64 strings alive, which made large documents
+ * slow to reach the dialog; pages, scale and JPEG quality are unchanged.
  * Caller flushes unsaved changes and re-getDocument first — rotations/deleted pages are
  * already in the file.
  * @param pages 1-based file pages to render; defaults to the whole document.
@@ -86,6 +94,39 @@ export interface PrintOptions {
    * True is also PDF.js's default; the print dialog lets the reader turn it off.
    */
   includeAnnotations?: boolean
+  /** Pages prepared so far: (0, total) first, (total, total) before the dialog opens. */
+  onProgress?: (done: number, total: number) => void
+  /**
+   * Cancels the preparation: the job rejects with an `AbortError`, nothing is
+   * printed and every page image is released. Ignored once the dialog is open.
+   */
+  signal?: AbortSignal
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return
+  const reason: unknown = signal.reason
+  if (reason instanceof Error && reason.name === 'AbortError') throw reason
+  throw new DOMException('printing was cancelled', 'AbortError')
+}
+
+/** Async JPEG encode: unlike `toDataURL`, the caller is not blocked and no base64 copy is made. */
+function encodeJpeg(canvas: HTMLCanvasElement, page: number): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error(`page ${page} could not be prepared for printing`))
+      },
+      'image/jpeg',
+      PRINT_JPEG_QUALITY,
+    )
+  })
+}
+
+function releaseCanvas(canvas: HTMLCanvasElement): void {
+  canvas.width = 0
+  canvas.height = 0
 }
 
 export async function printPdf(
@@ -93,9 +134,10 @@ export async function printPdf(
   pages?: number[],
   options: PrintOptions = {},
 ): Promise<void> {
+  const { signal, onProgress } = options
+  throwIfAborted(signal)
   const root = document.createElement('div')
   root.className = 'pdf-print-root'
-  const canvas = document.createElement('canvas')
   // Integer-only: a float (1.5) passes the range check but pdf.js getPage
   // throws on it, aborting the whole job in the measure pass below.
   const targets =
@@ -111,11 +153,15 @@ export async function printPdf(
       `none of the requested pages (${pages.join(', ')}) exist in this ${doc.numPages}-page document`,
     )
   }
+  const total = targets.length
+  let done = 0
+  onProgress?.(0, total)
   // First pass: measure each page at unit scale to budget the shared scale.
   // Stream one page at a time so no PDFPageProxy outlives its render — the
   // previous two-pass held all pages alive plus 2× viewports.
   const areas: number[] = []
   for (const n of targets) {
+    throwIfAborted(signal)
     const page = await doc.getPage(n)
     try {
       const unit = page.getViewport({ scale: 1 })
@@ -130,57 +176,110 @@ export async function printPdf(
     }
   }
   const scale = printScaleForAreas(areas)
-  // Second pass: render at the budgeted scale, bounding each canvas to the
-  // pixel budget so a single huge drawing (e.g. 200in² at 150 DPI → >1Bpx)
-  // cannot OOM the renderer even at the floor scale.
-  const MAX_PAGE_PIXELS = MAX_PRINT_PIXELS
-  for (const n of targets) {
-    const page = await doc.getPage(n)
+  // Two canvases take turns: page n+1 draws on one while page n's JPEG is
+  // encoded from the other.
+  const canvases = [document.createElement('canvas'), document.createElement('canvas')]
+  let turn = 0
+  const urls: string[] = []
+  const decodes: Promise<void>[] = []
+  // The previous page's encode step and the canvas pixels it still holds.
+  let pending: Promise<void> | null = null
+  let pendingPixels = 0
+  const settlePending = async () => {
+    const step = pending
+    pending = null
+    pendingPixels = 0
+    if (step) await step
+  }
+  const finishPage = async (canvas: HTMLCanvasElement, n: number) => {
     try {
-      let viewport = page.getViewport({ scale })
-      let w = Math.floor(viewport.width)
-      let h = Math.floor(viewport.height)
-      if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
-        // Skip a single corrupt page rather than aborting the whole print.
-        continue
-      }
-      if (w * h > MAX_PAGE_PIXELS) {
-        // A missing page is worse than a softer one: render this page at its
-        // own reduced scale instead of dropping it.
-        const pageScale = scale * Math.sqrt(MAX_PAGE_PIXELS / (w * h))
-        viewport = page.getViewport({ scale: pageScale })
-        w = Math.floor(viewport.width)
-        h = Math.floor(viewport.height)
+      const blob = await encodeJpeg(canvas, n)
+      const url = URL.createObjectURL(blob)
+      urls.push(url)
+      const img = document.createElement('img')
+      img.src = url
+      root.appendChild(img)
+      // Decode now, overlapping the next pages, instead of all at the end.
+      const decoded = img.decode()
+      decoded.catch(() => {
+        /* reported by the Promise.all below */
+      })
+      decodes.push(decoded)
+    } finally {
+      releaseCanvas(canvas)
+    }
+    done += 1
+    onProgress?.(done, total)
+  }
+  try {
+    // Second pass: render at the budgeted scale, bounding each canvas to the
+    // pixel budget so a single huge drawing (e.g. 200in² at 150 DPI → >1Bpx)
+    // cannot OOM the renderer even at the floor scale.
+    for (const n of targets) {
+      throwIfAborted(signal)
+      const page = await doc.getPage(n)
+      try {
+        let viewport = page.getViewport({ scale })
+        let w = Math.floor(viewport.width)
+        let h = Math.floor(viewport.height)
         if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+          // Skip a single corrupt page rather than aborting the whole print.
+          done += 1
+          onProgress?.(done, total)
           continue
         }
-      }
-      canvas.width = w
-      canvas.height = h
-      await page.render({
-        canvas,
-        viewport,
-        annotationMode:
-          options.includeAnnotations === false ? ANNOTATION_MODE_DISABLE : ANNOTATION_MODE_ENABLE,
-      }).promise
-      const img = document.createElement('img')
-      img.src = canvas.toDataURL('image/jpeg', 0.92)
-      root.appendChild(img)
-    } finally {
-      try {
-        page.cleanup()
-      } catch {
-        /* older pdf.js without cleanup */
+        if (w * h > MAX_PAGE_PIXELS) {
+          // A missing page is worse than a softer one: render this page at its
+          // own reduced scale instead of dropping it.
+          const pageScale = scale * Math.sqrt(MAX_PAGE_PIXELS / (w * h))
+          viewport = page.getViewport({ scale: pageScale })
+          w = Math.floor(viewport.width)
+          h = Math.floor(viewport.height)
+          if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+            done += 1
+            onProgress?.(done, total)
+            continue
+          }
+        }
+        // The two canvases together never hold more than one page may: past
+        // that, finish the previous page before drawing this one.
+        if (pendingPixels + w * h > MAX_PAGE_PIXELS) await settlePending()
+        throwIfAborted(signal)
+        const canvas = canvases[turn]!
+        canvas.width = w
+        canvas.height = h
+        await page.render({
+          canvas,
+          viewport,
+          annotationMode:
+            options.includeAnnotations === false ? ANNOTATION_MODE_DISABLE : ANNOTATION_MODE_ENABLE,
+        }).promise
+        await settlePending()
+        throwIfAborted(signal)
+        pending = finishPage(canvas, n)
+        // Settled at the next page or below; a rejection is never left unobserved.
+        pending.catch(() => {})
+        pendingPixels = w * h
+        turn = 1 - turn
+      } finally {
+        try {
+          page.cleanup()
+        } catch {
+          /* older pdf.js without cleanup */
+        }
       }
     }
-  }
-  canvas.width = 0
-  canvas.height = 0
-  document.body.appendChild(root)
-  try {
-    await Promise.all([...root.querySelectorAll('img')].map((img) => img.decode()))
+    await settlePending()
+    throwIfAborted(signal)
+    document.body.appendChild(root)
+    await Promise.all(decodes)
+    throwIfAborted(signal)
     await waitForPrintDialog(PRINT_DIALOG_TIMEOUT_MS)
   } finally {
+    // An encode still in flight would otherwise add a URL after the release.
+    await pending?.catch(() => {})
+    for (const canvas of canvases) releaseCanvas(canvas)
     root.remove()
+    for (const url of urls) URL.revokeObjectURL(url)
   }
 }

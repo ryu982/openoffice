@@ -32,6 +32,28 @@ describe('HTML print wiring', () => {
     expect(app).toMatch(/offPrint\(\)/)
   })
 
+  it('opens the print dialog on the print request, and its plain print is runPrint', async () => {
+    // Ctrl/⌘+P, File › Print and the tab menu all arrive as this one request.
+    const app = await source(APP)
+    expect(app).toContain('window.htmlApi.onPrintRequest(openPrintDialog)')
+    expect(app).toMatch(
+      /const openPrintDialog = useCallback\(\(\) => \{[\s\S]{0,300}setPrintDialogOpen\(true\)/,
+    )
+    // a print whose system dialog is still open is not doubled by the dialog
+    expect(app).toMatch(/if \(statusRef\.current !== 'ready' \|\| printingRef\.current\) return/)
+    const mount = app.slice(app.indexOf('{printDialogOpen && ('))
+    expect(mount).toMatch(/<HtmlPrintDialog[\s\S]{0,400}onPlainPrint=\{\(\) => void runPrint\(\)\}/)
+  })
+
+  it('exposes the advanced print calls over preload', async () => {
+    const preload = await source(PRELOAD)
+    expect(preload).toContain(
+      "printLayout: createPrintLayoutBridge<HtmlPrintJob>(ipcRenderer, 'html')",
+    )
+    expect(preload).toMatch(/printJobPages:[\s\S]{0,80}HTML_CHANNELS\.printJobPages/)
+    expect(HTML_CHANNELS.printJobPages).toBe('html:print-job-pages')
+  })
+
   it('exposes the print call over preload and handles it in main', async () => {
     const [preload, main] = await Promise.all([source(PRELOAD), source(MAIN)])
     expect(preload).toContain('onPrintRequest:')

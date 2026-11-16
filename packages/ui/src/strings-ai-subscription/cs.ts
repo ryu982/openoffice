@@ -18,6 +18,8 @@ export const cs = {
   cardErrNeedsUpdatePath: 'Soubor, který tato aplikace spouští:',
   cardErrNeedsUpdateWindows:
     'Aktualizace programu {provider} ve WSL (Ubuntu) nebo v jiné složce tento soubor nezmění. Spusťte {command} ve Windows PowerShellu.',
+  claudeDesktopNote:
+    'Desktopová aplikace Claude není Claude Code, který tato aplikace spouští. Claude Code je samostatný program pro terminál, takže instalace ani aktualizace desktopové aplikace ho nezmění.',
   cardErrTimeout: 'Program {provider} neodpověděl včas. Zkontrolujte to za chvíli znovu.',
   cardErrFailed: 'Při kontrole {provider} došlo k potížím. Zkontrolujte to znovu.',
   actionInstall: 'Nainstalovat',
@@ -52,6 +54,8 @@ export const cs = {
   errSignedOut: 'Přihlášení k {provider} vypršelo. Přihlaste se znovu a pokračujte.',
   errRateLimit: 'Limit předplatného {provider} je vyčerpán.',
   errRateLimitReset: 'Limit předplatného {provider} je vyčerpán. Obnoví se v {time}.',
+  errChatGptAppLimit:
+    'Tato aplikace vyčerpala využití ChatGPT, které může čerpat. Může jít o limit celého tarifu, nebo o limit nastavený pro tuto aplikaci. Zkontrolujte Nastavení → Využití v ChatGPT.',
   errUnsafeTools:
     'Program {provider} se spustil se zapnutými vlastními nástroji, proto byl běh z bezpečnostních důvodů zastaven.',
   errMeteredNotAccepted:
@@ -114,7 +118,7 @@ export const cs = {
   stepLogin: 'Přihlášení',
   stepReady: 'Připojeno',
   installReturnNote:
-    'Až instalace v tom okně skončí, vraťte se sem. Aplikace to sama zkontroluje znovu.',
+    'Během stahování může okno několik minut nic nezobrazovat. Nechte ho otevřené. Až instalace skončí, vraťte se sem. Aplikace to sama zkontroluje znovu.',
   loginHowNote:
     'Po kliknutí se otevře prohlížeč. Přihlaste se účtem {vendor} a klikněte na Povolit; připojení se dokončí samo.',
   signingInStalledNote:
@@ -152,6 +156,16 @@ export const cs = {
     'V prohlížeči se otevře přihlašovací stránka ChatGPT. Přihlaste se a povolte této aplikaci používat váš tarif ChatGPT; připojení se pak dokončí samo.',
   chatgptLoginUnfinishedNote:
     'Přihlášení se nedokončilo. Stiskněte tlačítko znovu a začněte od začátku. K připojení je nutné povolit používání vašeho tarifu ChatGPT.',
+  chatgptLoginNoPlanNote:
+    'Přihlášení do ChatGPT proběhlo, ale tato aplikace nedostala povolení používat váš tarif. Stiskněte tlačítko znovu a na stránce souhlasu povolte používání tarifu. Pokud jste ho už povolili, OpenAI možná toto používání pro váš účet (například spravovaný firmou nebo školou) nebo tarif nenabízí. Pak se můžete připojit přes program Codex.',
+  chatgptLoginDeniedNote:
+    'V prohlížeči jste se přihlásili, ale OpenAI toto připojení nepřijalo, nebo se jeho odpověď nepodařilo ověřit. Zkontrolujte, že datum a čas na tomto počítači jsou správně, a stiskněte tlačítko znovu, abyste začali od začátku.',
+  chatgptLoginNetworkNote:
+    'Přihlášení se nepodařilo dokončit: OpenAI nebylo dostupné, nebo se neotevřel prohlížeč. Zkontrolujte připojení k internetu (včetně firemní sítě, VPN nebo proxy) a stiskněte tlačítko znovu.',
+  chatgptLoginWorkspacePolicyNote:
+    'Tento účet ChatGPT patří do pracovního prostoru spravovaného firmou nebo školou a OpenAI nedovoluje aplikacím používat tarif ChatGPT pracovního prostoru. Správce pracovního prostoru nemá žádné nastavení, kterým by tuto aplikaci povolil, takže nové přihlášení nepomůže. Přihlaste se osobním účtem ChatGPT (Go, Plus nebo Pro) nebo se připojte přes kartu Codex.',
+  chatgptLoginNotAllowedNote:
+    'Této aplikaci jste nepovolili používat váš tarif ChatGPT, nebo se prohlížeč vrátil z přihlášení s chybou. Stiskněte tlačítko znovu, přihlaste se a na stránce souhlasu to povolte.',
   chatgptSigningInNote:
     'V otevřeném prohlížeči se přihlaste účtem ChatGPT a povolte této aplikaci používat váš tarif. Připojení se dokončí samo.',
   chatgptPlanNote:
@@ -161,4 +175,18 @@ export const cs = {
   browserPageDoneBody: 'Tuto kartu můžete zavřít a vrátit se do aplikace.',
   browserPageFailedTitle: 'Připojení se nezdařilo',
   browserPageFailedBody: 'Vraťte se do aplikace a zkuste to znovu.',
+  cardOff: 'V této aplikaci vypnuto',
+  offNote:
+    'Tato aplikace program {provider} nespouští ani nezjišťuje jeho stav. Přihlášení {provider} v tomto počítači a jeho používání v terminálu zůstávají beze změny.',
+  offElsewhereNote: 'Znovu ho můžete zapnout v Nastavení → AI.',
+  offSwitchNote:
+    '„Nepoužívat v této aplikaci“ ponechá přihlášení {provider} v tomto počítači a zastaví jen tuto aplikaci. Odhlášení platí pro celý počítač.',
+  actionTurnOff: 'Nepoužívat v této aplikaci',
+  actionTurnOn: 'Znovu používat',
+  connectOffTitle: '{provider} je v této aplikaci vypnutý',
+  connectOffBody:
+    'Klikněte na „Znovu používat“ na kartě {provider} v Nastavení → AI, nebo zvolte jinou AI.',
+  errOffInApp:
+    '{provider} je v této aplikaci vypnutý, proto se nic nespustilo. Znovu ho můžete zapnout v Nastavení → AI.',
+  guideBadgeOff: 'Vypnuto',
 } satisfies Record<keyof typeof zh, string>

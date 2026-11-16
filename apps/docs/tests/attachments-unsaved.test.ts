@@ -96,6 +96,8 @@ vi.mock('@genoffice/file-parse', () => ({
   ATTACHABLE_MAX_BYTES: 50 * 1024 * 1024,
   attachableMaxBytes: () => 50 * 1024 * 1024,
   ATTACHABLE_IMAGE_MAX_BYTES: 5 * 1024 * 1024,
+  diagramPictureExtOf: () => null,
+  diagramPictureExtOfName: () => null,
 }))
 // this workspace's test aliases do not reach the rest of these packages, and
 // the handler under test uses none of them
@@ -106,6 +108,10 @@ vi.mock('@genoffice/ai-search', async () => ({
 vi.mock('@genoffice/ai-provider/subscription', () => ({
   ensureSubscriptionIpc: () => ({}),
   sharedSubscriptionStatuses: () => ({}),
+  // docs-main gates these with the AI switch (editor choice); never called here
+  detectSubscriptionLogin: async () => ({}),
+  listSubscriptionModels: async () => [],
+  subscriptionStatusErrorText: () => '',
 }))
 vi.mock('@genoffice/ai-provider/codex-app-server', () => ({
   shutdownCodexAppServers: () => {},

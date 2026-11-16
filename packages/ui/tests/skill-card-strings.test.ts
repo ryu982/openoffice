@@ -8,7 +8,7 @@ const NON_LATIN: readonly Lang[] = ['zh', 'ja', 'ko', 'th', 'ru', 'ar', 'he', 'h
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('SKILL_CARD_STRINGS', () => {
-  it('has every key, non-empty, in all 21 languages', () => {
+  it('has every key, non-empty, in all 22 languages', () => {
     expect(Object.keys(SKILL_CARD_STRINGS).sort()).toEqual([...LANGS].sort())
     for (const lang of LANGS) {
       const dict = SKILL_CARD_STRINGS[lang] as Record<string, string>

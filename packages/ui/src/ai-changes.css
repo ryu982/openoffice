@@ -1,0 +1,157 @@
+/* The card under an AI reply that changed the document (see AiChangesCard.tsx).
+   Every rule hangs off .ai-run-changes so no editor's own panel names reach it. */
+
+.ai-run-changes {
+  margin-top: 8px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-8);
+  background: var(--color-bg-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-run-changes .ai-run-changes-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+}
+
+.ai-run-changes .ai-run-changes-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ai-run-changes .ai-run-changes-revert {
+  flex: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  padding: 2px 10px;
+  font: inherit;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.ai-run-changes .ai-run-changes-revert:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.ai-run-changes .ai-run-changes-revert:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* takes the marks of the changes off the document: quieter than undo, right before it */
+.ai-run-changes .ai-run-changes-unmark {
+  flex: none;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.ai-run-changes .ai-run-changes-unmark:hover {
+  background: var(--hover);
+  color: var(--color-text-primary);
+}
+
+.ai-run-changes .ai-run-changes-revert:focus-visible,
+.ai-run-changes .ai-run-changes-unmark:focus-visible,
+.ai-run-changes .ai-run-change-go:focus-visible {
+  outline: 2px solid var(--accent, var(--color-border-strong));
+  outline-offset: 1px;
+}
+
+.ai-run-changes .ai-run-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  margin: 0;
+  padding: 0 10px 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ai-run-changes .ai-run-change {
+  overflow-wrap: anywhere;
+}
+
+/* a change that can be shown in the document: the whole line is the button */
+.ai-run-changes .ai-run-change-go {
+  display: block;
+  width: calc(100% + 8px);
+  margin: 0 -4px;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ai-run-changes .ai-run-change-go:hover {
+  background: var(--hover);
+}
+
+.ai-run-changes .ai-run-change-from {
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+}
+
+.ai-run-changes .ai-run-change-to {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.ai-run-changes .ai-run-change-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ai-run-changes .ai-run-change-mark,
+.ai-run-changes .ai-run-change-arrow {
+  margin-inline-end: 4px;
+  color: var(--color-text-secondary);
+}
+
+.ai-run-changes .ai-run-change-arrow {
+  margin-inline-start: 4px;
+}
+
+.ai-run-changes .ai-run-change-count {
+  margin-inline-start: 6px;
+  color: var(--color-text-secondary);
+}
+
+/* a run taken back: its lines stay as a record, dimmed */
+.ai-run-changes[data-state='reverted'] .ai-run-changes-list,
+.ai-run-changes[data-state='partial'] .ai-run-changes-list {
+  opacity: 0.55;
+}
+
+.ai-run-changes .ai-run-changes-note {
+  padding: 0 10px 8px;
+  color: var(--color-text-secondary);
+}
+
+.ai-run-changes[data-state='refused'] .ai-run-changes-note {
+  color: var(--danger);
+}
+
+/* the mark an editor draws over what the last run changed: one look in every editor */
+.ai-changed-mark {
+  border-radius: 2px;
+  background: var(--color-ai-changed-bg);
+  box-shadow: inset 0 -2px 0 var(--color-ai-changed-line);
+}

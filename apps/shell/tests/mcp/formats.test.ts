@@ -18,7 +18,7 @@ import {
 describe('format registry', () => {
   it('mirrors the shell open routing for the mcp-driven families', () => {
     expect(formatFamily('docx').editorOpen).toEqual(['docx', 'odt'])
-    expect(formatFamily('xlsx').editorOpen).toEqual(['xlsx', 'xlsm', 'xls', 'csv', 'tsv'])
+    expect(formatFamily('xlsx').editorOpen).toEqual(['xlsx', 'xlsm', 'xls', 'csv', 'tsv', 'ods'])
     expect(formatFamily('pptx').editorOpen).toEqual(['pptx'])
   })
 
@@ -38,8 +38,16 @@ describe('format registry', () => {
     expect(sheet.mcp?.save).not.toContain('tsv')
   })
 
-  it('keeps the editor-only families (md/html/xmind/epub) without an mcp block', () => {
-    for (const family of ['md', 'html', 'xmind', 'epub'] as const) {
+  it('keeps .ods open-only: it opens as an .xlsx copy and saves as .xlsx', () => {
+    const sheet = formatFamily('xlsx')
+    expect(sheet.editorOpen).toContain('ods')
+    expect(sheet.editorSave).not.toContain('ods')
+    expect(sheet.mcp?.save).not.toContain('ods')
+    expect(appForPath('/x/budget.ods')).toBe('sheets')
+  })
+
+  it('keeps the editor-only families (md/html/xmind/epub/drawio) without an mcp block', () => {
+    for (const family of ['md', 'html', 'xmind', 'epub', 'drawio'] as const) {
       expect(formatFamily(family).mcp).toBeUndefined()
     }
     // the three edit-in-place families carry full mcp blocks; pdf and hwp are read-only
@@ -78,10 +86,10 @@ describe('format registry', () => {
     }
   })
 
-  it('registers the mind map family: xmind opens and saves as xmind', () => {
+  it('registers the mind map family: xmind and an imported .mm open, xmind saves', () => {
     const map = formatFamily('xmind')
     expect(map.label).toBe('mind map')
-    expect(map.editorOpen).toEqual(['xmind'])
+    expect(map.editorOpen).toEqual(['xmind', 'mm'])
     expect(map.editorSave).toEqual(['xmind'])
     expect(map.editorExport).toEqual(['png', 'pdf', 'md'])
     // no session, generator or file reader: maps are reached through open_documents
@@ -96,6 +104,17 @@ describe('format registry', () => {
     expect(book.editorExport).toEqual([])
     // no session, generator or file reader: books are reached through open_documents
     expect(book.mcp).toBeUndefined()
+  })
+
+  it('registers the diagram family: four diagram formats open and save, a Visio drawing only opens', () => {
+    const diagram = formatFamily('drawio')
+    expect(diagram.label).toBe('diagram')
+    expect(diagram.editorOpen).toEqual(['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'])
+    expect(diagram.editorSave).toEqual(['drawio', 'dio', 'drawio.svg', 'drawio.png'])
+    expect(diagram.editorExport).toEqual(['png', 'svg', 'pdf'])
+    // no session, generator or file reader: diagrams are reached through
+    // open_documents and the two diagram tools
+    expect(diagram.mcp).toBeUndefined()
   })
 
   it('reports labels for guided errors', () => {
@@ -146,6 +165,7 @@ describe('capabilityReport', () => {
       'xmind',
       'hwp',
       'epub',
+      'drawio',
     ])
     const docx = report.find((r) => r.family === 'docx')!
     expect(docx.editor.open).toEqual(['docx', 'odt'])
@@ -159,12 +179,21 @@ describe('capabilityReport', () => {
     expect(report.find((r) => r.family === 'xmind')).toEqual({
       family: 'xmind',
       label: 'mind map',
-      editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+      editor: { open: ['xmind', 'mm'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
     })
     expect(report.find((r) => r.family === 'epub')).toEqual({
       family: 'epub',
       label: 'e-book',
       editor: { open: ['epub'], save: ['epub'], export: [] },
+    })
+    expect(report.find((r) => r.family === 'drawio')).toEqual({
+      family: 'drawio',
+      label: 'diagram',
+      editor: {
+        open: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+        save: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+        export: ['png', 'svg', 'pdf'],
+      },
     })
   })
 })

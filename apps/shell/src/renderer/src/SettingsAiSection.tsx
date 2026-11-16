@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   AiCodexNotice,
@@ -179,13 +179,17 @@ export function AiSection({
   connection: SubscriptionConnection
   /** open with Advanced expanded on this area (an outside entry point asked for a key block) */
   openTab?: AdvancedTab | undefined
-  /** the key pane of an Advanced area */
-  advanced: (tab: AdvancedTab) => ReactNode
+  /**
+   * the key pane of an Advanced area; `showCard` brings up one connection
+   * card above, the existing place to connect that provider
+   */
+  advanced: (tab: AdvancedTab, showCard: (provider: AiSubscriptionProviderId) => void) => ReactNode
 }) {
   const [settings, setSettings] = useState<AiSettings | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(openTab !== undefined)
   const [tab, setTab] = useState<AdvancedTab>(openTab ?? 'model')
   const [noticeOpen, setNoticeOpen] = useState(false)
+  const cardsRef = useRef<HTMLDivElement>(null)
   /** the automatic-requests switch was pressed while off: the warning is up, nothing is saved yet */
   const [headlessAsked, setHeadlessAsked] = useState(false)
   /** an account action was pressed on a card: its confirmation is up, nothing has run yet */
@@ -224,6 +228,16 @@ export function AiSection({
   }
 
   const { statuses, busy, failed } = connection
+
+  /** scroll a connection card into view and put the focus on its first button; nothing starts */
+  const showCard = (provider: AiSubscriptionProviderId) => {
+    const card = cardsRef.current?.querySelector<HTMLElement>(
+      `.ai-sub-card[data-provider="${provider}"]`,
+    )
+    if (!card) return
+    card.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    card.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true })
+  }
   const acceptMetered = (provider: AiSubscriptionProviderId) => {
     // the main process stores the acceptance; re-read so "AI to use" lists it
     void connection.acceptMetered(provider).then(() =>
@@ -259,7 +273,7 @@ export function AiSection({
       <h3 className="set-pane-title">{t('setSecAi')}</h3>
       <h4 className="set-pane-subtitle set-sub-title">{t('setSubTitle')}</h4>
       <div className="set-field-desc set-ai-note">{aiSubscriptionText(lang, 'connectBody')}</div>
-      <div className="set-sub-cards">
+      <div className="set-sub-cards" ref={cardsRef}>
         {AI_SUBSCRIPTION_PROVIDERS.map((provider) => (
           <Fragment key={provider}>
             <AiSubscriptionCard
@@ -284,6 +298,9 @@ export function AiSection({
               onManageUsage={
                 provider === 'chatgpt' ? () => connection.openInstallHelp('chatgpt') : undefined
               }
+              // this app alone, and undone with one press: nothing to confirm (decision 0114)
+              onTurnOff={(id) => connection.setOff(id, true)}
+              onTurnOn={(id) => connection.setOff(id, false)}
             />
             {accountAsked?.provider === provider && (
               <div
@@ -312,9 +329,11 @@ export function AiSection({
                 </div>
               </div>
             )}
-            {failed[provider] === 'logout' ? (
+            {failed[provider] === 'logout' || failed[provider] === 'switch' ? (
               <div className="set-sub-failed" role="alert" data-provider={provider}>
-                <span>{t('setSubLogoutFailed')}</span>
+                <span>
+                  {t(failed[provider] === 'logout' ? 'setSubLogoutFailed' : 'setSubSwitchFailed')}
+                </span>
               </div>
             ) : (
               failed[provider] && (
@@ -488,7 +507,7 @@ export function AiSection({
               </button>
             ))}
           </div>
-          {advanced(tab)}
+          {advanced(tab, showCard)}
         </>
       )}
     </>

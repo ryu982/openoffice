@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
+  codexImageGenerationAvailable,
   setCodexImageGenerationAvailable,
 } from '@genoffice/ai-provider'
 import {
@@ -18,12 +19,15 @@ import { buildArgv, resolveTools, TOOLS } from '../src/mcp/tools'
 import { run, tempDir } from './helpers'
 
 // The search / image / media commands are the automatic-call path. Nothing here may reach a
-// vendor CLI or the network: the status check and the key providers are replaced, and every test
-// that could land on a subscription login replaces the tool or the image generator as well.
+// vendor CLI or the network: the status check and the key providers are replaced, and so is the
+// Codex app-server client the command line's own image generator runs on (one picture, and the
+// model list), so the generator every command registers draws through these fakes.
 const fakes = vi.hoisted(() => ({
   detect: vi.fn(),
   generateWithKey: vi.fn(),
   analyzeWithKey: vi.fn(),
+  codexImage: vi.fn(),
+  codexModels: vi.fn(),
 }))
 
 vi.mock('@genoffice/ai-provider/subscription', async (importOriginal) => ({
@@ -35,6 +39,8 @@ vi.mock('@genoffice/ai-provider', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@genoffice/ai-provider')>()),
   generateImageWithProvider: fakes.generateWithKey,
   analyzeMediaWithProvider: fakes.analyzeWithKey,
+  generateCodexImage: fakes.codexImage,
+  listCodexModels: fakes.codexModels,
 }))
 
 /** the switch as the settings screen turns it on: with the consent of the current warning */
@@ -61,6 +67,9 @@ const METERED_CLAUDE: SubscriptionDetection = {
   loginMethod: 'metered',
   loginKind: 'api_key/firstParty',
 }
+
+/** what the fake Codex lists for `model/list` */
+const CODEX_MODELS = ['gpt-5.5', 'gpt-5.4-mini']
 
 const KEY_IMAGE = {
   imageProvider: 'openai',
@@ -104,6 +113,14 @@ beforeEach(() => {
   fakes.generateWithKey.mockResolvedValue({ bytes: new Uint8Array(PNG), mime: 'image/png' })
   fakes.analyzeWithKey.mockReset()
   fakes.analyzeWithKey.mockResolvedValue('A single dark pixel.')
+  fakes.codexImage.mockReset()
+  fakes.codexImage.mockResolvedValue({
+    kind: 'image',
+    bytes: new Uint8Array(PNG),
+    mime: 'image/png',
+  })
+  fakes.codexModels.mockReset()
+  fakes.codexModels.mockResolvedValue({ models: CODEX_MODELS, defaultModel: CODEX_MODELS[0] })
 })
 
 afterEach(() => {
@@ -131,10 +148,27 @@ describe('image on the automatic-call path', () => {
     expect(existsSync(join(dir, 'cat.png'))).toBe(false)
   })
 
+  it('registers the Codex image route at the start of a command without starting anything', async () => {
+    aiSearch.registerCodexImageGenerator(null)
+    setCodexImageGenerationAvailable(false)
+    const { env } = dataFolder(ON)
+    // a command that makes no picture: the route is known, and no program is asked anything
+    const r = await run(['capabilities', '--json'], { env })
+    expect(r.code).toBe(0)
+    expect(aiSearch.codexImageGenerator()).not.toBeNull()
+    expect(codexImageGenerationAvailable()).toBe(true)
+    expect(aiSearch.codexImageRouteOffered()).toBe(true)
+    expect(fakes.codexImage).not.toHaveBeenCalled()
+    expect(fakes.codexModels).not.toHaveBeenCalled()
+    // the report now counts the Codex route, as the image command will run it
+    expect(r.json().detail.image_generation).toEqual({
+      available: true,
+      via: 'codex',
+      route: 'subscription',
+    })
+  })
+
   it('names the subscription switch when Codex could make the image but the switch is off', async () => {
-    const generate = vi.fn()
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(generate)
     const { env, dir } = dataFolder()
     const r = await run(['image', 'a cat', '--out', join(dir, 'cat.png'), '--json'], { env })
     expect(r.code).toBe(4)
@@ -144,20 +178,34 @@ describe('image on the automatic-call path', () => {
     )
     // off means: behave as if no subscription existed, so nothing is asked of the CLIs either
     expect(fakes.detect).not.toHaveBeenCalled()
-    expect(generate).not.toHaveBeenCalled()
+    expect(fakes.codexImage).not.toHaveBeenCalled()
+    expect(fakes.codexModels).not.toHaveBeenCalled()
+    expect(existsSync(join(dir, 'headless-subscription-ledger.json'))).toBe(false)
+  })
+
+  it('keeps Codex out when it is turned off in the app, with the switch on', async () => {
+    const { env, dir } = dataFolder({
+      ...ON,
+      media: { imageProvider: 'codex' },
+      subscriptionOff: { codex: true },
+    })
+    const r = await run(['image', 'a cat', '--out', join(dir, 'cat.png'), '--json'], { env })
+    expect(r.code).toBe(4)
+    expect(r.json().detail).toEqual({ errorCode: 'unavailable' })
+    expect(fakes.codexImage).not.toHaveBeenCalled()
+    expect(fakes.codexModels).not.toHaveBeenCalled()
+    const caps = (await run(['capabilities', '--json'], { env })).json().detail
+    expect(caps.image_generation).toMatchObject({ available: false, via: null, route: null })
   })
 
   it('uses the key provider when the switch is off and a key is set', async () => {
-    const generate = vi.fn()
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(generate)
     const { env, dir } = dataFolder({ media: KEY_IMAGE })
     const out = join(dir, 'cat.png')
     const r = await run(['image', 'a cat', '--out', out, '--json'], { env })
     expect(r.code).toBe(0)
     expect(fakes.generateWithKey).toHaveBeenCalledTimes(1)
     expect(fakes.generateWithKey.mock.calls[0]![0]).toBe('openai')
-    expect(generate).not.toHaveBeenCalled()
+    expect(fakes.codexImage).not.toHaveBeenCalled()
     expect(fakes.detect).not.toHaveBeenCalled()
     expect(r.json().output_path).toBe(out)
     expect(r.json().detail.mime).toBe('image/png')
@@ -167,19 +215,28 @@ describe('image on the automatic-call path', () => {
   })
 
   it('uses the Codex subscription when the switch is on, counted in the folder of the settings', async () => {
-    const generate = vi.fn(async () => ({ bytes: new Uint8Array(PNG), mime: 'image/png' }))
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(generate)
     const tool = vi.spyOn(aiSearch, 'generateImageTool')
     const { env, dir } = dataFolder({
       ...ON,
+      providers: { codex: { model: 'gpt-5.4-mini', cliPath: '/opt/codex/bin/codex' } },
       // a key is filled in as well, but Codex is the selected image provider
       media: { ...KEY_IMAGE, imageProvider: 'codex' },
     })
     const out = join(dir, 'cat.png')
-    const r = await run(['image', 'a cat', '--out', out, '--json'], { env })
+    const r = await run(['image', 'a cat', '--out', out, '--aspect', '16:9', '--json'], { env })
     expect(r.code).toBe(0)
-    expect(generate).toHaveBeenCalledTimes(1)
+    // the generator the command registered, reading the settings file this command reads
+    expect(fakes.codexImage).toHaveBeenCalledTimes(1)
+    expect(fakes.codexImage.mock.calls[0]![0]).toMatchObject({
+      prompt: 'a cat',
+      aspectRatio: '16:9',
+      configuredModel: 'gpt-5.4-mini',
+      cliPath: '/opt/codex/bin/codex',
+      codexOff: false,
+    })
+    // the command line keeps to its ledger: no usage line to update
+    expect(fakes.codexImage.mock.calls[0]![0].onUsage).toBeUndefined()
+    expect(fakes.codexModels).not.toHaveBeenCalled()
     expect(fakes.generateWithKey).not.toHaveBeenCalled()
     // only Codex makes images, so only Codex is asked for its status
     expect(fakes.detect.mock.calls.map((call) => call[0])).toEqual(['codex'])
@@ -192,20 +249,20 @@ describe('image on the automatic-call path', () => {
   })
 
   it('keeps the ledger beside a settings file named by GENOFFICE_AI_SETTINGS', async () => {
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(async () => ({
-      bytes: new Uint8Array(PNG),
-      mime: 'image/png',
-    }))
     const tool = vi.spyOn(aiSearch, 'generateImageTool')
     const elsewhere = tempDir()
     const { env, dir } = dataFolder()
     const settings = join(elsewhere, 'custom-settings.json')
-    writeFileSync(settings, JSON.stringify({ provider: 'auto', providers: {}, ...ON }))
+    writeFileSync(
+      settings,
+      JSON.stringify({ provider: 'auto', providers: { codex: { model: 'gpt-5.5' } }, ...ON }),
+    )
     const r = await run(['image', 'a cat', '--out', join(dir, 'cat.png'), '--json'], {
       env: { ...env, GENOFFICE_AI_SETTINGS: settings },
     })
     expect(r.code).toBe(0)
+    // the generator reads the same file the routing did
+    expect(fakes.codexImage.mock.calls[0]![0].configuredModel).toBe('gpt-5.5')
     expect(tool.mock.calls[0]![0]).toBe(settings)
     expect(tool.mock.calls[0]![2]!.context!.dataDir).toBe(elsewhere)
     expect(existsSync(join(elsewhere, 'headless-subscription-ledger.json'))).toBe(true)
@@ -213,9 +270,6 @@ describe('image on the automatic-call path', () => {
   })
 
   it('runs past what used to be the hourly limit', async () => {
-    const generate = vi.fn(async () => ({ bytes: new Uint8Array(PNG), mime: 'image/png' }))
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(generate)
     const { env, dir } = dataFolder(ON)
     // the old cap was 20 an hour
     for (let i = 0; i < 20; i++) {
@@ -224,28 +278,42 @@ describe('image on the automatic-call path', () => {
     const out = join(dir, 'cat.png')
     const r = await run(['image', 'a cat', '--out', out, '--json'], { env })
     expect(r.code).toBe(0)
-    expect(generate).toHaveBeenCalledTimes(1)
+    expect(fakes.codexImage).toHaveBeenCalledTimes(1)
     expect(readFileSync(out).equals(PNG)).toBe(true)
     expect(aiSearch.headlessSubscriptionUsage(dir).used).toBe(21)
   })
 
   it('reads a switch turned on under the older warning as off', async () => {
-    const generate = vi.fn(async () => ({ bytes: new Uint8Array(PNG), mime: 'image/png' }))
-    setCodexImageGenerationAvailable(true)
-    aiSearch.registerCodexImageGenerator(generate)
     const { env, dir } = dataFolder({ headlessSubscriptionEnabled: true })
     const r = await run(['image', 'a cat', '--out', join(dir, 'cat.png'), '--json'], { env })
     expect(r.code).toBe(4)
     expect(r.json().detail).toEqual({ errorCode: 'unavailable' })
-    expect(generate).not.toHaveBeenCalled()
+    expect(fakes.codexImage).not.toHaveBeenCalled()
     expect(fakes.detect).not.toHaveBeenCalled()
     expect(existsSync(join(dir, 'headless-subscription-ledger.json'))).toBe(false)
   })
 
-  it('passes on the note of an ignored --model and keeps the result shape', async () => {
+  it('hides the Codex route of a free plan for that one command only', async () => {
+    fakes.codexImage.mockResolvedValueOnce({
+      kind: 'unavailable',
+      reason: 'free-plan',
+      message: 'The Codex of this ChatGPT plan has no image tool (Plus or higher is needed).',
+    })
+    const { env, dir } = dataFolder(ON)
+    const first = await run(['image', 'a cat', '--out', join(dir, 'a.png'), '--json'], { env })
+    expect(first.code).toBe(4)
+    expect(first.json().detail).toEqual({ errorCode: 'unavailable' })
+    expect(first.json().message).toContain('Plus or higher')
+    // the next command starts with the route offered again, and asks Codex again
+    const next = await run(['image', 'a cat', '--out', join(dir, 'b.png'), '--json'], { env })
+    expect(next.code).toBe(0)
+    expect(fakes.codexImage).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the result shape when --model names a model of the key route', async () => {
     const { env, dir } = dataFolder({ media: KEY_IMAGE })
     const out = join(dir, 'cat.png')
-    const r = await run(['image', 'a cat', '--out', out, '--model', 'fal-bria-rmbg', '--json'], {
+    const r = await run(['image', 'a cat', '--out', out, '--model', 'GPT-IMAGE-1 ', '--json'], {
       env,
     })
     expect(r.code).toBe(0)
@@ -253,8 +321,66 @@ describe('image on the automatic-call path', () => {
     expect(Object.keys(ok).sort()).toEqual(
       ['command', 'detail', 'output_path', 'status', 'summary'].sort(),
     )
-    expect(Object.keys(ok.detail).sort()).toEqual(['bytes', 'mime', 'note', 'source_url'])
-    expect(ok.detail.note).toContain('no longer supported')
+    expect(Object.keys(ok.detail).sort()).toEqual(['bytes', 'mime', 'source_url'])
+    // the listed spelling is the one sent
+    expect(fakes.generateWithKey.mock.calls[0]![1]).toMatchObject({ imageModel: 'gpt-image-1' })
+  })
+
+  it('refuses a --model the key route cannot run, naming the models it can, before any request', async () => {
+    const { env, dir } = dataFolder({ media: KEY_IMAGE })
+    const out = join(dir, 'cat.png')
+    const r = await run(['image', 'a cat', '--out', out, '--model', 'fal-bria-rmbg', '--json'], {
+      env,
+    })
+    expect(r.code).toBe(4)
+    const error = r.json()
+    expect(Object.keys(error).sort()).toEqual(
+      ['code', 'command', 'error', 'message', 'status', 'suggestion'].sort(),
+    )
+    expect(error.error).toBe('app_unavailable')
+    expect(error.message).toContain('"fal-bria-rmbg"')
+    expect(error.message).toContain('gpt-image-1')
+    expect(fakes.generateWithKey).not.toHaveBeenCalled()
+    expect(existsSync(out)).toBe(false)
+  })
+
+  it('runs a --model Codex lists on the Codex route', async () => {
+    const { env, dir } = dataFolder({ ...ON, media: { imageProvider: 'codex' } })
+    const out = join(dir, 'cat.png')
+    const r = await run(['image', 'a cat', '--out', out, '--model', 'GPT-5.4-mini', '--json'], {
+      env,
+    })
+    expect(r.code).toBe(0)
+    expect(fakes.codexModels).toHaveBeenCalledTimes(1)
+    expect(fakes.codexImage.mock.calls[0]![0].model).toBe('gpt-5.4-mini')
+    expect(Object.keys(r.json().detail).sort()).toEqual(['bytes', 'mime', 'source_url'])
+  })
+
+  it('draws a gpt-image --model on the Codex route and says Codex picks the image model', async () => {
+    const { env, dir } = dataFolder({ ...ON, media: { imageProvider: 'codex' } })
+    const out = join(dir, 'cat.png')
+    const r = await run(['image', 'a cat', '--out', out, '--model', 'gpt-image-2', '--json'], {
+      env,
+    })
+    expect(r.code).toBe(0)
+    // the gpt-image row needs no list
+    expect(fakes.codexModels).not.toHaveBeenCalled()
+    expect(fakes.codexImage.mock.calls[0]![0].model).toBeUndefined()
+    expect(Object.keys(r.json().detail).sort()).toEqual(['bytes', 'mime', 'note', 'source_url'])
+    expect(r.json().detail.note).toContain('Codex picks its own image model')
+  })
+
+  it('refuses a --model Codex does not list, naming the ones it does, before any turn', async () => {
+    const { env, dir } = dataFolder({ ...ON, media: { imageProvider: 'codex' } })
+    const out = join(dir, 'cat.png')
+    const r = await run(['image', 'a cat', '--out', out, '--model', 'no-such-model', '--json'], {
+      env,
+    })
+    expect(r.code).toBe(4)
+    expect(r.json().message).toContain('"no-such-model"')
+    expect(r.json().message).toContain('gpt-5.5, gpt-5.4-mini')
+    expect(fakes.codexImage).not.toHaveBeenCalled()
+    expect(existsSync(out)).toBe(false)
   })
 })
 

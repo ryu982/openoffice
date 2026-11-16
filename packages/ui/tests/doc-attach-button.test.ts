@@ -38,7 +38,6 @@ describe('docPickedOf', () => {
 
 describe('doc-attach strings', () => {
   it('fills every language, and the button shows the product name', () => {
-    expect(LANGS).toHaveLength(21)
     for (const lang of LANGS) {
       expect(DOC_ATTACH_STRINGS[lang].label.trim().length, lang).toBeGreaterThan(0)
       expect(DOC_ATTACH_STRINGS[lang].busy.trim().length, lang).toBeGreaterThan(0)

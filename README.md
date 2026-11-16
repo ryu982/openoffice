@@ -2,15 +2,15 @@
 
 **한국어** · [English](README.en.md)
 
-[![누적 다운로드](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fpblsketch%2Fopenoffice%2Fmain%2Fdocs%2Ftracking%2Fgrowth-latest.json&query=%24.totalDownloads&label=%EB%88%84%EC%A0%81%20%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C)](https://github.com/pblsketch/openoffice/releases)
-[![별](https://img.shields.io/github/stars/pblsketch/openoffice?style=social)](https://github.com/pblsketch/openoffice/stargazers)
+[![누적 다운로드](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fpblsketch%2Fieumoffice%2Fmain%2Fdocs%2Ftracking%2Fgrowth-latest.json&query=%24.totalDownloads&label=%EB%88%84%EC%A0%81%20%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C)](https://github.com/pblsketch/ieumoffice/releases)
+[![별](https://img.shields.io/github/stars/pblsketch/ieumoffice?style=social)](https://github.com/pblsketch/ieumoffice/stargazers)
 
 이음오피스가 도움이 된다면 위의 **별**을 눌러 주세요. 별 하나가 이 프로그램을
 더 많은 사람에게 알리는 힘이 됩니다.
 
 이음오피스는 누구나 무료로 쓸 수 있는 오픈소스 데스크톱 오피스 프로그램입니다.
-워드, 엑셀, 파워포인트, PDF, 마크다운, HTML 문서와 마인드맵을 한 창에서 열고
-고칩니다.
+워드, 엑셀, 파워포인트, PDF, 마크다운, HTML 문서와 마인드맵, 다이어그램을 한 창에서
+열고 고칩니다.
 AI는 옆에서 답만 하는 것이 아니라 문서 자체를 고칩니다.
 
 AI는 **이미 쓰고 있는 Claude 구독이나 ChatGPT 요금제**로 돌아갑니다. API 키를
@@ -63,7 +63,7 @@ AI는 **이미 쓰고 있는 Claude 구독이나 ChatGPT 요금제**로 돌아�
 ## 지금 되는 것
 
 - **탭으로 묶인 편집기**: 워드(`.docx`), 엑셀(`.xlsx`), 파워포인트(`.pptx`),
-  PDF, 한글(`.hwp`, `.hwpx`), 마크다운, HTML, 마인드맵. 파일은 내 PC에서 원래 형식 그대로
+  PDF, 한글(`.hwp`, `.hwpx`), 마크다운, HTML, 마인드맵, 다이어그램(draw.io 파일 `.drawio`). 파일은 내 PC에서 원래 형식 그대로
   열고 저장합니다. 고친 부분만 원본 파일에 반영하므로, 손대지 않은 부분은
   그대로 남습니다.
 - **편집기마다 있는 AI 창.** 말로 부탁하면 AI가 앱의 편집 도구로 문서를
@@ -74,7 +74,13 @@ AI는 **이미 쓰고 있는 Claude 구독이나 ChatGPT 요금제**로 돌아�
 - **마인드맵**: XMind 파일(`.xmind`)을 열고 고쳐서 같은 파일로 저장합니다. 이
   편집기가 보여 주지 않는 요소도 저장할 때 지워지지 않고, 아무것도 고치지 않으면
   원래 파일과 똑같이 저장됩니다. 여러 시트, 테마, 그림·PDF·마크다운 개요로
-  내보내기, 인쇄를 지원합니다.
+  내보내기, 인쇄를 지원합니다. FreeMind·Freeplane 파일(`.mm`)은 새 지도로
+  가져오고 `.xmind`로 저장합니다.
+- **다이어그램**: draw.io 파일(`.drawio`, `.dio`, `.drawio.svg`, `.drawio.png`)을
+  열고 고쳐서 같은 형식으로 저장합니다. 그리는 화면은 이 PC 안에서만 돌고
+  인터넷으로 아무것도 보내지 않습니다. Visio 파일(`.vsdx`)은
+  새 다이어그램으로 가져옵니다. PNG·SVG·PDF 내보내기, 인쇄, AI 창에서 Mermaid로
+  그리기를 지원합니다.
 - **문서로 새 문서 만들기**: 홈의 별표 그룹, 고른 파일, 편집기의 파일 메뉴에서
   "새 문서 만들기"를 시작하면 그 자료를 읽어 PPT, HTML, 마인드맵을 만듭니다. 글은
   만들 문서 쪽 편집기의 AI가 씁니다. 지도와 마크다운 사이, 지도에서 PPT 뼈대로는
@@ -84,12 +90,12 @@ AI는 **이미 쓰고 있는 Claude 구독이나 ChatGPT 요금제**로 돌아�
   만들어집니다.
 - **터미널 명령어(`ieumoffice`), MCP 서버, 에이전트 스킬**: 코딩 에이전트가 같은
   파일을 읽고 만들고 고칠 수 있습니다.
-- **화면 언어 21개.** 한국어와 영어는 직접 썼고, 나머지 19개는 기계 번역입니다.
+- **화면 언어 22개.** 한국어와 영어는 직접 썼고, 나머지 20개는 기계 번역입니다.
 
 배포하는 운영체제는 **Windows**이고, **Mac용 베타**(Apple Silicon과 Intel)와
 **Linux(64비트 x64)용 베타**가 따로 있습니다. Mac판과 Linux판은 개발자가 직접
 확인하지 못했습니다. 문제가 있으면
-[이슈](https://github.com/pblsketch/openoffice/issues)로 알려 주세요.
+[이슈](https://github.com/pblsketch/ieumoffice/issues)로 알려 주세요.
 
 ## 구독 연결하기
 
@@ -214,7 +220,7 @@ ieumoffice open report.docx
 
 - **에이전트 스킬.** **설정 → 연동**에 PC에서 찾은 코딩 에이전트가 나오고, 고른
   에이전트에 `ieumoffice` 스킬을 설치해 줍니다. 터미널에서는
-  `npx skills add pblsketch/openoffice`로 설치합니다.
+  `npx skills add pblsketch/ieumoffice`로 설치합니다.
 - **MCP 서버.** `ieumoffice mcp`는 같은 명령들을 MCP(Model Context Protocol)
   도구로 제공합니다. 같은 설정 화면에 바로 쓸 수 있는 예시가 있습니다. 예:
   `claude mcp add --transport stdio ieumoffice -- ieumoffice mcp`
@@ -239,7 +245,7 @@ MCP 도구 호출은 화면을 보는 사람이 아니라 프로그램이 보내
 
 ## 내려받기와 설치
 
-설치 파일은 [릴리스 페이지](https://github.com/pblsketch/openoffice/releases)에
+설치 파일은 [릴리스 페이지](https://github.com/pblsketch/ieumoffice/releases)에
 `IeumOffice-Setup-<버전>.exe`라는 이름으로 올라옵니다. 64비트 Windows 10과
 11용입니다. 그 페이지가 아직 비어 있다면 공개된 버전이 없는 것이니, 아래
 방법으로 직접 빌드하세요.
@@ -277,10 +283,21 @@ xattr -dr com.apple.quarantine /Applications/IeumOffice.app
 
 Mac판에서 다른 점:
 
-- **스스로 업데이트하지 않습니다.** 새 버전이 나오면 알려 주고 다운로드 페이지를
-  엽니다. 새 dmg를 받아 덮어 설치합니다.
-- AI 연결 카드에 **설치 버튼이 없습니다.** "공식 설치 안내" 링크를 따라 Claude
-  Code나 Codex를 설치합니다.
+- **업데이트는 앱이 스스로 설치합니다.** 업데이트 창에서 **지금 업데이트** →
+  **다시 시작 및 설치**를 누르면 앱이 닫히고 새 버전으로 바뀐 뒤 다시 열립니다.
+  "그래도 열기"를 다시 누를 필요는 없습니다. 응용 프로그램 폴더에 옮겨 둔 앱만
+  이렇게 되고, 디스크 이미지에서 바로 연 앱이나 쓰기 권한이 없는 폴더의 앱은
+  다운로드 페이지를 엽니다. 이 기능이 없는 예전 버전에서 올라올 때는 한 번만 새
+  dmg를 받아 덮어 설치합니다.
+- AI 연결 카드에 **설치 버튼이 없습니다.** 터미널에서 직접 설치합니다. Claude
+  Code는 `curl -fsSL https://claude.ai/install.sh | bash`, Codex는
+  `npm install -g @openai/codex`입니다. 카드의 "공식 설치 안내" 링크에도 같은
+  안내가 있습니다.
+- **터미널에만 등록된 경로는 앱에 전달되지 않습니다.** Mac에서 Dock이나 응용
+  프로그램 폴더로 연 앱은 `~/.zshrc`가 설정한 PATH를 물려받지 않습니다. 대신 앱이
+  설치 프로그램과 패키지 관리자가 쓰는 자리(`~/.local/bin`, Homebrew, MacPorts,
+  nvm·fnm·volta·asdf·mise, npm 전역 설치 폴더)를 직접 찾습니다. 그래도 찾지 못하면
+  **설정 → AI → 고급**에서 그 프로그램의 실행 파일 경로를 적을 수 있습니다.
 - 로그인은 브라우저에서 끝납니다. 브라우저가 코드를 붙여 넣으라고 하면 터미널에서
   `claude auth login` 또는 `codex login`을 직접 실행합니다.
 
@@ -302,7 +319,7 @@ Linux판에서 다른 점:
   버전이 나오면 알려 주고 다운로드 페이지를 엽니다.
 - Mac판과 마찬가지로 AI 연결 카드에 **설치 버튼이 없으며**, 로그인 코드를 붙여
   넣어야 할 때는 터미널에서 `claude auth login` 또는 `codex login`을 직접
-  실행합니다.
+  실행합니다. 설치 명령과 실행 파일을 찾는 자리도 Mac판과 같습니다.
 
 데스크톱 앱 없이 터미널 명령어만 쓰려면(화면이 없는 서버, AI 에이전트의 작업
 공간) 같은 릴리스의 명령줄 묶음 `ieumoffice-cli_<버전>_linux-x64.tar.gz`를
@@ -324,8 +341,8 @@ Windows 설치본과 Linux `AppImage`는 켠 직후에 한 번, 그 뒤로는 4�
 릴리스가 없거나, 인터넷이 안 되거나, 확인에 실패하면 아무 일도 일어나지 않고 앱은
 그대로 쓸 수 있습니다. 직접 확인하려면 탭 줄 왼쪽의 **메뉴(☰) → 업데이트 확인…**을
 누릅니다(Mac은 **도움말 → 업데이트 확인…**). 시험판(프리릴리스)은 **설정 → 정보**에서 업데이트 채널을 "베타 버전"으로
-바꾼 경우에만 받습니다. Mac판과 Linux `deb`·`rpm` 설치본은 새 버전을 알려 주기만
-합니다.
+바꾼 경우에만 받습니다. Mac판은 응용 프로그램 폴더에 둔 앱만 스스로 설치하고,
+Linux `deb`·`rpm` 설치본은 새 버전을 알려 주기만 합니다.
 
 ## 직접 빌드하기
 
@@ -333,8 +350,8 @@ Node 22.12 이상(npm 10 이상)과 Rust가 필요합니다. `cargo`가 PATH에 
 합니다(엑셀 처리 프로그램을 만드는 데 씁니다).
 
 ```bash
-git clone https://github.com/pblsketch/openoffice.git
-cd openoffice
+git clone https://github.com/pblsketch/ieumoffice.git
+cd ieumoffice
 npm install
 npm run dev      # 모든 편집기와 앱 창을 개발 모드로 실행
 npm run shell    # 또는: 전체를 빌드한 뒤 앱 실행
@@ -367,7 +384,7 @@ Actions에서 "macOS build"를, Linux 패키지는 "Linux build"를 실행해 �
 - **Windows와 Mac(베타, Apple Silicon·Intel)·Linux x64(베타)만 지원합니다.**
   Mac판과 Linux판은 개발자가 직접 확인하지 못하고 사용자들의 보고로 확인합니다.
 - **설치 파일에 서명이 없습니다.** 위에서 설명한 대로입니다. Mac판은 그래서
-  스스로 업데이트하지 못합니다.
+  Apple의 업데이트 장치 대신 앱이 직접 새 버전으로 바꿔 끼웁니다.
 - **Claude Code와 Codex는 API 키보다 답이 조금 늦게 시작됩니다.** 요청마다 그
   프로그램을 먼저 띄우기 때문에 첫 글자가 나오기까지 몇 초가 걸립니다(개발에 쓴
   PC에서 Claude는 4초쯤).
@@ -385,8 +402,10 @@ Actions에서 "macOS build"를, Linux 패키지는 "Linux build"를 실행해 �
   따릅니다. Claude Code와 Codex는 별도의 프로그램이라 프록시 환경
   변수(`HTTPS_PROXY` 등)만 봅니다. Windows에만 설정해 둔 프록시는 전달되지
   않습니다.
-- **이미지 생성에는 키가 필요합니다.** 위에서 설명한 대로입니다.
-- **번역.** 화면 언어 21개 가운데 19개는 기계 번역이고, 그 언어를 쓰는 사람이
+- **이미지 생성에는 키나 ChatGPT 유료 요금제가 필요합니다.** 이미지 제공업체의
+  키를 넣었거나, 이 PC의 Codex 프로그램이 ChatGPT 유료 요금제(Plus 이상)로
+  로그인되어 있어야 합니다. 위에서 설명한 대로입니다.
+- **번역.** 화면 언어 22개 가운데 20개는 기계 번역이고, 그 언어를 쓰는 사람이
   검토하지 않았습니다.
 - **가리기가 닿지 않는 곳이 있습니다.** 파워포인트·마크다운·HTML 편집기에서 AI에게
   가린 부분은 다른 편집기에 첨부하거나 홈에서 물을 때도 가려지지만, 워드 문서의
@@ -419,13 +438,15 @@ OpenAI에 전송됩니다(API 키를 넣었다면 그 회사로). 그 내용이 
 쓰이는지는 그 회사에 있는 내 계정 설정이 정합니다. 검색어는 기본적으로
 Parallel과 DuckDuckGo로, 업데이트 확인은 GitHub로 갑니다. 편집기나 앱이
 비정상으로 꺼지면 그 시각, 종류, 이유, 어느 편집기였는지와 그때의 메모리
-사용량(숫자만)을 데이터 폴더의 `crash-log.jsonl`에 적습니다. AI 작업 중에 PC의
-메모리가 바닥나도 같은 숫자를 한 줄 적습니다. 문서 내용, 파일 이름, 경로는 적지
+사용량(숫자만)을 데이터 폴더의 `crash-log.jsonl`에 적습니다. PC나 앱의
+메모리가 바닥나도 같은 숫자를 한 줄 적습니다. AI가 문서를 고치다 앱이 스스로 멈춘 때에는
+멈춘 까닭을 낱말과 횟수로 한 줄 적습니다. 앱이 통째로 꺼졌을 때를 알아보려고
+켜져 있는 동안 30초마다 메모리 숫자를 `crash-heartbeat.json`에 적어 둡니다. 문서 내용, 파일 이름, 경로는 적지
 않고 어디에도 보내지 않습니다. 전체 목록은 [PRIVACY.md](PRIVACY.md)(영어)에 있습니다.
 
 ## 기여와 문제 신고
 
-- 버그와 제안: [GitHub Issues](https://github.com/pblsketch/openoffice/issues)
+- 버그와 제안: [GitHub Issues](https://github.com/pblsketch/ieumoffice/issues)
 - 보안 문제: 공개 이슈로 올리지 말고 [SECURITY.md](SECURITY.md)에 적힌 대로
   비공개로 알려 주세요.
 - 코드 기여: [CONTRIBUTING.md](CONTRIBUTING.md)와
@@ -470,6 +491,12 @@ License 1.1입니다. 고지와 글꼴 목록은 [NOTICE](NOTICE)에 있습니�
 > 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여
 > 개발하였습니다.
 
+다이어그램 편집기는 [draw.io](https://github.com/jgraph/drawio)(Apache-2.0
+라이선스)의 웹 편집기를 바탕으로 합니다. 라이선스 허용 목록 밖의 부품(PlantUML
+변환기, libavoid, ELK)은 빼고 실었고, 무엇을 어떻게 뺐는지는 설치 폴더의
+`THIRD-PARTY-NOTICES.txt`에 있습니다. 이음오피스는 draw.io를 만든 회사와
+제휴하거나 보증을 받은 관계가 아닙니다.
+
 이음오피스는 독립된 프로젝트입니다. Genspark / Mainfunc, Inc., Anthropic,
 OpenAI, Microsoft, 한글과컴퓨터, Adobe, XMind, Google과 제휴하거나
 후원·보증을 받은 관계가 아닙니다. "GenOffice"와 "Genspark"라는 이름과 로고는
@@ -485,7 +512,7 @@ Google LLC의 상표입니다. 그 밖에 이 글에 나오는 제품 이름도 
 ### 공식 배포처와 다시 배포할 때
 
 이음오피스는 무료입니다. 공식 배포처는
-[GitHub 릴리스](https://github.com/pblsketch/openoffice/releases)와
+[GitHub 릴리스](https://github.com/pblsketch/ieumoffice/releases)와
 [ieumoffice.com](https://ieumoffice.com) 두 곳뿐이고, 돈을 받고 파는 곳이
 있다면 공식 배포가 아닙니다.
 

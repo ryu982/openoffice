@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -303,11 +303,53 @@ describe('DriveFiles saving back', () => {
   })
 })
 
+describe('DriveFiles cleanup at start', () => {
+  const MONTH = 31 * 24 * 60 * 60 * 1000
+
+  it('removes a copy not opened for a month that holds nothing unsent', async () => {
+    drive.add({ id: 'f1', name: 'a.md', mimeType: 'text/markdown', text: 'v1' })
+    const first = service({ now: () => 0 })
+    await first.open('f1')
+    first.stop()
+    await service({ now: () => MONTH }).start()
+    expect(existsSync(opened[0]!)).toBe(false)
+  })
+
+  it('keeps a copy kept on this PC only, however long it was not opened', async () => {
+    drive.add({ id: 'f1', name: 'a.md', mimeType: 'text/markdown', text: 'v1', canEdit: false })
+    const first = service({ now: () => 0 })
+    await first.open('f1')
+    answer = 'local'
+    await save(first, opened[0]!, 'mine')
+    first.stop()
+    const second = service({ now: () => MONTH })
+    await second.start()
+    expect(readFileSync(opened[0]!, 'utf8')).toBe('mine')
+    expect(second.entryFor(opened[0]!)?.detached).toBe(true)
+    expect(drive.uploads).toEqual([])
+  })
+})
+
 describe('DriveFiles.inCache', () => {
   it('accepts only paths inside the cache folder', () => {
     const files = service()
     expect(files.inCache(join(dir, 'drive-cache', 'f1', 'a.md'))).toBe(true)
     expect(files.inCache(join(dir, 'drive-cache', '..', 'other.md'))).toBe(false)
     expect(files.inCache(join(dir, 'drive-cache'))).toBe(false)
+  })
+
+  it('counts names that only start or end with dots as inside', () => {
+    const files = service()
+    expect(files.inCache(join(dir, 'drive-cache', '..x', 'a.md'))).toBe(true)
+    expect(files.inCache(join(dir, 'drive-cache', '...'))).toBe(true)
+    expect(files.inCache(join(dir, 'drive-cache', 'f1..', 'a.md'))).toBe(true)
+    expect(files.inCache(join(dir, '..x', 'a.md'))).toBe(false)
+  })
+
+  it.runIf(process.platform === 'win32')('refuses a path on another drive or share', () => {
+    const files = service()
+    const other = dir.toUpperCase().startsWith('Z:') ? 'Y:' : 'Z:'
+    expect(files.inCache(`${other}\\drive-cache\\f1\\a.md`)).toBe(false)
+    expect(files.inCache('\\\\server\\share\\f1\\a.md')).toBe(false)
   })
 })

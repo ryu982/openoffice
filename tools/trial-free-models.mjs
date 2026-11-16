@@ -1,7 +1,10 @@
 // Trial of OpenRouter free models before they go into OPENROUTER_FREE_MODELS.
 // Spends the free daily requests of the OpenRouter key the installed app holds
 // (%APPDATA%/IeumOffice/ai-settings.json); the key is never printed. Needs a
-// build (`npm run build:all`).
+// build (`npm run build:all`). The app seals stored keys (decision 0063); a
+// sealed one is opened the way the terminal command opens it, by starting this
+// checkout's build (or the installed app) hidden with --reveal-ai-secrets. The
+// plain key stays in this process and goes to the app trial in its environment.
 //
 //   node tools/trial-free-models.mjs              the candidates check-free-models finds
 //   node tools/trial-free-models.mjs <id> ...     these models
@@ -13,7 +16,7 @@
 // (other than with --listed) are recorded in free-models-rejected.json, so the
 // weekly check stops offering them; the change is there to review in git.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import {
   REJECTED_FILE,
@@ -42,14 +45,69 @@ if (!existsSync(join(root, 'apps/shell/out/main/index.js'))) {
   process.exit(2)
 }
 
+const SETTINGS_PATH = join(process.env.APPDATA ?? '', 'IeumOffice', 'ai-settings.json')
+const SEALED_PREFIX = 'sealed:v1:'
+const REVEAL_TIMEOUT_MS = 30_000
+
+/** The apps that can open a sealed key: this checkout's build first, then the installed one */
+function revealLaunches() {
+  const launches = []
+  const electron = join(
+    root,
+    'node_modules/electron/dist',
+    process.platform === 'win32' ? 'electron.exe' : 'electron',
+  )
+  if (existsSync(electron)) launches.push([electron, [join(root, 'apps/shell')]])
+  const installed = join(process.env.LOCALAPPDATA ?? '', 'Programs/IeumOffice/IeumOffice.exe')
+  if (process.platform === 'win32' && existsSync(installed)) launches.push([installed, []])
+  return launches
+}
+
+/** The plain value of a sealed key, or '' when no app could open it */
+function openSealed(sealed) {
+  const request = JSON.stringify([sealed])
+  // the environment is how the request reaches an Electron main process on Windows (no stdin there)
+  const env = {
+    ...process.env,
+    GENOFFICE_USER_DATA: dirname(SETTINGS_PATH),
+    GENOFFICE_REVEAL_REQUEST: request,
+  }
+  delete env.ELECTRON_RUN_AS_NODE
+  for (const [command, args] of revealLaunches()) {
+    const result = spawnSync(command, [...args, '--reveal-ai-secrets'], {
+      input: request,
+      env,
+      timeout: REVEAL_TIMEOUT_MS,
+      encoding: 'utf8',
+    })
+    try {
+      const answer = JSON.parse((result.stdout ?? '').trim().split('\n').pop() ?? '')
+      const plain = answer?.status === 'ok' ? answer.secrets?.[sealed] : undefined
+      if (typeof plain === 'string' && plain.trim()) return plain.trim()
+    } catch {
+      // not an answer line: try the next app
+    }
+  }
+  return ''
+}
+
 function storedKey() {
-  const path = join(process.env.APPDATA ?? '', 'IeumOffice', 'ai-settings.json')
+  let key = ''
   try {
-    const key = JSON.parse(readFileSync(path, 'utf8'))?.providers?.openrouter?.apiKey
-    if (typeof key === 'string' && key.trim()) return key.trim()
+    const stored = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8'))?.providers?.openrouter?.apiKey
+    if (typeof stored === 'string') key = stored.trim()
   } catch {
     // fall through to the message below
   }
+  if (key.startsWith(SEALED_PREFIX)) {
+    key = openSealed(key)
+    if (!key) {
+      // a sealed string sent as a key answers 401, and every candidate would be recorded as failed
+      console.error('설치된 앱의 OpenRouter 키를 풀지 못했습니다. 이 PC의 이 사용자로 실행하세요.')
+      process.exit(2)
+    }
+  }
+  if (key) return key
   console.error(
     '설치된 앱에 OpenRouter 키가 없습니다. 앱의 설정 → AI → 무료로 쓰기에서 먼저 연결하세요.',
   )
@@ -135,7 +193,7 @@ function appTrial(model) {
     ],
     {
       cwd: root,
-      env: { ...process.env, TRIAL_MODEL: model },
+      env: { ...process.env, TRIAL_MODEL: model, TRIAL_OPENROUTER_KEY: key },
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -145,7 +203,15 @@ function appTrial(model) {
   return JSON.parse(line[1])
 }
 
+// Playwright colours its messages; the reason goes into a JSON file people read
+// eslint-disable-next-line no-control-regex
+const stripAnsi = (text) => String(text).replace(/\u001b\[[0-9;]*m/g, '')
+
 function appFailure(report) {
+  return stripAnsi(appFailureText(report))
+}
+
+function appFailureText(report) {
   if (report.failure) return report.failure
   for (const label of ['A', 'B']) {
     const step = report[label]

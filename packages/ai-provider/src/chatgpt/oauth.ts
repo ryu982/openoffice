@@ -13,10 +13,12 @@ import { createHash, createPublicKey, randomBytes, verify, type JsonWebKey } fro
 // it evaluates its WebSocket getter, which compiles undici's WebAssembly parser,
 // and the command line imports this module from every command.
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
-import { aiFetch } from '../fetch'
+import { aiFetch, type AiFetchWatch } from '../fetch'
 import { freeConnectPageHtml, type FreeConnectPage } from '../free-connect'
+import { SUBSCRIPTION_LOGIN_ERROR_CODE } from '../subscription/contract'
+import type { AiSubscriptionLoginFailureStep } from '../types'
 
-export type FetchLike = (url: string, init: RequestInit) => Promise<Response>
+export type FetchLike = (url: string, init: RequestInit, watch?: AiFetchWatch) => Promise<Response>
 
 export const CHATGPT_ISSUER = 'https://auth.openai.com'
 export const CHATGPT_AUTHORIZE_URL = `${CHATGPT_ISSUER}/api/accounts/authorize`
@@ -38,6 +40,15 @@ export const CHATGPT_SCOPES = [
   CHATGPT_PLAN_SCOPE,
 ] as const
 
+/**
+ * The loopback path the browser comes back to. OpenAI ties an issued client id
+ * to the callback it was registered with (only the port may change), and its
+ * guide registers `/auth/callback`: a registration made now uses that, and a
+ * client id issued to an earlier version keeps the path it was issued for.
+ */
+export const CHATGPT_CALLBACK_PATH = '/auth/callback'
+export const CHATGPT_LEGACY_CALLBACK_PATH = '/callback'
+
 /** how long the browser sign-in may take before the waiting server gives up */
 export const CHATGPT_SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000
 
@@ -54,6 +65,20 @@ const CLOCK_SKEW_SECONDS = 300
  */
 export type ChatGptSignInFailure = 'cancelled' | 'timeout' | 'denied' | 'no-plan' | 'network'
 
+/** Which step of a sign-in failed (`AI_SUBSCRIPTION_LOGIN_FAILURE_STEPS`) */
+export type ChatGptSignInStep = AiSubscriptionLoginFailureStep
+
+/** A failed sign-in: why, the step it failed at, and the token endpoint's answer when that was it */
+export interface ChatGptSignInFailed {
+  ok: false
+  reason: ChatGptSignInFailure
+  step?: ChatGptSignInStep | undefined
+  /** the token endpoint's HTTP status, on `token-refused`, `token-resent` and `token-http` */
+  httpStatus?: number | undefined
+  /** the OAuth `error` code of the token endpoint or the callback, when it has an identifier's shape */
+  oauthError?: string | undefined
+}
+
 export interface ChatGptTokenSet {
   accessToken: string
   refreshToken: string
@@ -62,6 +87,11 @@ export interface ChatGptTokenSet {
   scopes: string[]
   /** present on a sign-in, and on a refresh when OpenAI sends a new one */
   idToken?: string | undefined
+  /**
+   * The answer had no `scope` field (OpenAI documents it as always there).
+   * The scopes are then empty; this tells that apart from a plan not granted.
+   */
+  scopeMissing?: true | undefined
 }
 
 function base64url(bytes: Buffer): string {
@@ -79,8 +109,8 @@ export function chatGptPkcePair(): { verifier: string; challenge: string } {
   return { verifier, challenge }
 }
 
-export function chatGptRedirectUri(port: number): string {
-  return `http://127.0.0.1:${port}/callback`
+export function chatGptRedirectUri(port: number, path: string = CHATGPT_CALLBACK_PATH): string {
+  return `http://127.0.0.1:${port}${path}`
 }
 
 export interface ChatGptAuthorizeParams {
@@ -91,6 +121,8 @@ export interface ChatGptAuthorizeParams {
   hostId: string
   /** the id OpenAI issued at an earlier sign-in of this host; absent: register anew */
   clientId?: string | undefined
+  /** the callback path of this attempt; absent: the one new registrations use */
+  callbackPath?: string | undefined
   /** the app's name, shown to the user on a first registration */
   agentName: string
 }
@@ -101,7 +133,7 @@ export function chatGptAuthorizeUrl(params: ChatGptAuthorizeParams): string {
     client_id: params.clientId || CHATGPT_DYNAMIC_CLIENT_ID,
     ext_agent_host_id: params.hostId,
     response_type: 'code',
-    redirect_uri: chatGptRedirectUri(params.port),
+    redirect_uri: chatGptRedirectUri(params.port, params.callbackPath),
     scope: CHATGPT_SCOPES.join(' '),
     resource: CHATGPT_RESOURCE,
     state: params.state,
@@ -132,13 +164,20 @@ async function listen(server: Server, host: string): Promise<number> {
 }
 
 export type ChatGptCallback =
-  | { ok: true; code: string; clientId: string; port: number }
-  | { ok: false; reason: ChatGptSignInFailure }
+  { ok: true; code: string; clientId: string; port: number } | ChatGptSignInFailed
 
 export interface ChatGptCallbackOptions {
   /** the address to open, once the waiting server knows its port */
   authorizeUrl: (port: number) => string
   state: string
+  /** the path the browser comes back to; absent: the one new registrations use */
+  callbackPath?: string | undefined
+  /**
+   * The client id this attempt signs in again with. OpenAI may leave the id out
+   * of such a callback; it is then this one, and a callback naming another is
+   * refused. Absent: a new registration, whose callback must bring the issued id.
+   */
+  clientId?: string | undefined
   /** opens the sign-in page in the system browser; false when no browser took it */
   openBrowser: (url: string) => Promise<boolean>
   /** what the browser shows after the sign-in, by outcome */
@@ -150,8 +189,8 @@ export interface ChatGptCallbackOptions {
 /**
  * Wait for the browser to come back with a code. OpenAI sends it to
  * `127.0.0.1` (never `localhost`), so only that address is bound: nothing off
- * this PC can reach it. One `/callback` request with the right `state` is
- * answered; anything else gets a 404 and leaves the wait as it is.
+ * this PC can reach it. One request to the callback path with the right `state`
+ * is answered; anything else gets a 404 and leaves the wait as it is.
  */
 export async function waitForChatGptCallback(
   options: ChatGptCallbackOptions,
@@ -160,12 +199,13 @@ export async function waitForChatGptCallback(
   const outcome = new Promise<ChatGptCallback>((resolve) => (settle = resolve))
   let answered = false
   let port = 0
+  const path = options.callbackPath ?? CHATGPT_CALLBACK_PATH
 
   const handle = (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     if (
       req.method !== 'GET' ||
-      url.pathname !== '/callback' ||
+      url.pathname !== path ||
       answered ||
       url.searchParams.get('state') !== options.state
     ) {
@@ -175,8 +215,18 @@ export async function waitForChatGptCallback(
     }
     answered = true
     const code = url.searchParams.get('code')
-    const clientId = url.searchParams.get('client_id')
-    const ok = !url.searchParams.get('error') && !!code && !!clientId
+    const named = url.searchParams.get('client_id')
+    const clientId = named || options.clientId
+    const callbackError = url.searchParams.get('error')
+    const failedStep: ChatGptSignInStep | undefined = callbackError
+      ? 'callback-error'
+      : !code || !clientId
+        ? 'callback-incomplete'
+        : // OpenAI's guide: a callback naming a client id other than the one signing in is rejected
+          options.clientId && named && named !== options.clientId
+          ? 'callback-client-mismatch'
+          : undefined
+    const ok = failedStep === undefined
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
@@ -184,14 +234,25 @@ export async function waitForChatGptCallback(
     })
     res.end(freeConnectPageHtml(ok ? options.pages.done : options.pages.failed))
     settle(
-      ok ? { ok: true, code: code!, clientId: clientId!, port } : { ok: false, reason: 'denied' },
+      ok
+        ? { ok: true, code: code!, clientId: clientId!, port }
+        : {
+            ok: false,
+            reason: 'denied',
+            step: failedStep,
+            ...(callbackError && SUBSCRIPTION_LOGIN_ERROR_CODE.test(callbackError)
+              ? { oauthError: callbackError }
+              : {}),
+          },
     )
   }
 
   const { createServer } = await import('node:http')
   const server = createServer(handle)
+  let listening = false
   try {
     port = await listen(server, '127.0.0.1')
+    listening = true
     const timer = setTimeout(
       () => settle({ ok: false, reason: 'timeout' }),
       options.timeoutMs ?? CHATGPT_SIGN_IN_TIMEOUT_MS,
@@ -200,14 +261,14 @@ export async function waitForChatGptCallback(
     options.signal?.addEventListener('abort', onAbort, { once: true })
     if (options.signal?.aborted) onAbort()
     else if (!(await options.openBrowser(options.authorizeUrl(port)))) {
-      settle({ ok: false, reason: 'network' })
+      settle({ ok: false, reason: 'network', step: 'browser' })
     }
     const result = await outcome
     clearTimeout(timer)
     options.signal?.removeEventListener('abort', onAbort)
     return result
   } catch {
-    return { ok: false, reason: 'network' }
+    return { ok: false, reason: 'network', step: listening ? 'browser' : 'loopback' }
   } finally {
     server.close()
     server.closeAllConnections?.()
@@ -221,6 +282,12 @@ interface TokenResponse {
   expires_in?: unknown
   scope?: unknown
   error?: unknown
+}
+
+/** The token endpoint's OAuth error code, passed on only with an identifier's shape: never free text */
+function oauthErrorOf(body: unknown): string | undefined {
+  const code = isRecord(body) ? body.error : undefined
+  return typeof code === 'string' && SUBSCRIPTION_LOGIN_ERROR_CODE.test(code) ? code : undefined
 }
 
 function tokenSetOf(body: TokenResponse, now: number): ChatGptTokenSet | null {
@@ -237,39 +304,85 @@ function tokenSetOf(body: TokenResponse, now: number): ChatGptTokenSet | null {
     refreshToken: body.refresh_token,
     expiresAt: now + seconds * 1000,
     scopes,
+    ...(typeof body.scope === 'string' ? {} : { scopeMissing: true }),
     ...(typeof body.id_token === 'string' && body.id_token ? { idToken: body.id_token } : {}),
   }
 }
 
 /** Trade the code from the browser for tokens */
 export async function exchangeChatGptCode(
-  request: { code: string; clientId: string; verifier: string; port: number },
+  request: {
+    code: string
+    clientId: string
+    verifier: string
+    port: number
+    /** the callback path the code was asked for with; absent: the one new registrations use */
+    callbackPath?: string | undefined
+  },
   fetchImpl: FetchLike = aiFetch,
   signal?: AbortSignal,
   now: () => number = Date.now,
-): Promise<{ ok: true; tokens: ChatGptTokenSet } | { ok: false; reason: ChatGptSignInFailure }> {
+): Promise<{ ok: true; tokens: ChatGptTokenSet } | ChatGptSignInFailed> {
+  let reached = false
+  // a code is good once: sent again after a try that may have arrived, it can only be refused
+  let resent = false
   try {
-    const response = await fetchImpl(CHATGPT_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: request.code,
-        client_id: request.clientId,
-        code_verifier: request.verifier,
-        redirect_uri: chatGptRedirectUri(request.port),
-        resource: CHATGPT_RESOURCE,
-      }).toString(),
-      signal: withTimeout(signal),
-    })
-    if (response.status === 400 || response.status === 401 || response.status === 403) {
-      return { ok: false, reason: 'denied' }
+    const response = await fetchImpl(
+      CHATGPT_TOKEN_URL,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: request.code,
+          client_id: request.clientId,
+          code_verifier: request.verifier,
+          redirect_uri: chatGptRedirectUri(request.port, request.callbackPath),
+          resource: CHATGPT_RESOURCE,
+        }).toString(),
+        signal: withTimeout(signal),
+      },
+      {
+        // a block page is the edge's answer: the token service never saw that try
+        onResend: (why) => {
+          if (why !== 'blocked') resent = true
+        },
+      },
+    )
+    reached = true
+    if (!response.ok) {
+      const oauthError = oauthErrorOf(await response.json().catch(() => undefined))
+      // most likely the first try arrived and its answer was lost on the way; the status
+      // and the OAuth error stay in the result for whoever reads the help text
+      if (resent && oauthError === 'invalid_grant') {
+        return {
+          ok: false,
+          reason: 'network',
+          step: 'token-resent',
+          httpStatus: response.status,
+          oauthError,
+        }
+      }
+      const refused = response.status === 400 || response.status === 401 || response.status === 403
+      return {
+        ok: false,
+        reason: refused ? 'denied' : 'network',
+        step: refused ? 'token-refused' : 'token-http',
+        httpStatus: response.status,
+        ...(oauthError ? { oauthError } : {}),
+      }
     }
-    if (!response.ok) return { ok: false, reason: 'network' }
     const tokens = tokenSetOf((await response.json()) as TokenResponse, now())
-    return tokens ? { ok: true, tokens } : { ok: false, reason: 'network' }
+    return tokens
+      ? { ok: true, tokens }
+      : { ok: false, reason: 'network', step: 'token-unreadable' }
   } catch {
-    return { ok: false, reason: signal?.aborted ? 'cancelled' : 'network' }
+    if (signal?.aborted) return { ok: false, reason: 'cancelled' }
+    return {
+      ok: false,
+      reason: 'network',
+      step: reached ? 'token-unreadable' : 'token-unreachable',
+    }
   }
 }
 

@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const he = {
+  appLegacyPptImported:
+    'קובץ ה-.ppt נפתח כעותק .pptx מומר. הקובץ המקורי נשאר כפי שהיה; השמירה כותבת קובץ .pptx חדש. הערות הדובר והאנימציות אינן מועברות.',
   redactMenuLabel: 'הסתרת הבחירה מהמודל',
   redactDialogDesc:
     'הבחירה נשארת במסמך ובקובץ; המודל רואה רק את הסימון. תן לו שם כדי שיהיה ברור מה הוא מייצג.',
@@ -165,6 +167,9 @@ export const he = {
   appPrintLandscape: 'לרוחב',
   appPrintFrame: 'מסגרת סביב שקופיות',
   appPrintHidden: 'הדפסת שקופיות מוסתרות',
+  appPrintRangeSelected: 'שקופיות נבחרות',
+  appPrintLayoutBlocked:
+    'דפי מידע ועמודי הערות מודפסים עמוד אחד בכל גיליון. כדי לסדר עמודים, בחרו שקופיות בעמוד מלא.',
   appPrintPageCount: '{n} עמודים',
   appPrintNoPages: 'אין שקופיות להדפסה',
   appPrintRendering: 'יוצר תצוגה מקדימה…',
@@ -174,6 +179,7 @@ export const he = {
   appCtxSendToBack: 'העבר לרקע',
   appCtxBringForward: 'הבא קדימה',
   appCtxSendBackward: 'העבר אחורה',
+  appCtxRotate: 'סיבוב',
   appCtxRotateLeft90: 'סובב 90° שמאלה',
   appCtxRotateRight90: 'סובב 90° ימינה',
   appCtxFlipH: 'הפוך אופקית',

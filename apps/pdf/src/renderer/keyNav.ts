@@ -55,3 +55,31 @@ export function navAction(key: string, focusInThumbs: boolean): NavAction | null
       return null
   }
 }
+
+/** the fields of a keydown the hand-tool judgement reads */
+export interface HandToolKeyEvent {
+  code: string
+  key?: string
+  isComposing?: boolean
+  repeat?: boolean
+  ctrlKey: boolean
+  altKey: boolean
+  metaKey: boolean
+  shiftKey: boolean
+  target: EventTarget | null
+}
+
+/**
+ * Whether a keydown toggles the hand tool: a plain H, judged by the physical
+ * key (`code`) so it works under a Korean or any other input method. The
+ * caller has already left focused fields alone and skips the key while the
+ * selection bar is up (there H means highlight). Ignored while an input method
+ * composes, with a modifier, on a held-down repeat, and inside a dialog.
+ */
+export function isHandToolKey(e: HandToolKeyEvent): boolean {
+  if (e.code !== 'KeyH') return false
+  if (e.isComposing || e.key === 'Process') return false
+  if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey || e.repeat) return false
+  const el = e.target as (Element & { closest?: (s: string) => Element | null }) | null
+  return !el?.closest?.('[role="dialog"], [aria-modal="true"]')
+}

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SEALED_PREFIX } from '@genoffice/ai-provider'
-import { cliSecretCodec, revealedSecretsOf } from '../src/secrets'
+import { cliSecretCodec, revealBatches, revealedSecretsOf } from '../src/secrets'
 
 const dirs: string[] = []
 afterEach(() => {
@@ -45,9 +45,22 @@ describe('cliSecretCodec', () => {
     expect(command).toBe(join(dir, 'app.exe'))
     expect(args).toEqual(['--reveal-ai-secrets'])
     expect(JSON.parse(options.input).sort()).toEqual([A, B])
+    // the way in that works on Windows, where the app's main process gets no stdin
+    expect(options.env.GENOFFICE_REVEAL_REQUEST).toBe(options.input)
     expect(options.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(options.env.GENOFFICE_USER_DATA).toBe(dir)
     expect(codec.seal('sk')).toBeNull()
+  })
+
+  it('cuts a long request into ones that fit an environment variable', () => {
+    const big = (c: string) => SEALED_PREFIX + c.repeat(9_000)
+    const values = [big('a'), big('b'), big('c'), big('d')]
+    const batches = revealBatches(values)
+    expect(batches.flat()).toEqual(values)
+    expect(batches.length).toBeGreaterThan(1)
+    for (const batch of batches) expect(JSON.stringify(batch).length).toBeLessThanOrEqual(30_000)
+    expect(revealBatches([A, B])).toEqual([[A, B]])
+    expect(revealBatches([])).toEqual([])
   })
 
   it('reads a value the app could not open as unopened, without asking again', () => {

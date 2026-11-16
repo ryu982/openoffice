@@ -37,6 +37,7 @@ File menu, all local and all asking where to put the result:
 
 - **Export as Word…** and **Export as PDF…** write a real .docx or .pdf.
 - **Export as ODT…** writes an .odt (OpenDocument text) through the same conversion as the Word export; if something changes or is dropped on the way, you see the list and confirm first.
+- **Export as HWP Document…** writes a Hangul document (.hwp or .hwpx) through the same conversion; headings, lists and tables arrive as Hangul ones, and a long table continues on the next page. If something cannot be carried over, you see the list and confirm first.
 - **Export as Images…** writes a PNG per content element into a directory you pick.
 - **Convert and Open in Docs** converts to .docx and opens it in the built-in Docs tab here in the app — it is not a hand-off to anything in the cloud, and the converted copy lives in a cache folder that is cleaned up after about a week.
 

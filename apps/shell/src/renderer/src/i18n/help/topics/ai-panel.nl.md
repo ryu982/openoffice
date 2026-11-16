@@ -45,7 +45,7 @@ In het AI-paneel van de editors Docs, Sheets, Slides, Hangul, HTML en mindmaps k
 
 ## Terugdraaien en veiligheid
 
-- Het paneel in Docs houdt een **versielijst** bij: één momentopname per beurt, je kunt naar elke terug en die terugstap is zelf met Ctrl+Z ongedaan te maken. Momentopnamen blijven bestaan als je het document opnieuw opent.
+- Een beurt waarin de AI het document heeft veranderd, krijgt onder het antwoord een kaart **Wijzigingen in het document: N**, en de gewijzigde plekken worden in het document geel gemarkeerd. De markeringen staan alleen op het scherm — ze worden nooit opgeslagen, afgedrukt of geëxporteerd — en verdwijnen zodra je het volgende verzoek stuurt of op **Markeringen verbergen** drukt. **Deze wijzigingen ongedaan maken** draait de hele beurt in één keer terug. In Docs, Markdown, HTML, Slides, mindmaps en diagrammen gaan bij het terugdraaien van een eerdere beurt ook de beurten daarna terug; in Hangul, Sheets, PDF en EPUB kan alleen de laatste beurt worden teruggedraaid, en alleen als het document daarna niet is bewerkt. Lukt terugdraaien niet, gebruik dan Ongedaan maken van de editor zelf (Ctrl+Z).
 - AI-bewerkingen lopen via dezelfde bewerkingsroute als handmatige bewerkingen (ongedaan te maken, pas bij opslaan vastgelegd) — niets slaat je opslagbevestiging over.
 
 ## Een selectie voor de AI verbergen

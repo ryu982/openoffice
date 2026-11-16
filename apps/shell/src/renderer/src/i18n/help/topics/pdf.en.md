@@ -6,6 +6,8 @@ The PDF editor has five ribbon tabs: **Home / Annotate / Edit / Page / View**. I
 
 - Left sidebar: **thumbnails** (click to jump, visible range highlighted) or **outline** (bookmarks, when present).
 - Zoom: the ratio control bottom-right; ctrl+wheel steps the zoom.
+- Opening zoom: **On open** on the View tab sets the view a newly opened PDF starts in: fit width, fit page, or a zoom from 50% to 200%. A PDF whose zoom you changed yourself reopens at that zoom.
+- Moving the view: turn on the **Hand tool** (Home and View tabs) and drag to move the page up, down and sideways. While it is on, dragging selects no text and a plain click still follows a link. Dragging with the middle button (wheel) held down moves the view without the tool. Esc or picking another tool turns it off. With no text selected, press H to turn it on or off.
 - Rotation: per-page or all pages from the Page menu; rotations are written back on save.
 - Search: ctrl+F full-text with all hits highlighted.
 - Encrypted PDFs: a password prompt (its own small window) opens them; the password is used for this session only. You can edit and save such a document; the save keeps its password. **Annotate → Protect** sets, changes or removes the password and what readers may do.
@@ -18,7 +20,7 @@ Try it on any paragraph:
 
 ![The annotation bar after selecting text](img/pdf-highlight.png)
 
-2. Pick **highlight** (the yellow swatch opens a color palette), **underline** or **strikethrough**; **Ask AI** sends the selection with your question to the AI panel.
+2. Pick one of the three **highlight** colors, or **underline**, **squiggly** or **strikethrough**. To change a highlight color, right-click it and choose a new one. After an underline, squiggly or strikethrough, a color row opens on the bar: click another color to change it, and the next one is drawn in that color too. **Ask AI** sends the selection with your question to the AI panel.
 3. To undo an annotation, drag-select the same passage again and click the active button on the bar (a Word-style toggle), or select it and press Delete.
 
 Reference:
@@ -69,6 +71,7 @@ Six tools: **ink, rectangle, ellipse, arrow, note**, plus the **redaction box** 
 ## Page operations (Page)
 
 - **Rotate / delete / reorder**: drag thumbnails to reorder; deletion confirms.
+- **Several pages at once**: Ctrl-click or Shift-click thumbnails to pick several pages. Delete removes them; Ctrl+C, Ctrl+X and Ctrl+V copy, cut and paste them. Copied pages can be pasted into another PDF tab too, and a paste is saved to the file right away. If the thumbnails are closed, the button on the left edge of the page area brings them back.
 - **Import pages**: pull pages in from another PDF. **Insert blank page** adds an empty one.
 - **Replace pages** swaps a range for pages from elsewhere; **Crop pages** trims, with an option to apply to all.
 - **Page size** rescales every page to one paper size; **Reverse order** flips the document end to end.
@@ -80,7 +83,9 @@ Six tools: **ink, rectangle, ellipse, arrow, note**, plus the **redaction box** 
 ## Export and print
 
 - **Export as Word… / PowerPoint… / Excel…** in the File menu, or the same three from **PDF Converter** on the ribbon — all local, no upload. The .pptx comes out one slide per page and the .xlsx one worksheet per page. Each asks where to save it.
-- **Print**: current order and rotations through the system dialog; page ranges supported.
+- **PDF to HWP** under **PDF Converter** on the ribbon turns the PDF into a Hangul document in a new Hangul tab. Choose **Import** (가져오기) in the PDF import window the tab shows; the document is made in that tab, and its first save asks where to put the .hwp or .hwpx. The PDF itself is left as it was, and the conversion runs on this PC. Whether body text comes in as paragraphs that flow over the pages or as fixed text boxes is set in the Hangul tab's options (환경 설정) under PDF import.
+- The same conversion starts from a Hangul tab too. Pick a PDF with **File** ▸ **Import PDF…**, and a new Hangul tab opens with the same PDF import window. The document of the tab the menu was used in is left as it was.
+- **Print**: current order and rotations through the system dialog. Print a page range or the pages picked in the thumbnails, and use **Page layout** for several pages per sheet, booklets, grayscale and more.
 
 ## Saving
 
@@ -127,6 +132,9 @@ Press **E** or **T**, or the explain and translate chips in the **Ask AI** box, 
 - **Translate this page** (or **Translate the rest** when part of the page is done) sends that page with one press while you use a subscription; the name of the AI it goes to is shown beside the button. On a connection billed by usage, the first press in a tab asks "‹AI name› will charge for this · Translate / Cancel" first.
 - Double-click a translated paragraph to edit it. Edited paragraphs are stored as plain text and are used as they are in translated PDF, Markdown and EPUB files. **Translate again** on a paragraph sends only that paragraph, and asks first if you edited it.
 - Hovering a translated paragraph outlines its place in the source page. The column's width and text size can be changed. **Translate all pages…** opens the **Translate Document** window, whose **Store only (no file)** format keeps the translation without writing a file.
+- Newly translated paragraphs are linked sentence by sentence. Hovering a translated sentence highlights that sentence on the source page, and hovering a source sentence lights up its translation. Where the sentence cannot be found on the page, and for paragraphs translated earlier or edited by you, the link stays paragraph by paragraph.
+- The bar above the column switches between **Translation** and **Plain language**. A plain-language explanation rewrites the text in everyday words and short sentences, for children, older readers or people learning the language; facts, numbers and names stay as they are. The choice is remembered, and switching sends nothing. While the explanation is shown, the page and paragraph buttons and editing work on it.
+- In plain language, **Explain all pages simply…** opens the **Translate Document** window with **Plain-language explanation** as its mode. An explanation runs longer than the original, so it cannot become a translated PDF; it is written as Markdown or EPUB. With **Source then explanation** on, each source paragraph is followed by its explanation; off, the file holds the explanation only. The language starts as the screen language and may be the document’s own.
 
 ## AI highlights
 

@@ -2,13 +2,15 @@
 
 ## Membuka pengaturan
 
-Baris di kiri bawah Beranda membuka panel pengaturan (bacaannya Hubungkan AI sampai ada AI yang terhubung). Panel ini punya lima bagian: Akun, AI, Umum, Integrasi, dan Tentang.
+Baris di kiri bawah Beranda membuka panel pengaturan (baris di bawahnya menunjukkan apakah ada AI yang terhubung). Panel ini punya lima bagian: Akun, AI, Umum, Integrasi, dan Tentang.
+
+Anda juga dapat membukanya dari tab mana pun dengan **⌘,** (Ctrl+, di Windows dan Linux), dari **Pengaturan…** di menu aplikasi di Mac (menu bernama aplikasi, di kiri bilah menu), atau dari **Menu (☰) ▸ Pengaturan…** di Windows dan Linux. Di tab Word, ⌘, (Ctrl+,) adalah subskrip, jadi bukalah dari menu.
 
 **Akun** menunjukkan keadaan koneksi Claude, ChatGPT, dan Codex Anda, dan **Kelola koneksi** membawa Anda ke bagian AI. AI punya artikel tersendiri: [Koneksi langganan](help://subscription) dan [Model AI dan pengaturan](help://ai-models).
 
 ## Bahasa
 
-- Pengaturan menawarkan **21 bahasa antarmuka**: Inggris, Tionghoa Sederhana, Jepang, Korea, Prancis, Jerman, Spanyol, Thai, Indonesia, Rusia, Arab, Portugis, Italia, Polandia, Ceko, Belanda, Melayu, Ibrani, Hindi, Tionghoa Tradisional, Vietnam.
+- Pengaturan menawarkan **22 bahasa antarmuka**: Inggris, Tionghoa Sederhana, Jepang, Korea, Prancis, Jerman, Spanyol, Thai, Indonesia, Rusia, Arab, Portugis, Italia, Polandia, Ceko, Belanda, Melayu, Ibrani, Hindi, Tionghoa Tradisional, Vietnam, Turki.
 - Beralih bahasa berlaku seketika dan bertahan; bilah menu sistem dibangun ulang mengikuti bahasa tersebut.
 
 ## Tema
@@ -22,8 +24,22 @@ Terang / Gelap / Ikuti Sistem. Mode Ikuti Sistem mengikuti tampilan sistem opera
 - **Simpan otomatis semua dokumen** menyalakan AutoSave secara default di setiap editor; Anda tetap bisa mematikannya untuk satu jendela.
 - **Lokasi penyimpanan** dengan tombol **Ubah**, dan **Aplikasi default untuk dokumen Office** untuk mengambil alih .docx / .xlsx / .pptx bagi GenOffice.
 - **Format penyimpanan dokumen HWP baru** memilih apakah HWP atau HWPX yang ditawarkan lebih dulu saat menyimpan dokumen baru pertama kali. Dokumen yang dibuka tetap memakai formatnya sendiri.
+- **Font slide AI** menentukan font yang dipakai AI untuk presentasi baru saat permintaan Anda tidak menyebut font. Pilih Otomatis, Sans serif, Serif, atau Judul serif, lalu ganti font sans serif dan font serif secara terpisah. Templat desain yang dipilih memakai fontnya sendiri, dan halaman yang ditambahkan ke presentasi dengan font lain mengikuti presentasi itu.
 
 GenOffice tidak mengumpulkan atau mengirim statistik penggunaan, jadi tidak ada sakelar untuk itu.
+
+## Editor dan AI
+
+Di sini Anda memilih editor mana yang dipakai dan apakah memakai AI. Daftar yang sama juga muncul sekali di dua tempat lain: langkah **Pilih editor yang Anda pakai** pada layar selamat datang saat pertama kali dijalankan, dan jendela yang muncul sekali di Beranda bagi orang yang sudah memakai GenOffice sebelum pengaturan ini ada. Awalnya semua menyala, jadi kalau dibiarkan tidak ada yang berubah. Perubahan langsung berlaku di semua jendela yang terbuka.
+
+- **Editor**: Word, Excel, PowerPoint, PDF, Alat PDF, Markdown dan teks, HTML, Peta pikiran, Diagram, HWP (Hangul), dan Buku elektronik (EPUB). Alat PDF dinyalakan dan dimatikan terpisah dari editor PDF. Setidaknya satu editor harus tetap menyala.
+- **Editor yang dimatikan** hilang dari daftar dokumen baru: kartu di Beranda, menu **+** di bilah tab, File ▸ Baru, dan daftar aplikasi default. Dokumen yang sudah terbuka tetap terbuka, dan salinan pemulihan tetap disimpan.
+- **Saat membuka file milik editor yang dimatikan** (klik ganda, seret dan lepas, File ▸ Buka, file terbaru), Anda diminta memilih **Aktifkan dan buka** atau **Batal**. Membuka beberapa filenya sekaligus hanya ditanyakan sekali.
+- **Fitur lain yang akan membuka hasilnya di editor yang dimatikan**, misalnya mengubah PDF ke format itu, bertanya sebelum mulai: **Aktifkan dan buka**, **Buat file saja** (file dibuat dan ditampilkan di foldernya, editor tetap mati), atau **Batal**.
+- **Saat fitur AI dimatikan**, panel AI, tombol dan menu AI, panel tanya di Beranda, jendela agen, serta ajakan menghubungkan AI hilang, dan tab Akun, AI, serta Skill keluar dari pengaturan. GenOffice tidak menjalankan program AI apa pun dari layarnya. Info masuk, kunci, skill, dan pengaturan tetap disimpan dan kembali saat AI dinyalakan lagi. Jika pekerjaan AI masih berjalan, Anda ditanya dulu apakah ingin **Hentikan dan matikan**.
+- Baris perintah, MCP, dan panduan ini bekerja sama saja, baik editor atau AI menyala maupun mati.
+
+Meskipun AI menyala, AI tidak membuat dokumen baru untuk editor yang dimatikan; AI meminta Anda menyalakan editor itu di sini.
 
 ## AI ▸ Lanjutan
 
@@ -45,7 +61,7 @@ Pengaturan dapat mendaftarkan GenOffice sebagai aplikasi penangan .docx / .xlsx 
 ## Pemberitahuan pihak ketiga dan pembaruan
 
 - Bantuan ▸ Pemberitahuan Perangkat Lunak Pihak Ketiga: inventaris lengkap lisensi OSS yang disertakan dengan aplikasi.
-- Menu (☰) ▸ Periksa Pembaruan… (di Mac: Bantuan ▸ Periksa Pembaruan…): memicu pemeriksaan manual; versi yang lebih baru menawarkan dipasang.
+- Menu (☰) ▸ Periksa Pembaruan… (di Mac: Bantuan ▸ Periksa Pembaruan…): memicu pemeriksaan manual; versi yang lebih baru menawarkan dipasang. Di Mac, perintah ini juga ada di menu aplikasi, tepat di bawah Tentang GenOffice.
 
 ## Integrasi MCP (untuk pengguna lanjutan / klien AI)
 

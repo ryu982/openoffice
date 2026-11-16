@@ -20,6 +20,7 @@ import { he } from './ai/he'
 import { hi } from './ai/hi'
 import { zhTW } from './ai/zh-TW'
 import { vi } from './ai/vi'
+import { tr } from './ai/tr'
 
 /** The AI panel: its texts, the activity lines of the tools and the turn undo (prompts to the model are not here) */
 export const aiStrings = defineStrings({
@@ -44,4 +45,5 @@ export const aiStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

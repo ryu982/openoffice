@@ -35,6 +35,14 @@ export const agentProjectSkillsStrings = defineStrings({
     changed: 'Các kỹ năng này đã thay đổi sau khi bạn bật, nên chúng tắt cho đến khi bạn chọn lại.',
     remember: 'Lựa chọn được ghi nhớ cho thư mục này. Nếu kỹ năng thay đổi, bạn sẽ được hỏi lại.',
   } satisfies Keys,
+  tr: {
+    label: 'Bu klasördeki beceriler',
+    note: 'Bu klasörün kendine ait {count} becerisi var. Açtığınızda ajan bunları sormadan okur ve uygular. Klasörü başkası verdiyse önce içeriğine bakın.',
+    on: 'Aç',
+    off: 'Kapalı bırak',
+    changed: 'Bu beceriler siz açtıktan sonra değişti; yeniden seçim yapana kadar kapalı kalır.',
+    remember: 'Seçiminiz bu klasör için saklanır. Beceriler değişirse yeniden sorulur.',
+  } satisfies Keys,
   ja: {
     label: 'このフォルダーのスキル',
     note: 'このフォルダーには独自のスキルが {count} 個あります。オンにすると、エージェントは確認せずにそれを読んで従います。他の人から受け取ったフォルダーなら、先に中身を確認してください。',

@@ -16,6 +16,7 @@
 import { access, writeFile } from 'node:fs/promises'
 import { posix, win32 } from 'node:path'
 import type { Lang } from '@genoffice/i18n'
+import { askBeforeEditorEntrance } from '@genoffice/electron-utils/editor-entrance'
 import type {
   FoundNoteLink,
   NoteLink,
@@ -51,6 +52,13 @@ export interface NoteLinkDeps {
   /** exclusive create; false when the file already exists */
   createNoteFile?(path: string, text: string): Promise<boolean>
   fileExists?(path: string): Promise<boolean>
+  /**
+   * The note opens in a Markdown tab: while that editor is off the shell asks
+   * before anything is picked or written (editor choice spec 7.3). `notePath`
+   * is the linked note when there is one (an open one never asks); null before
+   * the person picks one. False = nothing happens.
+   */
+  editorReady?(notePath: string | null): Promise<boolean>
   platform?: NodeJS.Platform
 }
 
@@ -236,6 +244,10 @@ export function createNoteLinkService(deps: NoteLinkDeps): NoteLinkService {
   const platform = deps.platform ?? process.platform
   const createNoteFile = deps.createNoteFile ?? defaultCreateNoteFile
   const fileExists = deps.fileExists ?? defaultFileExists
+  const editorReady =
+    deps.editorReady ??
+    ((notePath: string | null) =>
+      askBeforeEditorEntrance('markdown', notePath ? { path: notePath } : {}))
   /** views with a note request in flight (one save dialog per view) */
   const busy = new Set<number>()
 
@@ -250,11 +262,13 @@ export function createNoteLinkService(deps: NoteLinkDeps): NoteLinkService {
     const found = await store.findNoteLink(pdfPath, docHash)
     if (found) {
       // a copy found by hash keeps its own link from now on
+      if (!(await editorReady(found.notePath))) return { ok: false, reason: 'cancelled' }
       if (found.matchedBy === 'docHash') {
         await store.setNoteLink(pdfPath, { notePath: found.notePath, docHash })
       }
       return { notePath: found.notePath }
     }
+    if (!(await editorReady(null))) return { ok: false, reason: 'cancelled' }
     const picked = await deps.pickNotePath(
       owner,
       defaultNotePath(pdfPath, deps.noteWord(), platform),
@@ -424,6 +438,11 @@ export const NOTE_DIALOG_TEXT: Record<Lang, Record<NoteDialogKey, string>> = {
     noteWord: 'Ghi chú',
     dialogTitle: 'Chọn tệp ghi chú cho PDF này',
     filterMarkdown: 'Tài liệu Markdown',
+  },
+  tr: {
+    noteWord: 'Not',
+    dialogTitle: 'Bu PDF için not dosyasını seç',
+    filterMarkdown: 'Markdown belgesi',
   },
 }
 

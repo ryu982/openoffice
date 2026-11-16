@@ -5,7 +5,7 @@
  * shared origin allows.
  */
 import { BLOCK_ATTR, VIEW_STYLE_ID } from './chapter-html'
-import { FIND_HIGHLIGHT } from './view-prefs'
+import { AI_CHANGED_HIGHLIGHT, FIND_HIGHLIGHT } from './view-prefs'
 
 /** Where to put the reader once a chapter is drawn. */
 export type ChapterTarget =
@@ -101,4 +101,33 @@ export function showHit(doc: Document, range: Range): void {
 export function clearHit(doc: Document): void {
   const win = doc.defaultView as (Window & HighlightWindow) | null
   win?.CSS?.highlights?.delete(FIND_HIGHLIGHT)
+}
+
+/**
+ * Marks the blocks with these ids as changed by the AI: a CSS custom
+ * highlight over each block's contents, so the chapter's DOM (what edits
+ * read back into the book) stays untouched. None to mark takes it off.
+ * Frames without custom highlights show no marks.
+ */
+export function showAiMarks(doc: Document, ids: ReadonlySet<string> | null): void {
+  const win = doc.defaultView as (Window & HighlightWindow) | null
+  const highlights = win?.CSS?.highlights
+  if (!highlights) return
+  const ranges: Range[] = []
+  if (ids && ids.size > 0) {
+    for (const el of Array.from(doc.querySelectorAll(`[${BLOCK_ATTR}]`))) {
+      if (!ids.has(el.getAttribute(BLOCK_ATTR) ?? '')) continue
+      const range = doc.createRange()
+      range.selectNodeContents(el)
+      ranges.push(range)
+    }
+  }
+  if (ranges.length > 0 && win?.Highlight) {
+    const highlight = new win.Highlight(...ranges) as { priority?: number }
+    // below the search hit: a hit inside a changed block still reads as the hit
+    highlight.priority = -1
+    highlights.set(AI_CHANGED_HIGHLIGHT, highlight)
+  } else {
+    highlights.delete(AI_CHANGED_HIGHLIGHT)
+  }
 }

@@ -81,7 +81,6 @@ export const ja = {
   aiCopied: 'コピーしました',
   aiRegenerateTitle: '再生成',
   aiSnapshotsTitle: 'バージョンスナップショット',
-  aiRollback: 'ロールバック',
   aiScopeSelected: '{count} 段落を選択中',
   aiScopeEmptyDoc: '空の文書',
   aiScopeCursor: 'カーソル位置',
@@ -199,4 +198,7 @@ export const ja = {
   aiMindMapReset: '表示をリセット',
   aiMindMapExpand: 'ブランチを展開',
   aiMindMapCollapse: 'ブランチを折りたたむ',
+  aiMindMapToggleLayout: 'レイアウトを切り替え',
+  aiMindMapLayoutTopDown: '上から下のレイアウトに切り替える',
+  aiMindMapLayoutLeftRight: '左右のレイアウトに切り替える',
 } satisfies Record<keyof typeof zh, string>

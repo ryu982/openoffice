@@ -38,7 +38,7 @@ export const pt = {
   aiChipTableEdit: 'Ajustar linhas/colunas',
   aiQueueTitle: 'Alterações na fila',
   aiQueueHint:
-    'Clique numa linha para localizar o trecho; o envio aplica todas as alterações numa única solicitação',
+    'Clique em uma linha para localizar o trecho; o envio aplica todas as alterações em uma única solicitação',
   aiQueueSend: 'Enviar {count} alterações',
   aiQueueDiscard: 'Limpar',
   aiQueueDiscardConfirm: 'Limpar as {count} alterações na fila?',
@@ -83,7 +83,6 @@ export const pt = {
   aiCopied: 'Copiado',
   aiRegenerateTitle: 'Gerar novamente',
   aiSnapshotsTitle: 'Instantâneos de versão',
-  aiRollback: 'Reverter',
   aiScopeSelected: '{count} parágrafo(s) selecionado(s)',
   aiScopeEmptyDoc: 'Documento em branco',
   aiScopeCursor: 'No cursor',
@@ -202,4 +201,7 @@ export const pt = {
   aiMindMapReset: 'Redefinir visualização',
   aiMindMapExpand: 'Expandir ramo',
   aiMindMapCollapse: 'Recolher ramo',
+  aiMindMapToggleLayout: 'Mudar layout',
+  aiMindMapLayoutTopDown: 'Mudar para o layout de cima para baixo',
+  aiMindMapLayoutLeftRight: 'Mudar para o layout da esquerda para a direita',
 } satisfies Record<keyof typeof zh, string>

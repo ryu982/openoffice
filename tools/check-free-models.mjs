@@ -1,8 +1,8 @@
 // Weekly look at OpenRouter's public model list against the free models the app
 // offers. Reads no key and spends no free request. Prints a Markdown report
 // (what the free-models workflow puts in its run summary), or JSON with --json.
-// Exit 0: nothing to act on. 1: an offered model is gone, or a new candidate is
-// there to try. 2: the list could not be read.
+// Exit 0: every offered model is still served (new candidates to try, if any,
+// are in the report). 1: an offered model is gone. 2: the list could not be read.
 import { spawnSync } from 'node:child_process'
 import {
   compareFreeModels,

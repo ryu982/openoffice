@@ -46,6 +46,11 @@ export const pt = {
   saveFailedStatus: 'Falha ao salvar',
   exportFailed: 'Falha na exportação',
   printFailed: 'Falha ao imprimir: {error}',
+  printRangeEmpty:
+    'Este documento tem {count} páginas. Digite números de página dentro desse intervalo.',
+  printPagesFailed: 'Não foi possível contar as páginas a imprimir: {error}',
+  printLayoutSaved: 'O resultado organizado foi salvo como PDF.',
+  printLayoutSaveFailed: 'Não foi possível salvar o PDF: {error}',
   exportHtmlSkipped:
     'Exportado, mas {count} recurso(s) não puderam ser incorporados (ex.: {first})',
   viewPreview: 'Visualizar',
@@ -81,7 +86,7 @@ export const pt = {
   slideThumbGo: 'Ir para o slide {n}',
   previewNeedsSave: 'Imagens e estilos relativos aparecem na visualização após salvar o arquivo',
   inspectHint:
-    'Clique em um elemento na visualização para selecioná-lo; clique duas vezes para editar o texto',
+    'Clique em um elemento na visualização para selecioná-lo; clique duas vezes para editar o texto; Shift+clique ou {alt}+arrastar para selecionar vários',
   nodeDynamic:
     'Este elemento foi criado pelo script da página e não existe no código; edite pelo código ou pela IA',
   nodeDynamicShort: 'gerado por script',

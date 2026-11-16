@@ -490,6 +490,7 @@ export const nl = {
   appGridlinesHidden: 'Rasterlijnen verborgen.',
   appGridlinesShown: 'Rasterlijnen weergegeven.',
   appShowingFormulas: 'Formules worden weergegeven — schakel opnieuw voor waarden.',
+  appShowingFormulasActive: 'Formules worden weergegeven',
   appShowingValues: 'Berekende waarden worden weergegeven.',
   appTraceNoFormula: 'Broncellen aanwijzen: de actieve cel bevat geen formule.',
   appTraceNoRefs: 'Broncellen aanwijzen: deze formule bevat geen celverwijzingen.',
@@ -588,6 +589,9 @@ export const nl = {
     'CSV-export vereist een volledig geladen werkmap — wacht tot het laden is voltooid.',
   appCsvExportTooLarge: 'Het blad is te groot om als CSV te exporteren.',
   appCsvExportCanceled: 'CSV-export geannuleerd.',
+  appOdsExported: '{path} geëxporteerd.',
+  appOdsExportCanceled: 'ODS-export geannuleerd.',
+  appOdsExportFailed: 'Exporteren naar ODS is mislukt.',
   appCsvExported: '{path} geëxporteerd.',
   appCsvExportedActiveOnly:
     'CSV-bestanden bevatten slechts één blad — het actieve blad “{name}” is geëxporteerd naar {path}.',
@@ -625,6 +629,10 @@ export const nl = {
     'Het stylesheet van deze werkmap mist de basisstructuur; stijlwijzigingen kunnen niet worden opgeslagen.',
   appSaveErrPackageGuard:
     'Opslaan zou de pakketstructuur van de werkmap veranderen — afgebroken om het bestand te beschermen.',
+  appSaveErrSheetNotFound:
+    'Een blad waarnaar deze opslag verwijst, is niet gevonden in de werkmap — het opslaan is gestopt en het bestand is ongewijzigd gebleven.',
+  appSaveErrSheetNameReused:
+    'Een nieuw blad gebruikt de oude naam van een hernoemd blad, daarom kan niet worden opgeslagen. Geef het nieuwe blad voorlopig een andere naam, sla op en hernoem het daarna. Het bestand is ongewijzigd gebleven.',
   appSaveErrChartUnsupported:
     'Dit grafiektype ondersteunt die bewerking niet; opslaan afgebroken — maak de grafiekwijziging ongedaan.',
   appSaveErrMoveOverlap:
@@ -737,6 +745,13 @@ export const nl = {
   appSaveAs: 'Opslaan als',
   appUndo: 'Ongedaan maken',
   appRedo: 'Opnieuw',
+  appQuickAccessCustomize: 'Werkbalk Snelle toegang aanpassen',
+  appQuickAccessHint:
+    'Druk op Alt en een cijfer om de knop op die positie, geteld vanaf links, uit te voeren.',
+  appQuickAccessMoveEarlier: 'Naar voren verplaatsen',
+  appQuickAccessMoveLater: 'Naar achteren verplaatsen',
+  appQuickAccessReset: 'Standaardinstellingen herstellen',
+  appQuickAccessFull: 'Op de werkbalk passen maximaal 10 knoppen.',
   appUnsavedEditOne: '● {count} niet-opgeslagen bewerking',
   appUnsavedEditMany: '● {count} niet-opgeslagen bewerkingen',
   appSavedState: 'Opgeslagen',
@@ -1198,6 +1213,8 @@ export const nl = {
   appRefreshAll: 'Alles vernieuwen',
   appWorkbookNoPivot: 'Geen draaitabellen in deze werkmap.',
   appRefreshAllTitle: 'Alle draaitabellen vernieuwen',
+  appQueriesConnections: 'Query’s en verbindingen',
+  appQueriesConnectionsTitle: 'De query’s en gegevensverbindingen van de werkmap weergeven',
   appErrorCheckingDetail: 'Blad scannen op foutwaarden',
   appErrorsFound: '{count} fouten — bij {cell}: {value}',
   appCheckingErrors: 'Het hele werkblad wordt op fouten gecontroleerd…',
@@ -1598,4 +1615,9 @@ export const nl = {
   appSpellUnavailable: 'Spellingcontrole is niet beschikbaar in dit venster.',
   appSpellReplaceAll: 'Alle vervangen door "{suggestion}"',
   appSpellChangedAll: '{count} cellen met "{word}" gecorrigeerd.',
+
+  // ── ODS import ──
+  appOdsImportNotice:
+    'Het ODS-bestand is geopend als een xlsx-kopie. Opslaan schrijft een xlsx-bestand.',
+  appOdsFormulasDropped: 'Van {count} formules zijn alleen de waarden behouden.',
 } satisfies Record<keyof typeof zh, string>

@@ -183,6 +183,7 @@ describe('channels', () => {
       EPUB_CHANNELS.fileRenamed,
       EPUB_CHANNELS.menuCommand,
       EPUB_CHANNELS.viewPrefsChanged,
+      EPUB_CHANNELS.aiJobStop,
     ])
     for (const channel of Object.values(EPUB_CHANNELS)) {
       expect(handlers.has(channel), channel).toBe(!mainToRenderer.has(channel))

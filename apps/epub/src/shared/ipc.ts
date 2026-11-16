@@ -37,6 +37,7 @@ import type {
   JobStatus,
   TranslationBlockEntry,
   TranslationBlockInput,
+  TranslationMode,
 } from '@genoffice/pdf-structure/store'
 import type { EpubSubscriptionApi } from './subscription-api'
 
@@ -116,6 +117,14 @@ export const EPUB_CHANNELS = {
   storeUnfinishedJobs: 'epub:store-unfinished-jobs',
   /** invoke(`EpubStoreWriteRequest`) → `EpubOutcome<EpubStoreWriteResult>` */
   storeWrite: 'epub:store-write',
+
+  // ---- the shell's list of running AI work ----
+  /** invoke(jobId) → `{ ok: true } | { ok: false, error }`: a book translation begins (refused while AI is off) */
+  aiJobBegin: 'epub:ai-job-begin',
+  /** send(jobId): that translation ended */
+  aiJobEnd: 'epub:ai-job-end',
+  /** main → screen (jobId): stop that translation (AI is being turned off) */
+  aiJobStop: 'epub:ai-job-stop',
 
   // ---- chat attachments ----
   /** invoke → `AttachmentAddResult | null` */
@@ -460,6 +469,11 @@ export type EpubPickResultTarget =
 export interface EpubWriteTranslatedRequest {
   kind: EpubTranslationOutputKind
   lang: string
+  /**
+   * 'easy': built from the book's easy explanation, its titles marked as one;
+   * left out (or 'translate'): from the translation, as before
+   */
+  mode?: TranslationMode
   /** spine indices chosen for translation; every chapter when left out */
   chapters?: number[]
   /** a path `pickResultPath` gave this view */
@@ -484,16 +498,39 @@ export interface EpubStoredTranslation {
   blocks: TranslationBlockEntry[]
 }
 
-/** The store writes a book translation job makes. Every one names a document hash of this view's book. */
+/**
+ * The store writes a book translation job makes. Every one names a document
+ * hash of this view's book, and may name a `mode`: left out it is
+ * 'translate' (the plain translation, as before); 'easy' writes the book's
+ * easy explanation, kept apart in the same store.
+ */
 export type EpubStoreWriteRequest =
-  | { kind: 'translationMeta'; docHash: string; lang: string; provider: string; model: string }
-  | { kind: 'translationBlocks'; docHash: string; lang: string; blocks: TranslationBlockInput[] }
-  | { kind: 'deleteTranslation'; docHash: string; lang: string }
+  | {
+      kind: 'translationMeta'
+      docHash: string
+      lang: string
+      provider: string
+      model: string
+      mode?: TranslationMode
+    }
+  | {
+      kind: 'translationBlocks'
+      docHash: string
+      lang: string
+      blocks: TranslationBlockInput[]
+      mode?: TranslationMode
+    }
+  | { kind: 'deleteTranslation'; docHash: string; lang: string; mode?: TranslationMode }
   /** "translate again from the start" keeping a person's edits; answers `removed` */
-  | { kind: 'deleteTranslationExceptEdited'; docHash: string; lang: string }
-  /** a `translate` job record (found by its language) */
-  | { kind: 'job'; docHash: string; lang: string; job: JobRecordInput }
-  | { kind: 'heartbeat'; docHash: string; job: JobKind; lang: string }
+  | {
+      kind: 'deleteTranslationExceptEdited'
+      docHash: string
+      lang: string
+      mode?: TranslationMode
+    }
+  /** a `translate` job record (found by its language; `job.mode` must match `mode`) */
+  | { kind: 'job'; docHash: string; lang: string; job: JobRecordInput; mode?: TranslationMode }
+  | { kind: 'heartbeat'; docHash: string; job: JobKind; lang: string; mode?: TranslationMode }
 
 export interface EpubStoreWriteResult {
   /** deleteTranslationExceptEdited: the block entries removed */
@@ -622,16 +659,34 @@ export interface EpubTranslateApi {
     request: EpubWriteTranslatedRequest,
   ): Promise<EpubOutcome<EpubWriteTranslatedResult>>
   store: EpubStoreApi
+  /** a translation tells the main process it runs (absent in an older preload) */
+  aiJob?: ScreenAiJobBridge
 }
 
 export interface EpubStoreApi {
-  translations(docHash: string): Promise<EpubOutcome<{ langs: string[] }>>
+  /** languages of the stored translations, or of the easy explanations with `mode` 'easy' */
+  translations(docHash: string, mode?: TranslationMode): Promise<EpubOutcome<{ langs: string[] }>>
   translation(
     docHash: string,
     lang: string,
+    mode?: TranslationMode,
   ): Promise<EpubOutcome<{ translation: EpubStoredTranslation | null }>>
+  /** easy explanations' records come too, each with `mode: 'easy'` */
   unfinishedJobs(docHash: string): Promise<EpubOutcome<{ jobs: JobStatus[] }>>
   write(request: EpubStoreWriteRequest): Promise<EpubOutcome<EpubStoreWriteResult>>
+}
+
+/**
+ * How a book translation tells the main process it runs, so the shell can
+ * count it and stop it when AI is turned off.
+ */
+export interface ScreenAiJobBridge {
+  /** a job begins: null to go on, or the refusal to show (AI is turned off) */
+  begin(jobId: string): Promise<string | null>
+  /** the job ended however it ended */
+  end(jobId: string): void
+  /** the main process asks the job `jobId` to stop */
+  onStop(handler: (jobId: string) => void): () => void
 }
 
 /** The AI panel's bridge. */

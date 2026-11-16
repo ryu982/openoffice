@@ -37,6 +37,8 @@ export const en = {
   arConfirmSends: 'The page images are sent to this AI.',
   arConfirmNothing: 'Every chosen page has already been read. There is nothing to send.',
   arChecking: 'Checking the AI connection…',
+  arProviderLabel: 'Provider',
+  arProviderNotConnected: '{provider} (not connected)',
   arVisionProvider:
     '{provider} cannot read images, so AI page reading cannot start. Choose an AI that reads images in Settings.',
   arVisionModel:
@@ -67,9 +69,9 @@ export const en = {
   arDeleted: 'The stored AI results of this document were deleted.',
   arDeleteFailed: 'The stored AI results could not be deleted.',
   arDeleteBusy: 'An AI job is running, so nothing can be deleted now.',
-  jobResumeAiRead: 'Unfinished AI reading {percent}% — continue?',
-  jobResumeTranslate: 'Unfinished translation ({language}) {percent}% — continue?',
-  jobResumeHighlight: 'Unfinished AI highlights {percent}% — continue?',
+  jobResumeAiRead: 'Unfinished AI reading {percent}%. Continue?',
+  jobResumeTranslate: 'Unfinished translation ({language}) {percent}%. Continue?',
+  jobResumeHighlight: 'Unfinished AI highlights {percent}%. Continue?',
   arDeleteAlsoBoth:
     'This also deletes hand-edited translations ({edited}) and passage cards ({cards}).',
   arDeleteAlsoEdited: 'This also deletes hand-edited translations ({count}).',

@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` a `media` používají to, co je nastaveno v aplikaci v Nastavení ▸ AI ▸ Pokročilé:
 
 - `search` funguje vždy. Ve výchozím stavu používá bezplatné vyhledávání, nebo poskytovatele vyhledávání, jehož klíč jste vybrali.
-- `image` potřebuje klíč poskytovatele obrázků. V této verzi předplatné obrázky negeneruje.
+- `image` se řídí volbou generování obrázků v nastavení. Při výchozí volbě Tarif ChatGPT (program Codex) kreslí na váš tarif ChatGPT přes program Codex, ale jen pokud jste povolili předplatné pro automatická volání (**ve výchozím stavu vypnuto**; viz [Připojení programového agenta](help://mcp)). Jinak použije klíč nastaveného poskytovatele obrázků. `--model` se použije, pokud tato cesta model nabízí; jinak příkaz odpoví modely, které můžete použít. Obrázky předané přes `--ref` fungují na obou cestách.
 - `media` u obrázku používá poskytovatele s klíčem, pokud je nastaven. Vaše předplatné Claude nebo Codex použije jen tehdy, když jste to povolili, a to je ve výchozím stavu **vypnuté**; přepínač a jeho omezení popisuje [Připojení programového agenta](help://mcp).
 - `media` u videa nebo zvuku potřebuje poskytovatele s klíčem, který podporuje video.
 

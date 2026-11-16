@@ -227,6 +227,7 @@ describe('ODT confirmation dialog', () => {
       'de',
       'es',
       'th',
+      'tr',
       'vi',
       'id',
       'ru',

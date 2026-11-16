@@ -46,6 +46,11 @@ export const id = {
   saveFailedStatus: 'Gagal menyimpan',
   exportFailed: 'Ekspor gagal',
   printFailed: 'Gagal mencetak: {error}',
+  printRangeEmpty:
+    'Dokumen ini memiliki {count} halaman. Ketik nomor halaman di dalam rentang itu.',
+  printPagesFailed: 'Tidak dapat menghitung halaman yang akan dicetak: {error}',
+  printLayoutSaved: 'Hasil tata letak disimpan sebagai PDF.',
+  printLayoutSaveFailed: 'Tidak dapat menyimpan PDF: {error}',
   exportHtmlSkipped: 'Diekspor, tetapi {count} aset tidak dapat disematkan (mis. {first})',
   viewPreview: 'Pratinjau',
   viewSplit: 'Terpisah',
@@ -79,7 +84,8 @@ export const id = {
   slideThumbs: 'Daftar slide',
   slideThumbGo: 'Buka slide {n}',
   previewNeedsSave: 'Gambar dan gaya relatif akan tampil di pratinjau setelah file disimpan',
-  inspectHint: 'Klik elemen di pratinjau untuk memilih, klik dua kali untuk mengedit teks',
+  inspectHint:
+    'Klik elemen di pratinjau untuk memilih, klik dua kali untuk mengedit teks, Shift+klik atau {alt}+seret untuk memilih beberapa',
   nodeDynamic:
     'Elemen ini dibuat oleh skrip halaman dan tidak ada di sumber; edit lewat sumber atau AI',
   nodeDynamicShort: 'dibuat skrip',

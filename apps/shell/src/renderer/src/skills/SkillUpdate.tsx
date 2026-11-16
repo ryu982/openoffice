@@ -86,7 +86,9 @@ export function SkillUpdateDialog({
         </>
       }
     >
-      <p className="set-field-desc">{s('updateIntro')}</p>
+      <p className="set-field-desc">
+        {s('updateIntro')} {s('replacedKept')}
+      </p>
       {check.locallyEdited && (
         <p className="skl-warning" role="alert">
           {s('updateLocalEdits')}

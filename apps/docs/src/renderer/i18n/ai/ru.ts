@@ -82,7 +82,6 @@ export const ru = {
   aiCopied: 'Скопировано',
   aiRegenerateTitle: 'Создать заново',
   aiSnapshotsTitle: 'Снимки версий',
-  aiRollback: 'Откатить',
   aiScopeSelected: 'Выделено абзацев: {count}',
   aiScopeEmptyDoc: 'Пустой документ',
   aiScopeCursor: 'У курсора',
@@ -199,4 +198,7 @@ export const ru = {
   aiMindMapReset: 'Сбросить вид',
   aiMindMapExpand: 'Развернуть ветку',
   aiMindMapCollapse: 'Свернуть ветку',
+  aiMindMapToggleLayout: 'Сменить макет',
+  aiMindMapLayoutTopDown: 'Переключиться на макет сверху вниз',
+  aiMindMapLayoutLeftRight: 'Переключиться на макет слева направо',
 } satisfies Record<keyof typeof zh, string>

@@ -15,7 +15,43 @@ export const norm = (s: string) =>
     .toLowerCase()
     .replace(/[\s\-_]/g, '')
 
-function fontDirs(): string[] {
+/**
+ * Font asset catalogs under AssetsV2 (downloaded and OS-preinstalled), newest catalog
+ * version first. The version suffix moves with macOS releases (macOS 26 downloads into
+ * com_apple_MobileAsset_Font8 and leaves Font7 empty), so catalogs are discovered rather
+ * than hardcoded.
+ */
+export function appleFontAssetRoots(assetsV2 = '/System/Library/AssetsV2'): string[] {
+  const roots: Array<{ path: string; ver: number }> = []
+  for (const base of [assetsV2, join(assetsV2, 'PreinstalledAssetsV2/InstallWithOs')]) {
+    let names: string[]
+    try {
+      names = readdirSync(base)
+    } catch {
+      continue
+    }
+    for (const d of names) {
+      const m = /^com_apple_MobileAsset_Font(\d+)$/.exec(d)
+      if (m) roots.push({ path: join(base, d), ver: Number(m[1]) })
+    }
+  }
+  // Newer catalogs first; at equal version the downloaded catalog beats the preinstalled one
+  return roots.sort((a, b) => b.ver - a.ver).map((r) => r.path)
+}
+
+/**
+ * Per-user font directory on Linux (fontconfig's XDG location). Desktop "install font for
+ * this user" actions (KDE, GNOME, Dolphin, copy-to-~/.local/share/fonts by hand) land here,
+ * so leaving it out of the scan makes those families invisible to metrics while Chromium —
+ * which resolves through fontconfig — still draws them. Layout then falls back to heuristic
+ * advances: every run after a Latin one starts too early, by roughly half an em, so a CJK
+ * glyph covers the last digit of the run before it.
+ */
+export function xdgUserFontDir(dataHome = process.env.XDG_DATA_HOME): string {
+  return join(dataHome || join(homedir(), '.local', 'share'), 'fonts')
+}
+
+export function fontDirs(): string[] {
   switch (process.platform) {
     case 'darwin':
       return [
@@ -25,13 +61,17 @@ function fontDirs(): string[] {
         join(homedir(), 'Library/Fonts'),
         // On-demand system font assets: PingFang and other CJK faces live here on
         // recent macOS ( <hash>.asset/AssetData/*.ttc ), not under /System/Library/Fonts
-        '/System/Library/AssetsV2/com_apple_MobileAsset_Font7',
-        '/System/Library/AssetsV2/com_apple_MobileAsset_Font6',
+        ...appleFontAssetRoots(),
       ]
     case 'win32':
       return ['C:\\Windows\\Fonts', join(homedir(), 'AppData/Local/Microsoft/Windows/Fonts')]
     default:
-      return ['/usr/share/fonts', '/usr/local/share/fonts', join(homedir(), '.fonts')]
+      return [
+        '/usr/share/fonts',
+        '/usr/local/share/fonts',
+        xdgUserFontDir(),
+        join(homedir(), '.fonts'),
+      ]
   }
 }
 

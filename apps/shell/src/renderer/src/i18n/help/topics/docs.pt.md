@@ -42,6 +42,7 @@ Clique com o botão direito em qualquer ponto do texto — o menu acompanha aqui
 - **Área de transferência**: recortar / copiar / colar / **colar como texto simples**.
 - **Fonte, parágrafo**: mudar a família e o tamanho, negrito/itálico/sublinhado, alinhamento/recuo/espaçamento sem passar pelo friso.
 - **Sinônimos**: lista sinônimos da palavra selecionada; clique num deles para substituir.
+- **Explicar em palavras simples** (IA): envia a seleção ao painel de IA para ser explicada em palavras simples, no idioma da interface, e executa na hora. Sem seleção fica desativado, e o texto oculto da IA não é enviado.
 - **Traduzir** (IA): traduz a seleção para o idioma de destino (inglês, chinês simplificado, japonês, coreano, francês, alemão, espanhol, ...) pelo painel de IA.
 - **Novo Comentário**: anexa um comentário à seleção.
 - **Ortografia** (numa palavra escrita errado): substituições sugeridas, ignorar tudo, adicionar ao dicionário, definir o idioma de verificação.
@@ -66,7 +67,7 @@ Clique com o botão direito em qualquer ponto do texto — o menu acompanha aqui
 ## IA
 
 - O botão de IA no friso e o painel lateral: reescrever, expandir, traduzir, resumir, inserir tabela, além de instruções livres.
-- Cada turno da IA guarda um instantâneo antes de começar; é possível voltar a qualquer um deles na lista de versões, e o próprio retrocesso pode ser desfeito.
+- Os lugares que a IA alterou ficam marcados em amarelo. **Desfazer estas alterações**, no cartão abaixo da resposta, desfaz aquele turno inteiro (os turnos seguintes também voltam), e o próprio retrocesso pode ser desfeito.
 
 ## Salvar e exportar
 
@@ -76,4 +77,4 @@ Clique com o botão direito em qualquer ponto do texto — o menu acompanha aqui
 
 ## Imprimir
 
-ctrl+P pela caixa de diálogo do sistema, com as páginas exatamente como serão impressas.
+ctrl+P abre a janela de impressão. Escolha a impressora, as cópias, frente e verso e o intervalo (incluindo a seleção); em **Disposição das páginas** há várias páginas por folha, livreto, pôster, etiquetas, faces pares ou ímpares e tons de cinza (veja [Operações de arquivo](help://file-ops)).

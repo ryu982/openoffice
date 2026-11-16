@@ -29,6 +29,7 @@ import { PasswordDialog } from '../PasswordDialog'
 import { parsePageRange } from './page-range'
 import { conversionWarningLines, structureFailureText } from './messages'
 import { BookInfoAiFill, type BookInfoFillState } from './BookInfoAiFill'
+import { useAiOn } from '../ai-choice'
 import { collectLeadingText, isLanguageTag } from './book-info-ai'
 
 export interface ConvertDialogApi {
@@ -57,7 +58,8 @@ export interface ConvertDialogProps {
   lang: Lang
   t: TFunc
   api: ConvertDialogApi
-  /** a Markdown target the shell's Save As dialog already picked: convert to it right away */
+  /** a target the shell's Save As dialog already picked: Markdown converts to it
+      right away; EPUB keeps the form (book information) with the target chosen */
   initialTarget?: string
   /** save pending edits so the job reads what is on screen; false = not saved (the editor said why) */
   prepare: () => Promise<boolean>
@@ -95,6 +97,8 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
   const [showErrors, setShowErrors] = useState(false)
   const [aiPress, setAiPress] = useState(0)
   const [aiState, setAiState] = useState<BookInfoFillState>({ kind: 'idle' })
+  // "Fill in with AI" is an AI entrance: gone while AI is turned off
+  const aiOn = useAiOn()
   const [pwInput, setPwInput] = useState('')
   /** the password the next run uses: the open one, or the one typed into the prompt */
   const passwordRef = useRef(props.password)
@@ -247,16 +251,17 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
     await runOn(target)
   }
 
-  // Save As › Markdown carries its target: no page-range form, start at once
+  // Save As › Markdown carries its target: no page-range form, start at once.
+  // Save As › EPUB waits for the form (title, cover, pages) like the File menu.
   const autoStartedRef = useRef(false)
   const autoStartRef = useRef(startWith)
   autoStartRef.current = startWith
   useEffect(() => {
     const target = props.initialTarget
-    if (!target || autoStartedRef.current) return
+    if (!target || format !== 'md' || autoStartedRef.current) return
     autoStartedRef.current = true
     void autoStartRef.current(target)
-  }, [props.initialTarget])
+  }, [props.initialTarget, format])
 
   const cancelRun = (): void => {
     if (stage.kind === 'running') void api.cancel(stage.jobId)
@@ -475,30 +480,32 @@ export function ConvertDialog(props: ConvertDialogProps): ReactElement {
                     {languageError}
                   </span>
                 )}
-                <div className="pdf-convert-ai">
-                  <button
-                    className="pdf-modal-btn"
-                    data-action="ai-fill"
-                    data-tip={t('cvAiFillTip')}
-                    disabled={busy || aiState.kind === 'running'}
-                    onClick={() => setAiPress((n) => n + 1)}
-                  >
-                    {t('cvAiFill')}
-                  </button>
-                  {aiState.kind !== 'idle' && (
-                    <span
-                      className={`pdf-convert-ai-state${aiState.kind === 'error' ? ' is-error' : ''}`}
-                      data-ai-state={aiState.kind}
+                {aiOn && (
+                  <div className="pdf-convert-ai">
+                    <button
+                      className="pdf-modal-btn"
+                      data-action="ai-fill"
+                      data-tip={t('cvAiFillTip')}
+                      disabled={busy || aiState.kind === 'running'}
+                      onClick={() => setAiPress((n) => n + 1)}
                     >
-                      {aiState.kind === 'running'
-                        ? t('cvAiFilling')
-                        : aiState.kind === 'filled'
-                          ? t('cvAiFilled')
-                          : aiState.message}
-                    </span>
-                  )}
-                </div>
-                {aiPress > 0 && (
+                      {t('cvAiFill')}
+                    </button>
+                    {aiState.kind !== 'idle' && (
+                      <span
+                        className={`pdf-convert-ai-state${aiState.kind === 'error' ? ' is-error' : ''}`}
+                        data-ai-state={aiState.kind}
+                      >
+                        {aiState.kind === 'running'
+                          ? t('cvAiFilling')
+                          : aiState.kind === 'filled'
+                            ? t('cvAiFilled')
+                            : aiState.message}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {aiOn && aiPress > 0 && (
                   <BookInfoAiFill
                     press={aiPress}
                     lang={lang}

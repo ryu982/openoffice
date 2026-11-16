@@ -16,6 +16,7 @@ import type {
   SubscriptionLaunchResult,
   SubscriptionLoginMode,
   SubscriptionMeteredResult,
+  SubscriptionOffResult,
   SubscriptionStatusMap,
 } from '@genoffice/ai-provider/browser'
 import {
@@ -41,13 +42,18 @@ export interface SubscriptionApiLike {
   ): Promise<SubscriptionMeteredResult>
   onChanged(handler: (statuses: SubscriptionStatusMap) => void): () => void
   logout?(provider: AiSubscriptionProviderId): Promise<SubscriptionLaunchResult>
+  /** the shell preload alone: turn a CLI off in this app, or back on (decision 0114) */
+  setSubscriptionOff?(
+    provider: AiSubscriptionProviderId,
+    off: boolean,
+  ): Promise<SubscriptionOffResult>
   codexImageAvailable?(): Promise<boolean>
   openInstallHelp?(provider: AiSubscriptionProviderId): Promise<void>
   openConnectHelp?(path: SubscriptionConnectHelpPath | null): Promise<void>
 }
 
-/** a login or install that could not be started, or a sign-out that did not go through */
-export type SubscriptionLaunchKind = 'install' | 'login' | 'logout'
+/** a login or install that could not be started, a sign-out that did not go through, or a switch (decision 0114) that could not be stored */
+export type SubscriptionLaunchKind = 'install' | 'login' | 'logout' | 'switch'
 
 export interface SubscriptionConnection {
   readonly statuses: SubscriptionStatusMap
@@ -78,6 +84,11 @@ export interface SubscriptionConnection {
   readonly recheck: (provider: AiSubscriptionProviderId) => void
   /** "use anyway" on a metered login; resolves once the answer is in */
   readonly acceptMetered: (provider: AiSubscriptionProviderId) => Promise<void>
+  /**
+   * Stop using a CLI in this app (`true`), or use it again (`false`); it stays
+   * signed in for the rest of the PC. A bridge without the switch does nothing.
+   */
+  readonly setOff: (provider: AiSubscriptionProviderId, off: boolean) => void
   readonly openInstallHelp: (provider: AiSubscriptionProviderId) => void
   /** open the website's step-by-step connect help at the guide's path */
   readonly openConnectHelp: (path: SubscriptionConnectHelpPath | null) => void
@@ -138,7 +149,8 @@ async function attempt<T>(
  * Live connection state for as long as the calling component is mounted: the
  * statuses are read when it mounts, follow the main process's change events,
  * and are checked again each time the window regains focus after a login or an
- * install was started, since both happen in another window.
+ * install was started, since both happen in another window. A program that was
+ * not found is looked for again on every return, however it was installed.
  */
 export function useSubscriptionConnection(
   options: UseSubscriptionConnectionOptions,
@@ -214,13 +226,20 @@ export function useSubscriptionConnection(
       // no event source: the statuses still follow the checks
     }
     const onFocus = () => {
-      if (launched.current.size === 0) {
+      // A program not found may have been installed outside the app (the vendor's
+      // guide, a terminal) while the user was away. Looking again runs nothing
+      // until a program is found, so it is asked on every return.
+      const missing = (Object.keys(statusesRef.current) as AiSubscriptionProviderId[]).filter(
+        (provider) => statusesRef.current[provider]?.state === 'not-installed',
+      )
+      const wanted = new Set([...launched.current.keys(), ...missing])
+      if (wanted.size === 0) {
         if (optionsRef.current.refreshOnFocus) {
           void attempt(optionsRef.current.api, (api) => api.statuses()).then(apply)
         }
         return
       }
-      void check([...launched.current.keys()])
+      void check([...wanted])
       for (const [provider, state] of launched.current) {
         if (state === null) launched.current.delete(provider)
       }
@@ -333,6 +352,26 @@ export function useSubscriptionConnection(
     },
     [apply],
   )
+  const setOff = useCallback(
+    (provider: AiSubscriptionProviderId, off: boolean) => {
+      setBusy(true)
+      setFailed((current) => ({ ...current, [provider]: undefined }))
+      void attempt(optionsRef.current.api, (api) => {
+        if (!api.setSubscriptionOff) throw new Error('no switch handler')
+        return api.setSubscriptionOff(provider, off)
+      })
+        .then((result) => {
+          if (!alive.current) return
+          // not stored: the program stays as it was, and the card says so
+          if (!result?.ok) setFailed((current) => ({ ...current, [provider]: 'switch' }))
+          apply(result?.statuses ?? null)
+        })
+        .finally(() => {
+          if (alive.current) setBusy(false)
+        })
+    },
+    [apply],
+  )
   const refresh = useCallback(
     (providers?: AiSubscriptionProviderId[]) => {
       if (optionsRef.current.refreshMode === 'statuses') {
@@ -357,6 +396,7 @@ export function useSubscriptionConnection(
     logout,
     recheck,
     acceptMetered,
+    setOff,
     openInstallHelp: openHelp,
     openConnectHelp,
     refresh,

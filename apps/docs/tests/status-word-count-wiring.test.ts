@@ -54,6 +54,7 @@ describe('status-bar selection word count wiring', () => {
       'pt',
       'ru',
       'th',
+      'tr',
       'vi',
       'zh',
       'zh-TW',

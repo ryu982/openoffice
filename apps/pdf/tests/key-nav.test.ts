@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { navAction, shouldHandleDocumentUndo } from '../src/renderer/keyNav'
+import { isHandToolKey, navAction, shouldHandleDocumentUndo } from '../src/renderer/keyNav'
 
 describe('navAction', () => {
   it('steps a whole page on ArrowDown/ArrowUp when focus is in the thumbnail sidebar', () => {
@@ -67,5 +67,47 @@ describe('shouldHandleDocumentUndo', () => {
     expect(shouldHandleDocumentUndo(target, 'z', true)).toBe(true)
     expect(shouldHandleDocumentUndo(target, 'y', true)).toBe(true)
     expect(shouldHandleDocumentUndo(document.createElement('input'), 'z', false)).toBe(true)
+  })
+})
+
+describe('isHandToolKey', () => {
+  const key = (over: Partial<Parameters<typeof isHandToolKey>[0]> = {}) => ({
+    code: 'KeyH',
+    key: 'h',
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    target: document.body,
+    ...over,
+  })
+
+  it('takes a plain H, also when an input method reports another letter', () => {
+    expect(isHandToolKey(key())).toBe(true)
+    expect(isHandToolKey(key({ key: 'ㅗ' }))).toBe(true)
+  })
+
+  it('ignores other keys, modifiers, a held-down repeat and composition', () => {
+    expect(isHandToolKey(key({ code: 'KeyJ', key: 'j' }))).toBe(false)
+    expect(isHandToolKey(key({ ctrlKey: true }))).toBe(false)
+    expect(isHandToolKey(key({ altKey: true }))).toBe(false)
+    expect(isHandToolKey(key({ metaKey: true }))).toBe(false)
+    expect(isHandToolKey(key({ shiftKey: true, key: 'H' }))).toBe(false)
+    expect(isHandToolKey(key({ repeat: true }))).toBe(false)
+    expect(isHandToolKey(key({ isComposing: true }))).toBe(false)
+    expect(isHandToolKey(key({ key: 'Process' }))).toBe(false)
+  })
+
+  it('leaves the key to an open dialog', () => {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    const button = document.createElement('button')
+    dialog.append(button)
+    document.body.append(dialog)
+    try {
+      expect(isHandToolKey(key({ target: button }))).toBe(false)
+    } finally {
+      dialog.remove()
+    }
   })
 })

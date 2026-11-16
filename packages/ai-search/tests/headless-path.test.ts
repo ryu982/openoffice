@@ -26,7 +26,8 @@ import { dataUrl, keyMedia, status, tempDir, writeSettings } from './routing-hel
 const keyGen = vi.mocked(generateImageWithProvider)
 const keyAnalyze = vi.mocked(analyzeMediaWithProvider)
 const stream = vi.mocked(streamForProvider)
-const codexGen = vi.fn<CodexImageGenerator>()
+const codexGen = vi.fn<CodexImageGenerator['generate']>()
+const codexModels = vi.fn<CodexImageGenerator['models']>()
 
 const PNG = new Uint8Array([137, 80, 78, 71, 1, 2, 3])
 const READY: AiSubscriptionStatuses = {
@@ -67,14 +68,16 @@ beforeEach(() => {
   keyAnalyze.mockReset()
   stream.mockReset()
   codexGen.mockReset()
+  codexModels.mockReset()
   keyGen.mockResolvedValue({ bytes: PNG, mime: 'image/png' })
-  codexGen.mockResolvedValue({ bytes: PNG, mime: 'image/png' })
+  codexGen.mockResolvedValue({ kind: 'image', bytes: PNG, mime: 'image/png' })
+  codexModels.mockResolvedValue(['gpt-5.5'])
   keyAnalyze.mockResolvedValue('from the key provider')
   stream.mockImplementation(async (_provider, _config, _system, _messages, _tools, _max, cb) => {
     cb.onDelta('from the AI provider')
   })
   setCodexImageGenerationAvailable(true)
-  registerCodexImageGenerator(codexGen)
+  registerCodexImageGenerator({ generate: codexGen, models: codexModels })
 })
 
 afterEach(() => {
@@ -166,7 +169,7 @@ describe('automatic-call path with the subscription setting on', () => {
     }
     codexGen.mockImplementation(async () => {
       await slow()
-      return { bytes: PNG, mime: 'image/png' }
+      return { kind: 'image' as const, bytes: PNG, mime: 'image/png' }
     })
     stream.mockImplementation(async (_p, _c, _s, _m, _t, _max, cb) => {
       await slow()
@@ -268,6 +271,35 @@ describe('automatic-call path with the subscription setting on', () => {
       { context: headless() },
     )
     expect(r.error).toBe('codex crashed')
+    expect(ledgerRuns()).toHaveLength(1)
+  })
+
+  it('refuses a model name Codex does not list without taking a turn or counting it', async () => {
+    const r = await generateImageTool(
+      writeSettings(ON),
+      { prompt: 'a logo', model: 'not-a-model' },
+      { context: headless() },
+    )
+    expect(r.error).toMatch(/not-a-model/)
+    expect(r.errorCode).toBeUndefined()
+    expect(codexModels).toHaveBeenCalledTimes(1)
+    expect(codexGen).not.toHaveBeenCalled()
+    expect(ledgerRuns()).toEqual([])
+    expect(existsSync(join(dataDir, HEADLESS_LOCK_FILE))).toBe(false)
+  })
+
+  it('hides the Codex route for the rest of the command after a free-plan answer', async () => {
+    codexGen.mockResolvedValueOnce({
+      kind: 'unavailable',
+      reason: 'free-plan',
+      message: 'Codex on this ChatGPT plan has no image generation tool.',
+    })
+    const settings = writeSettings(ON)
+    const first = await generateImageTool(settings, { prompt: 'a logo' }, { context: headless() })
+    expect(first.errorCode).toBe('unavailable')
+    const second = await generateImageTool(settings, { prompt: 'a logo' }, { context: headless() })
+    expect(second.errorCode).toBe('unavailable')
+    expect(codexGen).toHaveBeenCalledTimes(1)
     expect(ledgerRuns()).toHaveLength(1)
   })
 

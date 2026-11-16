@@ -52,7 +52,7 @@ Menu menyesuaikan tempat Anda klik:
 ## Pembuatan dengan AI
 
 - Kartu AI Slides di Beranda: berikan topik atau kerangka, lalu AI menyusun seluruh dek.
-- Tanpa kunci penyedia gambar, AI tidak dapat membuat gambar, dan dek memakai gambar hasil pencarian gambar sebagai gantinya; lihat [Model AI dan pengaturan](help://ai-models).
+- Jika tidak ada cara membuat gambar (baik paket ChatGPT melalui program Codex maupun kunci penyedia gambar), AI tidak dapat membuat gambar, dan dek memakai gambar hasil pencarian gambar sebagai gantinya; lihat [Model AI dan pengaturan](help://ai-models).
 - Terus sesuaikan dengan panel AI setelahnya.
 - Klik kanan pada seleksi teks atau elemen gambar/video/audio ▸ **Sembunyikan seleksi dari AI** menjauhkannya dari mata model (rincian di bab panel AI); slide dengan konten tersembunyi melewatkan pemeriksaan tangkapan layar otomatis.
 

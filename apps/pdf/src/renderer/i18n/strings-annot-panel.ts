@@ -20,6 +20,7 @@ import { he } from './annot-panel/he'
 import { hi } from './annot-panel/hi'
 import { zhTW } from './annot-panel/zh-TW'
 import { vi } from './annot-panel/vi'
+import { tr } from './annot-panel/tr'
 
 /** Copy for the annotation overview panel (reading assistant) */
 export const annotPanelStrings = defineStrings({
@@ -44,4 +45,5 @@ export const annotPanelStrings = defineStrings({
   hi,
   'zh-TW': zhTW,
   vi,
+  tr,
 })

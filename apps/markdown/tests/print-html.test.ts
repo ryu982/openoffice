@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { buildPrintHtml } from '../src/renderer/export/printHtml'
+import { MARKDOWN_PRINT_OPTIONS } from '../src/shared/print-options'
 
 // The KaTeX stylesheet is inlined with Vite's `?inline` query; stub it so the
 // test asserts the builder's own behavior rather than the bundler's.
@@ -44,6 +45,15 @@ describe('buildPrintHtml', () => {
     expect(html).not.toContain('[[Note|</span>')
   })
 
+  it('keeps the print margin on the page, not the paper edge', () => {
+    // Chromium takes a CSS page margin over the margins printToPDF and print()
+    // are given, so this rule decides where the text sits on paper.
+    const html = buildPrintHtml(editorRoot('<p>x</p>'), 'Notes')
+    const margins = [...html.matchAll(/@page\s*\{[^}]*?margin:\s*([^;]+);/g)].map((m) => m[1])
+    expect(margins).toEqual([`${MARKDOWN_PRINT_OPTIONS.marginIn}in`])
+    expect(MARKDOWN_PRINT_OPTIONS.marginIn).toBeGreaterThan(0)
+  })
+
   it('escapes the document title', () => {
     const html = buildPrintHtml(editorRoot('<p>x</p>'), 'A&B <C>')
     expect(html).toContain('<title>A&amp;B &lt;C></title>')
@@ -76,5 +86,16 @@ describe('buildPrintHtml', () => {
     const printed = new DOMParser().parseFromString(buildPrintHtml(root, 'Notes'), 'text/html')
     const boxes = [...printed.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
     expect(boxes.map((box) => box.checked)).toEqual([true, false])
+  })
+
+  // A table taller than the space left on the page used to jump whole to the
+  // next page (leaving a near-empty page) and then split there anyway.
+  it('lets tables split between rows, never inside one', () => {
+    const html = buildPrintHtml(editorRoot('<p>x</p>'), 'Notes')
+    const rules = [...html.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /break-inside\s*:\s*avoid/.test(body))
+      .flatMap(([, sel]) => sel.split(',').map((s) => s.trim()))
+    expect(rules).toContain('tr')
+    expect(rules).not.toContain('table')
   })
 })

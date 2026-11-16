@@ -58,7 +58,7 @@ Every command is a tool. The interesting ones:
 A request from the `ieumoffice` command or from an MCP client was not typed by you in the app, so GenOffice is careful with it.
 
 - **Search** always works and is free by default. A search provider key is used only if you selected one.
-- **Generating a picture** needs an image provider key. In this version a subscription does not generate images.
+- **Generating a picture** follows the image generation choice in Settings. The default, ChatGPT plan (Codex program), uses your ChatGPT plan through the Codex program and is **not used unless you allow it** (see below). Otherwise an image provider key you set up is used. A model the agent names is used when that route offers it.
 - **Describing a picture** uses a key provider when one is set up. Your Claude or Codex subscription is **not used unless you allow it**.
 - **Video and audio** need a key provider that supports video.
 

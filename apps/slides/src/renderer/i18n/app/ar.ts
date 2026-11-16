@@ -1,6 +1,8 @@
 import type { zh } from './zh'
 
 export const ar = {
+  appLegacyPptImported:
+    'تم فتح ملف ‎.ppt كنسخة ‎.pptx محوَّلة. يبقى الملف الأصلي كما هو، ويؤدي الحفظ إلى كتابة ملف ‎.pptx جديد. لا تُنقل ملاحظات المتحدث والحركات.',
   redactMenuLabel: 'إخفاء التحديد عن الذكاء الاصطناعي',
   redactDialogDesc:
     'يبقى ما تختاره في المستند وفي الملف؛ يرى النموذج العلامة أدناه. سمِّها ليعرف ما تمثّله.',
@@ -169,6 +171,9 @@ export const ar = {
   appPrintLandscape: 'أفقي',
   appPrintFrame: 'إحاطة الشرائح بإطار',
   appPrintHidden: 'طباعة الشرائح المخفية',
+  appPrintRangeSelected: 'الشرائح المحددة',
+  appPrintLayoutBlocked:
+    'تُطبع النشرات وصفحات الملاحظات بصفحة واحدة لكل ورقة. لترتيب الصفحات، اختر شرائح بحجم الصفحة.',
   appPrintPageCount: '{n} صفحات',
   appPrintNoPages: 'لا توجد شرائح للطباعة',
   appPrintRendering: 'جارٍ إنشاء المعاينة…',
@@ -178,6 +183,7 @@ export const ar = {
   appCtxSendToBack: 'إرسال إلى الخلفية',
   appCtxBringForward: 'إحضار للأمام',
   appCtxSendBackward: 'إرسال للخلف',
+  appCtxRotate: 'تدوير',
   appCtxRotateLeft90: 'تدوير 90° لليسار',
   appCtxRotateRight90: 'تدوير 90° لليمين',
   appCtxFlipH: 'انعكاس أفقي',

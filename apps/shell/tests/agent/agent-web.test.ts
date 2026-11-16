@@ -200,9 +200,9 @@ describe('the window', () => {
     expect(agentWebText('ko', 'permAllowSiteSession')).toBe('이번 세션 동안 이 사이트 허락')
   })
 
-  it('has every web string in all 21 languages', () => {
+  it('has every web string in all 22 languages', () => {
     const langs = Object.keys(agentWebStrings)
-    expect(langs).toHaveLength(21)
+    expect(langs).toHaveLength(22)
     const keys = Object.keys(agentWebStrings.zh)
     for (const lang of langs) {
       const dict = agentWebStrings[lang as keyof typeof agentWebStrings] as Record<string, string>

@@ -403,6 +403,7 @@ export const zhTW = {
   appGridlinesHidden: '格線已隱藏。',
   appGridlinesShown: '格線已顯示。',
   appShowingFormulas: '正在顯示公式——再次切換顯示數值。',
+  appShowingFormulasActive: '正在顯示公式',
   appShowingValues: '正在顯示計算結果。',
   appTraceNoFormula: '追蹤前導參照：作用中儲存格沒有公式。',
   appTraceNoRefs: '追蹤前導參照：該公式沒有儲存格參照。',
@@ -489,6 +490,9 @@ export const zhTW = {
   appCsvExportNeedsFullLoad: 'CSV 匯出需要活頁簿完整載入——請等待載入完成。',
   appCsvExportTooLarge: '工作表太大,無法匯出 CSV。',
   appCsvExportCanceled: 'CSV 匯出已取消。',
+  appOdsExported: '已匯出 {path}。',
+  appOdsExportCanceled: '已取消 ODS 匯出。',
+  appOdsExportFailed: 'ODS 匯出失敗。',
   appCsvExported: '已匯出 {path}。',
   appCsvExportedActiveOnly: 'CSV 只包含一張工作表——已匯出目前工作表「{name}」到 {path}。',
   appCsvExportFailed: '無法匯出 CSV。',
@@ -515,6 +519,9 @@ export const zhTW = {
     '檔案無法取代——看起來被其他程式佔用（如在 Excel 中開啟，或正被同步/防毒掃描）。請關閉佔用後重新儲存。',
   appSaveErrStylesheetLimited: '這個活頁簿的樣式表缺少基礎結構，樣式變更無法儲存。',
   appSaveErrPackageGuard: '儲存會改變活頁簿的封裝結構——已中止以保護檔案。',
+  appSaveErrSheetNotFound: '儲存內容所指的工作表在活頁簿中找不到，已中止儲存，原檔案維持不變。',
+  appSaveErrSheetNameReused:
+    '新工作表使用了已重新命名工作表的原名稱，因此無法儲存。請先將新工作表暫時改名並儲存，再改回想要的名稱。原檔案維持不變。',
   appSaveErrChartUnsupported: '這個圖表類型不支援該編輯，儲存已中止——請復原該圖表變更。',
   appSaveErrMoveOverlap:
     '有公式、格式範圍、圖形或表格橫跨被移動的列——這次儲存已中止，請復原該移動。',
@@ -613,6 +620,12 @@ export const zhTW = {
   appSaveAs: '另存新檔',
   appUndo: '復原',
   appRedo: '取消復原',
+  appQuickAccessCustomize: '自訂快速存取工具列',
+  appQuickAccessHint: '按 Alt 加數字鍵，可執行從左數相應位置的按鈕。',
+  appQuickAccessMoveEarlier: '往前移',
+  appQuickAccessMoveLater: '往後移',
+  appQuickAccessReset: '還原預設值',
+  appQuickAccessFull: '工具列最多可放 10 個按鈕。',
   appUnsavedEditOne: '● {count} 處未儲存的編輯',
   appUnsavedEditMany: '● {count} 處未儲存的編輯',
   appSavedState: '已儲存',
@@ -1073,6 +1086,8 @@ export const zhTW = {
   appRefreshAll: '全部重新整理',
   appWorkbookNoPivot: '活頁簿中沒有樞紐分析表。',
   appRefreshAllTitle: '重新整理全部樞紐分析表',
+  appQueriesConnections: '查詢與連線',
+  appQueriesConnectionsTitle: '檢視活頁簿中的查詢與資料連線',
   appErrorCheckingDetail: '掃描目前工作表中的錯誤值',
   appErrorsFound: '發現 {count} 個錯誤,已定位 {cell}:{value}',
   appCheckingErrors: '正在掃描整個工作表的錯誤…',
@@ -1461,4 +1476,8 @@ export const zhTW = {
   appSpellUnavailable: '此視窗無法使用拼字檢查。',
   appSpellReplaceAll: '全部取代為「{suggestion}」',
   appSpellChangedAll: '已更正 {count} 處「{word}」。',
+
+  // ── ODS import ──
+  appOdsImportNotice: '已將 ODS 作為 xlsx 副本開啟。儲存時將儲存為 xlsx 檔案。',
+  appOdsFormulasDropped: '有 {count} 個公式僅保留了值。',
 } satisfies Record<keyof typeof zh, string>

@@ -16,6 +16,7 @@ HTML 문서를 Word 문서로 바꾼다. 실제 Chromium에 페이지를 띄워 
 - 페이지에서 돌아온 값은 신뢰하지 않는다. 추출 결과는 `normalizeIr`을 거친다. 배열이 아니거나, 항목이 객체가 아니거나, `type`이 빈 문자열이거나, `shotId`가 문자열이 아니거나, 기하 숫자가 유한수가 아니면 변환을 중단한다. `width`, `height`, `widthFrac`, `heightPx`, `px`는 음수도 거부하고 `xPx`, `yPx`만 음수를 받는다. 나눗셈이나 크기 계산에 들어가는 숫자 필드를 IR에 추가하면 이 검사에도 넣는다.
 - `src/index.ts`에서 드라이버 구현을 내보내지 않는다. 앱 번들에 Playwright가, 테스트와 CLI에 Electron이 딸려 오지 않게 하려는 것이다. 호출자는 `src/drivers/electron` 또는 `src/drivers/playwright`를 경로로 직접 import한다. Electron에 닿는 파일은 `src/drivers/electron.ts` 하나로 유지한다.
 - Electron 드라이버의 숨은 창은 `sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`이고 preload가 없으며 새 창 열기를 거부한다. 문서의 스크립트가 그 안에서 실행되므로 이 설정을 느슨하게 하지 않는다.
+- 숨은 창은 앱과 떨어진 메모리 전용 세션(`html2docx-isolated`)에 뜬다(결정 0142). `ElectronBrowserDriver.create`는 허락 규칙(`allowRequest`)을 필수로 받고, 그 밖의 요청(우리 창이 아닌 쪽의 요청 포함)은 취소한다. 페이지가 일으킨 이동, 권한 요청, 다운로드는 거절한다. `file://` 페이지는 Electron에서 다른 로컬 파일을 읽을 수 있으므로, 부르는 쪽은 페이지 자신의 파일만 `isFileUrlOf`로 허락한다. 원본에서 이 파일을 받아올 때 이 규칙이 빠지지 않게 한다.
 - 취소(`AbortSignal`)는 단계 사이마다 확인하고, 오래 걸리는 페이지 대기는 `raceWithAbort`로 감싼다. 새 대기 지점을 넣을 때도 같다.
 - 탐색은 30초에서 끊고 그 시점의 페이지로 계속한다. 외부 자원 하나가 변환 전체를 붙잡지 않는다.
 

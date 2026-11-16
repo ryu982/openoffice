@@ -12,10 +12,12 @@ Jeder Editor hat eigene Tastenbelegungen, und nur wenige davon funktionieren üb
 | Menüband einklappen / ausklappen — jeder Editor           | ⌥⌘R   | Ctrl+F1         |
 | Menüband kompakt — nur Docs                               | ⌥⌘K   | Ctrl+Alt+K      |
 | Tastenkürzel-Tabelle öffnen — nur Word                    | ⌘/    | Ctrl+/          |
+| Einstellungen öffnen — jeder Tab außer Word               | ⌘,    | Ctrl+,          |
 
 - **F1 öffnet dieses Handbuch**, nicht die Kürzel-Tabelle. Die Taste gehört zum Anwendungsmenü und funktioniert daher aus Word, Sheets, Slides, PDF oder dem Tab Home gleichermaßen.
 - **Der Umschalter für das Menüband ist `Ctrl+F1`, auf macOS `⌥⌘R`.** Ein bloßer Druck auf `F1` bewirkt nichts — F1 ist das Handbuch, und die Menüband-Taste teilt sich diese Belegung bewusst nicht. `Ctrl+F1` wird auch auf macOS akzeptiert, aber `⌥⌘R` ist die Taste, die Office für Mac verwendet.
 - **Die Tastenkürzel-Tabelle gehört allein zu Word** (`⌘/`). Sie listet genau die Word-Tabelle weiter unten auf. Kein anderer Editor hat eine.
+- **`⌘,` öffnet die Einstellungen** (`Ctrl+,` unter Windows und Linux), wie in den meisten Mac-Apps. In einem Word-Tab bleibt die Tastenkombination Tiefgestellt; öffnen Sie die Einstellungen dort über das App-Menü (Mac) oder über Menü (☰) ▸ Einstellungen… (Windows und Linux).
 
 ![Die Tastenkürzel-Tabelle von Word selbst: die Aktion links, die Tastenkombination rechts, gruppiert nach Datei, Bearbeiten, Textformatierung, Absatzformatierung, Einfügen, Überprüfen und Werkzeuge, Ansicht](img/word-shortcuts.png)
 
@@ -278,18 +280,19 @@ Excels Kürzel für den Filter, Ctrl+Shift+L, bewirkt unter Windows und Linux ni
 
 ### Fenster
 
-| Aktion                                                           | macOS      | Windows / Linux |
-| ---------------------------------------------------------------- | ---------- | --------------- |
-| Arbeitsmappe speichern                                           | ⌘S         | Ctrl+S          |
-| Speichern unter                                                  | ⇧⌘S        | Ctrl+Shift+S    |
-| Arbeitsmappe öffnen                                              | ⌘O         | Ctrl+O          |
-| Drucken                                                          | ⌘P         | Ctrl+P          |
-| Arbeitsmappe schließen (macOS) / App beenden (Windows und Linux) | ⌘W         | Ctrl+Q          |
-| Benutzerhandbuch öffnen                                          | F1         | F1              |
-| Vergrößern                                                       | ⌘=         | Ctrl+=          |
-| Mit dem Mausrad zoomen                                           | ⌘ + rollen | Ctrl + rollen   |
-| Formeln in den Zellen ein- oder ausblenden                       | ⌘`         | Ctrl+`          |
-| Formelleiste ausklappen oder einklappen                          | ⌘⇧U        | Ctrl+Shift+U    |
+| Aktion                                                                                    | macOS      | Windows / Linux |
+| ----------------------------------------------------------------------------------------- | ---------- | --------------- |
+| Arbeitsmappe speichern                                                                    | ⌘S         | Ctrl+S          |
+| Speichern unter                                                                           | ⇧⌘S        | Ctrl+Shift+S    |
+| Arbeitsmappe öffnen                                                                       | ⌘O         | Ctrl+O          |
+| Drucken                                                                                   | ⌘P         | Ctrl+P          |
+| Arbeitsmappe schließen (macOS) / App beenden (Windows und Linux)                          | ⌘W         | Ctrl+Q          |
+| Benutzerhandbuch öffnen                                                                   | F1         | F1              |
+| Vergrößern                                                                                | ⌘=         | Ctrl+=          |
+| Mit dem Mausrad zoomen                                                                    | ⌘ + rollen | Ctrl + rollen   |
+| Formeln in den Zellen ein- oder ausblenden                                                | ⌘`         | Ctrl+`          |
+| Formelleiste ausklappen oder einklappen                                                   | ⌘⇧U        | Ctrl+Shift+U    |
+| Schaltfläche der Symbolleiste für den Schnellzugriff nach Position ausführen (1. bis 10.) |            | Alt+1 … Alt+0   |
 
 ## Slides
 
@@ -631,6 +634,8 @@ Diese Tasten gelten, solange der Tab HWP/HWPX im Vordergrund ist und das Dokumen
 | Weitersuchen          | ⌃L          | Ctrl+L                       |
 | Rückwärts suchen      | ⌃Q, L       | Ctrl+Q, L                    |
 | Gehe zu               | ⌥G          | Alt+G                        |
+| Zum Dokumentanfang    | ⌃⇞          | Ctrl+PageUp                  |
+| Zum Dokumentende      | ⌃⇟          | Ctrl+PageDown                |
 | Dokumente vergleichen | ⌥⇧V         | Alt+Shift+V                  |
 
 ### Zeichen
@@ -757,3 +762,5 @@ Sie gelten nur, wenn der Cursor in einer leeren Tabellenzelle steht. Getrennte T
 | Zum Tab „Start“ (außerhalb einer Tabelle) | ⇧⌘H   | Ctrl+Shift+H    |
 
 Eine Taste wie `Ctrl+N,T` bedeutet: Ctrl+N drücken, loslassen und dann T drücken. `F5 → S` heißt: mit F5 einen Zellblock auswählen und dann S drücken. `Ctrl+1 … Ctrl+0` stehen für die erste bis zehnte Formatvorlage des Dokuments; `Ctrl+Alt+1 … Ctrl+Alt+0` wenden dieselben Formatvorlagen an. Ist ein Zellblock ausgewählt, ist `Ctrl+Shift+S` (unter macOS `⇧⌘S`) die Blocksumme; sonst speichert diese Taste unter einem neuen Namen.
+
+Mit der Maus gilt wie in Hangul: Ein Doppelklick markiert ein Wort, ein Dreifachklick den ganzen Absatz, und ein Doppelklick mit gedrückter Taste und Ziehen erweitert die Markierung wortweise. Das gilt auch beim Bearbeiten einer Kopf- oder Fußzeile oder einer Fußnote. Beim Kopieren eines Zellblocks (`Ctrl+C`) werden der Text der Zellen und die Tabelle selbst kopiert; im Fließtext eingefügt entsteht dieselbe Tabelle neu. Steht nur der Cursor in einer Zelle einer anderen Tabelle, öffnet das Einfügen den Dialog Paste Cells: ab dieser Zelle überschreiben (Zellen außerhalb der Tabelle entfallen) oder die Zellen oberhalb, unterhalb, links oder rechts einfügen.

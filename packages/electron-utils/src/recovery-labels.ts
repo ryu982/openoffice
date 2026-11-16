@@ -242,6 +242,17 @@ export const RECOVERY_PROMPT_STRINGS = defineStrings({
     unprotectable:
       'Tài liệu này được bảo vệ bằng mật khẩu nên không thể giữ bản sao khôi phục. Nếu ứng dụng đóng đột ngột, những thay đổi chưa lưu sẽ không thể khôi phục. Hãy lưu thường xuyên.',
   } satisfies Keys,
+  tr: {
+    message: '“{name}” dosyasında kaydedilmemiş değişiklikler var.',
+    detail:
+      'Geçen sefer kaydedilmeyen değişiklikler bir kurtarma kopyasında tutuldu. Geri yüklensin mi? “Yoksay” dosyayı en son kaydedilen haliyle açar.',
+    fileChanged:
+      'Kopya oluşturulduktan sonra dosya değişti. Başka bir program veya eşitleme hizmeti dosyayı düzenlemiş olabilir.',
+    restore: 'Geri yükle',
+    discard: 'Yoksay',
+    unprotectable:
+      'Bu belge parola ile korunuyor, bu nedenle kurtarma kopyası tutulamaz. Uygulama beklenmedik şekilde kapanırsa kaydedilmemiş değişiklikler geri yüklenemez. Sık sık kaydedin.',
+  } satisfies Keys,
 })
 
 const t = createI18n(RECOVERY_PROMPT_STRINGS)

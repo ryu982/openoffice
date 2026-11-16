@@ -30,7 +30,12 @@
 import { resolve } from 'node:path'
 import type { HandoffEditor } from './handoff-editors'
 
-export { HANDOFF_EDITORS, isHandoffEditor, type HandoffEditor } from './handoff-editors'
+export {
+  HANDOFF_EDITORS,
+  handoffEditorTakesAttachments,
+  isHandoffEditor,
+  type HandoffEditor,
+} from './handoff-editors'
 
 /** the editor of each document extension a template may have (spec 5.7) */
 const EDITOR_BY_EXTENSION: Readonly<Record<string, HandoffEditor>> = {
@@ -170,6 +175,18 @@ export interface SkillHandoff {
   text: string
   chips: HandoffSkillChip[]
   preview?: SkillHandoffPreview | undefined
+  /**
+   * The asking tab's saved document (its path), attached by the receiving
+   * panel through its own attachment route before it sends. Only a saved
+   * document without unsaved changes is ever put here.
+   */
+  attach?: string[] | undefined
+  /**
+   * The app's own words to the model about this hand-off (what the new
+   * document already holds), sent with the request and not shown as the
+   * person's. Never text a model wrote.
+   */
+  note?: string | undefined
   /** ms since epoch */
   createdAt: number
 }

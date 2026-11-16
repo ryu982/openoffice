@@ -34,6 +34,7 @@ import { realCliRunner } from './real-cli'
  */
 
 const DEFAULT_NAMES = [
+  'apply_diagram_ops',
   'apply_ops',
   'apply_sheet_ops',
   'apply_slide_ops',
@@ -43,7 +44,9 @@ const DEFAULT_NAMES = [
   'insert_picture',
   'open_documents',
   'open_in_genoffice',
+  'read_blocks',
   'read_deck',
+  'read_diagram',
   'read_document',
   'read_docx',
   'read_hwp',
@@ -81,6 +84,8 @@ function docsControl(): { control: DocsControl; calls: Array<Record<string, unkn
       switch (command) {
         case 'read_document':
           return { blocks: [{ index: 0, text: 'Quarterly Report' }], text: 'Quarterly Report' }
+        case 'read_blocks':
+          return { text: '<h1>Quarterly Report</h1><p>Full body text.</p>' }
         case 'insert_content':
           return { summary: 'inserted', mutated: true }
         case 'replace_blocks':
@@ -273,7 +278,18 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'xmind',
         'hwp',
         'epub',
+        'drawio',
       ])
+      // the diagram entry: editor formats only, no session, generator or file reader
+      expect(infoJson.families.find((f) => f.family === 'drawio')).toEqual({
+        family: 'drawio',
+        label: 'diagram',
+        editor: {
+          open: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+          save: ['drawio', 'dio', 'drawio.svg', 'drawio.png'],
+          export: ['png', 'svg', 'pdf'],
+        },
+      })
       // the book entry (spec: get_app_info lists it with its editor formats only)
       expect(infoJson.families.find((f) => f.family === 'epub')).toEqual({
         family: 'epub',
@@ -284,7 +300,7 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
       expect(infoJson.families.find((f) => f.family === 'xmind')).toEqual({
         family: 'xmind',
         label: 'mind map',
-        editor: { open: ['xmind'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
+        editor: { open: ['xmind', 'mm'], save: ['xmind'], export: ['png', 'pdf', 'md'] },
       })
       // the format registry's editor truth survives the wire
       expect(infoJson.families.find((f) => f.family === 'xlsx')!.editor.open).toEqual([
@@ -293,7 +309,19 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'xls',
         'csv',
         'tsv',
+        'ods',
       ])
+
+      // the diagram tools take their schema from DIAGRAM_OPS over the wire: an
+      // op the planner would judge passes the schema, an unknown op name does not
+      const noApp = await call(client, 'apply_diagram_ops', {
+        ops: [{ op: 'add_page', name: 'Two' }],
+      })
+      expect(noApp.isError).toBe(true)
+      expect(noApp.text).toMatch(/not running/)
+      const badOp = await call(client, 'apply_diagram_ops', { ops: [{ op: 'explode' }] })
+      expect(badOp.isError).toBe(true)
+      expect(badOp.text).not.toMatch(/not running/)
 
       // ── 3. read_docx error paths ──────────────────────────────────────────
       const relative = await call(client, 'read_docx', { path: 'relative.docx' })
@@ -329,6 +357,15 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
       const read = await call(client, 'read_document', {})
       expect(read.isError).toBe(false)
       expect((read.json as { text: string }).text).toContain('Quarterly Report')
+
+      const blocks = await call(client, 'read_blocks', {
+        startBlockIndex: 0,
+        endBlockIndex: 0,
+      })
+      expect(blocks.isError).toBe(false)
+      expect((blocks.json as { text: string }).text).toBe(
+        '<h1>Quarterly Report</h1><p>Full body text.</p>',
+      )
 
       // ── 5. cross-family refusal (schema-valid, host-level) ────────────────
       // a second session switches the family; the docx content tool now refuses

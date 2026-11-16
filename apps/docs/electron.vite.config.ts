@@ -16,6 +16,7 @@ const localAlias = {
   ),
   '@genoffice/docx-engine': resolve(__dirname, '../../packages/docx-engine/src/index.ts'),
   '@genoffice/odt-engine': resolve(__dirname, '../../packages/odt-engine/src/index.ts'),
+  '@genoffice/docx2hwp': resolve(__dirname, '../../packages/docx2hwp/src/index.ts'),
 }
 
 export default defineConfig({
@@ -29,7 +30,10 @@ export default defineConfig({
       externalizeDepsPlugin({
         exclude: [
           '@genoffice/docx-engine',
+          // the Hangul export's converter, run in its worker thread
+          '@genoffice/docx2hwp',
           '@genoffice/electron-utils',
+          '@genoffice/print-layout',
           '@genoffice/font-metrics',
           '@genoffice/odt-engine',
           // the template font list the media scheme serves from

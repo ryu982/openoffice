@@ -250,10 +250,10 @@ describe('Quick Look embedded thumbnail and file extractor', () => {
   })
 })
 
-describe('Quick Look 21-language dictionary', () => {
+describe('Quick Look 22-language dictionary', () => {
   const keys = Object.keys(quickLookStrings.zh) as QuickLookStringKey[]
 
-  it('populates every key across all 21 supported languages and brands product names', () => {
+  it('populates every key across all 22 supported languages and brands product names', () => {
     for (const lang of LANGS) {
       for (const key of keys) {
         const text = quickLookText(lang, key, { n: 3 })

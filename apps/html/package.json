@@ -28,6 +28,7 @@
     "@genoffice/odt-engine": "*",
     "@genoffice/file-parse": "*",
     "@genoffice/i18n": "*",
+    "@genoffice/print-layout": "*",
     "@genoffice/project-store": "*",
     "@genoffice/ui": "*",
     "@lezer/highlight": "^1.2.3",

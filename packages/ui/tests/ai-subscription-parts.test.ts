@@ -85,9 +85,13 @@ describe('AiSubscriptionCard', () => {
       "OpenAI's official install command runs in a new terminal window.",
       en.installReturnNote,
     ])
-    expect(actionsShown()).toEqual(['install', 'install-help'])
+    expect(actionsShown()).toEqual(['install', 'recheck', 'install-help'])
     click('[data-action="install"]')
     expect(actions.onInstall).toHaveBeenCalledExactlyOnceWith('codex')
+    // installed outside the app (the vendor's guide, a terminal): the card can look again
+    expect(host.querySelector('[data-action="recheck"]')!.className).toBe('ai-sub-btn')
+    click('[data-action="recheck"]')
+    expect(actions.onRecheck).toHaveBeenCalledExactlyOnceWith('codex')
     click('[data-action="install-help"]')
     expect(actions.onOpenInstallHelp).toHaveBeenCalledExactlyOnceWith('codex')
   })

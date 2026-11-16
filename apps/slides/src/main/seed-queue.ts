@@ -20,6 +20,8 @@ export interface SlidesSeedOptions {
   recoveryId?: RecoveryIdentity | undefined
   /** the open password of a restored copy that was encrypted: every write re-encrypts with it */
   password?: string | undefined
+  /** the legacy format the deck was converted from (`ppt`): the tab tells the person once */
+  importedFrom?: string | undefined
 }
 
 /** queued decks by webContents id: one per new tab at most */

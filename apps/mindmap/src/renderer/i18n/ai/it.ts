@@ -38,10 +38,6 @@ export const it = {
   aiRetry: 'Riprova',
   aiCopyReplyTitle: 'Copia risposta',
   aiRegenerateTitle: 'Rigenera',
-  aiTurnsTitle: "Annulla un turno dell'IA",
-  aiRollback: 'Ripristina',
-  aiRollbackIncomplete:
-    'Una parte di quel turno non è stata annullata: la cronologia degli annullamenti della mappa non arriva più così indietro.',
   aiUnknownError: 'Richiesta IA non riuscita, riprova',
   aiTimeoutError: 'Timeout della risposta IA',
   aiCreditsExhausted: 'Crediti esauriti — ricarica presso il tuo provider di IA',

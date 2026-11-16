@@ -42,6 +42,7 @@ Klik kanan di mana saja pada isi dokumen — menu menyesuaikan dengan yang Anda 
 - **Papan klip**: potong / salin / tempel / **tempel sebagai teks biasa**.
 - **Font, paragraf**: ubah keluarga dan ukuran font, tebal/miring/garis bawah, perataan/indentasi/spasi tanpa harus membuka pita.
 - **Sinonim**: menampilkan sinonim untuk kata yang dipilih; klik salah satu untuk mengganti.
+- **Jelaskan dengan kata sederhana** (AI): mengirim bagian yang dipilih ke panel AI agar dijelaskan dengan kata sederhana dalam bahasa antarmuka, lalu langsung menjalankannya. Tanpa pilihan, item ini mati, dan teks yang disembunyikan dari AI tidak dikirim.
 - **Terjemahkan** (AI): terjemahkan bagian yang dipilih ke bahasa target (Inggris, Tionghoa Sederhana, Jepang, Korea, Prancis, Jerman, Spanyol, ...) lewat panel AI.
 - **Komentar Baru**: lampirkan komentar pada bagian yang dipilih.
 - **Ejaan** (pada kata yang salah eja): pengganti yang disarankan, abaikan semua, tambahkan ke kamus, atur bahasa pemeriksaan.
@@ -66,7 +67,7 @@ Klik kanan di mana saja pada isi dokumen — menu menyesuaikan dengan yang Anda 
 ## AI
 
 - Tombol AI pada pita dan panel samping: tulis ulang, perluas, terjemahkan, ringkas, sisipkan tabel, ditambah instruksi bebas.
-- Setiap giliran AI menyimpan snapshot lebih dulu; gulir balik dari daftar versi, dan pengguliran balik itu sendiri bisa dibatalkan.
+- Bagian yang diubah AI ditandai kuning. **Batalkan perubahan ini** pada kartu di bawah balasannya membatalkan giliran itu secara utuh (giliran sesudahnya ikut dibatalkan), dan pengguliran balik itu sendiri bisa dibatalkan.
 
 ## Menyimpan dan mengekspor
 
@@ -76,4 +77,4 @@ Klik kanan di mana saja pada isi dokumen — menu menyesuaikan dengan yang Anda 
 
 ## Mencetak
 
-ctrl+P melalui dialog sistem, dengan halaman yang tampil persis seperti yang akan tercetak (WYSIWYG).
+ctrl+P membuka jendela cetak. Pilih printer, jumlah salinan, cetak bolak-balik, dan rentang (termasuk pilihan); di **Tata letak halaman** Anda bisa memilih beberapa halaman per lembar, buklet, poster, label, sisi ganjil atau genap, dan skala abu-abu (lihat [Operasi file](help://file-ops)).

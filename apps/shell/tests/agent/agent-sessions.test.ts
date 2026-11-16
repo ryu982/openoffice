@@ -2,7 +2,15 @@
  * Agent sessions in the shell (decision 0032): which folders may be a project,
  * what a session starts with, who may drive it, and what the window is shown.
  */
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -16,11 +24,13 @@ import type { AiSettings, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import { normalizeAiSettings } from '@genoffice/ai-provider'
 import {
   agentInstructions,
+  agentInstructionsAndCuts,
   agentProtectedPaths,
   createAgentManager,
   openableProjectFile,
   projectFolderProblem,
 } from '../../src/main/agent/agent-sessions'
+import { sweepAgentSessionFolders } from '../../src/main/agent/agent-session-folders'
 import {
   AGENT_RECENT_LIMIT,
   normalizeAgentPrefs,
@@ -84,6 +94,16 @@ describe('project folders', () => {
     expect(projectFolderProblem(join(home, '.codex'), home, guards)).toBe('protected')
   })
 
+  it('refuses a folder in a protected folder whose name starts with ".."', () => {
+    const home = temp()
+    const userData = join(home, 'AppData', 'IeumOffice')
+    const guards = agentProtectedPaths(home, userData)
+    for (const inside of [join(home, '.claude', '..x'), join(userData, '..config')]) {
+      mkdirSync(inside, { recursive: true })
+      expect(projectFolderProblem(inside, home, guards), inside).toBe('protected')
+    }
+  })
+
   it('refuses a relative path, a missing folder and a file', () => {
     const home = temp()
     writeFileSync(join(home, 'a.txt'), 'x')
@@ -98,6 +118,15 @@ describe('project folders', () => {
     expect(openableProjectFile(project, 'out.pptx')).toBe(join(project, 'out.pptx'))
     expect(openableProjectFile(project, join(project, '..', 'elsewhere.pptx'))).toBeUndefined()
     expect(openableProjectFile(project, 'missing.pptx')).toBeUndefined()
+  })
+
+  it('opens a file in a project folder whose name starts with ".."', () => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'out.pptx'), 'x')
+    expect(openableProjectFile(project, join('..x', 'out.pptx'))).toBe(
+      join(project, '..x', 'out.pptx'),
+    )
   })
 })
 
@@ -115,6 +144,83 @@ describe('instructions', () => {
     expect(codex).toContain('Use formal Korean.')
     expect(codex).not.toContain('Agents file.')
     expect(codex).not.toContain('ieumoffice-editor')
+  })
+
+  it('keeps the limit on a long project note, says where the rest is, and reports the cut', async () => {
+    const project = temp()
+    const long = `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`
+    writeFileSync(join(project, 'CLAUDE.md'), long)
+    writeFileSync(join(project, 'AGENTS.md'), 'Agents file.')
+    const claude = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(claude.truncated).toEqual(['CLAUDE.md'])
+    expect(claude.text).toContain('a'.repeat(32_000))
+    expect(claude.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(claude.text).toContain(
+      `(Only the first 32000 characters of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file with the Read tool.)`,
+    )
+    expect(claude.text).toContain('Agents file.')
+    // Codex has no Read tool: it reads the file with its own tools
+    const codex = await agentInstructionsAndCuts('codex', project, 'ko', false)
+    expect(codex.truncated).toEqual(['CLAUDE.md'])
+    expect(codex.text).toContain(
+      `of ${join(project, 'CLAUDE.md')} are given above. When the task needs the rest, read the file.)`,
+    )
+    expect(codex.text).not.toContain('Read tool')
+    expect(await agentInstructions('codex', project, 'ko', false)).toBe(codex.text)
+  })
+
+  it('adds no "read the rest" line for a note that links to a file outside the project', async (ctx) => {
+    const project = temp()
+    const outside = join(temp(), 'CLAUDE.md')
+    writeFileSync(outside, `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(outside, join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    // the window still says the instructions were cut
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain('a'.repeat(32_000))
+    expect(result.text).not.toContain('TAIL-PAST-THE-LIMIT')
+    expect(result.text).not.toContain('Only the first')
+    expect(result.text).not.toContain(outside)
+  })
+
+  it('keeps the "read the rest" line for a note linking to a folder named "..x" inside the project', async (ctx) => {
+    const project = temp()
+    mkdirSync(join(project, '..x'))
+    writeFileSync(join(project, '..x', 'CLAUDE.md'), `${'a'.repeat(32_000)}TAIL-PAST-THE-LIMIT`)
+    try {
+      symlinkSync(join(project, '..x', 'CLAUDE.md'), join(project, 'CLAUDE.md'), 'file')
+    } catch {
+      // creating a file link needs a permission some Windows accounts lack
+      ctx.skip()
+    }
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`characters of ${join(project, 'CLAUDE.md')} are given above`)
+  })
+
+  it('never cuts a note between the two halves of a character', async () => {
+    const project = temp()
+    // the emoji's first half is character 32,000: the cut keeps neither half
+    writeFileSync(join(project, 'CLAUDE.md'), `${'a'.repeat(31_999)}\u{1F600}b`)
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual(['CLAUDE.md'])
+    expect(result.text).toContain(`${'a'.repeat(31_999)}\n\n(Only the first`)
+    expect(result.text).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    )
+  })
+
+  it('reports no cut and adds no line for notes within the limit', async () => {
+    const project = temp()
+    writeFileSync(join(project, 'CLAUDE.md'), 'a'.repeat(32_000))
+    const result = await agentInstructionsAndCuts('claude-code', project, 'ko', true)
+    expect(result.truncated).toEqual([])
+    expect(result.text).not.toContain('Only the first')
   })
 
   it('points to the two skill tools only when the app tools are there', async () => {
@@ -266,6 +372,39 @@ describe('starting a session', () => {
     expect(options.protectedPaths).toContain(join(home, 'AppData', 'IeumOffice'))
   })
 
+  it('tells the window which project notes the instructions carry only the start of', async () => {
+    const { m, project, claude } = manager()
+    const plain = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(plain.ok && plain.instructionsTruncated).toBeUndefined()
+    writeFileSync(join(project, 'AGENTS.md'), 'x'.repeat(40_000))
+    const cut = await m.start(2, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    expect(cut.ok && cut.instructionsTruncated).toEqual(['AGENTS.md'])
+    expect(claude.mock.calls[1]![0].instructions).toContain(
+      `characters of ${join(project, 'AGENTS.md')} are given above`,
+    )
+  })
+
+  it('passes on the model and the effort chosen for that program', async () => {
+    const { m, project, claude } = manager({
+      settings: {
+        providers: {
+          ...normalizeAiSettings({ providers: {} }).providers,
+          'claude-code': { apiKey: '', model: 'opus', effort: 'high' },
+        },
+      },
+    })
+    await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+    expect(claude.mock.calls[0]![0]).toMatchObject({ model: 'opus', effort: 'high' })
+  })
+
   it('names the window and session the MCP server’s skill tools answer to, and gives the window the session’s skills', async () => {
     const { m, project, home, startAppMcp } = manager()
     const result = await m.start(4, {
@@ -315,7 +454,7 @@ describe('starting a session', () => {
         projectRoot: signedOut.project,
         mode: 'ask-commands',
       }),
-    ).toEqual({ ok: false, reason: 'not-connected' })
+    ).toEqual({ ok: false, failure: { reason: 'not-connected' } })
     const half = manager({
       statuses: {
         codex: {
@@ -328,10 +467,7 @@ describe('starting a session', () => {
     })
     expect(
       await half.m.start(1, { provider: 'codex', projectRoot: half.project, mode: 'ask-commands' }),
-    ).toEqual({
-      ok: false,
-      reason: 'not-connected',
-    })
+    ).toEqual({ ok: false, failure: { reason: 'not-connected' } })
     expect(half.codex).not.toHaveBeenCalled()
   })
 
@@ -339,10 +475,7 @@ describe('starting a session', () => {
     const { m, home, claude } = manager()
     expect(
       await m.start(1, { provider: 'claude-code', projectRoot: home, mode: 'ask-commands' }),
-    ).toEqual({
-      ok: false,
-      reason: 'bad-folder',
-    })
+    ).toEqual({ ok: false, failure: { reason: 'bad-folder' } })
     expect(claude).not.toHaveBeenCalled()
   })
 
@@ -354,8 +487,76 @@ describe('starting a session', () => {
       projectRoot: project,
       mode: 'ask-commands',
     })
-    expect(result).toMatchObject({ ok: false, reason: 'start-failed', kind: 'unsafe-tools' })
+    expect(result).toMatchObject({
+      ok: false,
+      failure: { reason: 'run-error', kind: 'unsafe-tools' },
+    })
     expect(mcpStop).toHaveBeenCalled()
+  })
+})
+
+describe('a program turned off in this app (decision 0114)', () => {
+  it('starts no session on it, whatever its status says', async () => {
+    const { m, project, claude } = manager({
+      settings: { subscriptionOff: { 'claude-code': true } },
+    })
+    expect(
+      await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' }),
+    ).toEqual({ ok: false, failure: { reason: 'not-connected' } })
+    expect(claude).not.toHaveBeenCalled()
+  })
+
+  it('starts no program when it is turned off while the session is being prepared', async () => {
+    const settings: Partial<AiSettings> = {}
+    const { m, project, claude, mcpStop, startAppMcp } = manager({ settings })
+    startAppMcp.mockImplementationOnce(async () => {
+      settings.subscriptionOff = { 'claude-code': true }
+      return { url: 'http://127.0.0.1:5/mcp', token: 't', stop: mcpStop }
+    })
+    expect(
+      await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' }),
+    ).toEqual({ ok: false, failure: { reason: 'run-error', kind: 'off-in-app' } })
+    expect(claude).not.toHaveBeenCalled()
+    expect(mcpStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('ends a program turned off while its runner was starting it', async () => {
+    const settings: Partial<AiSettings> = {}
+    const { m, project, claude, session, mcpStop } = manager({ settings })
+    claude.mockImplementationOnce(async () => {
+      settings.subscriptionOff = { 'claude-code': true }
+      return session
+    })
+    expect(
+      await m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' }),
+    ).toEqual({ ok: false, failure: { reason: 'run-error', kind: 'off-in-app' } })
+    expect(session.stopped).toBe(1)
+    expect(mcpStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends nothing more once it is turned off, and ends the session', async () => {
+    const settings: Partial<AiSettings> = {}
+    const { m, project, session, emitted } = manager({ settings })
+    const result = await m.start(1, {
+      provider: 'claude-code',
+      projectRoot: project,
+      mode: 'ask-commands',
+    })
+    if (!result.ok) throw new Error('did not start')
+    await m.send(1, result.sessionId, 'one')
+    settings.subscriptionOff = { 'claude-code': true }
+    await m.send(1, result.sessionId, 'two')
+    expect(session.sent).toEqual(['one'])
+    expect(session.stopped).toBe(1)
+    expect(emitted.map(([, , event]) => event)).toContainEqual(
+      expect.objectContaining({ type: 'error', kind: 'off-in-app' }),
+    )
+    await expect(m.send(1, result.sessionId, 'three')).rejects.toThrow()
+  })
+
+  it('shows it as off in the window, apart from a program that is not connected', () => {
+    const off = { provider: 'codex', state: 'off', meteredAccepted: false } as AiSubscriptionStatus
+    expect(agentConnections({ codex: off }, {}).codex).toBe('off')
   })
 })
 
@@ -451,6 +652,157 @@ describe('driving a session', () => {
     m.stopAll()
     expect(existsSync(sessionDir)).toBe(false)
   })
+
+  it('removes the session folder when its window closes', async () => {
+    const { m, project, claude } = manager()
+    await m.start(3, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+    const { sessionDir } = claude.mock.calls[0]![0]
+    m.stopOwner(3)
+    await vi.waitFor(() => expect(existsSync(sessionDir)).toBe(false))
+  })
+
+  it('removes the folder of a session whose window closed as the app quits', async () => {
+    const { m, project, claude, session } = manager()
+    await m.start(3, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+    const { sessionDir } = claude.mock.calls[0]![0]
+    // quitting closes the agent window first, then the app's quit hook runs, with no wait between
+    m.stopOwner(3)
+    m.stopAll()
+    expect(existsSync(sessionDir), 'gone when the quit hook returns').toBe(false)
+    expect(session.stopped, 'the program is stopped once').toBe(1)
+  })
+
+  it('leaves a session folder another start keeps while this app runs, and removes once it is gone', async () => {
+    const tmp = temp()
+    for (const name of ['TMP', 'TEMP', 'TMPDIR']) vi.stubEnv(name, tmp)
+    try {
+      const { m, project, claude } = manager()
+      await m.start(3, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+      const { sessionDir } = claude.mock.calls[0]![0]
+      await sweepAgentSessionFolders({ parent: tmp })
+      expect(existsSync(sessionDir), 'kept while its app runs').toBe(true)
+      // the app ended without quitting: its process is gone and its folder is still there
+      await sweepAgentSessionFolders({ parent: tmp, alive: () => false })
+      expect(existsSync(sessionDir), 'removed once its app is gone').toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+})
+
+describe('a window that closes, or an app that quits, while the session is being prepared', () => {
+  const STEPS = ['folder', 'app-mcp', 'relays', 'skills', 'runner'] as const
+  type Step = (typeof STEPS)[number]
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  /** a manager whose start waits at `pauseAt` until the test lets it go on */
+  function preparing(pauseAt: Step) {
+    const home = temp()
+    const project = join(home, 'Project')
+    mkdirSync(project)
+    // the session folders of this manager, and only its, land here
+    const tmp = join(home, 'tmp')
+    mkdirSync(tmp)
+    for (const name of ['TMP', 'TEMP', 'TMPDIR']) vi.stubEnv(name, tmp)
+    let goOn!: () => void
+    const paused = new Promise<void>((resolve) => {
+      goOn = resolve
+    })
+    let reached!: () => void
+    const atPause = new Promise<void>((resolve) => {
+      reached = resolve
+    })
+    const step = async (name: Step): Promise<void> => {
+      if (name !== pauseAt) return
+      reached()
+      await paused
+    }
+    const session = fakeSession()
+    const claude = vi.fn(async () => {
+      await step('runner')
+      return session
+    })
+    const mcpStop = vi.fn(async () => undefined)
+    const startAppMcp = vi.fn(async () => {
+      await step('app-mcp')
+      return { url: 'http://127.0.0.1:5/mcp', token: 't', stop: mcpStop }
+    })
+    const relaysStop = vi.fn(async () => undefined)
+    const startRelays = vi.fn(async () => {
+      await step('relays')
+      return { relays: [], keepResultsInside: [], stop: relaysStop }
+    })
+    const m = createAgentManager({
+      runners: { claude, codex: vi.fn() },
+      statuses: () => ({ 'claude-code': ready('claude-code') }),
+      aiSettings: () => normalizeAiSettings({ providers: {} }),
+      openDocuments: () => [],
+      userData: join(home, 'AppData', 'IeumOffice'),
+      homeDir: home,
+      language: () => 'ko',
+      startAppMcp,
+      startRelays,
+      buildSkills: async () => {
+        await step('skills')
+        return undefined
+      },
+      emit: () => undefined,
+    })
+    managers.push(m)
+    const start = () =>
+      m.start(1, { provider: 'claude-code', projectRoot: project, mode: 'ask-commands' })
+    return {
+      m,
+      tmp,
+      session,
+      claude,
+      startAppMcp,
+      mcpStop,
+      startRelays,
+      relaysStop,
+      start,
+      atPause,
+      goOn,
+    }
+  }
+
+  for (const pauseAt of STEPS) {
+    for (const how of ['the window closes', 'the app quits'] as const) {
+      it(`leaves nothing running when ${how} at step "${pauseAt}"`, async () => {
+        const p = preparing(pauseAt)
+        const started = p.start()
+        // the session folder is made before the first step the test can hold
+        if (pauseAt !== 'folder') await p.atPause
+        if (how === 'the window closes') p.m.stopOwner(1)
+        else p.m.stopAll()
+        p.goOn()
+
+        const result = await started
+        const reached = (step: Step): boolean => STEPS.indexOf(pauseAt) >= STEPS.indexOf(step)
+        if (pauseAt === 'runner') expect(p.session.stopped, 'the program it got ends').toBe(1)
+        else expect(p.claude, 'no program is started').not.toHaveBeenCalled()
+        expect(result).toEqual({ ok: false, failure: { reason: 'stopped' } })
+        expect(p.startAppMcp).toHaveBeenCalledTimes(reached('app-mcp') ? 1 : 0)
+        expect(p.mcpStop, 'the app MCP server is closed once').toHaveBeenCalledTimes(
+          reached('app-mcp') ? 1 : 0,
+        )
+        expect(p.startRelays).toHaveBeenCalledTimes(reached('relays') ? 1 : 0)
+        expect(p.relaysStop, 'the relays are closed once').toHaveBeenCalledTimes(
+          reached('relays') ? 1 : 0,
+        )
+        await vi.waitFor(() =>
+          expect(readdirSync(p.tmp), 'the session folder is removed').toEqual([]),
+        )
+
+        // nothing of it is left for the app's quit to end
+        p.m.stopAll()
+        expect(p.session.stopped).toBe(pauseAt === 'runner' ? 1 : 0)
+        expect(p.mcpStop).toHaveBeenCalledTimes(reached('app-mcp') ? 1 : 0)
+      })
+    }
+  }
 })
 
 describe('what the window is shown', () => {

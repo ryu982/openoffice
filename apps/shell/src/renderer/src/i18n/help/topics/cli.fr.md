@@ -53,7 +53,7 @@ ieumoffice docs apply brief.docx --ops ops.json
 `search`, `image` et `media` utilisent ce qui est configuré dans l’application sous Paramètres ▸ IA ▸ Avancé :
 
 - `search` fonctionne toujours. Elle utilise la recherche gratuite par défaut, ou le fournisseur de recherche dont vous avez sélectionné la clé.
-- `image` a besoin de la clé d’un fournisseur d’images. Dans cette version, un abonnement ne génère pas d’images.
+- `image` suit le choix de génération d’images des paramètres. Avec le choix par défaut, Forfait ChatGPT (programme Codex), il dessine avec votre forfait ChatGPT via le programme Codex, mais seulement si vous avez autorisé les abonnements pour les appels automatiques (**désactivé par défaut** ; voir [Connecter un agent de codage](help://mcp)). Sinon, il utilise la clé d’un fournisseur d’images configuré. `--model` est utilisé quand cette voie propose le modèle ; sinon la commande répond avec les modèles utilisables. Les images passées avec `--ref` fonctionnent sur les deux voies.
 - `media` sur une image utilise un fournisseur à clé lorsqu’il y en a un de configuré. Elle n’utilise votre abonnement Claude ou Codex que si vous l’avez autorisé, et c’est **désactivé par défaut** ; [Connecter un agent de codage](help://mcp) explique ce réglage et ses limites.
 - `media` sur une vidéo ou un fichier audio a besoin d’un fournisseur à clé qui prend en charge la vidéo.
 

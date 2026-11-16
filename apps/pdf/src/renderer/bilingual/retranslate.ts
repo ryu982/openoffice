@@ -4,9 +4,11 @@
  * the document job engine (the engine skips blocks already stored).
  *
  * The request and its check are the translation module's own: the block is
- * encoded with placeholders, sent with the translation instruction, and the
- * answer is decoded with the same placeholder rule. With no resend allowed
- * the call is made once. The block is keyed by the whole-page key the view
+ * encoded with placeholders (sentence by sentence when it has two or more,
+ * split by the document language), sent with the translation instruction,
+ * and the answer is decoded with the same placeholder rule. With no resend
+ * allowed the call is made once. Sentence ends that come back with a good
+ * answer are stored with it. The block is keyed by the whole-page key the view
  * computed (same text on one page is told apart by its occurrence), so the
  * result overwrites the stored block in place.
  *
@@ -17,15 +19,21 @@
  * - The translation's provider record is written only when there is none,
  *   like a page translation: translations from different AIs may mix.
  *
+ * With `mode` 'easy' the call asks for an easy explanation and every read
+ * and write goes to the easy results; a plain call passes no mode, as before.
+ *
  * The answer is document data: it is stored as text and nothing in it runs.
  */
+import { guessLanguageFromText } from '../../../../../packages/pdf-structure/src/epub/language'
 import { JobUnitFailure } from '../../../../../packages/pdf-structure/src/jobs/errors'
+import type { TranslationMode } from '../../../../../packages/pdf-structure/src/store/job-keys'
 import type { TranslationBlockKey } from '../../../../../packages/pdf-structure/src/store/keys'
 import type { TranslationBlockInput } from '../../../../../packages/pdf-structure/src/store/store'
 import {
   createTranslationModelCall,
   type TranslationSend,
 } from '../../../../../packages/pdf-structure/src/translate/call'
+import { runsText } from '../../../../../packages/pdf-structure/src/tree/inline'
 import type { InlineRun } from '../../../../../packages/pdf-structure/src/tree/types'
 import type { PdfStoreApi } from '../../shared/ipc'
 
@@ -42,6 +50,8 @@ export interface RetranslateUnit {
 export interface RetranslateOptions {
   docHash: string
   lang: string
+  /** 'easy': the easy explanation's block; default the plain translation */
+  mode?: TranslationMode
   unit: RetranslateUnit
   /** the one model call (no tools) */
   send: TranslationSend
@@ -49,6 +59,11 @@ export interface RetranslateOptions {
   /** what the translation's provider record names, when there is none yet */
   model: { provider: string; model: string }
   signal: AbortSignal
+  /**
+   * the document language for the sentence split, guessed from the whole tree
+   * (translationSourceLanguage); without it, guessed from this block's text
+   */
+  sourceLang?: string
 }
 
 export type RetranslateOutcome =
@@ -74,7 +89,17 @@ async function write(
 
 /** translate one stored block again; run errors (rate limit, sign-out, …) are thrown as they come */
 export async function retranslateBlock(o: RetranslateOptions): Promise<RetranslateOutcome> {
-  const call = createTranslationModelCall({ lang: o.lang, send: o.send, maxResends: 0 })
+  const sourceLang = o.sourceLang ?? guessLanguageFromText(runsText(o.unit.source))
+  const easy = o.mode === 'easy'
+  // a plain request stays exactly as it was: no mode field
+  const mode = easy ? { mode: 'easy' as const } : {}
+  const call = createTranslationModelCall({
+    lang: o.lang,
+    send: o.send,
+    maxResends: 0,
+    ...(sourceLang !== undefined ? { sourceLang } : {}),
+    ...mode,
+  })
   const item = {
     block: { runs: o.unit.source, pageFingerprint: o.unit.key.pageFingerprint, page: o.unit.page },
     key: o.unit.key,
@@ -95,10 +120,13 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
       docHash: o.docHash,
       lang: o.lang,
       blocks: [{ key: o.unit.key, status: 'failed', reason: result.reason }],
+      ...mode,
     })
     return { ok: false, reason: result.reason, stored: true }
   }
-  const stored = await o.store.translation(o.docHash, o.lang).catch(() => null)
+  const stored = await (
+    easy ? o.store.translation(o.docHash, o.lang, 'easy') : o.store.translation(o.docHash, o.lang)
+  ).catch(() => null)
   const hasMeta = !!(stored?.ok && stored.translation && stored.translation.provider !== null)
   if (!hasMeta) {
     await write(o.store, {
@@ -107,15 +135,21 @@ export async function retranslateBlock(o: RetranslateOptions): Promise<Retransla
       lang: o.lang,
       provider: o.model.provider,
       model: o.model.model,
+      ...mode,
     })
   }
   const block: TranslationBlockInput = { key: o.unit.key, status: 'translated', text: result.text }
   if (result.runs !== undefined) block.runs = result.runs
+  if (result.sourceSentenceEnds !== undefined && result.sentenceEnds !== undefined) {
+    block.sourceSentenceEnds = result.sourceSentenceEnds
+    block.sentenceEnds = result.sentenceEnds
+  }
   await write(o.store, {
     kind: 'translationBlocks',
     docHash: o.docHash,
     lang: o.lang,
     blocks: [block],
+    ...mode,
   })
   return { ok: true, text: result.text }
 }

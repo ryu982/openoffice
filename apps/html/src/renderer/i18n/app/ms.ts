@@ -46,6 +46,10 @@ export const ms = {
   saveFailedStatus: 'Gagal menyimpan',
   exportFailed: 'Eksport gagal',
   printFailed: 'Gagal mencetak: {error}',
+  printRangeEmpty: 'Dokumen ini mempunyai {count} halaman. Taip nombor halaman dalam julat itu.',
+  printPagesFailed: 'Tidak dapat mengira halaman untuk dicetak: {error}',
+  printLayoutSaved: 'Hasil susun atur telah disimpan sebagai PDF.',
+  printLayoutSaveFailed: 'Tidak dapat menyimpan PDF: {error}',
   exportHtmlSkipped: 'Dieksport, tetapi {count} aset tidak dapat disisipkan (cth. {first})',
   viewPreview: 'Pratonton',
   viewSplit: 'Terbelah',
@@ -79,7 +83,8 @@ export const ms = {
   slideThumbs: 'Slaid',
   slideThumbGo: 'Pergi ke slaid {n}',
   previewNeedsSave: 'Imej dan gaya relatif akan dipaparkan dalam pratonton selepas fail disimpan',
-  inspectHint: 'Klik elemen dalam pratonton untuk memilih, klik dua kali untuk menyunting teks',
+  inspectHint:
+    'Klik elemen dalam pratonton untuk memilih, klik dua kali untuk menyunting teks, Shift+klik atau {alt}+seret untuk memilih beberapa',
   nodeDynamic:
     'Elemen ini dicipta oleh skrip halaman dan tiada dalam sumber; sunting melalui sumber atau AI',
   nodeDynamicShort: 'dijana skrip',

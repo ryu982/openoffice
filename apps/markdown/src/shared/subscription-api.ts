@@ -5,6 +5,7 @@
 
 import type {
   AiSubscriptionProviderId,
+  AiSubscriptionUsage,
   SubscriptionConnectHelpPath,
   SubscriptionLaunchResult,
   SubscriptionLoginMode,
@@ -44,6 +45,8 @@ export interface SubscriptionApi {
   ): Promise<SubscriptionMeteredResult>
   /** the statuses changed (any window, any cause); returns an unsubscribe */
   onChanged(handler: (statuses: SubscriptionStatusMap) => void): () => void
+  /** usage a request outside the chat stream (a picture) reported, sent to every window; returns an unsubscribe */
+  onUsage(handler: (usage: AiSubscriptionUsage[]) => void): () => void
   /** open the vendor's install instructions in the default browser (shell only) */
   openInstallHelp(provider: AiSubscriptionProviderId): Promise<void>
   /** open the website's step-by-step connect help at the guide's path (shell only) */
@@ -55,3 +58,6 @@ export const SUBSCRIPTION_INSTALL_HELP_CHANNEL = 'home:open-subscription-install
 
 /** shell-registered: (SubscriptionConnectHelpPath | null) → void, opens the website's connect help */
 export const SUBSCRIPTION_CONNECT_HELP_CHANNEL = 'home:open-connect-help'
+
+/** main → every window: (AiSubscriptionUsage[]) the usage a picture request reported, the chat chunk's `subscription-usage` shape */
+export const SUBSCRIPTION_USAGE_CHANNEL = 'ai:subscription-usage-update'

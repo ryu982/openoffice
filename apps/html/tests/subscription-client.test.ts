@@ -112,7 +112,8 @@ describe('useSubscriptionConnection', () => {
   })
 
   it('checks again when the window regains focus after a sign-in was started', async () => {
-    let current = statusMap('signed-out', 'not-installed')
+    // Codex is found: a program not found would be looked for on every focus
+    let current = statusMap('signed-out', 'ready')
     const recheck = vi.fn(async () => current)
     const login = vi.fn(async () => ({ ok: true }))
     await mount({
@@ -133,7 +134,7 @@ describe('useSubscriptionConnection', () => {
     expect(login).toHaveBeenCalledWith('claude-code')
 
     // the sign-in happens in the vendor's own window; coming back picks up its result
-    current = statusMap('ready', 'not-installed')
+    current = statusMap('ready', 'ready')
     act(() => window.dispatchEvent(new Event('focus')))
     await settle()
     expect(recheck).toHaveBeenCalledWith(['claude-code'])

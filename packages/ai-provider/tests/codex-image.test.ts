@@ -1,13 +1,13 @@
 /**
- * Image generation through the Codex subscription is not part of this build
- * (see src/codex-image.ts). Loading its entry point must leave the feature
- * declared unavailable, which is what hides the Codex image option and sends an
- * image request to a key provider or to "unavailable".
+ * The Codex image entry point gives the generator and the model list, and
+ * loading it turns nothing on: until a process registers a generator and says
+ * so, a request that chose Codex goes to a key provider or to "unavailable".
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import * as codexImage from '../src/codex-image'
+import * as entry from '../src/index'
 import {
   codexImageGenerationAvailable,
   imageProviderSelection,
@@ -24,8 +24,21 @@ const source = readFileSync(
 const READY: AiSubscriptionStatus = { provider: 'codex', state: 'ready', meteredAccepted: false }
 
 describe('the Codex image entry point', () => {
+  it('gives the generator, the model list and the limits, from the package root too', () => {
+    expect(Object.keys(codexImage).sort()).toEqual([
+      'CODEX_IMAGE_MAX_BYTES',
+      'CODEX_IMAGE_MIN_VERSION',
+      'CODEX_IMAGE_TIMEOUT_MS',
+      'generateCodexImage',
+      'listCodexModels',
+    ])
+    expect(entry.generateCodexImage).toBe(codexImage.generateCodexImage)
+    expect(entry.listCodexModels).toBe(codexImage.listCodexModels)
+    expect(codexImage.CODEX_IMAGE_TIMEOUT_MS).toBe(300_000)
+    expect(codexImage.CODEX_IMAGE_MAX_BYTES).toBe(25 * 1024 * 1024)
+  })
+
   it('declares nothing available when it loads', () => {
-    expect(Object.keys(codexImage)).toEqual([])
     expect(codexImageGenerationAvailable()).toBe(false)
   })
 
@@ -36,9 +49,9 @@ describe('the Codex image entry point', () => {
     expect(imageProviderSelection({ media })).toBe('none')
   })
 
-  it('holds no code: nothing that starts a program, and no word of the login file', () => {
+  it('turns nothing on and names no login file', () => {
     const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
-    expect(code.trim()).toBe('export {}')
+    expect(code).not.toMatch(/setCodexImageGenerationAvailable/)
     expect(source).not.toMatch(/auth\.json/i)
     expect(source).not.toMatch(/CODEX_HOME/)
   })

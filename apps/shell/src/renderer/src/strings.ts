@@ -55,6 +55,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: '思维导图',
+    newDiagram: '图表',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF 工具',
     pdfToolsCardSub: '合并 · 拆分 · 整理',
@@ -81,6 +82,7 @@ export const strings = {
     filterMindmap: '思维导图',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: '图表',
     filterAria: '按类型筛选',
     // List / bulk actions
     fileCount: '{n} 个文件',
@@ -219,7 +221,8 @@ export const strings = {
     aiPanelStartCollapsed: '收起',
     aiPanelStartLast: '上次状态',
     setAuthorName: '用户名',
-    setAuthorNameDesc: '作为批注和修订的作者显示在 Docs、Sheets、Slides 中。留空则使用电脑账户名。',
+    setAuthorNameDesc:
+      '作为批注和修订的作者显示在 Docs、Sheets、Slides、PDF 中。留空则使用电脑账户名。',
     settings: '设置',
     setSecAccount: '账户',
     setSecGeneral: '通用',
@@ -254,6 +257,7 @@ export const strings = {
     setSubInstallFailed: '无法运行安装命令。请按照官方安装说明进行安装。',
     setSubLoginFailed: '无法开始登录。请确认程序已安装后重试。',
     setSubLogoutFailed: '无法退出登录。请稍后再试。',
+    setSubSwitchFailed: '无法保存设置，因此没有任何更改。请稍后再试。',
     setSubLogoutConfirm:
       '将在这台电脑上退出 {program} 的登录。在终端中使用的 {program} 也会一并退出登录。',
     setSubSwitchConfirm:
@@ -275,11 +279,14 @@ export const strings = {
     setAiHeadlessDesc:
       '允许由终端命令或其他程序（MCP）发起的生图、图片解析、PDF 翻译、AI 页面识读和书籍（EPUB）翻译使用你的 Claude 或 Codex 订阅。关闭时，这类请求只使用 key 方式的服务商。',
     setAiHeadlessWarning:
-      '没有每小时次数上限，程序可以发送任意多的请求，请求中可能包含整份文档的文字和页面图片。两家公司都不建议让程序自动使用订阅，你的账号可能会受到限制。',
+      '没有每小时次数上限，程序可以发送任意多的请求（例如生图），请求中可能包含整份文档的文字和页面图片。两家公司都不建议让程序自动使用订阅，你的账号可能会受到限制。',
     setAiHeadlessConfirm: '仍然开启',
-    setAiImageCodex: 'Codex 订阅',
+    setAiImageCodex: 'ChatGPT 套餐（Codex 程序）',
     setAiImageCodexHint:
-      'Codex 订阅已连接时，用该订阅生成图片。无法使用时，改用已设置好的 key 方式服务商。',
+      '用登录了 Codex 程序的 ChatGPT 套餐（Plus 及以上）生成图片。OpenAI 不允许通过本应用直接连接的 ChatGPT 生成图片。Codex 无法使用时，改用已设置好的 key 方式服务商。',
+    setAiImageCodexConnect:
+      '要用 ChatGPT 套餐生成图片，请用同一个 ChatGPT 账号连接 Codex 程序。OpenAI 不允许通过本应用直接连接的 ChatGPT 生成图片。',
+    setAiImageCodexConnectAction: '连接 Codex',
     setAiMediaNone: '未选择',
     setAiImageNoneHint:
       '未选择服务商，因此使用第一个能够生成图片的服务商。如果都未设置，则无法生成图片。',
@@ -319,6 +326,7 @@ export const strings = {
     intgCliPartDesc:
       '适合能运行终端命令的助手（Claude Code、Codex、Cursor 等）。安装 skill 后，助手会自己调用 ieumoffice 命令行创建、转换、读取和编辑文件，你不需要输入任何命令。',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: '这里是让其他 AI 程序使用 GenOffice。',
     intgMcpPartDesc:
       'MCP 是 AI 助手调用外部工具的通用协议。助手不能运行命令（如 Claude Desktop），或你想让它直接操作 GenOffice 窗口时用这条路。下面两种接法任选一种。',
     intgMcpStdioTitle: '由助手启动（推荐）',
@@ -384,11 +392,11 @@ export const strings = {
     setAiEndpointAdd: '添加端点',
     setAiEndpointRemove: '删除',
     setAiEndpointName: '名称',
-    setAiCodexPath: 'Codex 可执行文件',
-    setAiCodexPathHint: '仅自定义安装时填写；留空会自动检测。',
-    setAiCodexAutoPlaceholder: '留空自动检测（推荐）',
-    setAiCodexHint:
-      '自动查找并使用当前 Codex CLI，更新后无需重新选择；也可填写自定义路径。无需 API Key。',
+    setAiCliPath: '{name} 可执行文件',
+    setAiCliPathHint: '仅自定义安装时填写；留空会自动检测。',
+    setAiCliAutoPlaceholder: '留空自动检测（推荐）',
+    setAiCliHint:
+      '自动查找并使用当前 {name}，更新后无需重新选择；也可填写自定义路径。无需 API Key。',
     setAiSave: '保存',
     setAiSaved: '已保存',
     setAiTest: '测试连接',
@@ -477,6 +485,8 @@ export const strings = {
     freeStatusChecking: '正在检查…',
     freeStatusConnected: '已连接',
     freeStatusInUse: '已连接 · 使用中',
+    homeAiNeedsConnection: '需要连接',
+    homeEntryAiState: 'AI：{state}',
     freeUse: '使用此 AI',
     freeDisconnect: '断开连接',
     freeQuota: '今日免费请求剩余 {remaining} 次（共 {limit} 次）',
@@ -623,6 +633,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mind Map',
+    newDiagram: 'Diagram',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF tools',
     pdfToolsCardSub: 'Merge · split · organize',
@@ -633,11 +644,11 @@ export const strings = {
     greetAfternoon: 'Good afternoon',
     greetEvening: 'Good evening',
     greetAsk1: 'What would you like to create today?',
-    greetAsk2: 'Ready to get started?',
+    greetAsk2: 'Which document shall we open?',
     greetAsk3: 'What are you working on?',
     greetAsk4: 'Where shall we begin today?',
-    greetAsk5: 'Feeling creative?',
-    greetAsk6: "What's next on your mind?",
+    greetAsk5: 'Shall we make something new?',
+    greetAsk6: "What's next?",
     filterAll: 'All',
     filterDocs: 'Docs',
     filterSheets: 'Sheets',
@@ -648,6 +659,7 @@ export const strings = {
     filterMindmap: 'Mind Map',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagram',
     filterAria: 'Filter by type',
     fileCount: '{n} files',
     fileCountOne: '{n} file',
@@ -789,7 +801,7 @@ export const strings = {
     aiPanelStartLast: 'Last state',
     setAuthorName: 'User name',
     setAuthorNameDesc:
-      'Shown as the author of comments and tracked changes in Docs, Sheets and Slides. Leave blank to use your computer account name.',
+      'Shown as the author of comments and tracked changes in Docs, Sheets, Slides and PDF. Leave blank to use your computer account name.',
     settings: 'Settings',
     setSecAccount: 'Account',
     setSecGeneral: 'General',
@@ -827,6 +839,8 @@ export const strings = {
     setSubLoginFailed:
       'The sign-in could not be started. Check that the program is installed, then try again.',
     setSubLogoutFailed: 'The sign-out could not be completed. Try again in a moment.',
+    setSubSwitchFailed:
+      'The setting could not be saved, so nothing changed. Try again in a moment.',
     setSubLogoutConfirm:
       'This signs {program} out on this PC. {program} in a terminal is signed out as well.',
     setSubSwitchConfirm:
@@ -848,11 +862,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Allows image generation, image analysis, PDF translation, AI page reading and book (EPUB) translation requested by a terminal command or another program (MCP) to run on your Claude or Codex subscription. When off, those requests use key providers only.',
     setAiHeadlessWarning:
-      'There is no hourly limit, so a program can send as many requests as it likes, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.',
+      'There is no hourly limit, so a program can send as many requests as it likes, image generation included, and they may carry the whole text of a document and images of its pages. Neither company recommends letting a program use your subscription automatically, and your account may be restricted.',
     setAiHeadlessConfirm: 'Turn on anyway',
-    setAiImageCodex: 'Codex subscription',
+    setAiImageCodex: 'ChatGPT plan (Codex program)',
     setAiImageCodexHint:
-      'Images are generated on your Codex subscription while it is connected. When it cannot be used, a key provider that is set up is used instead.',
+      'Images are made on your ChatGPT plan (Plus or higher) signed in to the Codex program. OpenAI does not allow image generation through the app’s direct ChatGPT connection. When Codex cannot be used, a key provider that is set up is used instead.',
+    setAiImageCodexConnect:
+      'To make images with your ChatGPT plan, connect the Codex program with the same ChatGPT account. OpenAI does not allow image generation through the app’s direct ChatGPT connection.',
+    setAiImageCodexConnectAction: 'Connect Codex',
     setAiMediaNone: 'None selected',
     setAiImageNoneHint:
       'No provider is chosen, so the first one that can generate images is used. If none is set up, image generation is unavailable.',
@@ -877,8 +894,7 @@ export const strings = {
     intgStateMissing: 'Skill not installed',
     intgStateInstalled: 'Skill {v} installed · ready in your next chat',
     intgOtherToggle: 'My assistant is not listed',
-    intgOtherDesc:
-      'Pick any one of these three ways. They all install the same skill, so there is no need to do more than one.',
+    intgOtherDesc: 'Pick one of these three ways. They all install the same skill.',
     intgOtherFolderTitle: 'Any assistant that reads SKILL.md folders',
     intgOtherFolderDesc: 'Pick its skills folder and GenOffice writes the file there.',
     intgOtherZipTitle: 'Hand the file to the assistant',
@@ -897,8 +913,9 @@ export const strings = {
       'The assistant runs the ieumoffice command line itself; you never have to type it.',
     intgCliPartTitle: 'CLI · command line + skill',
     intgCliPartDesc:
-      'For assistants that can run terminal commands (Claude Code, Codex, Cursor and others). Once the skill is installed, the assistant calls the ieumoffice command line itself to create, convert, read and edit files; you never type a command.',
+      'For assistants that can run terminal commands (Claude Code, Codex, Cursor and others). Once the skill is installed, the assistant calls the ieumoffice command line itself to create, convert, read and edit files.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Here, other AI programs use GenOffice.',
     intgMcpPartDesc:
       'MCP is the common protocol AI assistants use to call external tools. Use it when your assistant cannot run commands (Claude Desktop, for example) or when you want it to drive the GenOffice window directly. Pick either of the two ways below.',
     intgMcpStdioTitle: 'Started by the assistant (recommended)',
@@ -966,11 +983,11 @@ export const strings = {
     setAiEndpointAdd: 'Add endpoint',
     setAiEndpointRemove: 'Remove',
     setAiEndpointName: 'Name',
-    setAiCodexPath: 'Codex executable',
-    setAiCodexPathHint: 'Only set this for a custom install; leave blank to auto-detect.',
-    setAiCodexAutoPlaceholder: 'Auto-detect (recommended)',
-    setAiCodexHint:
-      'Automatically finds the current signed-in Codex CLI after updates; a custom path is optional. No API key is needed.',
+    setAiCliPath: '{name} executable',
+    setAiCliPathHint: 'Only set this for a custom install; leave blank to auto-detect.',
+    setAiCliAutoPlaceholder: 'Auto-detect (recommended)',
+    setAiCliHint:
+      'Automatically finds the current signed-in {name} after updates; a custom path is optional. No API key is needed.',
     setAiSave: 'Save',
     setAiSaved: 'Saved',
     setAiTest: 'Test connection',
@@ -1041,13 +1058,13 @@ export const strings = {
     onbNext: 'Next',
     onbStart: 'Get started',
     onbStepAria: 'Page {n} of {total}',
-    onbBody3: 'No license fees. No ads. No watermarks.',
+    onbBody3: 'There are no license fees, ads or watermarks.',
     onbBack: 'Back',
     onbConnectTitle: 'Connect an AI',
     onbConnectSkipNote: 'You can skip this step and connect later in Settings → AI.',
     setFreeTitle: 'Use for free',
     setFreeDesc:
-      'No subscription? Connect a free AI and start right away. Free use has a daily limit.',
+      'Without a subscription, you can connect a free AI and start using it. Free use has a daily limit.',
     freeBadge: 'Free',
     freeOpenRouterDesc:
       'Connect with one button: sign up or sign in to OpenRouter in your browser and allow access.',
@@ -1064,6 +1081,8 @@ export const strings = {
     freeStatusChecking: 'Checking…',
     freeStatusConnected: 'Connected',
     freeStatusInUse: 'Connected · in use',
+    homeAiNeedsConnection: 'Needs connecting',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Use this AI',
     freeDisconnect: 'Disconnect',
     freeQuota: '{remaining} of {limit} free requests left today',
@@ -1074,14 +1093,14 @@ export const strings = {
     freePrivacy:
       "While you use it for free, what you send may be used to improve that company's AI. Take care with documents that hold personal information.",
     freeGeminiBilling: 'A key made in a Google project with billing turned on can be charged.',
-    onbFreeTitle: 'No subscription? Start for free',
+    onbFreeTitle: 'Start for free without a subscription',
     onbDoneTitle: 'You’re all set',
     onbDoneConnected: 'AI is connected: {provider}.',
     onbDoneNotConnected:
       'AI is not connected yet. You can connect a subscription or a free AI anytime in Settings → AI.',
-    helpSearchPlaceholder: 'Search the manual… (press /)',
-    helpSearchLabel: 'Search the manual',
-    helpContentsLabel: 'Manual contents',
+    helpSearchPlaceholder: 'Search help… (press /)',
+    helpSearchLabel: 'Search help',
+    helpContentsLabel: 'Help contents',
     helpOnThisPage: 'On this page',
     helpTopicMissing: 'This topic has not been written yet.',
     helpHitCountOne: '{n} topic',
@@ -1215,6 +1234,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Sơ đồ tư duy',
+    newDiagram: 'Sơ đồ',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Công cụ PDF',
     pdfToolsCardSub: 'Gộp · tách · sắp xếp',
@@ -1240,6 +1260,7 @@ export const strings = {
     filterMindmap: 'Sơ đồ tư duy',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Sơ đồ',
     filterAria: 'Lọc theo loại',
     fileCount: '{n} tệp',
     fileCountOne: '{n} tệp',
@@ -1381,7 +1402,7 @@ export const strings = {
     aiPanelStartLast: 'Trạng thái gần nhất',
     setAuthorName: 'Tên người dùng',
     setAuthorNameDesc:
-      'Hiển thị là tác giả của nhận xét và thay đổi được theo dõi trong Docs, Sheets và Slides. Để trống để dùng tên tài khoản máy tính.',
+      'Hiển thị là tác giả của nhận xét và thay đổi được theo dõi trong Docs, Sheets, Slides và PDF. Để trống để dùng tên tài khoản máy tính.',
     settings: 'Cài đặt',
     setSecAccount: 'Tài khoản',
     setSecGeneral: 'Chung',
@@ -1418,6 +1439,7 @@ export const strings = {
     setSubLoginFailed:
       'Không thể bắt đầu đăng nhập. Hãy kiểm tra xem chương trình đã được cài đặt chưa rồi thử lại.',
     setSubLogoutFailed: 'Không thể đăng xuất. Hãy thử lại sau giây lát.',
+    setSubSwitchFailed: 'Không thể lưu cài đặt nên không có gì thay đổi. Hãy thử lại sau giây lát.',
     setSubLogoutConfirm:
       'Thao tác này đăng xuất {program} trên máy tính này. {program} dùng trong terminal cũng bị đăng xuất theo.',
     setSubSwitchConfirm:
@@ -1439,11 +1461,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Cho phép việc tạo hình ảnh, phân tích hình ảnh, dịch PDF, đọc trang bằng AI và dịch sách (EPUB) do lệnh terminal hoặc chương trình khác (MCP) yêu cầu chạy bằng gói đăng ký Claude hoặc Codex của bạn. Khi tắt, các yêu cầu đó chỉ dùng nhà cung cấp theo khóa.',
     setAiHeadlessWarning:
-      'Không có giới hạn theo giờ, nên chương trình có thể gửi bao nhiêu yêu cầu tùy ý, và các yêu cầu đó có thể chứa toàn bộ văn bản của tài liệu cùng hình ảnh các trang. Cả hai công ty đều không khuyến nghị để chương trình tự động dùng gói đăng ký, và tài khoản của bạn có thể bị hạn chế.',
+      'Không có giới hạn theo giờ, nên chương trình có thể gửi bao nhiêu yêu cầu tùy ý, kể cả yêu cầu tạo hình ảnh, và các yêu cầu đó có thể chứa toàn bộ văn bản của tài liệu cùng hình ảnh các trang. Cả hai công ty đều không khuyến nghị để chương trình tự động dùng gói đăng ký, và tài khoản của bạn có thể bị hạn chế.',
     setAiHeadlessConfirm: 'Vẫn bật',
-    setAiImageCodex: 'Gói đăng ký Codex',
+    setAiImageCodex: 'Gói ChatGPT (chương trình Codex)',
     setAiImageCodexHint:
-      'Hình ảnh được tạo bằng gói đăng ký Codex khi gói này đang kết nối. Khi không dùng được, nhà cung cấp theo khóa đã thiết lập sẽ được dùng thay thế.',
+      'Hình ảnh được tạo bằng gói ChatGPT (Plus trở lên) đã đăng nhập vào chương trình Codex. OpenAI không cho phép tạo hình ảnh qua kết nối ChatGPT trực tiếp của ứng dụng. Khi không dùng được Codex, nhà cung cấp theo khóa đã thiết lập sẽ được dùng thay thế.',
+    setAiImageCodexConnect:
+      'Để tạo hình ảnh bằng gói ChatGPT, hãy kết nối chương trình Codex bằng cùng tài khoản ChatGPT. OpenAI không cho phép tạo hình ảnh qua kết nối ChatGPT trực tiếp của ứng dụng.',
+    setAiImageCodexConnectAction: 'Kết nối Codex',
     setAiMediaNone: 'Chưa chọn',
     setAiImageNoneHint:
       'Chưa chọn nhà cung cấp nào, nên nhà cung cấp đầu tiên có thể tạo hình ảnh sẽ được dùng. Nếu chưa thiết lập nhà cung cấp nào thì không thể tạo hình ảnh.',
@@ -1490,6 +1515,7 @@ export const strings = {
     intgCliPartDesc:
       'Dành cho các trợ lý có thể chạy lệnh terminal (Claude Code, Codex, Cursor và các trợ lý khác). Khi kỹ năng đã được cài đặt, trợ lý sẽ tự gọi dòng lệnh ieumoffice để tạo, chuyển đổi, đọc và chỉnh sửa tệp; bạn không cần nhập lệnh.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Ở đây, các chương trình AI khác dùng GenOffice.',
     intgMcpPartDesc:
       'MCP là giao thức tiêu chuẩn mà các trợ lý AI dùng để gọi công cụ bên ngoài. Sử dụng khi trợ lý của bạn không thể chạy lệnh (ví dụ Claude Desktop) hoặc khi bạn muốn trợ lý điều khiển trực tiếp cửa sổ GenOffice. Chọn một trong hai cách bên dưới.',
     intgMcpStdioTitle: 'Được khởi động bởi trợ lý (khuyến nghị)',
@@ -1559,11 +1585,11 @@ export const strings = {
     setAiEndpointAdd: 'Thêm điểm cuối',
     setAiEndpointRemove: 'Xóa',
     setAiEndpointName: 'Tên',
-    setAiCodexPath: 'Tệp thực thi Codex',
-    setAiCodexPathHint: 'Chỉ đặt mục này nếu cài đặt tùy chỉnh; để trống để tự động phát hiện.',
-    setAiCodexAutoPlaceholder: 'Tự động phát hiện (khuyến nghị)',
-    setAiCodexHint:
-      'Tự động tìm CLI Codex đã đăng nhập hiện tại sau các bản cập nhật; đường dẫn tùy chỉnh là không bắt buộc. Không cần khóa API.',
+    setAiCliPath: 'Tệp thực thi {name}',
+    setAiCliPathHint: 'Chỉ đặt mục này nếu cài đặt tùy chỉnh; để trống để tự động phát hiện.',
+    setAiCliAutoPlaceholder: 'Tự động phát hiện (khuyến nghị)',
+    setAiCliHint:
+      'Tự động tìm {name} đã đăng nhập hiện tại sau các bản cập nhật; đường dẫn tùy chỉnh là không bắt buộc. Không cần khóa API.',
     setAiSave: 'Lưu',
     setAiSaved: 'Đã lưu',
     setAiTest: 'Kiểm tra kết nối',
@@ -1657,6 +1683,8 @@ export const strings = {
     freeStatusChecking: 'Đang kiểm tra…',
     freeStatusConnected: 'Đã kết nối',
     freeStatusInUse: 'Đã kết nối · đang dùng',
+    homeAiNeedsConnection: 'Cần kết nối',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Dùng AI này',
     freeDisconnect: 'Ngắt kết nối',
     freeQuota: 'Hôm nay còn {remaining}/{limit} yêu cầu miễn phí',
@@ -1752,6 +1780,614 @@ export const strings = {
     setLocalVisionUnsupported: 'Không hỗ trợ nhập hình ảnh',
     setLocalVisionWarn: 'Đính kèm hình ảnh có thể thất bại với mô hình này.',
   },
+  tr: {
+    addFolderRoot: 'Klasör ekle…',
+    removeFolderRoot: 'Listeden kaldır',
+    rootUnavailable: 'Kullanılamıyor',
+    navRecent: 'Son kullanılanlar',
+    navStarred: 'Yıldızlı',
+    navAsk: 'Yapay zekâya sor',
+    askTitle: 'Bilgi tabanınıza sorun',
+    askEmptyCorpusHint:
+      'Henüz yıldızlı dosya yok — önce birkaç dosyayı yıldızlayın, yapay zekâ bunları okuyabilir.',
+    askCorpusCount: 'Bilgi tabanı: {n} yıldızlı dosya',
+    askScopeLabel: 'Arama kapsamı',
+    askScopeAll: 'Tümü',
+    askCorpusCountGroup: '{group}: {n} yıldızlı dosya',
+    askScopeGone:
+      'Bu grupta artık yıldızlı dosya yok, bu yüzden hiçbir şey sorulmadı. Başka bir grup veya Tümü seçin.',
+    askIntro:
+      'Yıldızlı dosyalarınız hakkında sorun. Yanıtlar kaynaklarını belirtir — açmak için bir kaynağa tıklayın.',
+    askToolSearch: 'Bilgi tabanı aranıyor',
+    askToolRead: 'Bir dosya okunuyor',
+    askToolCreate: 'Belge oluşturuluyor',
+    askSaveMd: 'Markdown olarak kaydet',
+    askSaveDocx: 'Word olarak kaydet',
+    askSavedAs: 'Kaydedildi: {name}',
+    askSaveFailed: 'Kaydedilemedi: {error}',
+    askEmptyCorpus: 'Bilgi tabanı boş: önce birkaç dosyayı yıldızlayın, sonra sorun.',
+    askPlaceholder: 'Yıldızlı dosyalarınız hakkında sorun…',
+    askHintIdle: 'Göndermek için Enter',
+    askHintBusy: 'Yapay zekâ yanıtlıyor…',
+    askSend: 'Gönder',
+    askStop: 'Durdur',
+    askHeroTagline:
+      'Sık okuduğunuz dosyaları yıldızlayın; yapay zekâ bunların içinde arama yapıp kaynağı gösterebilir — açmak için bir kaynağa tıklayın.',
+    askStep1Title: 'Dosyaları yıldızlayın',
+    askStep1Desc:
+      'Son kullanılanlar veya Klasörler bölümünde bir dosya satırındaki yıldıza tıklayın',
+    askStep2Title: 'Soru sorun',
+    askStep2Desc: 'Doğal bir dille sohbet edin — önce herhangi bir belge açmanız gerekmez',
+    askStep3Title: 'Kaynakları açın',
+    askStep3Desc: 'Yanıtlar kaynak dosyayı belirtir; oraya gitmek için birine tıklayın',
+    askCtaRecents: 'Son kullanılanlardan dosya yıldızlayın',
+    askNoSave: 'Sohbet kaydedilmez; uygulama yeniden başlatıldığında silinir.',
+    askUnknownError: 'Yapay zekâ isteği başarısız oldu. Tekrar deneyin.',
+    cloudSortRecent: 'En yeni',
+    cloudSortOldest: 'En eski',
+    secQuickStart: 'Hızlı başlangıç',
+    secRecent: 'Son kullanılanlar',
+    secStarred: 'Yıldızlılar',
+    colName: 'Ad',
+    colLocation: 'Konum',
+    colModified: 'Değiştirilme',
+    colSize: 'Boyut',
+    newDoc: 'AI Belgeler',
+    newSheet: 'AI E-Tablolar',
+    newSlide: 'AI Sunumlar',
+    newMarkdown: 'AI Markdown',
+    newHtml: 'AI HTML',
+    newMindmap: 'Zihin Haritası',
+    newDiagram: 'Diyagram',
+    newHwp: 'AI HWP',
+    pdfToolsCard: 'PDF araçları',
+    pdfToolsCardSub: 'Birleştir · ayır · düzenle',
+    newPdf: 'AI PDF',
+    openLocal: 'Yerel dosya aç',
+    dropToOpenTitle: 'Açmak için bırakın',
+    greetMorning: 'Günaydın',
+    greetAfternoon: 'İyi günler',
+    greetEvening: 'İyi akşamlar',
+    greetAsk1: 'Bugün ne oluşturmak istersiniz?',
+    greetAsk2: 'Başlamaya hazır mısınız?',
+    greetAsk3: 'Ne üzerinde çalışıyorsunuz?',
+    greetAsk4: 'Bugün nereden başlayalım?',
+    greetAsk5: 'Yaratıcı bir şeyler yapalım mı?',
+    greetAsk6: 'Aklınızda sırada ne var?',
+    filterAll: 'Tümü',
+    filterDocs: 'Belgeler',
+    filterSheets: 'E-Tablolar',
+    filterSlides: 'Sunumlar',
+    filterPdf: 'PDF',
+    filterMd: 'Markdown',
+    filterHtml: 'HTML',
+    filterMindmap: 'Zihin Haritası',
+    filterHwp: 'HWP',
+    filterEpub: 'EPUB',
+    filterDiagram: 'Diyagram',
+    filterAria: 'Türe göre filtrele',
+    fileCount: '{n} dosya',
+    fileCountOne: '{n} dosya',
+    selectedCount: '{n} seçili',
+    selectAll: 'Tümünü seç',
+    selectFile: '{name} öğesini seç',
+    removeFromList: 'Listeden kaldır',
+    missingFileTitle: 'Dosya kullanılamıyor',
+    missingFileBody:
+      '“{name}” bulunamıyor. Bağlantısı kesilmiş bir sürücüde olabilir ya da taşınmış veya silinmiş olabilir. Listeden kaldırılsın mı?',
+    deleteFiles: 'Dosyaları sil',
+    cancel: 'İptal',
+    star: 'Yıldızla',
+    unstar: 'Yıldızı kaldır',
+    moreActions: 'Diğer işlemler',
+    open: 'Aç',
+    revealInFolder: 'Klasörde göster',
+    copyPath: 'Yolu kopyala',
+    rename: 'Yeniden adlandır',
+    duplicate: 'Kopyasını oluştur',
+    renameFailed: 'Yeniden adlandırılamadı',
+    emptyStarred: 'Yıldızlı dosya yok — bir satırın üzerine gelip yıldıza tıklayın.',
+    emptyRecent: 'Son kullanılan dosya yok — başlamak için bir dosya oluşturun veya açın.',
+    emptyFiltered: 'Bu türde dosya yok.',
+    // Folders panel
+    folders: 'Klasörler',
+    newFolder: 'Yeni klasör',
+    newSubfolder: 'Yeni alt klasör',
+    untitledFolder: 'Adsız klasör',
+    folderType: 'Klasör',
+    moveToFolder: 'Klasöre taşı…',
+    moveToFolderTitle: 'Klasöre taşı',
+    moveToGroup: 'Gruba taşı…',
+    moveToGroupTitle: 'Gruba taşı',
+    newGroup: 'Yeni grup',
+    groupNamePlaceholder: 'Grup adı',
+    removeFromGroup: 'Gruptan çıkar',
+    groupFilterAria: 'Gruba göre filtrele',
+    searchFolders: 'Klasörlerde ara',
+    searchFilesPlaceholder: 'Dosya adlarında ve içeriklerinde ara…',
+    searchIndexing: '{n} dosya dizinleniyor…',
+    searchNoResults: '“{q}” ile eşleşen dosya yok',
+    searchResultCount: '{n} sonuç',
+    searchResultCountOne: '{n} sonuç',
+    searchClear: 'Aramayı temizle',
+    noMatchingFolders: 'Eşleşen klasör yok.',
+    currentFolder: 'Geçerli',
+    moveCount: '{n} tanesini taşı',
+    itemCount: '{n} öğe',
+    itemCountOne: '{n} öğe',
+    emptyFolder: 'Bu klasör boş. Bir dosya oluşturun veya dosyaları buraya sürükleyin.',
+    deleteFolder: 'Klasörü sil…',
+    deleteFolderTitle: 'Klasör silinsin mi?',
+    deleteFolderConfirm: "“{name}” ve içindeki her şey Geri Dönüşüm Kutusu'na taşınacak.",
+    folderMoreActions: '{name} için diğer işlemler',
+    conflictTitle: 'Bu ada sahip bir öğe zaten var',
+    conflictBodyOne: 'Hedef klasörde zaten “{name}” var. Ne yapmak istersiniz?',
+    conflictBodyMany: 'Hedef klasörde aynı ada sahip {n} öğe var. Ne yapmak istersiniz?',
+    conflictKeepBoth: 'İkisini de sakla',
+    conflictReplace: 'Üzerine yaz',
+    rootUnusable: 'Varsayılan kaydetme konumu kullanılamıyor, bu yüzden klasörler gösterilemiyor.',
+    pickSaveDir: 'Bir kaydetme konumu seçin',
+    deleteModalTitle: 'Dosyaları sil',
+    deleteConfirmOne: "“{name}” Geri Dönüşüm Kutusu'na taşınsın mı?",
+    deleteConfirmMany: "Bu {n} dosya Geri Dönüşüm Kutusu'na taşınsın mı?",
+    deleteMoreCount: '… toplam {n}',
+    delete: 'Sil',
+    untitled: 'Adsız',
+    account: 'Hesap',
+    appVersion: 'Sürüm {v}',
+    versionLabel: 'Sürüm',
+    betaBadge: 'Beta',
+    betaTooltip:
+      'Bu bir beta sürümü. Bazı özellikler değişebilir veya beklendiği gibi çalışmayabilir.',
+    setUpdateAvailableLabel: 'Güncelleme var',
+    setUpdateTo: '{version} sürümüne güncelle',
+    setUpdateDownloading: 'Güncelleme indiriliyor (%{percent})',
+    setUpdateRestart: 'Yeniden başlat ve yükle',
+    setAutoUpdateCheck: 'Güncellemeleri otomatik denetle',
+    setAutoUpdateCheckDesc:
+      'Kapalıyken GenOffice açılışta veya arka planda yeni sürümleri denetlemez. Yardım › Güncellemeleri denetle yolundan yine de denetleyebilirsiniz.',
+    updateChannel: 'Güncelleme kanalı',
+    channelStable: 'Kararlı',
+    channelBeta: 'Beta',
+    theme: 'Tema',
+    themeLight: 'Açık',
+    themeDark: 'Koyu',
+    themeSystem: 'Sistemi izle',
+    documentTheme: 'Belge sayfası teması',
+    docThemeFollowApp: 'Uygulama temasını izle',
+    setHwpSaveFormat: 'Yeni HWP belgeleri için kaydetme biçimi',
+    setHwpSaveFormatDesc:
+      'Yeni bir HWP belgesini ilk kez kaydettiğinizde bu biçim önce sunulur. Açtığınız belgeler kendi biçimlerini korur.',
+    saveLocation: 'Kaydetme konumu',
+    setAutoSave: 'Tüm belgeleri otomatik kaydet',
+    setAutoSaveDesc:
+      'Otomatik kaydetmeyi her düzenleyicide varsayılan olarak açın. Tek bir pencerede yine de kapatabilirsiniz.',
+    setResultStore: 'Kaydedilmiş AI sonuçları',
+    setResultStoreDesc:
+      "Yapay zekânın okuduğu sayfalar ve çeviriler siz silene kadar bu PC'de kalır. Kullanımda: {size}",
+    setResultStoreDeleteAll: 'Tümünü sil',
+    setResultStoreConfirm:
+      'Kaydedilmiş tüm AI okumaları ve çevirileri silinsin mi? Geri getirmek için yapay zekânın yeniden kullanılması gerekir.',
+    setResultStoreDeleteFailed: 'Silinemedi. Tekrar deneyin.',
+    setSearchRerank: 'Jev arama yeniden sıralaması',
+    setSearchRerankDesc:
+      "Yerel aramadaki ilk 20 sonucun alıntılarını TypeSafe'in Jev modeline gönderir ve alakaya göre yeniden sıralar. Varsayılan olarak kapalıdır; açıkken alıntılar bu cihazdan çıkar.",
+    setAiInternetTools: 'AI internet araçlarını kullanabilsin',
+    setAiInternetToolsDesc:
+      'Web araması, web sayfalarını okuma, resimleri adresten getirme, resim oluşturma ve analiz etme. Kapalıyken düzenleyicilerin yapay zekâsı bunlar olmadan çalışır. Açıkken sohbette daha önce geçmemiş bir adres getirilmeden önce sorulur. AI sohbetinin kendisi bundan etkilenmez.',
+    setSearchRerankEndpoint: 'Jev adresi',
+    searchRerankedBy: 'Jev ile alakaya göre yeniden sıralandı',
+    searchJevSettings: 'Jev anlamsal yeniden sıralama',
+    setSearchRerankCustomUrl: "Sunucu URL'si",
+    setSearchRerankCustomModel: 'Model kimliği',
+    setSearchRerankAccount: 'Hesap kimliği',
+    setAiPanelSide: 'AI kenar çubuğu konumu',
+    aiPanelSideLeft: 'Sol',
+    aiPanelSideRight: 'Sağ',
+    setAiFontSize: 'AI paneli yazı boyutu',
+    aiFontSizeDefault: 'Varsayılan',
+    aiFontSizeLarge: 'Büyük',
+    aiFontSizeXLarge: 'Çok büyük',
+    aiFontSizeCustom: 'Özel',
+    setAiSpellcheck: 'AI sohbetinde yazım denetimi',
+    setDefaultApp: 'Office belgeleri için varsayılan uygulama',
+    setDefaultAppDesc: '.docx, .xlsx ve .pptx dosyaları çift tıklandığında GenOffice ile açılsın.',
+    setDefaultAppIs: 'GenOffice zaten varsayılan.',
+    setDefaultAppOther: 'Geçerli varsayılan: {app}',
+    setDefaultAppSet: 'Varsayılan yap',
+    setDefaultAppOpenSettings: 'Sistem ayarlarını aç',
+    setDefaultAppFailed: 'Değiştirilemedi. Lütfen sistem ayarlarından ayarlayın.',
+    setAiSpellcheckDesc:
+      'AI sohbeti giriş alanında yazarken yanlış yazılan sözcüklerin altını çizer.',
+    setAiPanelStart: 'AI paneli',
+    setAiPanelStartDesc:
+      'Uygulamayı veya bir belgeyi açtığınızda AI panelinin nasıl başlayacağını seçin. Kapalı, paneli ve yan düğmesini gizler; şeritteki veya menüdeki bir AI işlemi yine de açabilir.',
+    aiPanelStartOff: 'Kapalı',
+    aiPanelStartCollapsed: 'Daraltılmış',
+    aiPanelStartLast: 'Son durum',
+    setAuthorName: 'Kullanıcı adı',
+    setAuthorNameDesc:
+      'Belgeler, E-Tablolar ve Sunumlar içindeki yorumların ve izlenen değişikliklerin yazarı olarak gösterilir. Bilgisayar hesabınızın adını kullanmak için boş bırakın.',
+    settings: 'Ayarlar',
+    setSecAccount: 'Hesap',
+    setSecGeneral: 'Genel',
+    setMcp: 'Yerel MCP sunucusu',
+    setMcpDesc:
+      'Dış AI ajanlarının (Claude Desktop, Cursor…) çalışan bu uygulama üzerinden Word belgeleri oluşturmasına izin verin. Yalnızca yerel makine.',
+    setMcpPort: 'Bağlantı noktası',
+    setMcpRunning: 'Çalışıyor',
+    setMcpStopped: 'Çalışmıyor',
+    setMcpUrlHttp: 'Akışlı HTTP (önerilir)',
+    setMcpUrlSse: 'SSE (eski istemciler)',
+    setMcpCopy: 'Kopyala',
+    setMcpCopied: 'Kopyalandı',
+    setMcpConfig: 'İstemci yapılandırma örneği',
+    setMcpConfigDesc:
+      "Bunu bir istemcinin MCP sunucusu yapılandırmasına ekleyin (Claude Desktop'ın mcp.json dosyası, Cursor'ın MCP ayarları, …).",
+    setMcpBg: 'Arka planda oluşturma',
+    setMcpBgDesc:
+      'Arayüzü açmadan belgeleri doğrudan bir yola yazın; kapalıyken oluşturma uygulamada görünür şekilde yapılır.',
+    setMcpLog: 'Günlük kaydı',
+    setMcpLogDesc: 'MCP sunucusu ve araç etkinliğini yerel bir günlük dosyasına kaydet',
+    setMcpLogFile: 'Günlük dosyası',
+    setMcpLogOpen: 'Aç',
+    setMcpLogClear: 'Temizle',
+    setMcpHealth: 'Durum denetimi',
+    setMcpLogRefresh: 'Yenile',
+    setMcpLogEmpty: 'Henüz günlük kaydı yok',
+    setSecAbout: 'Hakkında',
+    setSecIntegrations: 'Entegrasyonlar',
+    setSecAi: 'AI',
+    setSubTitle: 'Abonelik bağlantısı',
+    setSubManage: 'Bağlantıları yönet',
+    setSubInstallFailed:
+      'Yükleme komutu başlatılamadı. Bunun yerine resmi yükleme kılavuzunu izleyin.',
+    setSubLoginFailed:
+      'Oturum açma başlatılamadı. Programın kurulu olduğunu denetleyip tekrar deneyin.',
+    setSubLogoutFailed: 'Oturum kapatma tamamlanamadı. Birazdan tekrar deneyin.',
+    setSubSwitchFailed: 'Ayar kaydedilemediği için hiçbir şey değişmedi. Birazdan yeniden deneyin.',
+    setSubLogoutConfirm:
+      "Bu işlem bu PC'de {program} oturumunu kapatır. Terminaldeki {program} oturumu da kapanır.",
+    setSubSwitchConfirm:
+      "Bu işlem bu PC'de {program} için başka bir hesapla yeniden oturum açar. Terminalde {program} uygulamasının kullandığı hesap da değişir.",
+    setSubChatGptLogoutConfirm:
+      'Bu işlem ChatGPT’nin bu uygulamayla bağlantısını keser. Bu bilgisayardaki diğer programlar olduğu gibi kalır. Kullanmak için yeniden oturum açın.',
+    setAiUse: 'Kullanılacak AI',
+    setAiUseDesc:
+      'Otomatik, bağlı bir aboneliği kullanır: önce Claude, sonra Codex. Ücret doğuracak bir bağlantıyı asla seçmez.',
+    setAiUseUnavailable: '{provider} · şu anda kullanılamıyor',
+    setAiNotice: 'İlk bağlantı bildirimi',
+    setAiNoticeView: 'Tekrar görüntüle',
+    setAiAdvanced: 'Gelişmiş',
+    setAiAdvancedDesc:
+      'API anahtarları, kendi sunucunuzdaki adresler, görüntü ve arama sağlayıcıları ve otomatik istekler. Çoğu kişi bunlara hiç ihtiyaç duymaz.',
+    setAiKeyNote:
+      'Bu sağlayıcıdaki sohbetler kendi anahtarınızı kullanır ve o sağlayıcı bunun için sizden ücret alır. Yalnızca “Kullanılacak AI” bölümünde kendiniz seçtiğiniz sürece kullanılır.',
+    setAiHeadless: 'Otomatik istekler abonelik kullanabilsin',
+    setAiHeadlessDesc:
+      'Bir terminal komutu veya başka bir program (MCP) tarafından istenen görüntü oluşturma, görüntü analizi, PDF çevirisi, AI sayfa okuma ve kitap (EPUB) çevirisinin Claude veya Codex aboneliğinizde çalışmasına izin verir. Kapalıyken bu istekler yalnızca anahtar sağlayıcılarını kullanır.',
+    setAiHeadlessWarning:
+      'Saatlik bir sınır yok, yani bir program görüntü oluşturma dahil istediği kadar istek gönderebilir ve bu istekler bir belgenin tüm metnini ve sayfa görüntülerini taşıyabilir. İki şirket de aboneliğinizin bir program tarafından otomatik kullanılmasını önermez ve hesabınız kısıtlanabilir.',
+    setAiHeadlessConfirm: 'Yine de aç',
+    setAiImageCodex: 'ChatGPT planı (Codex programı)',
+    setAiImageCodexHint:
+      'Görüntüler, Codex programında oturum açılmış ChatGPT planınızla (Plus veya üstü) oluşturulur. OpenAI, uygulamanın doğrudan ChatGPT bağlantısıyla görüntü oluşturmaya izin vermez. Codex kullanılamadığında ayarlanmış bir anahtar sağlayıcısı kullanılır.',
+    setAiImageCodexConnect:
+      'ChatGPT planınızla görüntü oluşturmak için Codex programını aynı ChatGPT hesabıyla bağlayın. OpenAI, uygulamanın doğrudan ChatGPT bağlantısıyla görüntü oluşturmaya izin vermez.',
+    setAiImageCodexConnectAction: 'Codex’i bağla',
+    setAiMediaNone: 'Hiçbiri seçilmedi',
+    setAiImageNoneHint:
+      'Sağlayıcı seçilmedi, bu yüzden görüntü oluşturabilen ilk sağlayıcı kullanılır. Hiçbiri ayarlanmamışsa görüntü oluşturma kullanılamaz.',
+    setAiAnalysisChat: 'Geçerli yapay zekâya doğrudan sor',
+    setAiAnalysisChatHint:
+      'Görüntüler, sohbet ettiğiniz yapay zekâya gösterilir. Ayrı bir anahtar gerekmez.',
+    setAiVideoNoneHint:
+      'Video ve ses analizi için videoyu destekleyen bir anahtar sağlayıcısı gerekir. Buradan birini seçip anahtarını girin.',
+    intgHeroTitle: "GenOffice'i AI asistanınız üzerinden kullanın",
+    intgHeroDesc:
+      'Bağlandıktan sonra Claude Code, Codex, Cursor, Claude Desktop ve benzeri asistanlar sizin için Word, Excel, PowerPoint, PDF ve Markdown dosyaları oluşturabilir, dönüştürebilir, okuyabilir ve düzenleyebilir. Her şey bu bilgisayarda çalışır; hiçbir şey yüklenmez.',
+    intgHeroStep1:
+      'Bir yol seçin: asistanınız terminal komutları çalıştırabiliyorsa CLI, çalıştıramıyorsa MCP',
+    intgHeroStep2: 'Aşağıdaki ilgili bölümü izleyin; genellikle tek bir tıklama yeter',
+    intgHeroStep3: 'Yeni bir sohbet başlatın ve doğrudan sorun',
+    intgStep1Title: 'Beceriyi asistanınıza kurun',
+    intgStep1Desc:
+      'Yalnızca bu bilgisayarda bulunan asistanlar listelenir. Gerçekten kullandığınıza kurun; hepsine kurmanız gerekmez.',
+    intgStep1Update:
+      'Bir GenOffice güncellemesi daha yeni bir beceriyle geldiğinde, o asistanın yanında bir Güncelle düğmesi belirir.',
+    intgSkillVersion: 'beceri {v}',
+    intgStateMissing: 'Beceri kurulu değil',
+    intgStateInstalled: 'Beceri {v} kurulu · sonraki sohbetinizde hazır',
+    intgOtherToggle: 'Asistanım listede yok',
+    intgOtherDesc:
+      'Bu üç yoldan birini seçin. Hepsi aynı beceriyi kurar, birden fazlasını yapmanız gerekmez.',
+    intgOtherFolderTitle: 'SKILL.md klasörlerini okuyan herhangi bir asistan',
+    intgOtherFolderDesc: 'Beceriler klasörünü seçin, GenOffice dosyayı oraya yazar.',
+    intgOtherZipTitle: 'Dosyayı asistana verin',
+    intgOtherZipDesc: 'Beceriyi zip olarak kaydedin, sonra asistandan kurmasını isteyin.',
+    intgOtherNpxTitle: 'skills komutuyla (Node.js gerekir)',
+    intgOtherNpxDesc: 'Bunu bir terminalde çalıştırın:',
+    intgCopy: 'Kopyala',
+    intgStep2Title: 'Deneyin',
+    intgStep2Desc: 'Asistanınızda yeni bir sohbet açın ve sade bir dille sorun, örneğin:',
+    intgStep2DescBefore:
+      'Kurduktan sonra asistanınızda yeni bir sohbet açın ve sade bir dille sorun, örneğin:',
+    intgExample1: '~/Downloads/report.md dosyasını Word belgesine dönüştür',
+    intgExample2: 'Üçüncü çeyrek sonuçlarımız hakkında 6 slaytlık bir sunum hazırla',
+    intgExample3: 'budget.xlsx dosyasını PDF yap ve GenOffice ile aç',
+    intgStep2Note: 'Asistan ieumoffice komut satırını kendisi çalıştırır; sizin yazmanız gerekmez.',
+    intgCliPartTitle: 'CLI · komut satırı + beceri',
+    intgCliPartDesc:
+      'Terminal komutları çalıştırabilen asistanlar için (Claude Code, Codex, Cursor ve diğerleri). Beceri kurulduktan sonra asistan dosya oluşturmak, dönüştürmek, okumak ve düzenlemek için ieumoffice komut satırını kendisi çağırır; siz hiçbir komut yazmazsınız.',
+    intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Burada diğer AI programları GenOffice’i kullanır.',
+    intgMcpPartDesc:
+      'MCP, yapay zekâ asistanlarının dış araçları çağırmak için kullandığı ortak protokoldür. Asistanınız komut çalıştıramıyorsa (örneğin Claude Desktop) veya GenOffice penceresini doğrudan kullanmasını istiyorsanız bunu kullanın. Aşağıdaki iki yoldan birini seçin.',
+    intgMcpStdioTitle: 'Asistan başlatır (önerilir)',
+    intgMcpStdioDesc:
+      'Asistan ieumoffice mcp komutunu kendisi başlatır: burada açmanız gereken bir şey yok ve GenOffice açık olmak zorunda değil. CLI ile aynı özellikler.',
+    intgMcpHttpTitle: 'Yerel HTTP sunucusu',
+    intgMcpHttpDesc:
+      "GenOffice içinde çalışır; asistan bir URL'ye bağlanır ve belgeyi Word düzenleyicide adım adım oluşturmasını izleyebilirsiniz. GenOffice açık kalmalıdır; şimdilik yalnızca Word belgeleri.",
+    intgMcpHttpAdvanced: 'Gelişmiş: diğer adresler ve günlük',
+    intgMcpTryNote:
+      'Asistan GenOffice bileşenine MCP üzerinden erişir; siz hiçbir komut yazmazsınız.',
+    intgMcpClaudeTitle: 'Claude Code',
+    intgMcpClaudeDesc: 'Bunu bir terminalde bir kez çalıştırın:',
+    intgMcpOtherTitle: 'Cursor, Claude Desktop veya MCP destekleyen başka bir asistan',
+    intgMcpOtherDesc:
+      'Bunu MCP sunucusu ayarlarına ekleyin (bir JSON dosyası veya ayarlarındaki “MCP sunucusu ekle”):',
+    intgMcpNote:
+      'Beceri ve MCP bir arada kurulabilir; asistan birini seçer. İkisi tamamen aynı işleri yapar.',
+    intgCliTitle: 'Gelişmiş: ieumoffice komut satırı',
+    intgCliReady: 'ieumoffice {v} · terminalinizde hazır ({path})',
+    intgCliNotOnPath:
+      "ieumoffice {v} · terminalinizin PATH'inde değil. Asistanlar yine de onu ~/.ieumoffice/launcher üzerinden bulur, bu yüzden beceri çalışır. ieumoffice yazmak istiyorsanız bunu bir kez çalıştırın:",
+    intgCliLauncher: 'Başlatıcı klasörü',
+    intgStateOutdated: '{v} kurulu, {next} sürümüne güncelleme var',
+    intgStateModified: 'Kurulu {v} (değiştirilmiş)',
+    intgStateForeign: 'Kurulu {v} (bu uygulama tarafından değil)',
+    intgStateNewer: 'Kurulu {v} (paketlenenden daha yeni)',
+    intgStateOccupied: 'Klasör zaten kullanımda',
+    intgSharedAgentsLabel:
+      'Paylaşılan klasör (~/.agents): Codex, Cursor, Gemini CLI, Copilot, OpenCode',
+    intgLegacyHint:
+      '{tool} aracının kendi klasöründeki eski kopya. {tool} artık beceriyi paylaşılan klasörden (~/.agents) okur; beceri oraya yüklendikten sonra bu kopyayı kaldırabilirsiniz.',
+    intgConfirmAlsoUpdate: '{paths} konumundaki eski kopyalar da güncellenir.',
+    intgInstall: 'Kur',
+    intgUpdate: 'Güncelle',
+    intgUninstall: 'Kaldır',
+    intgReinstall: '{v} olarak yeniden kur',
+    intgOverwrite: 'Üzerine yaz',
+    intgConfirm: 'Onayla',
+    intgConfirmWrite: 'Yazılacak: {path}',
+    intgConfirmRemove: 'Silinecek: {path}',
+    intgConfirmOverwriteModified: 'Bu dosyada yaptığınız düzenlemelerin üzerine yazılacak.',
+    intgConfirmOverwriteOccupied: 'O klasördeki mevcut SKILL.md değiştirilecek.',
+    intgInstalledHint: 'Kuruldu. Yeni bir oturumda etkili olur.',
+    intgInstallElsewhere: 'Başka bir klasöre kur…',
+    intgPickDirTitle: 'Bir beceri klasörü seçin',
+    intgDownloadZip: 'Beceriyi indir (zip)',
+    intgSaveZipTitle: 'Beceriyi kaydet',
+    intgSavedTo: '{path} konumuna kaydedildi',
+    intgCopied: 'Kopyalandı',
+    intgCliEphemeral:
+      "Önce GenOffice'i Applications klasörüne sürükleyin, sonra komut satırını kullanın.",
+    intgCopyPath: 'Yolu kopyala',
+    intgCliNeedsUpdate:
+      "Bu beceri için komut satırı {v} veya daha yenisi gerekir; GenOffice'i güncelleyin.",
+    intgLoading: 'Denetleniyor…',
+    intgUpdateDue: 'Beceri güncellemesi var',
+    setSecAiModel: 'AI modeli',
+    setAiProvider: 'Sağlayıcı',
+    setAiModelId: 'Model',
+    setAiModelType: 'Başka bir model girin…',
+    setAiApiKey: 'API anahtarı',
+    setAiKeyHint: 'Yalnızca bu cihazda saklanır.',
+    setAiBaseUrl: 'Temel URL',
+    setAiBaseUrlHint: 'Resmi adres için boş bırakın.',
+    setAiEndpoint: 'Adres',
+    setAiEndpointHint:
+      'Birden çok kendi sunucunuzu kaydedin ve istediğiniz zaman aralarında geçiş yapın.',
+    setAiEndpointAdd: 'Adres ekle',
+    setAiEndpointRemove: 'Kaldır',
+    setAiEndpointName: 'Ad',
+    setAiCliPath: '{name} yürütülebilir dosyası',
+    setAiCliPathHint: 'Yalnızca özel bir kurulum için ayarlayın; otomatik bulmak için boş bırakın.',
+    setAiCliAutoPlaceholder: 'Otomatik bul (önerilir)',
+    setAiCliHint:
+      'Güncellemelerden sonra oturum açmış geçerli {name} programını kendiliğinden bulur; özel bir yol isteğe bağlıdır. API anahtarı gerekmez.',
+    setAiSave: 'Kaydet',
+    setAiSaved: 'Kaydedildi',
+    setAiTest: 'Bağlantıyı sına',
+    setAiTesting: 'Sınanıyor…',
+    setAiTestOk: 'Bağlantı tamam',
+    setAiTestFail: 'Bağlantı başarısız',
+    setAiMaxTokens: 'Maksimum çıktı tokenı',
+    setAiMaxTokensDesc:
+      'Bir tur için çıktı bütçesi. Akıl yürütme modelleri bunun bir kısmını düşünmeye harcar, bu yüzden bütçe bitince yanıt boş gelebilir; bu olursa değeri yükseltin.',
+    setSecAiMedia: 'AI medya ve arama',
+    setAiSearchSerperHint: 'Serper, anahtarınızla hem web hem de görsel aramayı sunar.',
+    setAiSearchSerplyHint: 'Serply, anahtarınızla hem web hem de görsel aramayı sunar.',
+    setAiSearchTavilyHint:
+      'Tavily, anahtarınızla web araması sunar; görsel arama ücretsiz kaynaklara geçer.',
+    setAiSearchParallelHint:
+      'Ücretsiz Parallel araması için anahtarı boş bırakın (sınırlı kullanım). Parallel hesabınızı kullanmak için bir anahtar ekleyin. Görsel arama başka kaynakları kullanır.',
+    setAiCapImage: 'Görüntü oluşturma',
+    setAiCapAnalysis: 'Görüntü analizi',
+    setAiCapVideo: 'Video analizi',
+    setAiCapSearch: 'Web araması',
+    setAiCapFileSearch: 'Yerel dosya araması',
+    setReadUrlTitle: 'Web belgeleri',
+    setReadUrlToken: 'GitHub okuma tokenı (isteğe bağlı)',
+    setReadUrlSave: 'Tokenı kaydet',
+    setReadUrlTokenHint:
+      "Özel depolardaki belgeleri ve beceri bağlantılarını okurken kullanılır. Salt okunur bir token yapıştırın. Bu PC'nin ayar dosyasına kaydedilir.",
+    setReadUrlNoToken: 'Token yok',
+    setReadUrlTokenSaved: 'Token kaydedildi',
+    setReadUrlClear: 'Temizle',
+    setAiSharedKeyHint:
+      "Bir satıcının anahtarı ve temel URL'si tüm yeteneklerde ortaktır; bir kez girin.",
+    setGithub: 'Açık kaynak',
+    setBasedOn: 'Açık kaynaklı {{GenOffice}} projesine dayanır (Apache License 2.0).',
+    setLicenses: 'Açık kaynak lisansları',
+    setLicensesDesc:
+      'Bu uygulamayla birlikte gelen yazılım ve yazı tiplerinin lisans ve telif bildirimleri.',
+    setLicensesOpen: 'Görüntüle',
+    setRightsContact: 'Ticari marka ve telif iletişimi',
+    setRightsContactDesc: 'İhlal bildirimlerini ve lisans sorularını bu adrese gönderin.',
+    setRightsContactSend: 'E-posta gönder',
+    setTrademarks:
+      "GenOffice; Microsoft, Hancom, Adobe, XMind, Google, Anthropic veya OpenAI ile bağlantılı değildir, onlar tarafından desteklenmez veya onaylanmaz. Word, Excel ve PowerPoint Microsoft'un; Hangul, HWP ve HWPX Hancom'un; XMind, XMind Ltd.'nin; Google Drive, Google'ın; Claude, Anthropic'in; ChatGPT ve Codex, OpenAI'nin ticari markalarıdır. Bu adlar yalnızca uygulamanın hangi dosyaları açtığını ve nelerle çalıştığını belirtmek için kullanılır.",
+    setHwpNotice:
+      "HWP/HWPX düzenleyicisi açık kaynaklı rhwp projesine (MIT License) dayanır. Bu ürün, Hancom'un Hangul belge dosya biçimi (.hwp) hakkında yayımladığı belgeye başvurularak geliştirilmiştir.",
+    setDisclaimer:
+      'GenOffice, Apache License 2.0 kapsamında olduğu gibi, hiçbir garanti verilmeksizin sunulur. Yapay zekâ tarafından oluşturulan içerik yanlış olabilir: kullanmadan önce denetleyin. Kullanım hakkınız olduğundan emin olmak size kalmıştır.',
+    viewOnGitHub: 'GitHub üzerinde görüntüle',
+    setFeedback: 'Geri bildirim gönder',
+    setFeedbackDesc:
+      'Geri bildirimler kısa bir Google anketiyle toplanır. Uygulama kendisi hiçbir şey göndermez ve belge içerikleri asla eklenmez.',
+    feedbackOpen: 'Anketi aç',
+    setChange: 'Değiştir',
+    today: 'Bugün',
+    yesterday: 'Dün',
+    language: 'Dil',
+    closeTab: 'Sekmeyi kapat',
+    tabList: 'Tüm sekmeler',
+    appMenu: 'Menü',
+    newTab: 'Yeni sekme',
+    splitHintRight: 'Sağa böl',
+    splitHintBottom: 'Aşağıya böl',
+    // First-run onboarding
+    onbTitle1: "GenOffice'e hoş geldiniz",
+    onbWelcomeSubtitle: 'Açık kaynaklı bir ofis paketi',
+    onbWelcomeBody:
+      'Word, Excel, PowerPoint, PDF, Markdown ve HTML belgelerini açıp düzenleyin. Yapay zekâ, zaten sahip olduğunuz Claude veya ChatGPT aboneliğiyle ya da ücretsiz bir AI bağlantısıyla çalışır.',
+    onbSkip: 'Atla',
+    onbNext: 'İleri',
+    onbStart: 'Başla',
+    onbStepAria: 'Sayfa {n} / {total}',
+    onbBody3: 'Lisans ücreti yok. Reklam yok. Filigran yok.',
+    onbBack: 'Geri',
+    onbConnectTitle: 'Bir yapay zekâ bağlayın',
+    onbConnectSkipNote: 'Bu adımı atlayıp daha sonra Ayarlar → AI bölümünden bağlayabilirsiniz.',
+    setFreeTitle: 'Ücretsiz kullanın',
+    setFreeDesc:
+      'Aboneliğiniz yok mu? Ücretsiz bir AI bağlayın ve hemen başlayın. Ücretsiz kullanımın günlük bir sınırı vardır.',
+    freeBadge: 'Ücretsiz',
+    freeOpenRouterDesc:
+      "Tek düğmeyle bağlanın: tarayıcınızda OpenRouter'a kaydolun veya oturum açın ve erişime izin verin.",
+    freeGeminiDesc:
+      'Google hesabınızla bir anahtar oluşturun ve buraya yapıştırın. Yalnızca 18 yaş ve üzeri içindir.',
+    freeConnectBrowser: 'Tarayıcıda bağlan',
+    freeWaiting:
+      "Tarayıcınızda OpenRouter oturumu açın ve İzin ver'i seçin. İşiniz bitince bu ekran güncellenir.",
+    freeGetKey: 'Anahtar al',
+    freeKeyPlaceholder: 'Gemini anahtarınızı yapıştırın',
+    freeKeyConnect: 'Bağlan',
+    freeStatusNotConnected: 'Bağlı değil',
+    freeStatusWaiting: 'Tarayıcı bekleniyor…',
+    freeStatusChecking: 'Denetleniyor…',
+    freeStatusConnected: 'Bağlandı',
+    freeStatusInUse: 'Bağlı · kullanımda',
+    homeAiNeedsConnection: 'Bağlantı gerekiyor',
+    homeEntryAiState: 'Yapay zekâ: {state}',
+    freeUse: 'Bu AI ile devam et',
+    freeDisconnect: 'Bağlantıyı kes',
+    freeQuota: 'Bugün {limit} ücretsiz istekten {remaining} tanesi kaldı',
+    freeFailedTimeout: 'Oturum açma zamanında tamamlanmadı. Tekrar deneyin.',
+    freeFailedDenied: "Erişime izin verilmedi. Tekrar deneyip İzin ver'i seçin.",
+    freeFailedInvalid: 'Bu anahtar kabul edilmedi. Kopyaladığınız anahtarı denetleyin.',
+    freeFailedNetwork: 'Bağlanılamadı. İnternet bağlantınızı denetleyip tekrar deneyin.',
+    freePrivacy:
+      'Ücretsiz kullanırken gönderdikleriniz o şirketin yapay zekâsını geliştirmek için kullanılabilir. Kişisel bilgi içeren belgelerde dikkatli olun.',
+    freeGeminiBilling:
+      'Faturalandırma açık bir Google projesinde oluşturulan anahtar ücretlendirilebilir.',
+    onbFreeTitle: 'Aboneliğiniz yok mu? Ücretsiz başlayın',
+    onbDoneTitle: 'Her şey hazır',
+    onbDoneConnected: 'Yapay zekâ bağlandı: {provider}.',
+    onbDoneNotConnected:
+      'Yapay zekâ henüz bağlı değil. Bir aboneliği veya ücretsiz bir AI bağlantısını istediğiniz zaman Ayarlar → AI bölümünden kurabilirsiniz.',
+    helpSearchPlaceholder: 'Kılavuzda ara… (/ tuşuna basın)',
+    helpSearchLabel: 'Kılavuzda ara',
+    helpContentsLabel: 'Kılavuz içeriği',
+    helpOnThisPage: 'Bu sayfada',
+    helpTopicMissing: 'Bu konu henüz yazılmadı.',
+    helpHitCountOne: '{n} konu',
+    helpHitCount: '{n} konu',
+    setLocalAddServer: 'Sunucu ekle',
+    setLocalAddress: 'Adres',
+    setLocalAddressRemote: 'Belgeler bu sunucuya gönderilir.',
+    setLocalAddressUnencrypted: 'Belgeler bu adrese şifreleme olmadan gönderilir.',
+    setLocalApiKey: 'API anahtarı (isteğe bağlı)',
+    setLocalContext: 'Bağlam',
+    setLocalContextMayDiffer:
+      'Sunucu yüklenen bağlamı bildirmedi; bu değer gerçek değerden farklı olabilir.',
+    setLocalDelete: 'Sil',
+    setLocalDeleteActiveConfirm:
+      'Bu sunucu kullanımda. Silmek AI seçimini sunucusuz bırakır; başka bir sunucu otomatik olarak seçilmez.',
+    setLocalDesc:
+      "Bir modeli bu PC'de veya denetiminizdeki başka bir bilgisayarda çalıştırın. Sunucu kaydetmek, hangi yapay zekânın kullanıldığını hiçbir zaman değiştirmez.",
+    setLocalEmpty:
+      'Henüz yerel sunucu kayıtlı değil. Kendi bilgisayarınızda çalışan bir modeli kullanmak için bir sunucu ekleyin.',
+    setLocalErrorCredentials: 'Adresten kullanıcı adını ve parolayı kaldırın.',
+    setLocalErrorEmpty: 'Bir adres girin.',
+    setLocalErrorRange: '1 ile 10 arasında bir tam sayı girin.',
+    setLocalErrorScheme: 'http:// veya https:// ile başlayan bir adres kullanın.',
+    setLocalErrorShape: 'Adresi denetleyin.',
+    setLocalErrorTooLong: 'Adres çok uzun.',
+    setLocalFail: 'Başarısız',
+    setLocalInUse: 'Kullanımda',
+    setLocalInvalidInput: 'Girdi geçerli değildi, bu yüzden hiçbir şey denetlenmedi.',
+    setLocalLastModels: 'Son denetim',
+    setLocalMaxContext: 'Maksimum bağlam',
+    setLocalModelCount: '{count} model',
+    setLocalModelCountOne: '{count} model',
+    setLocalModelId: 'Model kimliği',
+    setLocalModelIdHint: 'Liste boşsa veya okunamıyorsa bir model kimliği yazın.',
+    setLocalModelListEmpty: 'Henüz model listesi yok. Listeyi yenileyin veya bir kimlik yazın.',
+    setLocalModels: 'Modeller',
+    setLocalName: 'Ad',
+    setLocalNoSelection: 'Bağlı değil',
+    setLocalNoToolCall: 'Araç çağrısı görülmedi. Bu bir bağlantı hatası değil.',
+    setLocalNotes: 'Notlar',
+    setLocalParams: 'Parametreler',
+    setLocalPass: 'Geçti',
+    setLocalPreset: 'Sunucu türü',
+    setLocalPresetOther: 'Diğer / OpenAI uyumlu',
+    setLocalProfileTitle: 'Model ayrıntıları',
+    setLocalQuantization: 'Nicemleme',
+    setLocalRecheck: 'Sunucuda yeniden denetle',
+    setLocalRefreshModels: 'Model listesini yenile',
+    setLocalSize: 'Boyut',
+    setLocalSkip: 'Atlandı',
+    setLocalSourceServer: 'Sunucu',
+    setLocalSourceTest: 'Sınama',
+    setLocalSourceUser: 'Kullanıcı',
+    setLocalStatusChecking: 'Denetleniyor…',
+    setLocalStatusError: 'Hata',
+    setLocalStatusOffline: 'Çevrimdışı',
+    setLocalStatusOnline: 'Çevrimiçi',
+    setLocalStatusUnknown: 'Denetlenmedi',
+    setLocalSupported: 'Destekleniyor',
+    setLocalTest: 'Bağlantıyı sına',
+    setLocalTestChat: 'Sohbet',
+    setLocalTestModel: 'Model',
+    setLocalTestServer: 'Sunucu',
+    setLocalTestTools: 'Araç çağrısı',
+    setLocalTimeout: 'İlk yanıt sınırı (dakika)',
+    setLocalTimeoutHint: '1 ile 10 dakika arasında.',
+    setLocalTitle: 'Yerel AI',
+    setLocalTools: 'Araç çağırma',
+    setLocalToolsNoEdit: 'Bu model belgeleri doğrudan düzenlemez, yalnızca metin önerir.',
+    setLocalUnavailable: 'Kullanılamıyor',
+    setLocalUnconfirmed: 'Doğrulanmadı',
+    setLocalUnknown: 'Denetlenmesi gerekiyor',
+    setLocalUnsupported: 'Desteklenmiyor',
+    setLocalVision: 'Görüntü girişi',
+    setLocalVisionUnsupported: 'Görüntü girişi desteklenmiyor',
+    setLocalVisionWarn: 'Bu modelle görüntü eklemek başarısız olabilir.',
+  },
   ja: {
     addFolderRoot: 'フォルダーを追加…',
     removeFolderRoot: 'リストから削除',
@@ -1811,6 +2447,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'マインドマップ',
+    newDiagram: 'ダイアグラム',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF ツール',
     pdfToolsCardSub: '結合・分割・整理',
@@ -1837,6 +2474,7 @@ export const strings = {
     filterMindmap: 'マインドマップ',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'ダイアグラム',
     filterAria: '種類で絞り込み',
     // List / bulk actions
     fileCount: '{n} 個のファイル',
@@ -1983,7 +2621,7 @@ export const strings = {
     aiPanelStartLast: '前回の状態',
     setAuthorName: 'ユーザー名',
     setAuthorNameDesc:
-      'Docs、Sheets、Slides でコメントと変更履歴の作成者として表示されます。空欄の場合はパソコンのアカウント名を使います。',
+      'Docs、Sheets、Slides、PDF でコメントと変更履歴の作成者として表示されます。空欄の場合はパソコンのアカウント名を使います。',
     settings: '設定',
     setSecAccount: 'アカウント',
     setSecGeneral: '一般',
@@ -2021,6 +2659,8 @@ export const strings = {
     setSubLoginFailed:
       'ログインを開始できませんでした。プログラムがインストールされているか確認してから、もう一度お試しください。',
     setSubLogoutFailed: 'ログアウトできませんでした。しばらくしてからもう一度お試しください。',
+    setSubSwitchFailed:
+      '設定を保存できなかったため、何も変わっていません。しばらくしてからもう一度お試しください。',
     setSubLogoutConfirm:
       'この PC の {program} からログアウトします。ターミナルで使っている {program} も一緒にログアウトされます。',
     setSubSwitchConfirm:
@@ -2042,11 +2682,14 @@ export const strings = {
     setAiHeadlessDesc:
       'ターミナルのコマンドや他のプログラム（MCP）から要求された画像生成、画像解析、PDF 翻訳、AI によるページ読み取り、書籍（EPUB）の翻訳を、Claude または Codex のサブスクリプションで処理できるようにします。オフの場合、こうした要求にはキー方式のプロバイダーだけが使われます。',
     setAiHeadlessWarning:
-      '1 時間あたりの上限はないため、プログラムはいくらでも要求を送ることができ、その要求には文書全体のテキストやページの画像が含まれることがあります。プログラムがサブスクリプションを自動的に使うことは両社とも推奨しておらず、アカウントが制限される可能性があります。',
+      '1 時間あたりの上限はないため、プログラムは画像生成などの要求をいくらでも送ることができ、その要求には文書全体のテキストやページの画像が含まれることがあります。プログラムがサブスクリプションを自動的に使うことは両社とも推奨しておらず、アカウントが制限される可能性があります。',
     setAiHeadlessConfirm: 'それでもオンにする',
-    setAiImageCodex: 'Codex のサブスクリプション',
+    setAiImageCodex: 'ChatGPT のプラン（Codex プログラム）',
     setAiImageCodexHint:
-      'Codex のサブスクリプションが接続されている間は、そのサブスクリプションで画像を生成します。使えないときは、設定済みのキー方式のプロバイダーを代わりに使います。',
+      'Codex プログラムにログインした ChatGPT のプラン（Plus 以上）で画像を生成します。アプリから直接接続した ChatGPT では、OpenAI が画像生成を許可していません。Codex を使えないときは、設定済みのキー方式のプロバイダーを代わりに使います。',
+    setAiImageCodexConnect:
+      'ChatGPT のプランで画像を生成するには、同じ ChatGPT アカウントで Codex プログラムを接続してください。アプリから直接接続した ChatGPT では、OpenAI が画像生成を許可していません。',
+    setAiImageCodexConnectAction: 'Codex を接続',
     setAiMediaNone: '選択なし',
     setAiImageNoneHint:
       'プロバイダーが選ばれていないため、画像を生成できる最初のプロバイダーを使います。設定済みのものがなければ、画像生成は利用できません。',
@@ -2092,6 +2735,7 @@ export const strings = {
     intgCliPartDesc:
       'ターミナルコマンドを実行できるアシスタント（Claude Code、Codex、Cursor など）向け。skill をインストールすると、アシスタントが自分で ieumoffice コマンドラインを呼び出してファイルを作成・変換・読み取り・編集します。コマンドを入力する必要はありません。',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'ここでは他の AI プログラムが GenOffice を使います。',
     intgMcpPartDesc:
       'MCP は AI アシスタントが外部ツールを呼び出すための共通プロトコルです。アシスタントがコマンドを実行できない場合（Claude Desktop など）や、GenOffice のウィンドウを直接操作させたい場合に使います。下の 2 つの方法からどちらか 1 つを選んでください。',
     intgMcpStdioTitle: 'アシスタントが起動する（推奨）',
@@ -2162,10 +2806,10 @@ export const strings = {
     setAiEndpointAdd: 'エンドポイントを追加',
     setAiEndpointRemove: '削除',
     setAiEndpointName: '名前',
-    setAiCodexPath: 'Codex 実行ファイル',
-    setAiCodexPathHint: 'カスタムインストール時のみ指定します。空欄なら自動検出します。',
-    setAiCodexAutoPlaceholder: '自動検出（推奨）',
-    setAiCodexHint: 'ローカルでサインイン済みの Codex CLI を使用します。API キーは不要です。',
+    setAiCliPath: '{name} 実行ファイル',
+    setAiCliPathHint: 'カスタムインストール時のみ指定します。空欄なら自動検出します。',
+    setAiCliAutoPlaceholder: '自動検出（推奨）',
+    setAiCliHint: 'ローカルでサインイン済みの {name} を使用します。API キーは不要です。',
     setAiSave: '保存',
     setAiSaved: '保存しました',
     setAiTest: '接続テスト',
@@ -2263,6 +2907,8 @@ export const strings = {
     freeStatusChecking: '確認中…',
     freeStatusConnected: '接続済み',
     freeStatusInUse: '接続済み · 使用中',
+    homeAiNeedsConnection: '接続が必要',
+    homeEntryAiState: 'AI：{state}',
     freeUse: 'この AI を使う',
     freeDisconnect: '接続を解除',
     freeQuota: '今日の無料リクエスト残り {remaining} 回（{limit} 回中）',
@@ -2393,16 +3039,16 @@ export const strings = {
     askSend: '보내기',
     askStop: '중지',
     askHeroTagline:
-      '자주 읽는 파일에 별표를 붙이면 AI가 파일을 검색하고 출처를 인용해 답변합니다. 인용을 클릭하면 열립니다.',
-    askStep1Title: '파일 별표',
-    askStep1Desc: '최근 또는 폴더에서 파일 행의 별표를 클릭하세요',
+      '자주 읽는 파일을 즐겨찾기하면 AI가 그 파일을 검색하고 출처를 밝혀 답변합니다. 출처를 클릭하면 파일이 열립니다.',
+    askStep1Title: '파일 즐겨찾기',
+    askStep1Desc: '최근 사용이나 폴더에서 파일 행의 별표를 클릭하세요',
     askStep2Title: '질문하기',
-    askStep2Desc: '채팅하듯 물어보세요. 문서를 먼저 열 필요가 없어요',
-    askStep3Title: '인용 클릭',
-    askStep3Desc: '답변에 출처 파일이 표시되고, 클릭하면 바로 이동해요',
-    askCtaRecents: '최근 파일에 별표하기',
+    askStep2Desc: '채팅하듯 물어보세요. 문서를 먼저 열 필요가 없습니다',
+    askStep3Title: '출처 열기',
+    askStep3Desc: '답변에 출처 파일이 표시되고, 클릭하면 그 파일로 이동합니다',
+    askCtaRecents: '최근 파일 즐겨찾기',
     askNoSave: '대화는 저장되지 않으며, 앱을 다시 시작하면 지워집니다.',
-    askUnknownError: 'AI 요청에 실패했습니다. 다시 시도해 주세요.',
+    askUnknownError: 'AI 요청에 실패했습니다. 다시 시도하세요.',
     cloudSortRecent: '최신순',
     cloudSortOldest: '오래된순',
     // Section headings
@@ -2420,6 +3066,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: '마인드맵',
+    newDiagram: '다이어그램',
     newHwp: 'AI 한글',
     pdfToolsCard: 'PDF 도구',
     pdfToolsCardSub: '병합 · 분할 · 정리',
@@ -2430,11 +3077,11 @@ export const strings = {
     greetAfternoon: '안녕하세요',
     greetEvening: '좋은 저녁이에요',
     greetAsk1: '오늘은 무엇을 만들까요?',
-    greetAsk2: '시작할 준비가 되셨나요?',
-    greetAsk3: '무엇을 하고 싶으신가요?',
+    greetAsk2: '어떤 문서를 열까요?',
+    greetAsk3: '무슨 작업을 하고 있나요?',
     greetAsk4: '오늘 어디서부터 시작할까요?',
     greetAsk5: '새로운 걸 만들어 볼까요?',
-    greetAsk6: '아이디어가 떠오르셨나요?',
+    greetAsk6: '다음은 무엇을 할까요?',
     // Filters
     filterAll: '전체',
     filterDocs: '문서',
@@ -2446,6 +3093,7 @@ export const strings = {
     filterMindmap: '마인드맵',
     filterHwp: '한글',
     filterEpub: 'EPUB',
+    filterDiagram: '다이어그램',
     filterAria: '유형별 필터',
     // List / bulk actions
     fileCount: '파일 {n}개',
@@ -2468,8 +3116,8 @@ export const strings = {
     rename: '이름 바꾸기',
     duplicate: '복사본 만들기',
     renameFailed: '이름 바꾸기에 실패했습니다',
-    emptyStarred: '즐겨찾기가 없습니다 — 파일 행에 마우스를 올리고 별표를 클릭하세요.',
-    emptyRecent: '최근 파일이 없습니다 — 새로 만들거나 파일을 열어 시작하세요.',
+    emptyStarred: '즐겨찾기가 없습니다. 파일 행에 마우스를 올리고 별표를 클릭하세요.',
+    emptyRecent: '최근 파일이 없습니다. 새로 만들거나 파일을 열어 시작하세요.',
     emptyFiltered: '이 유형의 파일이 없습니다.',
     // Folders panel
     folders: '폴더',
@@ -2511,8 +3159,8 @@ export const strings = {
     pickSaveDir: '저장 위치 다시 선택',
     // Delete confirmation dialog
     deleteModalTitle: '파일 삭제',
-    deleteConfirmOne: '"{name}"을(를) 휴지통으로 이동하시겠습니까?',
-    deleteConfirmMany: '다음 {n}개 파일을 휴지통으로 이동하시겠습니까?',
+    deleteConfirmOne: '"{name}"을(를) 휴지통으로 옮길까요?',
+    deleteConfirmMany: '다음 {n}개 파일을 휴지통으로 옮길까요?',
     deleteMoreCount: '… 외 총 {n}개',
     delete: '삭제',
     untitled: '제목 없음',
@@ -2550,7 +3198,7 @@ export const strings = {
     setResultStoreDeleteAll: '모두 지우기',
     setResultStoreConfirm:
       '보관된 AI 읽기 결과와 번역본을 모두 지울까요? 다시 만들려면 AI를 다시 써야 합니다.',
-    setResultStoreDeleteFailed: '지우지 못했습니다. 다시 시도해 주세요.',
+    setResultStoreDeleteFailed: '지우지 못했습니다. 다시 시도하세요.',
     setSearchRerank: 'Jev 검색 재정렬',
     setSearchRerankDesc:
       '로컬 검색 상위 20개 결과의 발췌문을 TypeSafe의 Jev 모델로 보내 관련도 순으로 재정렬합니다. 기본은 꺼짐이며, 켜면 발췌문이 기기 밖으로 전송됩니다.',
@@ -2563,10 +3211,10 @@ export const strings = {
     setSearchRerankCustomUrl: '서버 URL',
     setSearchRerankCustomModel: '모델 ID',
     setSearchRerankAccount: '계정 ID',
-    setAiPanelSide: 'AI 사이드바 위치',
+    setAiPanelSide: 'AI 창 위치',
     aiPanelSideLeft: '왼쪽',
     aiPanelSideRight: '오른쪽',
-    setAiFontSize: 'AI 패널 글자 크기',
+    setAiFontSize: 'AI 창 글자 크기',
     aiFontSizeDefault: '기본',
     aiFontSizeLarge: '크게',
     aiFontSizeXLarge: '더 크게',
@@ -2580,15 +3228,15 @@ export const strings = {
     setDefaultAppOpenSettings: '시스템 설정 열기',
     setDefaultAppFailed: '변경할 수 없습니다. 시스템 설정에서 직접 설정해 주세요.',
     setAiSpellcheckDesc: 'AI 채팅 입력란에 입력할 때 잘못된 단어에 밑줄을 표시합니다.',
-    setAiPanelStart: 'AI 패널',
+    setAiPanelStart: 'AI 창',
     setAiPanelStartDesc:
-      '이음오피스를 켜거나 문서를 열 때 AI 패널을 어떻게 시작할지 정합니다. "사용 안 함"은 패널과 측면 단추를 숨기지만, 리본이나 메뉴의 AI 작업으로는 열 수 있습니다.',
+      '앱을 켜거나 문서를 열 때 AI 창을 어떻게 시작할지 정합니다. "사용 안 함"은 AI 창과 측면 단추를 숨기지만, 리본이나 메뉴의 AI 작업으로는 열 수 있습니다.',
     aiPanelStartOff: '사용 안 함',
     aiPanelStartCollapsed: '접힌 채로',
     aiPanelStartLast: '마지막 상태',
     setAuthorName: '사용자 이름',
     setAuthorNameDesc:
-      'Docs, Sheets, Slides에서 메모와 변경 내용 추적의 작성자로 표시됩니다. 비워 두면 컴퓨터 계정 이름을 사용합니다.',
+      'Docs, Sheets, Slides, PDF에서 메모와 변경 내용 추적의 작성자로 표시됩니다. 비워 두면 컴퓨터 계정 이름을 사용합니다.',
     settings: '설정',
     setSecAccount: '계정',
     setSecGeneral: '일반',
@@ -2625,6 +3273,7 @@ export const strings = {
     setSubLoginFailed:
       '로그인을 시작하지 못했습니다. 프로그램이 설치되어 있는지 확인한 뒤 다시 시도하세요.',
     setSubLogoutFailed: '로그아웃하지 못했습니다. 잠시 뒤 다시 시도하세요.',
+    setSubSwitchFailed: '설정을 저장하지 못해 바뀐 것이 없습니다. 잠시 뒤 다시 시도하세요.',
     setSubLogoutConfirm:
       '이 PC의 {program}에서 로그아웃합니다. 터미널에서 쓰는 {program}도 함께 로그아웃됩니다.',
     setSubSwitchConfirm:
@@ -2646,11 +3295,14 @@ export const strings = {
     setAiHeadlessDesc:
       '터미널 명령이나 다른 프로그램(MCP)이 요청한 이미지 생성·이미지 분석·PDF 번역·AI 페이지 읽기·책(EPUB) 번역을 Claude 또는 Codex 구독으로 처리하도록 허용합니다. 꺼져 있으면 그런 요청은 키 방식 제공업체만 씁니다.',
     setAiHeadlessWarning:
-      '시간당 한도가 없어 프로그램이 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
+      '시간당 한도가 없어 프로그램이 이미지 생성 같은 요청을 얼마든지 보낼 수 있고, 그 요청에 문서 전체의 글과 페이지 그림이 담길 수 있습니다. 프로그램이 자동으로 구독을 쓰는 것은 두 회사가 권장하지 않으며, 계정에 제한이 걸릴 수 있습니다.',
     setAiHeadlessConfirm: '그래도 켜기',
-    setAiImageCodex: 'Codex 구독',
+    setAiImageCodex: 'ChatGPT 요금제(Codex 프로그램)',
     setAiImageCodexHint:
-      'Codex 구독이 연결되어 있으면 그 구독으로 이미지를 만듭니다. 쓸 수 없을 때는 설정해 둔 키 방식 제공업체를 대신 씁니다.',
+      'Codex 프로그램에 로그인한 ChatGPT 요금제(Plus 이상)로 이미지를 만듭니다. 앱에서 바로 연결한 ChatGPT로는 OpenAI가 이미지 생성을 허용하지 않습니다. Codex를 쓸 수 없을 때는 설정해 둔 키 방식 제공업체를 대신 씁니다.',
+    setAiImageCodexConnect:
+      'ChatGPT 요금제로 이미지를 만들려면 같은 ChatGPT 계정으로 Codex 프로그램을 연결하세요. 앱에서 바로 연결한 ChatGPT로는 OpenAI가 이미지 생성을 허용하지 않습니다.',
+    setAiImageCodexConnectAction: 'Codex 연결하기',
     setAiMediaNone: '선택 없음',
     setAiImageNoneHint:
       '고른 제공업체가 없으므로, 이미지를 만들 수 있는 첫 번째 제공업체를 씁니다. 설정된 것이 없으면 이미지 생성을 쓸 수 없습니다.',
@@ -2673,8 +3325,7 @@ export const strings = {
     intgStateMissing: '스킬 미설치',
     intgStateInstalled: '스킬 {v} 설치됨 · 다음 대화부터 사용 가능',
     intgOtherToggle: '내 어시스턴트가 목록에 없음',
-    intgOtherDesc:
-      '다음 세 가지 방법 중 하나만 선택하세요. 모두 같은 스킬을 설치하므로 여러 번 할 필요가 없습니다.',
+    intgOtherDesc: '다음 세 가지 방법 중 하나만 고르세요. 모두 같은 스킬을 설치합니다.',
     intgOtherFolderTitle: 'SKILL.md 폴더를 읽는 모든 어시스턴트',
     intgOtherFolderDesc: '해당 skills 폴더를 선택하면 GenOffice가 파일을 기록합니다.',
     intgOtherZipTitle: '파일을 어시스턴트에게 전달',
@@ -2688,12 +3339,12 @@ export const strings = {
     intgExample1: '~/Downloads/report.md를 Word 문서로 만들어 줘',
     intgExample2: '3분기 실적을 소개하는 6장짜리 슬라이드를 만들어 줘',
     intgExample3: 'budget.xlsx를 PDF로 변환해서 GenOffice에서 열어 줘',
-    intgStep2Note:
-      'ieumoffice 명령줄은 어시스턴트가 직접 실행하므로 여러분이 입력할 필요가 없습니다.',
-    intgCliPartTitle: 'CLI · 명령줄 + skill',
+    intgStep2Note: 'ieumoffice 명령줄은 어시스턴트가 실행하므로 직접 입력할 필요가 없습니다.',
+    intgCliPartTitle: 'CLI · 명령줄 + 스킬',
     intgCliPartDesc:
-      '터미널 명령을 실행할 수 있는 어시스턴트(Claude Code, Codex, Cursor 등)용입니다. skill을 설치하면 어시스턴트가 스스로 ieumoffice 명령줄을 호출해 파일을 만들고 변환하고 읽고 편집합니다. 명령을 직접 입력할 필요가 없습니다.',
+      '터미널 명령을 실행할 수 있는 어시스턴트(Claude Code, Codex, Cursor 등)용입니다. 스킬을 설치하면 어시스턴트가 스스로 ieumoffice 명령줄을 호출해 파일을 만들고 변환하고 읽고 편집합니다.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: '여기서는 다른 AI 프로그램이 GenOffice를 씁니다.',
     intgMcpPartDesc:
       'MCP는 AI 어시스턴트가 외부 도구를 호출하는 공통 프로토콜입니다. 어시스턴트가 명령을 실행할 수 없거나(예: Claude Desktop) GenOffice 창을 직접 조작하게 하려면 이 방식을 사용하세요. 아래 두 방법 중 하나를 선택하면 됩니다.',
     intgMcpStdioTitle: '어시스턴트가 실행(권장)',
@@ -2734,8 +3385,8 @@ export const strings = {
     intgConfirm: '확인',
     intgConfirmWrite: '기록 위치: {path}',
     intgConfirmRemove: '삭제 대상: {path}',
-    intgConfirmOverwriteModified: '이 파일에 대한 수정 내용이 덮어써집니다.',
-    intgConfirmOverwriteOccupied: '폴더의 기존 SKILL.md가 교체됩니다.',
+    intgConfirmOverwriteModified: '이 파일에 직접 고친 내용을 덮어씁니다.',
+    intgConfirmOverwriteOccupied: '폴더에 있던 SKILL.md를 바꿉니다.',
     intgInstalledHint: '설치되었습니다. 새 세션부터 적용됩니다.',
     intgInstallElsewhere: '다른 폴더에 설치…',
     intgPickDirTitle: 'skills 폴더 선택',
@@ -2757,14 +3408,14 @@ export const strings = {
     setAiBaseUrl: 'Base URL',
     setAiBaseUrlHint: '비워 두면 공식 엔드포인트를 사용합니다.',
     setAiEndpoint: '엔드포인트',
-    setAiEndpointHint: '여러 자체 호스팅 서버를 저장하고 언제든 전환할 수 있습니다.',
+    setAiEndpointHint: '직접 운영하는 서버를 여러 개 저장해 두고 바꿔 쓸 수 있습니다.',
     setAiEndpointAdd: '엔드포인트 추가',
     setAiEndpointRemove: '삭제',
     setAiEndpointName: '이름',
-    setAiCodexPath: 'Codex 실행 파일',
-    setAiCodexPathHint: '사용자 지정 설치에만 입력하세요. 비워 두면 자동 감지합니다.',
-    setAiCodexAutoPlaceholder: '자동 감지(권장)',
-    setAiCodexHint: '로컬에서 로그인된 Codex CLI를 사용하므로 API 키가 필요 없습니다.',
+    setAiCliPath: '{name} 실행 파일',
+    setAiCliPathHint: '사용자 지정 설치에만 입력하세요. 비워 두면 자동 감지합니다.',
+    setAiCliAutoPlaceholder: '자동 감지(권장)',
+    setAiCliHint: '로컬에서 로그인된 {name}를 사용하므로 API 키가 필요 없습니다.',
     setAiSave: '저장',
     setAiSaved: '저장됨',
     setAiTest: '연결 테스트',
@@ -2795,7 +3446,7 @@ export const strings = {
     setReadUrlTokenSaved: '토큰 저장됨',
     setReadUrlClear: '지우기',
     setAiSharedKeyHint:
-      '같은 제공자의 키와 Base URL은 모든 기능에서 공유되므로 한 번만 입력하면 됩니다.',
+      '같은 제공업체의 키와 Base URL은 모든 기능에서 공유되므로 한 번만 입력하면 됩니다.',
     setGithub: '오픈 소스',
     setBasedOn: '오픈 소스 프로젝트 {{GenOffice}}(Apache License 2.0)를 바탕으로 만들었습니다.',
     setLicenses: '오픈소스 라이선스',
@@ -2829,14 +3480,14 @@ export const strings = {
     splitHintBottom: '아래에 나누기',
     // First-run onboarding
     onbTitle1: 'GenOffice에 오신 것을 환영합니다',
-    onbWelcomeSubtitle: '오픈소스 오피스 제품군',
+    onbWelcomeSubtitle: '오픈소스 오피스 프로그램',
     onbWelcomeBody:
       'Word, Excel, PowerPoint, PDF, Markdown, HTML 문서를 열고 편집합니다. AI는 이미 쓰고 있는 Claude·ChatGPT 구독이나 무료 AI 연결로 동작합니다.',
     onbSkip: '건너뛰기',
     onbNext: '다음',
     onbStart: '시작하기',
     onbStepAria: '총 {total}페이지 중 {n}페이지',
-    onbBody3: '라이선스 비용 없음, 광고 없음, 워터마크 없음.',
+    onbBody3: '라이선스 비용, 광고, 워터마크가 없습니다.',
     onbBack: '이전',
     onbConnectTitle: 'AI 연결',
     onbConnectSkipNote: '이 단계는 건너뛰고 나중에 설정 → AI에서 연결해도 됩니다.',
@@ -2858,6 +3509,8 @@ export const strings = {
     freeStatusChecking: '확인 중…',
     freeStatusConnected: '연결됨',
     freeStatusInUse: '연결됨 · 사용 중',
+    homeAiNeedsConnection: '연결 필요',
+    homeEntryAiState: 'AI {state}',
     freeUse: '이 AI 쓰기',
     freeDisconnect: '연결 해제',
     freeQuota: '오늘 무료 요청 {limit}번 중 {remaining}번 남음',
@@ -2868,14 +3521,14 @@ export const strings = {
     freePrivacy:
       '무료로 쓰는 동안 보낸 내용은 그 회사의 AI 개선에 쓰일 수 있습니다. 개인정보가 담긴 문서는 주의하세요.',
     freeGeminiBilling: '결제가 연결된 Google 프로젝트에서 만든 키는 요금이 나갈 수 있습니다.',
-    onbFreeTitle: '구독이 없나요? 무료로 시작하기',
+    onbFreeTitle: '구독 없이 무료로 시작하기',
     onbDoneTitle: '준비가 끝났습니다',
     onbDoneConnected: 'AI가 연결되었습니다: {provider}',
     onbDoneNotConnected:
       '아직 AI가 연결되지 않았습니다. 설정 → AI에서 언제든지 구독이나 무료 AI를 연결할 수 있습니다.',
-    helpSearchPlaceholder: '매뉴얼 검색…(/ 키로 포커스)',
-    helpSearchLabel: '매뉴얼 검색',
-    helpContentsLabel: '매뉴얼 목차',
+    helpSearchPlaceholder: '도움말 검색…(/ 키)',
+    helpSearchLabel: '도움말 검색',
+    helpContentsLabel: '도움말 목차',
     helpOnThisPage: '이 페이지의 내용',
     helpTopicMissing: '이 항목은 아직 작성되지 않았습니다.',
     helpHitCountOne: '주제 {n}개',
@@ -2886,7 +3539,8 @@ export const strings = {
     setLocalAddressUnencrypted: '문서가 암호화 없이 이 주소로 전송됩니다.',
     setLocalApiKey: 'API 키(선택)',
     setLocalContext: '컨텍스트',
-    setLocalContextMayDiffer: '서버가 불러온 문맥을 알려 주지 않아 실제 문맥과 다를 수 있습니다.',
+    setLocalContextMayDiffer:
+      '서버가 불러온 컨텍스트를 알려 주지 않아, 이 값은 실제와 다를 수 있습니다.',
     setLocalDelete: '삭제',
     setLocalDeleteActiveConfirm:
       '사용 중인 서버입니다. 삭제하면 사용할 AI에 서버가 없게 되며, 다른 서버가 자동으로 선택되지 않습니다.',
@@ -3012,6 +3666,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Carte mentale',
+    newDiagram: 'Diagramme',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Outils PDF',
     pdfToolsCardSub: 'Fusionner · diviser · organiser',
@@ -3038,6 +3693,7 @@ export const strings = {
     filterMindmap: 'Carte mentale',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagramme',
     filterAria: 'Filtrer par type',
     // List / bulk actions
     fileCount: '{n} fichiers',
@@ -3184,7 +3840,7 @@ export const strings = {
     aiPanelStartLast: 'Dernier état',
     setAuthorName: 'Nom d’utilisateur',
     setAuthorNameDesc:
-      'Affiché comme auteur des commentaires et des modifications suivies dans Docs, Sheets et Slides. Laissez vide pour utiliser le nom de votre compte.',
+      'Affiché comme auteur des commentaires et des modifications suivies dans Docs, Sheets, Slides et PDF. Laissez vide pour utiliser le nom de votre compte.',
     settings: 'Paramètres',
     setSecAccount: 'Compte',
     setSecGeneral: 'Général',
@@ -3223,6 +3879,8 @@ export const strings = {
     setSubLoginFailed:
       'La connexion n’a pas pu être lancée. Vérifiez que le programme est installé, puis réessayez.',
     setSubLogoutFailed: 'La déconnexion n’a pas pu aboutir. Réessayez dans un instant.',
+    setSubSwitchFailed:
+      'Le réglage n’a pas pu être enregistré, rien n’a changé. Réessayez dans un instant.',
     setSubLogoutConfirm:
       'Cette action déconnecte {program} sur ce PC. {program} utilisé dans un terminal est déconnecté lui aussi.',
     setSubSwitchConfirm:
@@ -3244,11 +3902,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Permet à la génération et à l’analyse d’images, à la traduction de PDF, à la lecture de pages par l’IA et à la traduction de livres (EPUB) demandées par une commande du terminal ou par un autre programme (MCP) de passer par votre abonnement Claude ou Codex. Lorsque l’option est désactivée, ces requêtes n’utilisent que les fournisseurs à clé.',
     setAiHeadlessWarning:
-      'Il n’y a pas de limite horaire : un programme peut envoyer autant de requêtes qu’il le souhaite, et elles peuvent contenir tout le texte d’un document et des images de ses pages. Aucune des deux entreprises ne recommande de laisser un programme utiliser automatiquement votre abonnement, et votre compte pourrait être restreint.',
+      'Il n’y a pas de limite horaire : un programme peut envoyer autant de requêtes qu’il le souhaite, génération d’images comprise, et elles peuvent contenir tout le texte d’un document et des images de ses pages. Aucune des deux entreprises ne recommande de laisser un programme utiliser automatiquement votre abonnement, et votre compte pourrait être restreint.',
     setAiHeadlessConfirm: 'Activer quand même',
-    setAiImageCodex: 'Abonnement Codex',
+    setAiImageCodex: 'Forfait ChatGPT (programme Codex)',
     setAiImageCodexHint:
-      'Les images sont générées avec votre abonnement Codex tant qu’il est connecté. S’il ne peut pas être utilisé, un fournisseur à clé déjà configuré prend le relais.',
+      'Les images sont générées avec votre forfait ChatGPT (Plus ou supérieur) connecté au programme Codex. OpenAI n’autorise pas la génération d’images via la connexion ChatGPT directe de l’application. Si Codex ne peut pas être utilisé, un fournisseur à clé déjà configuré prend le relais.',
+    setAiImageCodexConnect:
+      'Pour générer des images avec votre forfait ChatGPT, connectez le programme Codex avec le même compte ChatGPT. OpenAI n’autorise pas la génération d’images via la connexion ChatGPT directe de l’application.',
+    setAiImageCodexConnectAction: 'Connecter Codex',
     setAiMediaNone: 'Aucune sélection',
     setAiImageNoneHint:
       'Aucun fournisseur n’est choisi : le premier capable de générer des images est utilisé. Si aucun n’est configuré, la génération d’images est indisponible.',
@@ -3296,6 +3957,7 @@ export const strings = {
     intgCliPartDesc:
       'Pour les assistants capables de lancer des commandes dans le terminal (Claude Code, Codex, Cursor, etc.). Une fois le skill installé, l’assistant appelle lui-même la ligne de commande ieumoffice pour créer, convertir, lire et modifier les fichiers ; vous ne tapez jamais de commande.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Ici, d’autres programmes d’IA utilisent GenOffice.',
     intgMcpPartDesc:
       'MCP est le protocole commun que les assistants IA utilisent pour appeler des outils externes. Utilisez-le si votre assistant ne peut pas lancer de commandes (Claude Desktop, par exemple) ou si vous voulez qu’il pilote directement la fenêtre GenOffice. Choisissez l’une des deux méthodes ci-dessous.',
     intgMcpStdioTitle: 'Lancé par l’assistant (recommandé)',
@@ -3365,11 +4027,11 @@ export const strings = {
     setAiEndpointAdd: 'Ajouter un point de terminaison',
     setAiEndpointRemove: 'Supprimer',
     setAiEndpointName: 'Nom',
-    setAiCodexPath: 'Exécutable Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Exécutable {name}',
+    setAiCliPathHint:
       'À renseigner uniquement pour une installation personnalisée ; sinon, détection automatique.',
-    setAiCodexAutoPlaceholder: 'Détection auto (recommandé)',
-    setAiCodexHint: 'Utilise le CLI Codex connecté localement ; aucune clé API requise.',
+    setAiCliAutoPlaceholder: 'Détection auto (recommandé)',
+    setAiCliHint: 'Utilise {name}, connecté localement ; aucune clé API requise.',
     setAiSave: 'Enregistrer',
     setAiSaved: 'Enregistré',
     setAiTest: 'Tester la connexion',
@@ -3469,6 +4131,8 @@ export const strings = {
     freeStatusChecking: 'Vérification…',
     freeStatusConnected: 'Connecté',
     freeStatusInUse: 'Connecté · en cours d’utilisation',
+    homeAiNeedsConnection: 'Connexion requise',
+    homeEntryAiState: 'IA : {state}',
     freeUse: 'Utiliser cette IA',
     freeDisconnect: 'Déconnecter',
     freeQuota: '{remaining} requêtes gratuites restantes sur {limit} aujourd’hui',
@@ -3626,6 +4290,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mindmap',
+    newDiagram: 'Diagramm',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF-Werkzeuge',
     pdfToolsCardSub: 'Zusammenfügen · teilen · ordnen',
@@ -3652,6 +4317,7 @@ export const strings = {
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagramm',
     filterAria: 'Nach Typ filtern',
     // List / bulk actions
     fileCount: '{n} Dateien',
@@ -3802,7 +4468,7 @@ export const strings = {
     aiPanelStartLast: 'Letzter Zustand',
     setAuthorName: 'Benutzername',
     setAuthorNameDesc:
-      'Wird in Docs, Sheets und Slides als Autor von Kommentaren und nachverfolgten Änderungen angezeigt. Leer lassen, um den Kontonamen des Computers zu verwenden.',
+      'Wird in Docs, Sheets, Slides und PDF als Autor von Kommentaren und nachverfolgten Änderungen angezeigt. Leer lassen, um den Kontonamen des Computers zu verwenden.',
     settings: 'Einstellungen',
     setSecAccount: 'Konto',
     setSecGeneral: 'Allgemein',
@@ -3841,6 +4507,8 @@ export const strings = {
       'Die Anmeldung konnte nicht gestartet werden. Prüfen Sie, ob das Programm installiert ist, und versuchen Sie es erneut.',
     setSubLogoutFailed:
       'Die Abmeldung konnte nicht abgeschlossen werden. Versuchen Sie es gleich noch einmal.',
+    setSubSwitchFailed:
+      'Die Einstellung konnte nicht gespeichert werden, daher hat sich nichts geändert. Versuchen Sie es gleich noch einmal.',
     setSubLogoutConfirm:
       'Damit wird {program} auf diesem PC abgemeldet. Auch {program} im Terminal wird abgemeldet.',
     setSubSwitchConfirm:
@@ -3862,11 +4530,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Erlaubt, dass Bildgenerierung, Bildanalyse, PDF-Übersetzung, das Lesen von Seiten per KI und die Übersetzung von Büchern (EPUB), die ein Terminalbefehl oder ein anderes Programm (MCP) anfordert, über Ihr Claude- oder Codex-Abonnement laufen. Ist die Option aus, nutzen solche Anfragen nur Anbieter mit Schlüssel.',
     setAiHeadlessWarning:
-      'Es gibt kein stündliches Limit: Ein Programm kann beliebig viele Anfragen senden, und diese können den gesamten Text eines Dokuments und Bilder seiner Seiten enthalten. Keines der beiden Unternehmen empfiehlt, ein Programm das Abonnement automatisch nutzen zu lassen, und Ihr Konto kann eingeschränkt werden.',
+      'Es gibt kein stündliches Limit: Ein Programm kann beliebig viele Anfragen senden, etwa zur Bildgenerierung, und diese können den gesamten Text eines Dokuments und Bilder seiner Seiten enthalten. Keines der beiden Unternehmen empfiehlt, ein Programm das Abonnement automatisch nutzen zu lassen, und Ihr Konto kann eingeschränkt werden.',
     setAiHeadlessConfirm: 'Trotzdem einschalten',
-    setAiImageCodex: 'Codex-Abonnement',
+    setAiImageCodex: 'ChatGPT-Tarif (Codex-Programm)',
     setAiImageCodexHint:
-      'Bilder werden über Ihr Codex-Abonnement erzeugt, solange es verbunden ist. Kann es nicht genutzt werden, wird stattdessen ein eingerichteter Anbieter mit Schlüssel verwendet.',
+      'Bilder werden mit Ihrem ChatGPT-Tarif (Plus oder höher) erzeugt, mit dem das Codex-Programm angemeldet ist. Über die direkte ChatGPT-Verbindung der App erlaubt OpenAI keine Bildgenerierung. Kann Codex nicht genutzt werden, wird stattdessen ein eingerichteter Anbieter mit Schlüssel verwendet.',
+    setAiImageCodexConnect:
+      'Um Bilder mit Ihrem ChatGPT-Tarif zu erzeugen, verbinden Sie das Codex-Programm mit demselben ChatGPT-Konto. Über die direkte ChatGPT-Verbindung der App erlaubt OpenAI keine Bildgenerierung.',
+    setAiImageCodexConnectAction: 'Codex verbinden',
     setAiMediaNone: 'Keine Auswahl',
     setAiImageNoneHint:
       'Es ist kein Anbieter gewählt, daher wird der erste verwendet, der Bilder erzeugen kann. Ist keiner eingerichtet, steht die Bildgenerierung nicht zur Verfügung.',
@@ -3915,6 +4586,7 @@ export const strings = {
     intgCliPartDesc:
       'Für Assistenten, die Terminalbefehle ausführen können (Claude Code, Codex, Cursor u. a.). Nach der Installation des Skills ruft der Assistent die ieumoffice-Kommandozeile selbst auf, um Dateien zu erstellen, zu konvertieren, zu lesen und zu bearbeiten; Sie tippen nie einen Befehl.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Hier nutzen andere KI-Programme GenOffice.',
     intgMcpPartDesc:
       'MCP ist das gemeinsame Protokoll, über das KI-Assistenten externe Werkzeuge aufrufen. Nutzen Sie es, wenn der Assistent keine Befehle ausführen kann (z. B. Claude Desktop) oder wenn er das GenOffice-Fenster direkt steuern soll. Wählen Sie einen der beiden Wege unten.',
     intgMcpStdioTitle: 'Vom Assistenten gestartet (empfohlen)',
@@ -3984,11 +4656,11 @@ export const strings = {
     setAiEndpointAdd: 'Endpunkt hinzufügen',
     setAiEndpointRemove: 'Entfernen',
     setAiEndpointName: 'Name',
-    setAiCodexPath: 'Codex-Programmdatei',
-    setAiCodexPathHint:
+    setAiCliPath: '{name}-Programmdatei',
+    setAiCliPathHint:
       'Nur bei einer benutzerdefinierten Installation angeben; leer lassen für automatische Erkennung.',
-    setAiCodexAutoPlaceholder: 'Automatisch erkennen (empfohlen)',
-    setAiCodexHint: 'Verwendet die lokal angemeldete Codex CLI; kein API-Schlüssel nötig.',
+    setAiCliAutoPlaceholder: 'Automatisch erkennen (empfohlen)',
+    setAiCliHint: 'Verwendet {name} mit lokaler Anmeldung; kein API-Schlüssel nötig.',
     setAiSave: 'Speichern',
     setAiSaved: 'Gespeichert',
     setAiTest: 'Verbindung testen',
@@ -4086,6 +4758,8 @@ export const strings = {
     freeStatusChecking: 'Wird geprüft…',
     freeStatusConnected: 'Verbunden',
     freeStatusInUse: 'Verbunden · wird verwendet',
+    homeAiNeedsConnection: 'Verbindung nötig',
+    homeEntryAiState: 'KI: {state}',
     freeUse: 'Diese KI verwenden',
     freeDisconnect: 'Trennen',
     freeQuota: 'Heute noch {remaining} von {limit} kostenlosen Anfragen',
@@ -4248,6 +4922,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mapa mental',
+    newDiagram: 'Diagrama',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Herramientas PDF',
     pdfToolsCardSub: 'Combinar · dividir · organizar',
@@ -4274,6 +4949,7 @@ export const strings = {
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagrama',
     filterAria: 'Filtrar por tipo',
     // List / bulk actions
     fileCount: '{n} archivos',
@@ -4422,7 +5098,7 @@ export const strings = {
     aiPanelStartLast: 'Último estado',
     setAuthorName: 'Nombre de usuario',
     setAuthorNameDesc:
-      'Se muestra como autor de los comentarios y los cambios con seguimiento en Docs, Sheets y Slides. Déjalo vacío para usar el nombre de tu cuenta.',
+      'Se muestra como autor de los comentarios y los cambios con seguimiento en Docs, Sheets, Slides y PDF. Déjalo vacío para usar el nombre de tu cuenta.',
     settings: 'Configuración',
     setSecAccount: 'Cuenta',
     setSecGeneral: 'General',
@@ -4461,6 +5137,8 @@ export const strings = {
     setSubLoginFailed:
       'No se pudo iniciar el inicio de sesión. Comprueba que el programa esté instalado y vuelve a intentarlo.',
     setSubLogoutFailed: 'No se pudo cerrar la sesión. Inténtalo de nuevo en un momento.',
+    setSubSwitchFailed:
+      'No se pudo guardar el ajuste, así que no cambió nada. Inténtalo de nuevo en un momento.',
     setSubLogoutConfirm:
       'Esto cierra la sesión de {program} en este PC. {program} en una terminal también queda sin sesión.',
     setSubSwitchConfirm:
@@ -4482,11 +5160,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Permite que la generación y el análisis de imágenes, la traducción de PDF, la lectura de páginas con IA y la traducción de libros (EPUB) que pide un comando del terminal u otro programa (MCP) se ejecuten con tu suscripción de Claude o Codex. Si está desactivado, esas solicitudes solo usan proveedores con clave.',
     setAiHeadlessWarning:
-      'No hay límite por hora: un programa puede enviar tantas solicitudes como quiera, y estas pueden incluir todo el texto de un documento e imágenes de sus páginas. Ninguna de las dos empresas recomienda que un programa use tu suscripción automáticamente, y tu cuenta podría quedar restringida.',
+      'No hay límite por hora: un programa puede enviar tantas solicitudes como quiera, incluida la generación de imágenes, y estas pueden incluir todo el texto de un documento e imágenes de sus páginas. Ninguna de las dos empresas recomienda que un programa use tu suscripción automáticamente, y tu cuenta podría quedar restringida.',
     setAiHeadlessConfirm: 'Activar de todos modos',
-    setAiImageCodex: 'Suscripción de Codex',
+    setAiImageCodex: 'Plan de ChatGPT (programa Codex)',
     setAiImageCodexHint:
-      'Las imágenes se generan con tu suscripción de Codex mientras esté conectada. Si no se puede usar, se utiliza en su lugar un proveedor con clave ya configurado.',
+      'Las imágenes se generan con tu plan de ChatGPT (Plus o superior) con el que iniciaste sesión en el programa Codex. OpenAI no permite generar imágenes a través de la conexión directa de ChatGPT de la aplicación. Si no se puede usar Codex, se utiliza en su lugar un proveedor con clave ya configurado.',
+    setAiImageCodexConnect:
+      'Para generar imágenes con tu plan de ChatGPT, conecta el programa Codex con la misma cuenta de ChatGPT. OpenAI no permite generar imágenes a través de la conexión directa de ChatGPT de la aplicación.',
+    setAiImageCodexConnectAction: 'Conectar Codex',
     setAiMediaNone: 'Sin selección',
     setAiImageNoneHint:
       'No hay ningún proveedor elegido, así que se usa el primero que pueda generar imágenes. Si no hay ninguno configurado, la generación de imágenes no está disponible.',
@@ -4533,6 +5214,7 @@ export const strings = {
     intgCliPartDesc:
       'Para asistentes que pueden ejecutar comandos de terminal (Claude Code, Codex, Cursor y otros). Con el skill instalado, el asistente llama por sí mismo a la línea de comandos ieumoffice para crear, convertir, leer y editar archivos; nunca escribes un comando.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Aquí, otros programas de IA usan GenOffice.',
     intgMcpPartDesc:
       'MCP es el protocolo común con el que los asistentes de IA llaman a herramientas externas. Úsalo cuando tu asistente no pueda ejecutar comandos (Claude Desktop, por ejemplo) o cuando quieras que controle directamente la ventana de GenOffice. Elige una de las dos formas de abajo.',
     intgMcpStdioTitle: 'Iniciado por el asistente (recomendado)',
@@ -4601,11 +5283,11 @@ export const strings = {
     setAiEndpointAdd: 'Añadir endpoint',
     setAiEndpointRemove: 'Eliminar',
     setAiEndpointName: 'Nombre',
-    setAiCodexPath: 'Ejecutable de Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Ejecutable de {name}',
+    setAiCliPathHint:
       'Indícalo solo para una instalación personalizada; déjalo vacío para detectarlo automáticamente.',
-    setAiCodexAutoPlaceholder: 'Detección automática (recomendado)',
-    setAiCodexHint: 'Usa la CLI de Codex con sesión local; no se necesita clave de API.',
+    setAiCliAutoPlaceholder: 'Detección automática (recomendado)',
+    setAiCliHint: 'Usa {name} con sesión local; no se necesita clave de API.',
     setAiSave: 'Guardar',
     setAiSaved: 'Guardado',
     setAiTest: 'Probar conexión',
@@ -4702,6 +5384,8 @@ export const strings = {
     freeStatusChecking: 'Comprobando…',
     freeStatusConnected: 'Conectado',
     freeStatusInUse: 'Conectado · en uso',
+    homeAiNeedsConnection: 'Requiere conexión',
+    homeEntryAiState: 'IA: {state}',
     freeUse: 'Usar esta IA',
     freeDisconnect: 'Desconectar',
     freeQuota: 'Te quedan {remaining} de {limit} solicitudes gratuitas hoy',
@@ -4857,6 +5541,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'แผนที่ความคิด',
+    newDiagram: 'ไดอะแกรม',
     newHwp: 'AI HWP',
     pdfToolsCard: 'เครื่องมือ PDF',
     pdfToolsCardSub: 'รวม · แยก · จัดระเบียบ',
@@ -4883,6 +5568,7 @@ export const strings = {
     filterMindmap: 'แผนที่ความคิด',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'ไดอะแกรม',
     filterAria: 'กรองตามชนิด',
     // List / bulk actions
     fileCount: '{n} ไฟล์',
@@ -5025,7 +5711,7 @@ export const strings = {
     aiPanelStartLast: 'สถานะล่าสุด',
     setAuthorName: 'ชื่อผู้ใช้',
     setAuthorNameDesc:
-      'แสดงเป็นผู้เขียนความคิดเห็นและการติดตามการเปลี่ยนแปลงใน Docs, Sheets และ Slides เว้นว่างไว้เพื่อใช้ชื่อบัญชีคอมพิวเตอร์',
+      'แสดงเป็นผู้เขียนความคิดเห็นและการติดตามการเปลี่ยนแปลงใน Docs, Sheets, Slides และ PDF เว้นว่างไว้เพื่อใช้ชื่อบัญชีคอมพิวเตอร์',
     settings: 'การตั้งค่า',
     setSecAccount: 'บัญชี',
     setSecGeneral: 'ทั่วไป',
@@ -5062,6 +5748,8 @@ export const strings = {
     setSubLoginFailed:
       'ไม่สามารถเริ่มการเข้าสู่ระบบได้ โปรดตรวจสอบว่าติดตั้งโปรแกรมแล้ว จากนั้นลองอีกครั้ง',
     setSubLogoutFailed: 'ออกจากระบบไม่สำเร็จ โปรดลองอีกครั้งในอีกสักครู่',
+    setSubSwitchFailed:
+      'บันทึกการตั้งค่าไม่สำเร็จ จึงไม่มีอะไรเปลี่ยนแปลง โปรดลองอีกครั้งในอีกสักครู่',
     setSubLogoutConfirm:
       'การดำเนินการนี้จะออกจากระบบ {program} บนพีซีเครื่องนี้ {program} ที่ใช้ในเทอร์มินัลจะถูกออกจากระบบไปด้วย',
     setSubSwitchConfirm:
@@ -5083,11 +5771,14 @@ export const strings = {
     setAiHeadlessDesc:
       'อนุญาตให้การสร้างภาพ การวิเคราะห์ภาพ การแปล PDF การอ่านหน้าด้วย AI และการแปลหนังสือ (EPUB) ที่ร้องขอจากคำสั่งในเทอร์มินัลหรือโปรแกรมอื่น (MCP) ทำงานด้วยการสมัครสมาชิก Claude หรือ Codex ของคุณ เมื่อปิดอยู่ คำขอเหล่านั้นจะใช้เฉพาะผู้ให้บริการแบบใช้คีย์',
     setAiHeadlessWarning:
-      'ไม่มีขีดจำกัดรายชั่วโมง โปรแกรมจึงส่งคำขอได้มากเท่าที่ต้องการ และคำขอเหล่านั้นอาจมีข้อความทั้งหมดของเอกสารและภาพของแต่ละหน้า ทั้งสองบริษัทไม่แนะนำให้โปรแกรมใช้การสมัครสมาชิกของคุณโดยอัตโนมัติ และบัญชีของคุณอาจถูกจำกัดการใช้งาน',
+      'ไม่มีขีดจำกัดรายชั่วโมง โปรแกรมจึงส่งคำขอได้มากเท่าที่ต้องการ รวมถึงคำขอสร้างภาพ และคำขอเหล่านั้นอาจมีข้อความทั้งหมดของเอกสารและภาพของแต่ละหน้า ทั้งสองบริษัทไม่แนะนำให้โปรแกรมใช้การสมัครสมาชิกของคุณโดยอัตโนมัติ และบัญชีของคุณอาจถูกจำกัดการใช้งาน',
     setAiHeadlessConfirm: 'เปิดต่อไป',
-    setAiImageCodex: 'การสมัครสมาชิก Codex',
+    setAiImageCodex: 'แพ็กเกจ ChatGPT (โปรแกรม Codex)',
     setAiImageCodexHint:
-      'ระบบจะสร้างภาพด้วยการสมัครสมาชิก Codex ของคุณขณะที่เชื่อมต่ออยู่ หากใช้ไม่ได้ จะใช้ผู้ให้บริการแบบใช้คีย์ที่ตั้งค่าไว้แทน',
+      'ระบบจะสร้างภาพด้วยแพ็กเกจ ChatGPT (Plus ขึ้นไป) ที่เข้าสู่ระบบไว้ในโปรแกรม Codex OpenAI ไม่อนุญาตให้สร้างภาพผ่านการเชื่อมต่อ ChatGPT โดยตรงของแอป หากใช้ Codex ไม่ได้ จะใช้ผู้ให้บริการแบบใช้คีย์ที่ตั้งค่าไว้แทน',
+    setAiImageCodexConnect:
+      'หากต้องการสร้างภาพด้วยแพ็กเกจ ChatGPT ให้เชื่อมต่อโปรแกรม Codex ด้วยบัญชี ChatGPT เดียวกัน OpenAI ไม่อนุญาตให้สร้างภาพผ่านการเชื่อมต่อ ChatGPT โดยตรงของแอป',
+    setAiImageCodexConnectAction: 'เชื่อมต่อ Codex',
     setAiMediaNone: 'ไม่ได้เลือก',
     setAiImageNoneHint:
       'ยังไม่ได้เลือกผู้ให้บริการ จึงใช้รายแรกที่สร้างภาพได้ หากยังไม่ได้ตั้งค่ารายใดไว้ จะไม่สามารถสร้างภาพได้',
@@ -5130,6 +5821,7 @@ export const strings = {
     intgCliPartDesc:
       'สำหรับผู้ช่วยที่รันคำสั่งเทอร์มินัลได้ (Claude Code, Codex, Cursor และอื่น ๆ) เมื่อติดตั้ง skill แล้ว ผู้ช่วยจะเรียกบรรทัดคำสั่ง ieumoffice เองเพื่อสร้าง แปลง อ่าน และแก้ไขไฟล์ คุณไม่ต้องพิมพ์คำสั่งใด ๆ',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'ส่วนนี้ให้โปรแกรม AI อื่นใช้ GenOffice',
     intgMcpPartDesc:
       'MCP คือโปรโตคอลกลางที่ผู้ช่วย AI ใช้เรียกเครื่องมือภายนอก ใช้เมื่อผู้ช่วยรันคำสั่งไม่ได้ (เช่น Claude Desktop) หรือเมื่อต้องการให้มันควบคุมหน้าต่าง GenOffice โดยตรง เลือกวิธีใดวิธีหนึ่งจากสองวิธีด้านล่าง',
     intgMcpStdioTitle: 'ให้ผู้ช่วยเป็นผู้เริ่ม (แนะนำ)',
@@ -5197,10 +5889,10 @@ export const strings = {
     setAiEndpointAdd: 'เพิ่มปลายทาง',
     setAiEndpointRemove: 'ลบ',
     setAiEndpointName: 'ชื่อ',
-    setAiCodexPath: 'ไฟล์ปฏิบัติการ Codex',
-    setAiCodexPathHint: 'กรอกเฉพาะเมื่อติดตั้งแบบกำหนดเอง เว้นว่างไว้เพื่อค้นหาอัตโนมัติ',
-    setAiCodexAutoPlaceholder: 'ค้นหาอัตโนมัติ (แนะนำ)',
-    setAiCodexHint: 'ใช้ Codex CLI ที่เข้าสู่ระบบไว้ในเครื่อง โดยไม่ต้องใช้คีย์ API',
+    setAiCliPath: 'ไฟล์ปฏิบัติการ {name}',
+    setAiCliPathHint: 'กรอกเฉพาะเมื่อติดตั้งแบบกำหนดเอง เว้นว่างไว้เพื่อค้นหาอัตโนมัติ',
+    setAiCliAutoPlaceholder: 'ค้นหาอัตโนมัติ (แนะนำ)',
+    setAiCliHint: 'ใช้ {name} ที่เข้าสู่ระบบไว้ในเครื่อง โดยไม่ต้องใช้คีย์ API',
     setAiSave: 'บันทึก',
     setAiSaved: 'บันทึกแล้ว',
     setAiTest: 'ทดสอบการเชื่อมต่อ',
@@ -5295,6 +5987,8 @@ export const strings = {
     freeStatusChecking: 'กำลังตรวจสอบ…',
     freeStatusConnected: 'เชื่อมต่อแล้ว',
     freeStatusInUse: 'เชื่อมต่อแล้ว · กำลังใช้งาน',
+    homeAiNeedsConnection: 'ต้องเชื่อมต่อ',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'ใช้ AI นี้',
     freeDisconnect: 'ยกเลิกการเชื่อมต่อ',
     freeQuota: 'วันนี้เหลือคำขอฟรี {remaining} จาก {limit} ครั้ง',
@@ -5449,6 +6143,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Peta pikiran',
+    newDiagram: 'Diagram',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Alat PDF',
     pdfToolsCardSub: 'Gabung · pisah · atur',
@@ -5475,6 +6170,7 @@ export const strings = {
     filterMindmap: 'Peta pikiran',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagram',
     filterAria: 'Filter menurut jenis',
     // List / bulk actions
     fileCount: '{n} file',
@@ -5621,7 +6317,7 @@ export const strings = {
     aiPanelStartLast: 'Status terakhir',
     setAuthorName: 'Nama pengguna',
     setAuthorNameDesc:
-      'Ditampilkan sebagai penulis komentar dan perubahan terlacak di Docs, Sheets, dan Slides. Kosongkan untuk memakai nama akun komputer.',
+      'Ditampilkan sebagai penulis komentar dan perubahan terlacak di Docs, Sheets, Slides, dan PDF. Kosongkan untuk memakai nama akun komputer.',
     settings: 'Pengaturan',
     setSecAccount: 'Akun',
     setSecGeneral: 'Umum',
@@ -5659,6 +6355,8 @@ export const strings = {
     setSubLoginFailed:
       'Proses masuk tidak dapat dimulai. Pastikan programnya sudah terpasang, lalu coba lagi.',
     setSubLogoutFailed: 'Tidak dapat keluar. Coba lagi sebentar lagi.',
+    setSubSwitchFailed:
+      'Pengaturan tidak dapat disimpan, jadi tidak ada yang berubah. Coba lagi sebentar lagi.',
     setSubLogoutConfirm:
       'Tindakan ini mengeluarkan {program} dari akunnya di PC ini. {program} yang dipakai di terminal ikut keluar.',
     setSubSwitchConfirm:
@@ -5680,11 +6378,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Mengizinkan pembuatan gambar, analisis gambar, terjemahan PDF, pembacaan halaman dengan AI, dan terjemahan buku (EPUB) yang diminta oleh perintah terminal atau program lain (MCP) berjalan dengan langganan Claude atau Codex Anda. Jika dimatikan, permintaan tersebut hanya memakai penyedia berbasis kunci.',
     setAiHeadlessWarning:
-      'Tidak ada batas per jam, jadi program dapat mengirim permintaan sebanyak yang diinginkan, dan permintaan itu dapat memuat seluruh teks dokumen serta gambar halamannya. Kedua perusahaan tidak menyarankan program memakai langganan Anda secara otomatis, dan akun Anda bisa dibatasi.',
+      'Tidak ada batas per jam, jadi program dapat mengirim permintaan sebanyak yang diinginkan, termasuk pembuatan gambar, dan permintaan itu dapat memuat seluruh teks dokumen serta gambar halamannya. Kedua perusahaan tidak menyarankan program memakai langganan Anda secara otomatis, dan akun Anda bisa dibatasi.',
     setAiHeadlessConfirm: 'Tetap aktifkan',
-    setAiImageCodex: 'Langganan Codex',
+    setAiImageCodex: 'Paket ChatGPT (program Codex)',
     setAiImageCodexHint:
-      'Gambar dibuat dengan langganan Codex Anda selama langganan itu terhubung. Jika tidak bisa digunakan, penyedia berbasis kunci yang sudah disiapkan dipakai sebagai gantinya.',
+      'Gambar dibuat dengan paket ChatGPT Anda (Plus atau lebih tinggi) yang masuk di program Codex. OpenAI tidak mengizinkan pembuatan gambar melalui koneksi ChatGPT langsung di aplikasi. Jika Codex tidak bisa digunakan, penyedia berbasis kunci yang sudah disiapkan dipakai sebagai gantinya.',
+    setAiImageCodexConnect:
+      'Untuk membuat gambar dengan paket ChatGPT, hubungkan program Codex dengan akun ChatGPT yang sama. OpenAI tidak mengizinkan pembuatan gambar melalui koneksi ChatGPT langsung di aplikasi.',
+    setAiImageCodexConnectAction: 'Hubungkan Codex',
     setAiMediaNone: 'Tidak ada yang dipilih',
     setAiImageNoneHint:
       'Tidak ada penyedia yang dipilih, jadi yang dipakai adalah penyedia pertama yang bisa membuat gambar. Jika belum ada yang disiapkan, pembuatan gambar tidak tersedia.',
@@ -5731,6 +6432,7 @@ export const strings = {
     intgCliPartDesc:
       'Untuk asisten yang bisa menjalankan perintah terminal (Claude Code, Codex, Cursor, dan lainnya). Setelah skill terpasang, asisten memanggil baris perintah ieumoffice sendiri untuk membuat, mengonversi, membaca, dan mengedit file; Anda tidak pernah mengetik perintah.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Di sini, program AI lain memakai GenOffice.',
     intgMcpPartDesc:
       'MCP adalah protokol umum yang dipakai asisten AI untuk memanggil alat eksternal. Gunakan saat asisten Anda tidak bisa menjalankan perintah (misalnya Claude Desktop) atau saat Anda ingin ia mengendalikan jendela GenOffice secara langsung. Pilih salah satu dari dua cara di bawah.',
     intgMcpStdioTitle: 'Dijalankan oleh asisten (disarankan)',
@@ -5799,10 +6501,10 @@ export const strings = {
     setAiEndpointAdd: 'Tambah endpoint',
     setAiEndpointRemove: 'Hapus',
     setAiEndpointName: 'Nama',
-    setAiCodexPath: 'Berkas eksekusi Codex',
-    setAiCodexPathHint: 'Isi hanya untuk instalasi khusus; kosongkan agar terdeteksi otomatis.',
-    setAiCodexAutoPlaceholder: 'Deteksi otomatis (disarankan)',
-    setAiCodexHint: 'Menggunakan Codex CLI yang sudah login secara lokal; tanpa kunci API.',
+    setAiCliPath: 'Berkas eksekusi {name}',
+    setAiCliPathHint: 'Isi hanya untuk instalasi khusus; kosongkan agar terdeteksi otomatis.',
+    setAiCliAutoPlaceholder: 'Deteksi otomatis (disarankan)',
+    setAiCliHint: 'Menggunakan {name} yang sudah login secara lokal; tanpa kunci API.',
     setAiSave: 'Simpan',
     setAiSaved: 'Tersimpan',
     setAiTest: 'Uji koneksi',
@@ -5899,6 +6601,8 @@ export const strings = {
     freeStatusChecking: 'Memeriksa…',
     freeStatusConnected: 'Terhubung',
     freeStatusInUse: 'Terhubung · sedang dipakai',
+    homeAiNeedsConnection: 'Perlu dihubungkan',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Pakai AI ini',
     freeDisconnect: 'Putuskan',
     freeQuota: 'Sisa {remaining} dari {limit} permintaan gratis hari ini',
@@ -6056,6 +6760,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Интеллект-карта',
+    newDiagram: 'Диаграмма',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Инструменты PDF',
     pdfToolsCardSub: 'Объединить · разделить · упорядочить',
@@ -6082,6 +6787,7 @@ export const strings = {
     filterMindmap: 'Интеллект-карта',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Диаграмма',
     filterAria: 'Фильтр по типу',
     // List / bulk actions
     fileCount: 'Файлов: {n}',
@@ -6227,7 +6933,7 @@ export const strings = {
     aiPanelStartLast: 'Последнее состояние',
     setAuthorName: 'Имя пользователя',
     setAuthorNameDesc:
-      'Отображается как автор примечаний и исправлений в Docs, Sheets и Slides. Оставьте пустым, чтобы использовать имя учётной записи компьютера.',
+      'Отображается как автор примечаний и исправлений в Docs, Sheets, Slides и PDF. Оставьте пустым, чтобы использовать имя учётной записи компьютера.',
     settings: 'Настройки',
     setSecAccount: 'Аккаунт',
     setSecGeneral: 'Общие',
@@ -6265,6 +6971,8 @@ export const strings = {
     setSubLoginFailed:
       'Не удалось начать вход. Убедитесь, что программа установлена, и повторите попытку.',
     setSubLogoutFailed: 'Не удалось выйти. Повторите попытку чуть позже.',
+    setSubSwitchFailed:
+      'Не удалось сохранить настройку, поэтому ничего не изменилось. Повторите попытку чуть позже.',
     setSubLogoutConfirm:
       'Будет выполнен выход из {program} на этом компьютере. {program} в терминале тоже выйдет из учётной записи.',
     setSubSwitchConfirm:
@@ -6286,11 +6994,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Разрешает выполнять генерацию и анализ изображений, перевод PDF, чтение страниц с помощью ИИ и перевод книг (EPUB), запрошенные командой терминала или другой программой (MCP), по вашей подписке Claude или Codex. Если параметр выключен, такие запросы используют только провайдеров с ключом.',
     setAiHeadlessWarning:
-      'Почасового лимита нет: программа может отправлять сколько угодно запросов, и в них может попасть весь текст документа и изображения его страниц. Ни одна из двух компаний не рекомендует позволять программе автоматически использовать подписку, и ваш аккаунт может быть ограничен.',
+      'Почасового лимита нет: программа может отправлять сколько угодно запросов, в том числе на генерацию изображений, и в них может попасть весь текст документа и изображения его страниц. Ни одна из двух компаний не рекомендует позволять программе автоматически использовать подписку, и ваш аккаунт может быть ограничен.',
     setAiHeadlessConfirm: 'Всё равно включить',
-    setAiImageCodex: 'Подписка Codex',
+    setAiImageCodex: 'Тариф ChatGPT (программа Codex)',
     setAiImageCodexHint:
-      'Изображения создаются по вашей подписке Codex, пока она подключена. Если использовать её нельзя, вместо неё применяется настроенный провайдер с ключом.',
+      'Изображения создаются по вашему тарифу ChatGPT (Plus или выше), с которым выполнен вход в программу Codex. Через прямое подключение ChatGPT в приложении OpenAI не разрешает создавать изображения. Если Codex использовать нельзя, вместо него применяется настроенный провайдер с ключом.',
+    setAiImageCodexConnect:
+      'Чтобы создавать изображения по тарифу ChatGPT, подключите программу Codex с тем же аккаунтом ChatGPT. Через прямое подключение ChatGPT в приложении OpenAI не разрешает создавать изображения.',
+    setAiImageCodexConnectAction: 'Подключить Codex',
     setAiMediaNone: 'Не выбрано',
     setAiImageNoneHint:
       'Провайдер не выбран, поэтому используется первый, который может создавать изображения. Если ни один не настроен, генерация изображений недоступна.',
@@ -6337,6 +7048,7 @@ export const strings = {
     intgCliPartDesc:
       'Для ассистентов, умеющих выполнять команды терминала (Claude Code, Codex, Cursor и другие). После установки skill ассистент сам вызывает командную строку ieumoffice, чтобы создавать, конвертировать, читать и редактировать файлы; вам не нужно вводить команды.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Здесь другие ИИ-программы пользуются GenOffice.',
     intgMcpPartDesc:
       'MCP — общий протокол, через который ИИ-ассистенты вызывают внешние инструменты. Используйте его, если ассистент не умеет выполнять команды (например, Claude Desktop) или если хотите, чтобы он напрямую управлял окном GenOffice. Выберите один из двух способов ниже.',
     intgMcpStdioTitle: 'Запускает ассистент (рекомендуется)',
@@ -6404,11 +7116,11 @@ export const strings = {
     setAiEndpointAdd: 'Добавить эндпоинт',
     setAiEndpointRemove: 'Удалить',
     setAiEndpointName: 'Название',
-    setAiCodexPath: 'Исполняемый файл Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Исполняемый файл {name}',
+    setAiCliPathHint:
       'Указывайте только для нестандартной установки; оставьте пустым для автоопределения.',
-    setAiCodexAutoPlaceholder: 'Автоопределение (рекомендуется)',
-    setAiCodexHint: 'Использует локально авторизованный Codex CLI; ключ API не нужен.',
+    setAiCliAutoPlaceholder: 'Автоопределение (рекомендуется)',
+    setAiCliHint: 'Использует локально авторизованный {name}; ключ API не нужен.',
     setAiSave: 'Сохранить',
     setAiSaved: 'Сохранено',
     setAiTest: 'Проверить подключение',
@@ -6507,6 +7219,8 @@ export const strings = {
     freeStatusChecking: 'Проверка…',
     freeStatusConnected: 'Подключено',
     freeStatusInUse: 'Подключено · используется',
+    homeAiNeedsConnection: 'Нужно подключение',
+    homeEntryAiState: 'ИИ: {state}',
     freeUse: 'Использовать этот ИИ',
     freeDisconnect: 'Отключить',
     freeQuota: 'Сегодня осталось {remaining} из {limit} бесплатных запросов',
@@ -6663,6 +7377,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'خريطة ذهنية',
+    newDiagram: 'مخطط',
     newHwp: 'AI HWP',
     pdfToolsCard: 'أدوات PDF',
     pdfToolsCardSub: 'دمج · تقسيم · تنظيم',
@@ -6689,6 +7404,7 @@ export const strings = {
     filterMindmap: 'خريطة ذهنية',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'مخطط',
     filterAria: 'تصفية حسب النوع',
     // List / bulk actions
     fileCount: '{n} ملفات',
@@ -6833,7 +7549,7 @@ export const strings = {
     aiPanelStartLast: 'الحالة الأخيرة',
     setAuthorName: 'اسم المستخدم',
     setAuthorNameDesc:
-      'يظهر كمؤلف التعليقات والتغييرات المتعقبة في Docs وSheets وSlides. اتركه فارغًا لاستخدام اسم حساب الكمبيوتر.',
+      'يظهر كمؤلف التعليقات والتغييرات المتعقبة في Docs وSheets وSlides وPDF. اتركه فارغًا لاستخدام اسم حساب الكمبيوتر.',
     settings: 'الإعدادات',
     setSecAccount: 'الحساب',
     setSecGeneral: 'عام',
@@ -6869,6 +7585,7 @@ export const strings = {
     setSubInstallFailed: 'تعذّر تشغيل أمر التثبيت. اتبع دليل التثبيت الرسمي بدلًا من ذلك.',
     setSubLoginFailed: 'تعذّر بدء تسجيل الدخول. تأكد من أن البرنامج مثبّت ثم حاول مجددًا.',
     setSubLogoutFailed: 'تعذّر تسجيل الخروج. حاول مجددًا بعد قليل.',
+    setSubSwitchFailed: 'تعذّر حفظ الإعداد، لذا لم يتغيّر شيء. حاول مجددًا بعد قليل.',
     setSubLogoutConfirm:
       'سيؤدي هذا إلى تسجيل خروج {program} على هذا الحاسوب. وسيُسجَّل خروج {program} المستخدم في الطرفية أيضًا.',
     setSubSwitchConfirm:
@@ -6890,11 +7607,14 @@ export const strings = {
     setAiHeadlessDesc:
       'يسمح بتنفيذ توليد الصور وتحليلها وترجمة ملفات PDF وقراءة الصفحات بالذكاء الاصطناعي وترجمة الكتب (EPUB) التي يطلبها أمر في الطرفية أو برنامج آخر (MCP) عبر اشتراكك في Claude أو Codex. عند إيقاف هذا الخيار تستخدم تلك الطلبات المزوّدين الذين يعملون بمفتاح فقط.',
     setAiHeadlessWarning:
-      'لا يوجد حد بالساعة، لذا يمكن لبرنامج أن يرسل ما يشاء من الطلبات، وقد تتضمن هذه الطلبات النص الكامل للمستند وصور صفحاته. لا توصي أيٌّ من الشركتين بأن يستخدم برنامجٌ اشتراكك تلقائيًا، وقد تُفرض قيود على حسابك.',
+      'لا يوجد حد بالساعة، لذا يمكن لبرنامج أن يرسل ما يشاء من الطلبات، ومنها طلبات توليد الصور، وقد تتضمن هذه الطلبات النص الكامل للمستند وصور صفحاته. لا توصي أيٌّ من الشركتين بأن يستخدم برنامجٌ اشتراكك تلقائيًا، وقد تُفرض قيود على حسابك.',
     setAiHeadlessConfirm: 'تشغيل على أي حال',
-    setAiImageCodex: 'اشتراك Codex',
+    setAiImageCodex: 'خطة ChatGPT (برنامج Codex)',
     setAiImageCodexHint:
-      'تُولَّد الصور عبر اشتراكك في Codex ما دام متصلًا. وإذا تعذّر استخدامه يُستخدم بدلًا منه مزوّد يعمل بمفتاح تم إعداده.',
+      'تُولَّد الصور عبر خطتك في ChatGPT (Plus أو أعلى) التي سُجِّل بها الدخول إلى برنامج Codex. لا تسمح OpenAI بتوليد الصور عبر اتصال ChatGPT المباشر في التطبيق. وإذا تعذّر استخدام Codex يُستخدم بدلًا منه مزوّد يعمل بمفتاح تم إعداده.',
+    setAiImageCodexConnect:
+      'لتوليد الصور بخطتك في ChatGPT، اربط برنامج Codex بحساب ChatGPT نفسه. لا تسمح OpenAI بتوليد الصور عبر اتصال ChatGPT المباشر في التطبيق.',
+    setAiImageCodexConnectAction: 'ربط Codex',
     setAiMediaNone: 'لا يوجد اختيار',
     setAiImageNoneHint:
       'لم يُختر أي مزوّد، لذا يُستخدم أول مزوّد قادر على توليد الصور. وإذا لم يكن أي مزوّد مُعدًّا فلن يكون توليد الصور متاحًا.',
@@ -6937,6 +7657,7 @@ export const strings = {
     intgCliPartDesc:
       'للمساعدين الذين يستطيعون تنفيذ أوامر الطرفية (Claude Code وCodex وCursor وغيرها). بعد تثبيت skill، يستدعي المساعد سطر أوامر ieumoffice بنفسه لإنشاء الملفات وتحويلها وقراءتها وتحريرها؛ لن تكتب أي أمر.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'هنا تستخدم برامج الذكاء الاصطناعي الأخرى GenOffice.',
     intgMcpPartDesc:
       'MCP هو البروتوكول المشترك الذي يستخدمه مساعدو الذكاء الاصطناعي لاستدعاء أدوات خارجية. استخدمه إذا كان مساعدك لا يستطيع تنفيذ الأوامر (مثل Claude Desktop) أو إذا أردت أن يتحكم في نافذة GenOffice مباشرة. اختر إحدى الطريقتين أدناه.',
     intgMcpStdioTitle: 'يشغّله المساعد (موصى به)',
@@ -7004,10 +7725,10 @@ export const strings = {
     setAiEndpointAdd: 'إضافة نقطة نهاية',
     setAiEndpointRemove: 'إزالة',
     setAiEndpointName: 'الاسم',
-    setAiCodexPath: 'ملف Codex التنفيذي',
-    setAiCodexPathHint: 'حدده فقط للتثبيت المخصص؛ اتركه فارغًا للاكتشاف التلقائي.',
-    setAiCodexAutoPlaceholder: 'اكتشاف تلقائي (موصى به)',
-    setAiCodexHint: 'يستخدم Codex CLI المسجل محليًا؛ لا حاجة إلى مفتاح API.',
+    setAiCliPath: 'ملف {name} التنفيذي',
+    setAiCliPathHint: 'حدده فقط للتثبيت المخصص؛ اتركه فارغًا للاكتشاف التلقائي.',
+    setAiCliAutoPlaceholder: 'اكتشاف تلقائي (موصى به)',
+    setAiCliHint: 'يستخدم {name} المسجل محليًا؛ لا حاجة إلى مفتاح API.',
     setAiSave: 'حفظ',
     setAiSaved: 'تم الحفظ',
     setAiTest: 'اختبار الاتصال',
@@ -7102,6 +7823,8 @@ export const strings = {
     freeStatusChecking: 'جارٍ التحقق…',
     freeStatusConnected: 'متصل',
     freeStatusInUse: 'متصل · قيد الاستخدام',
+    homeAiNeedsConnection: 'يحتاج إلى اتصال',
+    homeEntryAiState: 'الذكاء الاصطناعي: {state}',
     freeUse: 'استخدام هذا الذكاء الاصطناعي',
     freeDisconnect: 'قطع الاتصال',
     freeQuota: 'تبقّى {remaining} من {limit} طلبات مجانية اليوم',
@@ -7229,11 +7952,11 @@ export const strings = {
     askSend: 'Enviar',
     askStop: 'Parar',
     askHeroTagline:
-      'Marque com estrela os arquivos que você lê com frequência e a IA poderá pesquisá-los e citar a fonte — clique numa citação para abrir.',
+      'Marque com estrela os arquivos que você lê com frequência e a IA poderá pesquisá-los e citar a fonte — clique em uma citação para abrir.',
     askStep1Title: 'Marcar arquivos',
     askStep1Desc: 'Em Recentes ou Pastas, clique na estrela da linha do arquivo',
     askStep2Title: 'Faça perguntas',
-    askStep2Desc: 'Pergunte como num chat, sem abrir nenhum documento antes',
+    askStep2Desc: 'Pergunte como em um chat, sem abrir nenhum documento antes',
     askStep3Title: 'Abrir citações',
     askStep3Desc: 'As respostas citam o arquivo de origem; clique para ir até ele',
     askCtaRecents: 'Marcar de Recentes',
@@ -7254,6 +7977,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mapa mental',
+    newDiagram: 'Diagrama',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Ferramentas de PDF',
     pdfToolsCardSub: 'Combinar · dividir · organizar',
@@ -7279,6 +8003,7 @@ export const strings = {
     filterMindmap: 'Mapa mental',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagrama',
     filterAria: 'Filtrar por tipo',
     fileCount: '{n} arquivos',
     fileCountOne: '{n} arquivo',
@@ -7423,7 +8148,7 @@ export const strings = {
     aiPanelStartLast: 'Último estado',
     setAuthorName: 'Nome de usuário',
     setAuthorNameDesc:
-      'Exibido como autor dos comentários e das alterações controladas no Docs, Sheets e Slides. Deixe em branco para usar o nome da conta do computador.',
+      'Exibido como autor dos comentários e das alterações controladas no Docs, Sheets, Slides e PDF. Deixe em branco para usar o nome da conta do computador.',
     settings: 'Configurações',
     setSecAccount: 'Conta',
     setSecGeneral: 'Geral',
@@ -7462,6 +8187,8 @@ export const strings = {
     setSubLoginFailed:
       'Não foi possível iniciar o login. Verifique se o programa está instalado e tente novamente.',
     setSubLogoutFailed: 'Não foi possível sair. Tente novamente em instantes.',
+    setSubSwitchFailed:
+      'Não foi possível salvar a configuração, então nada mudou. Tente novamente em instantes.',
     setSubLogoutConfirm:
       'Isso desconecta o {program} neste PC. O {program} usado em um terminal também é desconectado.',
     setSubSwitchConfirm:
@@ -7483,11 +8210,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Permite que a geração e a análise de imagens, a tradução de PDF, a leitura de páginas por IA e a tradução de livros (EPUB) pedidas por um comando do terminal ou por outro programa (MCP) sejam feitas com a sua assinatura do Claude ou do Codex. Quando desativado, essas solicitações usam apenas provedores com chave.',
     setAiHeadlessWarning:
-      'Não há limite por hora: um programa pode enviar quantas solicitações quiser, e elas podem conter todo o texto de um documento e imagens das suas páginas. Nenhuma das duas empresas recomenda deixar um programa usar a sua assinatura automaticamente, e a sua conta pode sofrer restrições.',
+      'Não há limite por hora: um programa pode enviar quantas solicitações quiser, inclusive de geração de imagens, e elas podem conter todo o texto de um documento e imagens das suas páginas. Nenhuma das duas empresas recomenda deixar um programa usar a sua assinatura automaticamente, e a sua conta pode sofrer restrições.',
     setAiHeadlessConfirm: 'Ativar mesmo assim',
-    setAiImageCodex: 'Assinatura do Codex',
+    setAiImageCodex: 'Plano do ChatGPT (programa Codex)',
     setAiImageCodexHint:
-      'As imagens são geradas com a sua assinatura do Codex enquanto ela estiver conectada. Quando ela não puder ser usada, um provedor com chave já configurado é usado no lugar.',
+      'As imagens são geradas com o seu plano do ChatGPT (Plus ou superior) conectado ao programa Codex. A OpenAI não permite gerar imagens pela conexão direta do ChatGPT no aplicativo. Quando o Codex não puder ser usado, um provedor com chave já configurado é usado no lugar.',
+    setAiImageCodexConnect:
+      'Para gerar imagens com o seu plano do ChatGPT, conecte o programa Codex com a mesma conta do ChatGPT. A OpenAI não permite gerar imagens pela conexão direta do ChatGPT no aplicativo.',
+    setAiImageCodexConnectAction: 'Conectar o Codex',
     setAiMediaNone: 'Nenhuma seleção',
     setAiImageNoneHint:
       'Nenhum provedor foi escolhido, então é usado o primeiro capaz de gerar imagens. Se nenhum estiver configurado, a geração de imagens fica indisponível.',
@@ -7534,6 +8264,7 @@ export const strings = {
     intgCliPartDesc:
       'Para assistentes que executam comandos de terminal (Claude Code, Codex, Cursor e outros). Com o skill instalado, o assistente chama a linha de comando ieumoffice sozinho para criar, converter, ler e editar arquivos; você nunca digita um comando.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Aqui, outros programas de IA usam o GenOffice.',
     intgMcpPartDesc:
       'MCP é o protocolo comum que assistentes de IA usam para chamar ferramentas externas. Use-o quando o assistente não puder executar comandos (Claude Desktop, por exemplo) ou quando quiser que ele controle a janela do GenOffice diretamente. Escolha uma das duas formas abaixo.',
     intgMcpStdioTitle: 'Iniciado pelo assistente (recomendado)',
@@ -7603,11 +8334,11 @@ export const strings = {
     setAiEndpointAdd: 'Adicionar endpoint',
     setAiEndpointRemove: 'Remover',
     setAiEndpointName: 'Nome',
-    setAiCodexPath: 'Executável do Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Executável do {name}',
+    setAiCliPathHint:
       'Preencha apenas para uma instalação personalizada; deixe em branco para detectar automaticamente.',
-    setAiCodexAutoPlaceholder: 'Detectar automaticamente (recomendado)',
-    setAiCodexHint: 'Usa o Codex CLI conectado localmente; nenhuma chave de API é necessária.',
+    setAiCliAutoPlaceholder: 'Detectar automaticamente (recomendado)',
+    setAiCliHint: 'Usa {name} conectado localmente; nenhuma chave de API é necessária.',
     setAiSave: 'Salvar',
     setAiSaved: 'Salvo',
     setAiTest: 'Testar conexão',
@@ -7702,6 +8433,8 @@ export const strings = {
     freeStatusChecking: 'Verificando…',
     freeStatusConnected: 'Conectado',
     freeStatusInUse: 'Conectado · em uso',
+    homeAiNeedsConnection: 'Requer conexão',
+    homeEntryAiState: 'IA: {state}',
     freeUse: 'Usar esta IA',
     freeDisconnect: 'Desconectar',
     freeQuota: 'Restam {remaining} de {limit} solicitações gratuitas hoje',
@@ -7856,6 +8589,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mappa mentale',
+    newDiagram: 'Diagramma',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Strumenti PDF',
     pdfToolsCardSub: 'Unisci · dividi · organizza',
@@ -7881,6 +8615,7 @@ export const strings = {
     filterMindmap: 'Mappa mentale',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagramma',
     filterAria: 'Filtra per tipo',
     fileCount: '{n} file',
     fileCountOne: '{n} file',
@@ -8024,7 +8759,7 @@ export const strings = {
     aiPanelStartLast: 'Ultimo stato',
     setAuthorName: 'Nome utente',
     setAuthorNameDesc:
-      'Mostrato come autore di commenti e revisioni in Docs, Sheets e Slides. Lascia vuoto per usare il nome dell’account del computer.',
+      'Mostrato come autore di commenti e revisioni in Docs, Sheets, Slides e PDF. Lascia vuoto per usare il nome dell’account del computer.',
     settings: 'Impostazioni',
     setSecAccount: 'Account',
     setSecGeneral: 'Generale',
@@ -8063,6 +8798,8 @@ export const strings = {
     setSubLoginFailed:
       'Impossibile avviare l’accesso. Verifica che il programma sia installato, quindi riprova.',
     setSubLogoutFailed: 'Non è stato possibile uscire. Riprova tra qualche istante.',
+    setSubSwitchFailed:
+      'Non è stato possibile salvare l’impostazione, quindi non è cambiato nulla. Riprova tra qualche istante.',
     setSubLogoutConfirm:
       'Questa operazione disconnette {program} su questo PC. Anche {program} usato in un terminale viene disconnesso.',
     setSubSwitchConfirm:
@@ -8084,11 +8821,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Consente alla generazione e all’analisi di immagini, alla traduzione di PDF, alla lettura delle pagine con l’IA e alla traduzione di libri (EPUB) richieste da un comando del terminale o da un altro programma (MCP) di usare il tuo abbonamento Claude o Codex. Se disattivata, queste richieste usano solo i provider con chiave.',
     setAiHeadlessWarning:
-      'Non c’è un limite orario: un programma può inviare tutte le richieste che vuole, e queste possono contenere l’intero testo di un documento e le immagini delle sue pagine. Nessuna delle due aziende consiglia di lasciare che un programma usi automaticamente il tuo abbonamento, e il tuo account potrebbe subire limitazioni.',
+      'Non c’è un limite orario: un programma può inviare tutte le richieste che vuole, compresa la generazione di immagini, e queste possono contenere l’intero testo di un documento e le immagini delle sue pagine. Nessuna delle due aziende consiglia di lasciare che un programma usi automaticamente il tuo abbonamento, e il tuo account potrebbe subire limitazioni.',
     setAiHeadlessConfirm: 'Attiva comunque',
-    setAiImageCodex: 'Abbonamento Codex',
+    setAiImageCodex: 'Piano ChatGPT (programma Codex)',
     setAiImageCodexHint:
-      'Le immagini vengono generate con il tuo abbonamento Codex finché è connesso. Se non può essere usato, viene utilizzato al suo posto un provider con chiave già configurato.',
+      'Le immagini vengono generate con il tuo piano ChatGPT (Plus o superiore) con cui hai effettuato l’accesso al programma Codex. OpenAI non consente di generare immagini tramite la connessione diretta a ChatGPT dell’app. Se Codex non può essere usato, viene utilizzato al suo posto un provider con chiave già configurato.',
+    setAiImageCodexConnect:
+      'Per generare immagini con il tuo piano ChatGPT, collega il programma Codex con lo stesso account ChatGPT. OpenAI non consente di generare immagini tramite la connessione diretta a ChatGPT dell’app.',
+    setAiImageCodexConnectAction: 'Collega Codex',
     setAiMediaNone: 'Nessuna selezione',
     setAiImageNoneHint:
       'Non è stato scelto alcun provider, quindi viene usato il primo in grado di generare immagini. Se non ne è configurato nessuno, la generazione di immagini non è disponibile.',
@@ -8136,6 +8876,7 @@ export const strings = {
     intgCliPartDesc:
       'Per assistenti che possono eseguire comandi da terminale (Claude Code, Codex, Cursor e altri). Installato lo skill, l’assistente richiama da sé la riga di comando ieumoffice per creare, convertire, leggere e modificare file; non digiti mai un comando.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Qui altri programmi di IA usano GenOffice.',
     intgMcpPartDesc:
       'MCP è il protocollo comune con cui gli assistenti IA richiamano strumenti esterni. Usalo quando l’assistente non può eseguire comandi (Claude Desktop, ad esempio) o quando vuoi che controlli direttamente la finestra di GenOffice. Scegli uno dei due modi qui sotto.',
     intgMcpStdioTitle: 'Avviato dall’assistente (consigliato)',
@@ -8204,11 +8945,11 @@ export const strings = {
     setAiEndpointAdd: 'Aggiungi endpoint',
     setAiEndpointRemove: 'Rimuovi',
     setAiEndpointName: 'Nome',
-    setAiCodexPath: 'Eseguibile Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Eseguibile {name}',
+    setAiCliPathHint:
       'Compila solo per un’installazione personalizzata; lascia vuoto per il rilevamento automatico.',
-    setAiCodexAutoPlaceholder: 'Rilevamento automatico (consigliato)',
-    setAiCodexHint: 'Usa Codex CLI con accesso locale; non è richiesta alcuna chiave API.',
+    setAiCliAutoPlaceholder: 'Rilevamento automatico (consigliato)',
+    setAiCliHint: 'Usa {name} con accesso locale; non è richiesta alcuna chiave API.',
     setAiSave: 'Salva',
     setAiSaved: 'Salvato',
     setAiTest: 'Prova connessione',
@@ -8304,6 +9045,8 @@ export const strings = {
     freeStatusChecking: 'Verifica in corso…',
     freeStatusConnected: 'Collegato',
     freeStatusInUse: 'Collegato · in uso',
+    homeAiNeedsConnection: 'Da collegare',
+    homeEntryAiState: 'IA: {state}',
     freeUse: 'Usa questa IA',
     freeDisconnect: 'Scollega',
     freeQuota: 'Oggi restano {remaining} richieste gratuite su {limit}',
@@ -8458,6 +9201,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mapa myśli',
+    newDiagram: 'Diagram',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Narzędzia PDF',
     pdfToolsCardSub: 'Łącz · dziel · porządkuj',
@@ -8483,6 +9227,7 @@ export const strings = {
     filterMindmap: 'Mapa myśli',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagram',
     filterAria: 'Filtruj według typu',
     fileCount: 'Pliki: {n}',
     fileCountOne: '{n} plik',
@@ -8626,7 +9371,7 @@ export const strings = {
     aiPanelStartLast: 'Ostatni stan',
     setAuthorName: 'Nazwa użytkownika',
     setAuthorNameDesc:
-      'Wyświetlana jako autor komentarzy i śledzonych zmian w Docs, Sheets i Slides. Pozostaw puste, aby użyć nazwy konta komputera.',
+      'Wyświetlana jako autor komentarzy i śledzonych zmian w Docs, Sheets, Slides i PDF. Pozostaw puste, aby użyć nazwy konta komputera.',
     settings: 'Ustawienia',
     setSecAccount: 'Konto',
     setSecGeneral: 'Ogólne',
@@ -8664,6 +9409,8 @@ export const strings = {
     setSubLoginFailed:
       'Nie udało się rozpocząć logowania. Sprawdź, czy program jest zainstalowany, i spróbuj ponownie.',
     setSubLogoutFailed: 'Nie udało się wylogować. Spróbuj ponownie za chwilę.',
+    setSubSwitchFailed:
+      'Nie udało się zapisać ustawienia, więc nic się nie zmieniło. Spróbuj ponownie za chwilę.',
     setSubLogoutConfirm:
       'Spowoduje to wylogowanie programu {program} na tym komputerze. Program {program} używany w terminalu również zostanie wylogowany.',
     setSubSwitchConfirm:
@@ -8685,11 +9432,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Pozwala, aby generowanie i analiza obrazów, tłumaczenie PDF, odczyt stron przez AI oraz tłumaczenie książek (EPUB) zlecane przez polecenie terminala lub inny program (MCP) korzystały z twojej subskrypcji Claude lub Codex. Gdy opcja jest wyłączona, takie żądania korzystają wyłącznie z dostawców z kluczem.',
     setAiHeadlessWarning:
-      'Nie ma limitu godzinowego: program może wysłać dowolnie wiele żądań, a mogą one zawierać cały tekst dokumentu i obrazy jego stron. Żadna z tych dwóch firm nie zaleca, aby program automatycznie korzystał z subskrypcji, a twoje konto może zostać ograniczone.',
+      'Nie ma limitu godzinowego: program może wysłać dowolnie wiele żądań, także do generowania obrazów, a mogą one zawierać cały tekst dokumentu i obrazy jego stron. Żadna z tych dwóch firm nie zaleca, aby program automatycznie korzystał z subskrypcji, a twoje konto może zostać ograniczone.',
     setAiHeadlessConfirm: 'Włącz mimo to',
-    setAiImageCodex: 'Subskrypcja Codex',
+    setAiImageCodex: 'Plan ChatGPT (program Codex)',
     setAiImageCodexHint:
-      'Obrazy są generowane w ramach twojej subskrypcji Codex, dopóki jest połączona. Gdy nie można jej użyć, zamiast niej używany jest skonfigurowany dostawca z kluczem.',
+      'Obrazy są generowane w ramach twojego planu ChatGPT (Plus lub wyższego), na który zalogowano program Codex. OpenAI nie pozwala generować obrazów przez bezpośrednie połączenie aplikacji z ChatGPT. Gdy nie można użyć Codex, zamiast niego używany jest skonfigurowany dostawca z kluczem.',
+    setAiImageCodexConnect:
+      'Aby generować obrazy w ramach planu ChatGPT, połącz program Codex z tym samym kontem ChatGPT. OpenAI nie pozwala generować obrazów przez bezpośrednie połączenie aplikacji z ChatGPT.',
+    setAiImageCodexConnectAction: 'Połącz Codex',
     setAiMediaNone: 'Nie wybrano',
     setAiImageNoneHint:
       'Nie wybrano dostawcy, więc używany jest pierwszy, który potrafi generować obrazy. Jeśli żaden nie jest skonfigurowany, generowanie obrazów jest niedostępne.',
@@ -8736,6 +9486,7 @@ export const strings = {
     intgCliPartDesc:
       'Dla asystentów, które potrafią uruchamiać polecenia terminala (Claude Code, Codex, Cursor i inne). Po zainstalowaniu skilla asystent sam wywołuje wiersz poleceń ieumoffice, aby tworzyć, konwertować, czytać i edytować pliki; nigdy nie wpisujesz polecenia.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Tutaj inne programy AI korzystają z GenOffice.',
     intgMcpPartDesc:
       'MCP to wspólny protokół, którym asystenci AI wywołują zewnętrzne narzędzia. Użyj go, gdy asystent nie potrafi uruchamiać poleceń (np. Claude Desktop) lub gdy chcesz, aby bezpośrednio sterował oknem GenOffice. Wybierz jeden z dwóch sposobów poniżej.',
     intgMcpStdioTitle: 'Uruchamiany przez asystenta (zalecane)',
@@ -8804,11 +9555,11 @@ export const strings = {
     setAiEndpointAdd: 'Dodaj punkt końcowy',
     setAiEndpointRemove: 'Usuń',
     setAiEndpointName: 'Nazwa',
-    setAiCodexPath: 'Plik wykonywalny Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Plik wykonywalny {name}',
+    setAiCliPathHint:
       'Ustaw tylko dla instalacji niestandardowej; pozostaw puste, aby wykryć automatycznie.',
-    setAiCodexAutoPlaceholder: 'Wykryj automatycznie (zalecane)',
-    setAiCodexHint: 'Używa lokalnie zalogowanego Codex CLI; klucz API nie jest potrzebny.',
+    setAiCliAutoPlaceholder: 'Wykryj automatycznie (zalecane)',
+    setAiCliHint: 'Używa lokalnie zalogowanego {name}; klucz API nie jest potrzebny.',
     setAiSave: 'Zapisz',
     setAiSaved: 'Zapisano',
     setAiTest: 'Testuj połączenie',
@@ -8903,6 +9654,8 @@ export const strings = {
     freeStatusChecking: 'Sprawdzanie…',
     freeStatusConnected: 'Połączono',
     freeStatusInUse: 'Połączono · w użyciu',
+    homeAiNeedsConnection: 'Wymaga połączenia',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Użyj tego AI',
     freeDisconnect: 'Rozłącz',
     freeQuota: 'Pozostało dziś {remaining} z {limit} darmowych żądań',
@@ -9056,6 +9809,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Myšlenková mapa',
+    newDiagram: 'Diagram',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Nástroje PDF',
     pdfToolsCardSub: 'Spojit · rozdělit · uspořádat',
@@ -9081,6 +9835,7 @@ export const strings = {
     filterMindmap: 'Myšlenková mapa',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagram',
     filterAria: 'Filtrovat podle typu',
     fileCount: '{n} souborů',
     fileCountOne: '{n} soubor',
@@ -9212,6 +9967,8 @@ export const strings = {
     setSubLoginFailed:
       'Přihlášení se nepodařilo spustit. Zkontrolujte, zda je program nainstalovaný, a zkuste to znovu.',
     setSubLogoutFailed: 'Odhlášení se nepodařilo dokončit. Zkuste to za chvíli znovu.',
+    setSubSwitchFailed:
+      'Nastavení se nepodařilo uložit, takže se nic nezměnilo. Zkuste to za chvíli znovu.',
     setSubLogoutConfirm:
       'Tím se program {program} na tomto počítači odhlásí. Odhlásí se i {program} používaný v terminálu.',
     setSubSwitchConfirm:
@@ -9233,11 +9990,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Umožní, aby generování a analýza obrázků, překlad PDF, čtení stránek pomocí AI a překlad knih (EPUB) vyžádané příkazem v terminálu nebo jiným programem (MCP) běžely na vašem předplatném Claude nebo Codex. Když je volba vypnutá, tyto požadavky používají jen poskytovatele s klíčem.',
     setAiHeadlessWarning:
-      'Neexistuje žádný hodinový limit: program může poslat libovolně mnoho požadavků a ty mohou obsahovat celý text dokumentu i obrázky jeho stránek. Ani jedna z obou společností nedoporučuje, aby program používal předplatné automaticky, a váš účet může být omezen.',
+      'Neexistuje žádný hodinový limit: program může poslat libovolně mnoho požadavků, třeba na generování obrázků, a ty mohou obsahovat celý text dokumentu i obrázky jeho stránek. Ani jedna z obou společností nedoporučuje, aby program používal předplatné automaticky, a váš účet může být omezen.',
     setAiHeadlessConfirm: 'Přesto zapnout',
-    setAiImageCodex: 'Předplatné Codex',
+    setAiImageCodex: 'Tarif ChatGPT (program Codex)',
     setAiImageCodexHint:
-      'Obrázky se generují přes vaše předplatné Codex, dokud je připojené. Když ho nelze použít, použije se místo něj nastavený poskytovatel s klíčem.',
+      'Obrázky se generují přes váš tarif ChatGPT (Plus nebo vyšší), ke kterému je přihlášen program Codex. Přes přímé připojení aplikace k ChatGPT OpenAI generování obrázků nepovoluje. Když Codex nelze použít, použije se místo něj nastavený poskytovatel s klíčem.',
+    setAiImageCodexConnect:
+      'Chcete-li generovat obrázky v rámci tarifu ChatGPT, připojte program Codex se stejným účtem ChatGPT. Přes přímé připojení aplikace k ChatGPT OpenAI generování obrázků nepovoluje.',
+    setAiImageCodexConnectAction: 'Připojit Codex',
     setAiMediaNone: 'Nic nevybráno',
     setAiImageNoneHint:
       'Není vybrán žádný poskytovatel, proto se použije první, který umí generovat obrázky. Pokud není nastaven žádný, generování obrázků není dostupné.',
@@ -9282,6 +10042,7 @@ export const strings = {
     intgCliPartDesc:
       'Pro asistenty, kteří umí spouštět příkazy terminálu (Claude Code, Codex, Cursor a další). Po instalaci skillu asistent sám volá příkazový řádek ieumoffice k vytváření, převodu, čtení a úpravám souborů; žádný příkaz nepíšete.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Zde jiné programy AI používají GenOffice.',
     intgMcpPartDesc:
       'MCP je společný protokol, kterým AI asistenti volají externí nástroje. Použijte ho, když asistent neumí spouštět příkazy (např. Claude Desktop) nebo když chcete, aby přímo ovládal okno GenOffice. Vyberte jeden ze dvou způsobů níže.',
     intgMcpStdioTitle: 'Spouští asistent (doporučeno)',
@@ -9350,12 +10111,11 @@ export const strings = {
     setAiEndpointAdd: 'Přidat koncový bod',
     setAiEndpointRemove: 'Odebrat',
     setAiEndpointName: 'Název',
-    setAiCodexPath: 'Spustitelný soubor Codex',
-    setAiCodexPathHint:
-      'Vyplňte jen u vlastní instalace; prázdné pole znamená automatickou detekci.',
-    setAiCodexAutoPlaceholder: 'Nechte prázdné pro automatickou detekci (doporučeno)',
-    setAiCodexHint:
-      'Automaticky najde a použije aktuální Codex CLI, po aktualizaci není třeba nic měnit; lze zadat i vlastní cestu. API klíč není potřeba.',
+    setAiCliPath: 'Spustitelný soubor {name}',
+    setAiCliPathHint: 'Vyplňte jen u vlastní instalace; prázdné pole znamená automatickou detekci.',
+    setAiCliAutoPlaceholder: 'Nechte prázdné pro automatickou detekci (doporučeno)',
+    setAiCliHint:
+      'Automaticky najde a použije aktuální {name}, po aktualizaci není třeba nic měnit; lze zadat i vlastní cestu. API klíč není potřeba.',
     setAiSave: 'Uložit',
     setAiSaved: 'Uloženo',
     setAiTest: 'Otestovat připojení',
@@ -9449,6 +10209,8 @@ export const strings = {
     freeStatusChecking: 'Kontrola…',
     freeStatusConnected: 'Připojeno',
     freeStatusInUse: 'Připojeno · používá se',
+    homeAiNeedsConnection: 'Vyžaduje připojení',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Použít tuto AI',
     freeDisconnect: 'Odpojit',
     freeQuota: 'Dnes zbývá {remaining} z {limit} bezplatných požadavků',
@@ -9513,7 +10275,7 @@ export const strings = {
     aiPanelStartLast: 'Poslední stav',
     setAuthorName: 'Uživatelské jméno',
     setAuthorNameDesc:
-      'Zobrazuje se jako autor komentářů a sledovaných změn v Docs, Sheets a Slides. Ponechte prázdné pro použití názvu účtu počítače.',
+      'Zobrazuje se jako autor komentářů a sledovaných změn v Docs, Sheets, Slides a PDF. Ponechte prázdné pro použití názvu účtu počítače.',
     helpSearchPlaceholder: 'Hledat v příručce… (stiskněte /)',
     helpSearchLabel: 'Hledat v příručce',
     helpContentsLabel: 'Obsah příručky',
@@ -9649,6 +10411,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Mindmap',
+    newDiagram: 'Diagram',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF-hulpmiddelen',
     pdfToolsCardSub: 'Samenvoegen · splitsen · ordenen',
@@ -9674,6 +10437,7 @@ export const strings = {
     filterMindmap: 'Mindmap',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Diagram',
     filterAria: 'Filteren op type',
     fileCount: '{n} bestanden',
     fileCountOne: '{n} bestand',
@@ -9817,7 +10581,7 @@ export const strings = {
     aiPanelStartLast: 'Laatste status',
     setAuthorName: 'Gebruikersnaam',
     setAuthorNameDesc:
-      'Wordt weergegeven als auteur van opmerkingen en bijgehouden wijzigingen in Docs, Sheets en Slides. Laat leeg om de accountnaam van je computer te gebruiken.',
+      'Wordt weergegeven als auteur van opmerkingen en bijgehouden wijzigingen in Docs, Sheets, Slides en PDF. Laat leeg om de accountnaam van je computer te gebruiken.',
     settings: 'Instellingen',
     setSecAccount: 'Account',
     setSecGeneral: 'Algemeen',
@@ -9855,6 +10619,8 @@ export const strings = {
     setSubLoginFailed:
       'Het aanmelden kon niet worden gestart. Controleer of het programma is geïnstalleerd en probeer het opnieuw.',
     setSubLogoutFailed: 'Het afmelden is niet gelukt. Probeer het zo meteen opnieuw.',
+    setSubSwitchFailed:
+      'De instelling kon niet worden opgeslagen, dus er is niets veranderd. Probeer het zo meteen opnieuw.',
     setSubLogoutConfirm:
       'Hiermee wordt {program} op deze pc afgemeld. Ook {program} in een terminal wordt afgemeld.',
     setSubSwitchConfirm:
@@ -9876,11 +10642,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Staat toe dat het genereren en analyseren van afbeeldingen, het vertalen van pdf’s, het lezen van pagina’s met AI en het vertalen van boeken (EPUB), aangevraagd door een terminalopdracht of een ander programma (MCP), via je Claude- of Codex-abonnement verloopt. Als dit uit staat, gebruiken zulke verzoeken alleen providers met een sleutel.',
     setAiHeadlessWarning:
-      'Er is geen limiet per uur: een programma kan zoveel verzoeken sturen als het wil, en die kunnen de volledige tekst van een document en afbeeldingen van de pagina’s bevatten. Geen van beide bedrijven raadt aan een programma je abonnement automatisch te laten gebruiken, en je account kan worden beperkt.',
+      'Er is geen limiet per uur: een programma kan zoveel verzoeken sturen als het wil, ook om afbeeldingen te genereren, en die kunnen de volledige tekst van een document en afbeeldingen van de pagina’s bevatten. Geen van beide bedrijven raadt aan een programma je abonnement automatisch te laten gebruiken, en je account kan worden beperkt.',
     setAiHeadlessConfirm: 'Toch inschakelen',
-    setAiImageCodex: 'Codex-abonnement',
+    setAiImageCodex: 'ChatGPT-abonnement (Codex-programma)',
     setAiImageCodexHint:
-      'Afbeeldingen worden gegenereerd met je Codex-abonnement zolang het verbonden is. Als het niet kan worden gebruikt, wordt in plaats daarvan een ingestelde provider met een sleutel gebruikt.',
+      'Afbeeldingen worden gegenereerd met je ChatGPT-abonnement (Plus of hoger) waarmee het Codex-programma is aangemeld. Via de directe ChatGPT-verbinding van de app staat OpenAI het genereren van afbeeldingen niet toe. Als Codex niet kan worden gebruikt, wordt in plaats daarvan een ingestelde provider met een sleutel gebruikt.',
+    setAiImageCodexConnect:
+      'Om afbeeldingen te maken met je ChatGPT-abonnement, verbind je het Codex-programma met hetzelfde ChatGPT-account. Via de directe ChatGPT-verbinding van de app staat OpenAI het genereren van afbeeldingen niet toe.',
+    setAiImageCodexConnectAction: 'Codex verbinden',
     setAiMediaNone: 'Niets geselecteerd',
     setAiImageNoneHint:
       'Er is geen provider gekozen, dus de eerste die afbeeldingen kan genereren wordt gebruikt. Als er geen is ingesteld, is het genereren van afbeeldingen niet beschikbaar.',
@@ -9928,6 +10697,7 @@ export const strings = {
     intgCliPartDesc:
       'Voor assistenten die terminalopdrachten kunnen uitvoeren (Claude Code, Codex, Cursor en andere). Na installatie van de skill roept de assistent zelf de ieumoffice-opdrachtregel aan om bestanden te maken, converteren, lezen en bewerken; je typt nooit een opdracht.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Hier gebruiken andere AI-programma’s GenOffice.',
     intgMcpPartDesc:
       'MCP is het gemeenschappelijke protocol waarmee AI-assistenten externe tools aanroepen. Gebruik het als je assistent geen opdrachten kan uitvoeren (bijvoorbeeld Claude Desktop) of als je wilt dat hij het GenOffice-venster rechtstreeks bestuurt. Kies een van de twee manieren hieronder.',
     intgMcpStdioTitle: 'Gestart door de assistent (aanbevolen)',
@@ -9994,11 +10764,11 @@ export const strings = {
     setAiEndpointAdd: 'Eindpunt toevoegen',
     setAiEndpointRemove: 'Verwijderen',
     setAiEndpointName: 'Naam',
-    setAiCodexPath: 'Codex-uitvoerbaar bestand',
-    setAiCodexPathHint:
+    setAiCliPath: '{name}-uitvoerbaar bestand',
+    setAiCliPathHint:
       'Alleen invullen voor een aangepaste installatie; laat leeg voor automatische detectie.',
-    setAiCodexAutoPlaceholder: 'Automatisch detecteren (aanbevolen)',
-    setAiCodexHint: 'Gebruikt de lokaal aangemelde Codex CLI; geen API-sleutel nodig.',
+    setAiCliAutoPlaceholder: 'Automatisch detecteren (aanbevolen)',
+    setAiCliHint: 'Gebruikt {name} met lokale aanmelding; geen API-sleutel nodig.',
     setAiSave: 'Opslaan',
     setAiSaved: 'Opgeslagen',
     setAiTest: 'Verbinding testen',
@@ -10092,6 +10862,8 @@ export const strings = {
     freeStatusChecking: 'Controleren…',
     freeStatusConnected: 'Verbonden',
     freeStatusInUse: 'Verbonden · in gebruik',
+    homeAiNeedsConnection: 'Verbinding nodig',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Deze AI gebruiken',
     freeDisconnect: 'Verbinding verbreken',
     freeQuota: 'Nog {remaining} van {limit} gratis verzoeken over vandaag',
@@ -10247,6 +11019,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'Peta minda',
+    newDiagram: 'Rajah',
     newHwp: 'AI HWP',
     pdfToolsCard: 'Alat PDF',
     pdfToolsCardSub: 'Gabung · pisah · susun',
@@ -10272,6 +11045,7 @@ export const strings = {
     filterMindmap: 'Peta minda',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'Rajah',
     filterAria: 'Tapis mengikut jenis',
     fileCount: '{n} fail',
     fileCountOne: '{n} fail',
@@ -10415,7 +11189,7 @@ export const strings = {
     aiPanelStartLast: 'Keadaan terakhir',
     setAuthorName: 'Nama pengguna',
     setAuthorNameDesc:
-      'Dipaparkan sebagai pengarang komen dan perubahan dijejak dalam Docs, Sheets dan Slides. Biarkan kosong untuk menggunakan nama akaun komputer.',
+      'Dipaparkan sebagai pengarang komen dan perubahan dijejak dalam Docs, Sheets, Slides dan PDF. Biarkan kosong untuk menggunakan nama akaun komputer.',
     settings: 'Tetapan',
     setSecAccount: 'Akaun',
     setSecGeneral: 'Umum',
@@ -10453,6 +11227,8 @@ export const strings = {
     setSubLoginFailed:
       'Log masuk tidak dapat dimulakan. Pastikan program telah dipasang, kemudian cuba lagi.',
     setSubLogoutFailed: 'Tidak dapat log keluar. Cuba lagi sebentar lagi.',
+    setSubSwitchFailed:
+      'Tetapan tidak dapat disimpan, jadi tiada apa-apa yang berubah. Cuba lagi sebentar lagi.',
     setSubLogoutConfirm:
       'Tindakan ini melog keluar {program} pada PC ini. {program} yang digunakan dalam terminal turut dilog keluar.',
     setSubSwitchConfirm:
@@ -10474,11 +11250,14 @@ export const strings = {
     setAiHeadlessDesc:
       'Membenarkan penjanaan imej, analisis imej, terjemahan PDF, pembacaan halaman dengan AI dan terjemahan buku (EPUB) yang diminta oleh arahan terminal atau program lain (MCP) dijalankan dengan langganan Claude atau Codex anda. Apabila dimatikan, permintaan tersebut hanya menggunakan penyedia berasaskan kunci.',
     setAiHeadlessWarning:
-      'Tiada had sejam, jadi program boleh menghantar seberapa banyak permintaan yang dikehendaki, dan permintaan itu mungkin mengandungi seluruh teks dokumen serta imej halamannya. Kedua-dua syarikat tidak mengesyorkan program menggunakan langganan anda secara automatik, dan akaun anda mungkin dihadkan.',
+      'Tiada had sejam, jadi program boleh menghantar seberapa banyak permintaan yang dikehendaki, termasuk penjanaan imej, dan permintaan itu mungkin mengandungi seluruh teks dokumen serta imej halamannya. Kedua-dua syarikat tidak mengesyorkan program menggunakan langganan anda secara automatik, dan akaun anda mungkin dihadkan.',
     setAiHeadlessConfirm: 'Hidupkan juga',
-    setAiImageCodex: 'Langganan Codex',
+    setAiImageCodex: 'Pelan ChatGPT (program Codex)',
     setAiImageCodexHint:
-      'Imej dijana dengan langganan Codex anda selagi langganan itu disambungkan. Apabila langganan itu tidak dapat digunakan, penyedia berasaskan kunci yang telah disediakan digunakan sebagai ganti.',
+      'Imej dijana dengan pelan ChatGPT anda (Plus atau lebih tinggi) yang dilog masuk dalam program Codex. OpenAI tidak membenarkan penjanaan imej melalui sambungan ChatGPT terus dalam aplikasi. Apabila Codex tidak dapat digunakan, penyedia berasaskan kunci yang telah disediakan digunakan sebagai ganti.',
+    setAiImageCodexConnect:
+      'Untuk menjana imej dengan pelan ChatGPT anda, sambungkan program Codex dengan akaun ChatGPT yang sama. OpenAI tidak membenarkan penjanaan imej melalui sambungan ChatGPT terus dalam aplikasi.',
+    setAiImageCodexConnectAction: 'Sambungkan Codex',
     setAiMediaNone: 'Tiada pilihan',
     setAiImageNoneHint:
       'Tiada penyedia dipilih, maka penyedia pertama yang boleh menjana imej digunakan. Jika tiada yang disediakan, penjanaan imej tidak tersedia.',
@@ -10526,6 +11305,7 @@ export const strings = {
     intgCliPartDesc:
       'Untuk pembantu yang boleh menjalankan arahan terminal (Claude Code, Codex, Cursor dan lain-lain). Setelah skill dipasang, pembantu memanggil baris arahan ieumoffice sendiri untuk mencipta, menukar, membaca dan mengedit fail; anda tidak perlu menaip sebarang arahan.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'Di sini, program AI lain menggunakan GenOffice.',
     intgMcpPartDesc:
       'MCP ialah protokol umum yang digunakan pembantu AI untuk memanggil alat luaran. Gunakannya apabila pembantu anda tidak boleh menjalankan arahan (contohnya Claude Desktop) atau apabila anda mahu ia mengawal tetingkap GenOffice secara langsung. Pilih salah satu daripada dua cara di bawah.',
     intgMcpStdioTitle: 'Dimulakan oleh pembantu (disyorkan)',
@@ -10595,12 +11375,12 @@ export const strings = {
     setAiEndpointAdd: 'Tambah titik akhir',
     setAiEndpointRemove: 'Buang',
     setAiEndpointName: 'Nama',
-    setAiCodexPath: 'Fail boleh laku Codex',
-    setAiCodexPathHint:
+    setAiCliPath: 'Fail boleh laku {name}',
+    setAiCliPathHint:
       'Isi hanya untuk pemasangan tersuai; biarkan kosong untuk pengesanan automatik.',
-    setAiCodexAutoPlaceholder: 'Kesan automatik (disyorkan)',
-    setAiCodexHint:
-      'Menggunakan Codex CLI yang telah log masuk secara setempat; tiada kunci API diperlukan.',
+    setAiCliAutoPlaceholder: 'Kesan automatik (disyorkan)',
+    setAiCliHint:
+      'Menggunakan {name} yang telah log masuk secara setempat; tiada kunci API diperlukan.',
     setAiSave: 'Simpan',
     setAiSaved: 'Disimpan',
     setAiTest: 'Uji sambungan',
@@ -10694,6 +11474,8 @@ export const strings = {
     freeStatusChecking: 'Menyemak…',
     freeStatusConnected: 'Disambungkan',
     freeStatusInUse: 'Disambungkan · sedang digunakan',
+    homeAiNeedsConnection: 'Perlu disambungkan',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'Guna AI ini',
     freeDisconnect: 'Putuskan sambungan',
     freeQuota: '{remaining} daripada {limit} permintaan percuma lagi hari ini',
@@ -10847,6 +11629,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'מפת חשיבה',
+    newDiagram: 'תרשים',
     newHwp: 'AI HWP',
     pdfToolsCard: 'כלי PDF',
     pdfToolsCardSub: 'איחוד · פיצול · סידור',
@@ -10872,6 +11655,7 @@ export const strings = {
     filterMindmap: 'מפת חשיבה',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'תרשים',
     filterAria: 'סינון לפי סוג',
     fileCount: '{n} קבצים',
     fileCountOne: 'קובץ אחד',
@@ -11010,7 +11794,7 @@ export const strings = {
     aiPanelStartLast: 'מצב אחרון',
     setAuthorName: 'שם משתמש',
     setAuthorNameDesc:
-      'מוצג כמחבר ההערות והשינויים במעקב ב‑Docs, Sheets ו‑Slides. השאירו ריק כדי להשתמש בשם חשבון המחשב.',
+      'מוצג כמחבר ההערות והשינויים במעקב ב‑Docs, Sheets, Slides ו‑PDF. השאירו ריק כדי להשתמש בשם חשבון המחשב.',
     settings: 'הגדרות',
     setSecAccount: 'חשבון',
     setSecGeneral: 'כללי',
@@ -11047,6 +11831,7 @@ export const strings = {
       'לא ניתן היה להפעיל את פקודת ההתקנה. פעלו במקום זאת לפי מדריך ההתקנה הרשמי.',
     setSubLoginFailed: 'לא ניתן היה להתחיל את הכניסה. ודאו שהתוכנה מותקנת ונסו שוב.',
     setSubLogoutFailed: 'לא ניתן היה להשלים את היציאה מהחשבון. נסו שוב בעוד רגע.',
+    setSubSwitchFailed: 'לא ניתן היה לשמור את ההגדרה, ולכן שום דבר לא השתנה. נסו שוב בעוד רגע.',
     setSubLogoutConfirm:
       'פעולה זו מנתקת את {program} מהחשבון במחשב הזה. גם {program} שבשימוש במסוף ינותק.',
     setSubSwitchConfirm:
@@ -11068,11 +11853,14 @@ export const strings = {
     setAiHeadlessDesc:
       'מאפשר ליצירת תמונות, לניתוח תמונות, לתרגום PDF, לקריאת עמודים בעזרת AI ולתרגום ספרים (EPUB) שמבקשים פקודת מסוף או תוכנה אחרת (MCP) לפעול דרך מינוי Claude או Codex שלכם. כשהאפשרות כבויה, בקשות כאלה משתמשות רק בספקים עם מפתח.',
     setAiHeadlessWarning:
-      'אין מגבלה שעתית, ולכן תוכנה יכולה לשלוח כמה בקשות שתרצה, והן עשויות לכלול את כל הטקסט של מסמך ותמונות של עמודיו. אף אחת משתי החברות אינה ממליצה לאפשר לתוכנה להשתמש במינוי באופן אוטומטי, והחשבון שלכם עלול להיות מוגבל.',
+      'אין מגבלה שעתית, ולכן תוכנה יכולה לשלוח כמה בקשות שתרצה, כולל יצירת תמונות, והן עשויות לכלול את כל הטקסט של מסמך ותמונות של עמודיו. אף אחת משתי החברות אינה ממליצה לאפשר לתוכנה להשתמש במינוי באופן אוטומטי, והחשבון שלכם עלול להיות מוגבל.',
     setAiHeadlessConfirm: 'להפעיל בכל זאת',
-    setAiImageCodex: 'מינוי Codex',
+    setAiImageCodex: 'תוכנית ChatGPT (תוכנת Codex)',
     setAiImageCodexHint:
-      'תמונות נוצרות דרך מינוי Codex שלכם כל עוד הוא מחובר. כשאי אפשר להשתמש בו, נעשה במקומו שימוש בספק עם מפתח שהוגדר.',
+      'תמונות נוצרות דרך תוכנית ה-ChatGPT שלכם (Plus ומעלה) שאיתה מחוברת תוכנת Codex. OpenAI לא מאפשרת ליצור תמונות דרך החיבור הישיר של האפליקציה ל-ChatGPT. כשאי אפשר להשתמש ב-Codex, נעשה במקומה שימוש בספק עם מפתח שהוגדר.',
+    setAiImageCodexConnect:
+      'כדי ליצור תמונות עם תוכנית ה-ChatGPT שלכם, חברו את תוכנת Codex עם אותו חשבון ChatGPT. OpenAI לא מאפשרת ליצור תמונות דרך החיבור הישיר של האפליקציה ל-ChatGPT.',
+    setAiImageCodexConnectAction: 'חיבור Codex',
     setAiMediaNone: 'לא נבחר דבר',
     setAiImageNoneHint:
       'לא נבחר ספק, ולכן נעשה שימוש בספק הראשון שמסוגל ליצור תמונות. אם לא הוגדר אף ספק, יצירת תמונות אינה זמינה.',
@@ -11114,6 +11902,7 @@ export const strings = {
     intgCliPartDesc:
       'לעוזרים שיכולים להריץ פקודות טרמינל (Claude Code‏, Codex‏, Cursor ואחרים). לאחר התקנת ה‑skill העוזר קורא בעצמו לשורת הפקודה ieumoffice כדי ליצור, להמיר, לקרוא ולערוך קבצים; אתם לא מקלידים שום פקודה.',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'כאן תוכנות בינה מלאכותית אחרות משתמשות ב-GenOffice.',
     intgMcpPartDesc:
       'MCP הוא הפרוטוקול המשותף שבו עוזרי AI קוראים לכלים חיצוניים. השתמשו בו כשהעוזר אינו יכול להריץ פקודות (למשל Claude Desktop) או כשאתם רוצים שהוא ישלוט ישירות בחלון GenOffice. בחרו אחת משתי הדרכים למטה.',
     intgMcpStdioTitle: 'מופעל על ידי העוזר (מומלץ)',
@@ -11180,10 +11969,10 @@ export const strings = {
     setAiEndpointAdd: 'הוספת נקודת קצה',
     setAiEndpointRemove: 'הסרה',
     setAiEndpointName: 'שם',
-    setAiCodexPath: 'קובץ ההפעלה של Codex',
-    setAiCodexPathHint: 'יש למלא רק בהתקנה מותאמת; השאר ריק לזיהוי אוטומטי.',
-    setAiCodexAutoPlaceholder: 'זיהוי אוטומטי (מומלץ)',
-    setAiCodexHint: 'משתמש ב-Codex CLI המחובר מקומית; אין צורך במפתח API.',
+    setAiCliPath: 'קובץ ההפעלה של {name}',
+    setAiCliPathHint: 'יש למלא רק בהתקנה מותאמת; השאר ריק לזיהוי אוטומטי.',
+    setAiCliAutoPlaceholder: 'זיהוי אוטומטי (מומלץ)',
+    setAiCliHint: 'משתמש ב-{name} המחובר מקומית; אין צורך במפתח API.',
     setAiSave: 'שמירה',
     setAiSaved: 'נשמר',
     setAiTest: 'בדיקת חיבור',
@@ -11272,6 +12061,8 @@ export const strings = {
     freeStatusChecking: 'בודק…',
     freeStatusConnected: 'מחובר',
     freeStatusInUse: 'מחובר · בשימוש',
+    homeAiNeedsConnection: 'נדרש חיבור',
+    homeEntryAiState: 'בינה מלאכותית: {state}',
     freeUse: 'שימוש ב-AI הזה',
     freeDisconnect: 'ניתוק',
     freeQuota: 'נותרו היום {remaining} מתוך {limit} בקשות בחינם',
@@ -11421,6 +12212,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: 'माइंड मैप',
+    newDiagram: 'आरेख',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF टूल',
     pdfToolsCardSub: 'जोड़ें · बाँटें · व्यवस्थित करें',
@@ -11446,6 +12238,7 @@ export const strings = {
     filterMindmap: 'माइंड मैप',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: 'आरेख',
     filterAria: 'प्रकार के अनुसार फ़िल्टर करें',
     fileCount: '{n} फ़ाइलें',
     fileCountOne: '{n} फ़ाइल',
@@ -11589,7 +12382,7 @@ export const strings = {
     aiPanelStartLast: 'पिछली स्थिति',
     setAuthorName: 'उपयोगकर्ता नाम',
     setAuthorNameDesc:
-      'Docs, Sheets और Slides में टिप्पणियों और ट्रैक किए गए परिवर्तनों के लेखक के रूप में दिखाया जाता है। कंप्यूटर खाता नाम उपयोग करने के लिए खाली छोड़ें।',
+      'Docs, Sheets, Slides और PDF में टिप्पणियों और ट्रैक किए गए परिवर्तनों के लेखक के रूप में दिखाया जाता है। कंप्यूटर खाता नाम उपयोग करने के लिए खाली छोड़ें।',
     settings: 'सेटिंग्स',
     setSecAccount: 'खाता',
     setSecGeneral: 'सामान्य',
@@ -11627,6 +12420,8 @@ export const strings = {
     setSubLoginFailed:
       'साइन-इन शुरू नहीं हो सका। जाँचें कि प्रोग्राम इंस्टॉल है, फिर दोबारा कोशिश करें।',
     setSubLogoutFailed: 'साइन आउट पूरा नहीं हो सका। थोड़ी देर बाद फिर कोशिश करें।',
+    setSubSwitchFailed:
+      'सेटिंग सहेजी नहीं जा सकी, इसलिए कुछ नहीं बदला। थोड़ी देर बाद फिर कोशिश करें।',
     setSubLogoutConfirm:
       'इससे इस PC पर {program} साइन आउट हो जाएगा। टर्मिनल में इस्तेमाल होने वाला {program} भी साइन आउट हो जाएगा।',
     setSubSwitchConfirm:
@@ -11648,11 +12443,14 @@ export const strings = {
     setAiHeadlessDesc:
       'टर्मिनल कमांड या किसी अन्य प्रोग्राम (MCP) द्वारा माँगे गए इमेज जनरेशन, इमेज विश्लेषण, PDF अनुवाद, AI से पेज पढ़ने और पुस्तक (EPUB) अनुवाद को आपकी Claude या Codex सदस्यता पर चलने देता है। बंद होने पर ऐसे अनुरोध केवल कुंजी वाले प्रदाताओं का उपयोग करते हैं।',
     setAiHeadlessWarning:
-      'प्रति घंटे की कोई सीमा नहीं है, इसलिए कोई प्रोग्राम जितने चाहे उतने अनुरोध भेज सकता है, और उनमें दस्तावेज़ का पूरा टेक्स्ट और उसके पेजों की छवियाँ शामिल हो सकती हैं। दोनों में से कोई भी कंपनी यह सुझाव नहीं देती कि कोई प्रोग्राम आपकी सदस्यता का अपने-आप उपयोग करे, और आपके खाते पर प्रतिबंध लग सकता है।',
+      'प्रति घंटे की कोई सीमा नहीं है, इसलिए कोई प्रोग्राम इमेज जनरेशन समेत जितने चाहे उतने अनुरोध भेज सकता है, और उनमें दस्तावेज़ का पूरा टेक्स्ट और उसके पेजों की छवियाँ शामिल हो सकती हैं। दोनों में से कोई भी कंपनी यह सुझाव नहीं देती कि कोई प्रोग्राम आपकी सदस्यता का अपने-आप उपयोग करे, और आपके खाते पर प्रतिबंध लग सकता है।',
     setAiHeadlessConfirm: 'फिर भी चालू करें',
-    setAiImageCodex: 'Codex सदस्यता',
+    setAiImageCodex: 'ChatGPT प्लान (Codex प्रोग्राम)',
     setAiImageCodexHint:
-      'जब तक आपकी Codex सदस्यता कनेक्ट है, इमेज उसी से बनाई जाती हैं। जब उसका उपयोग नहीं हो सकता, तो उसकी जगह सेट किया गया कुंजी वाला प्रदाता उपयोग होता है।',
+      'इमेज उस ChatGPT प्लान (Plus या उससे ऊपर) से बनाई जाती हैं जिससे Codex प्रोग्राम में साइन इन किया गया है। ऐप के सीधे ChatGPT कनेक्शन से OpenAI इमेज बनाने की अनुमति नहीं देता। जब Codex का उपयोग नहीं हो सकता, तो उसकी जगह सेट किया गया कुंजी वाला प्रदाता उपयोग होता है।',
+    setAiImageCodexConnect:
+      'अपने ChatGPT प्लान से इमेज बनाने के लिए, उसी ChatGPT खाते से Codex प्रोग्राम कनेक्ट करें। ऐप के सीधे ChatGPT कनेक्शन से OpenAI इमेज बनाने की अनुमति नहीं देता।',
+    setAiImageCodexConnectAction: 'Codex कनेक्ट करें',
     setAiMediaNone: 'कोई चयन नहीं',
     setAiImageNoneHint:
       'कोई प्रदाता नहीं चुना गया है, इसलिए इमेज बना सकने वाला पहला प्रदाता उपयोग होता है। यदि कोई भी सेट नहीं है, तो इमेज जनरेशन उपलब्ध नहीं है।',
@@ -11697,6 +12495,7 @@ export const strings = {
     intgCliPartDesc:
       'उन सहायकों के लिए जो टर्मिनल कमांड चला सकते हैं (Claude Code, Codex, Cursor आदि)। skill इंस्टॉल होने के बाद सहायक फ़ाइलें बनाने, बदलने, पढ़ने और संपादित करने के लिए खुद ieumoffice कमांड लाइन चलाता है; आपको कोई कमांड टाइप नहीं करना पड़ता।',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: 'यहाँ दूसरे AI प्रोग्राम GenOffice इस्तेमाल करते हैं।',
     intgMcpPartDesc:
       'MCP वह साझा प्रोटोकॉल है जिससे AI सहायक बाहरी टूल बुलाते हैं। इसे तब चुनें जब सहायक कमांड न चला सके (जैसे Claude Desktop) या आप चाहें कि वह GenOffice की विंडो को सीधे चलाए। नीचे दिए दो तरीकों में से कोई एक चुनें।',
     intgMcpStdioTitle: 'सहायक द्वारा शुरू (अनुशंसित)',
@@ -11764,11 +12563,11 @@ export const strings = {
     setAiEndpointAdd: 'एंडपॉइंट जोड़ें',
     setAiEndpointRemove: 'हटाएँ',
     setAiEndpointName: 'नाम',
-    setAiCodexPath: 'Codex निष्पादन फ़ाइल',
-    setAiCodexPathHint: 'केवल कस्टम इंस्टॉलेशन के लिए भरें; स्वतः पहचान के लिए खाली छोड़ें।',
-    setAiCodexAutoPlaceholder: 'स्वतः पहचान (अनुशंसित)',
-    setAiCodexHint:
-      'स्थानीय रूप से साइन-इन किए गए Codex CLI का उपयोग करता है; API कुंजी की आवश्यकता नहीं।',
+    setAiCliPath: '{name} निष्पादन फ़ाइल',
+    setAiCliPathHint: 'केवल कस्टम इंस्टॉलेशन के लिए भरें; स्वतः पहचान के लिए खाली छोड़ें।',
+    setAiCliAutoPlaceholder: 'स्वतः पहचान (अनुशंसित)',
+    setAiCliHint:
+      'स्थानीय रूप से साइन-इन किए गए {name} का उपयोग करता है; API कुंजी की आवश्यकता नहीं।',
     setAiSave: 'सहेजें',
     setAiSaved: 'सहेजा गया',
     setAiTest: 'कनेक्शन परखें',
@@ -11862,6 +12661,8 @@ export const strings = {
     freeStatusChecking: 'जाँच हो रही है…',
     freeStatusConnected: 'कनेक्ट है',
     freeStatusInUse: 'कनेक्ट है · उपयोग में',
+    homeAiNeedsConnection: 'कनेक्ट करना ज़रूरी',
+    homeEntryAiState: 'AI: {state}',
     freeUse: 'यह AI उपयोग करें',
     freeDisconnect: 'डिस्कनेक्ट करें',
     freeQuota: 'आज {limit} में से {remaining} मुफ़्त अनुरोध बचे हैं',
@@ -12010,6 +12811,7 @@ export const strings = {
     newMarkdown: 'AI Markdown',
     newHtml: 'AI HTML',
     newMindmap: '心智圖',
+    newDiagram: '圖表',
     newHwp: 'AI HWP',
     pdfToolsCard: 'PDF 工具',
     pdfToolsCardSub: '合併 · 分割 · 整理',
@@ -12035,6 +12837,7 @@ export const strings = {
     filterMindmap: '心智圖',
     filterHwp: 'HWP',
     filterEpub: 'EPUB',
+    filterDiagram: '圖表',
     filterAria: '依類型篩選',
     fileCount: '{n} 個檔案',
     fileCountOne: '{n} 個檔案',
@@ -12171,7 +12974,7 @@ export const strings = {
     aiPanelStartLast: '上次狀態',
     setAuthorName: '使用者名稱',
     setAuthorNameDesc:
-      '作為註解和追蹤修訂的作者顯示在 Docs、Sheets、Slides 中。留空則使用電腦帳戶名稱。',
+      '作為註解和追蹤修訂的作者顯示在 Docs、Sheets、Slides、PDF 中。留空則使用電腦帳戶名稱。',
     settings: '設定',
     setSecAccount: '帳戶',
     setSecGeneral: '一般',
@@ -12206,6 +13009,7 @@ export const strings = {
     setSubInstallFailed: '無法執行安裝指令。請依照官方安裝說明進行安裝。',
     setSubLoginFailed: '無法開始登入。請確認程式已安裝後再試一次。',
     setSubLogoutFailed: '無法登出。請稍後再試。',
+    setSubSwitchFailed: '無法儲存設定，因此沒有任何變更。請稍後再試。',
     setSubLogoutConfirm: '將在這台電腦上登出 {program}。在終端機中使用的 {program} 也會一併登出。',
     setSubSwitchConfirm:
       '將在這台電腦上以其他帳戶重新登入 {program}。在終端機中使用的 {program} 的帳戶也會一併變更。',
@@ -12226,11 +13030,14 @@ export const strings = {
     setAiHeadlessDesc:
       '允許由終端機指令或其他程式（MCP）發起的生圖、圖片解析、PDF 翻譯、AI 頁面讀取和書籍（EPUB）翻譯使用你的 Claude 或 Codex 訂閱。關閉時，這類請求只使用 key 方式的服務商。',
     setAiHeadlessWarning:
-      '沒有每小時次數上限，程式可以傳送任意多的請求，請求中可能包含整份文件的文字和頁面圖片。兩家公司都不建議讓程式自動使用訂閱，你的帳號可能會受到限制。',
+      '沒有每小時次數上限，程式可以傳送任意多的請求（例如生圖），請求中可能包含整份文件的文字和頁面圖片。兩家公司都不建議讓程式自動使用訂閱，你的帳號可能會受到限制。',
     setAiHeadlessConfirm: '仍要開啟',
-    setAiImageCodex: 'Codex 訂閱',
+    setAiImageCodex: 'ChatGPT 方案（Codex 程式）',
     setAiImageCodexHint:
-      'Codex 訂閱已連線時，會用該訂閱產生圖片。無法使用時，改用已設定好的 key 方式服務商。',
+      '用登入了 Codex 程式的 ChatGPT 方案（Plus 以上）產生圖片。OpenAI 不允許透過本應用程式直接連線的 ChatGPT 產生圖片。Codex 無法使用時，改用已設定好的 key 方式服務商。',
+    setAiImageCodexConnect:
+      '要用 ChatGPT 方案產生圖片，請用同一個 ChatGPT 帳號連線 Codex 程式。OpenAI 不允許透過本應用程式直接連線的 ChatGPT 產生圖片。',
+    setAiImageCodexConnectAction: '連線 Codex',
     setAiMediaNone: '未選擇',
     setAiImageNoneHint:
       '未選擇服務商，因此使用第一個能夠產生圖片的服務商。如果都未設定，則無法產生圖片。',
@@ -12270,6 +13077,7 @@ export const strings = {
     intgCliPartDesc:
       '適合能執行終端機指令的助理（Claude Code、Codex、Cursor 等）。安裝 skill 後，助理會自己呼叫 ieumoffice 命令列建立、轉換、讀取和編輯檔案，你不需要輸入任何指令。',
     intgMcpPartTitle: 'MCP',
+    intgMcpPartWho: '這裡是讓其他 AI 程式使用 GenOffice。',
     intgMcpPartDesc:
       'MCP 是 AI 助理呼叫外部工具的通用協定。助理不能執行指令（如 Claude Desktop），或你想讓它直接操作 GenOffice 視窗時用這條路。下面兩種接法任選一種。',
     intgMcpStdioTitle: '由助理啟動（建議）',
@@ -12335,11 +13143,10 @@ export const strings = {
     setAiEndpointAdd: '新增端點',
     setAiEndpointRemove: '刪除',
     setAiEndpointName: '名稱',
-    setAiCodexPath: 'Codex 可執行檔',
-    setAiCodexPathHint: '僅自訂安裝時填寫；留空會自動偵測。',
-    setAiCodexAutoPlaceholder: '留空自動偵測（建議）',
-    setAiCodexHint:
-      '自動尋找目前的 Codex CLI，更新後無需重新選擇；也可填寫自訂路徑。無需 API Key。',
+    setAiCliPath: '{name} 可執行檔',
+    setAiCliPathHint: '僅自訂安裝時填寫；留空會自動偵測。',
+    setAiCliAutoPlaceholder: '留空自動偵測（建議）',
+    setAiCliHint: '自動尋找目前的 {name}，更新後無需重新選擇；也可填寫自訂路徑。無需 API Key。',
     setAiSave: '儲存',
     setAiSaved: '已儲存',
     setAiTest: '測試連線',
@@ -12426,6 +13233,8 @@ export const strings = {
     freeStatusChecking: '正在檢查…',
     freeStatusConnected: '已連線',
     freeStatusInUse: '已連線 · 使用中',
+    homeAiNeedsConnection: '需要連線',
+    homeEntryAiState: 'AI：{state}',
     freeUse: '使用此 AI',
     freeDisconnect: '中斷連線',
     freeQuota: '今日免費請求剩餘 {remaining} 次（共 {limit} 次）',

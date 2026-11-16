@@ -23,8 +23,7 @@ const index = src('../src/main/index.ts')
 describe('feedback strings', () => {
   const keys = Object.keys(FEEDBACK_STRINGS.zh).sort()
 
-  it('fills every key in all 21 languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('fills every key in every UI language', () => {
     for (const lang of LANGS) {
       const dict = FEEDBACK_STRINGS[lang] as Record<string, string>
       expect(Object.keys(dict).sort(), lang).toEqual(keys)
@@ -72,7 +71,9 @@ describe('the diagnostics block', () => {
 
 describe('the survey address', () => {
   it('is the published Google Form, not a repository or a local path', () => {
-    expect(FEEDBACK_SURVEY_URL).toMatch(/^https:\/\/(docs\.google\.com\/forms\/d\/e\/|forms\.gle\/)/)
+    expect(FEEDBACK_SURVEY_URL).toMatch(
+      /^https:\/\/(docs\.google\.com\/forms\/d\/e\/|forms\.gle\/)/,
+    )
     expect(FEEDBACK_SURVEY_URL).not.toMatch(/REPLACE|example\.com/)
     expect(FEEDBACK_SURVEY_URL).not.toMatch(/github\.com/)
     expect(FEEDBACK_SURVEY_URL).not.toMatch(/[\\/](Users|home)[\\/]/)

@@ -12,7 +12,7 @@ import { isPdfToolId, toolInputKind } from '../src/main/pdf-tools/tools'
  * The PDF tools window (decision 0030), fixed by reading the source where
  * Electron would be needed: it never reaches an AI provider, paths stay in
  * the main process, the window is sandboxed and wired once, and every string
- * exists in all 21 languages with the editor's own names for its commands.
+ * exists in all 22 languages with the editor's own names for its commands.
  */
 
 const src = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
@@ -99,7 +99,8 @@ describe('paths stay in the main process', () => {
 
   it('opens a picked PDF without reloading an open tab, and only its own results with a reload', () => {
     expect(win).toMatch(/deps\.openForEditing\(path\)/)
-    expect(win).toMatch(/results\.get\(id\)[\s\S]*deps\?\.openResult\(path\)/)
+    // while the result's editor is off its open asks first (editor choice spec 7.3)
+    expect(win).toMatch(/results\.get\(id\)[\s\S]*d\.openResult\(p(ath)?\)/)
   })
 })
 
@@ -159,7 +160,7 @@ describe('the window and its wiring', () => {
 describe('strings', () => {
   const keys = Object.keys(pdfToolsStrings.zh).sort()
 
-  it('fills every key in all 21 languages', () => {
+  it('fills every key in all 22 languages', () => {
     for (const lang of LANGS) {
       const dict = (pdfToolsStrings as Record<string, Record<string, string>>)[lang]!
       expect(Object.keys(dict).sort(), lang).toEqual(keys)
@@ -212,7 +213,7 @@ describe('strings', () => {
     }
   })
 
-  it('labels the Home card in all 21 languages', () => {
+  it('labels the Home card in all 22 languages', () => {
     for (const lang of LANGS) {
       const dict = (homeStrings as unknown as Record<string, Record<string, string>>)[lang]!
       expect(dict.pdfToolsCard, lang).toBeTruthy()

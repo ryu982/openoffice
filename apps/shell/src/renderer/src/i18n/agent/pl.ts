@@ -85,6 +85,20 @@ export const pl = {
   errNeedsUpdate: 'Program jest zbyt stary na tryb agenta. Zaktualizuj go i spróbuj ponownie.',
   errNotInstalled: 'Program nie jest zainstalowany.',
   errGeneric: 'Coś poszło nie tak. Spróbuj ponownie.',
+  errUnsupportedPath:
+    'Codex nie może używać folderu ani pliku, którego nazwa zawiera [ ] * lub ?. Zmień nazwę folderu projektu albo zamknij dokumenty o takiej nazwie i zacznij ponownie.',
+  errProgramExited:
+    'Program zamknął się podczas uruchamiania sesji. Zaktualizuj go, sprawdź, czy otwiera się w terminalu, i spróbuj ponownie.',
+  errProgramNoAnswer:
+    'Program nie odpowiedział na czas podczas uruchamiania sesji. Spróbuj ponownie.',
+  errProgramRefused: 'Program nie przyjął ustawień sesji. Zaktualizuj go i spróbuj ponownie.',
+  errNoModel:
+    'Program nie zaproponował żadnego modelu. Wybierz model w Ustawienia → AI i spróbuj ponownie.',
+  errPrepareFailed: 'Aplikacja nie mogła przygotować sesji. Spróbuj ponownie.',
+  errCode: 'Jeśli to się powtarza, podaj ten kod, wysyłając opinię: {code}',
   documentsUnprotected:
     'Dokumenty otwarte po rozpoczęciu sesji ({n}) nie są objęte ochroną zapisu programu. Zatrzymaj i uruchom sesję ponownie, aby je chronić.',
+  connOff: 'Wyłączone w tej aplikacji. Możesz ponownie z niego korzystać w Ustawienia → AI.',
+  errOffInApp:
+    'Ten program jest wyłączony w tej aplikacji, więc nic więcej nie zostało wysłane. Możesz ponownie z niego korzystać w Ustawienia → AI.',
 } satisfies Record<keyof typeof zh, string>

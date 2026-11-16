@@ -90,8 +90,6 @@ export const ru = {
   aiStopGeneration: 'Остановить генерацию',
   aiStop: 'Стоп',
   aiSend: 'Отправить',
-  aiSnapshotsTitle: 'Снимки версий',
-  aiRollback: 'Откатить',
   aiStarterPolishTitle: 'Улучшить заголовок и текст этого слайда',
   aiStarterTighten: 'Сделать пункты этого слайда лаконичнее',
   aiStarterProofread: 'Проверить всю презентацию на опечатки и исправить их',
@@ -243,6 +241,11 @@ export const ru = {
   aiTplFontsNotice:
     'Шрифты шаблона входят в это приложение. В других программах, например в PowerPoint, шрифт может отображаться иначе.',
   aiTplOpenFonts: 'Открыть папку со шрифтами',
+  aiTplFontsAuto: 'Шрифты: выбирает ИИ',
+  aiTplFontsOne: 'Шрифты: {font}',
+  aiTplFontsTwo: 'Шрифты: заголовки {title}, текст {body}',
+  aiTplFontsTemplate: 'Шрифты: из выбранного шаблона',
+  aiTplFontsChange: 'Изменить',
   aiTplDesc_coral: 'Кремовый и оранжево-розовый на почти чёрном фоне, огромные узкие заголовки.',
   aiTplDesc_blue_professional:
     'Кремовый фон с яркими кобальтово-синими акцентами. Чисто, современно и по-деловому.',

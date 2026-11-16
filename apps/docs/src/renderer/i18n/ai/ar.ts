@@ -80,7 +80,6 @@ export const ar = {
   aiCopied: 'تم النسخ',
   aiRegenerateTitle: 'إعادة الإنشاء',
   aiSnapshotsTitle: 'لقطات الإصدارات',
-  aiRollback: 'استرجاع',
   aiScopeSelected: 'تم تحديد {count} فقرة',
   aiScopeEmptyDoc: 'مستند فارغ',
   aiScopeCursor: 'عند المؤشر',
@@ -195,4 +194,7 @@ export const ar = {
   aiMindMapReset: 'إعادة ضبط العرض',
   aiMindMapExpand: 'توسيع الفرع',
   aiMindMapCollapse: 'طي الفرع',
+  aiMindMapToggleLayout: 'تبديل التخطيط',
+  aiMindMapLayoutTopDown: 'التبديل إلى التخطيط من أعلى إلى أسفل',
+  aiMindMapLayoutLeftRight: 'التبديل إلى التخطيط من اليسار إلى اليمين',
 } satisfies Record<keyof typeof zh, string>

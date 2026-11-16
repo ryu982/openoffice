@@ -101,6 +101,7 @@ test.describe('MCP visible grid session', () => {
       // the blank workbook create_session writes lands in the default save folder
       JSON.stringify({
         onboardingSeen: true,
+        editorPickSeen: true,
         mcpEnabled: true,
         mcpPort: port,
         defaultSaveDir: outDir,

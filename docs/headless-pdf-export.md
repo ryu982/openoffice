@@ -33,13 +33,50 @@ On failure the JSON envelope is
 
 ## Supported inputs
 
-| extension                     | module   |
-| ----------------------------- | -------- |
-| `.docx`                       | docs     |
-| `.xlsx` `.xlsm` `.xls` `.csv` | sheets   |
-| `.pptx`                       | slides   |
-| `.md` `.markdown`             | markdown |
-| `.html` `.htm`                | html     |
+| extension                                    | module   |
+| -------------------------------------------- | -------- |
+| `.docx`                                      | docs     |
+| `.xlsx` `.xlsm` `.xls` `.csv`                | sheets   |
+| `.pptx`                                      | slides   |
+| `.md` `.markdown`                            | markdown |
+| `.html` `.htm`                               | html     |
+| `.hwp` `.hwpx`                               | hwp      |
+| `.drawio` `.dio` `.drawio.svg` `.drawio.png` | diagram  |
+
+## Diagrams
+
+Diagrams take more targets and three more switches:
+
+```
+<app binary> --headless-export <diagram> --to pdf|png|svg --out <path> [--page <n>] [--json]
+<app binary> --headless-export <diagram> --to drawio|dio|drawio.svg|drawio.png --out <path>
+             [--ops <ops.json>] [--batch all-or-nothing|best-effort|stop-on-error] [--page <n>] [--json]
+```
+
+- `pdf` is one file, one sheet per page at that page's own size, made the
+  way the export menu makes it. `png` and `svg` write one file per page,
+  `<out name>-p<n>.<ext>` beside `--out` (a one-page diagram too), unless
+  `--page` (1-based) picks one page; then `--out` is the file.
+- A diagram file target runs the JSON ops of `--ops` on the diagram with the
+  AI panel's executor (Mermaid included, converted by draw.io) and writes the
+  result with draw.io's own serialization, as Save does; `--out` must end in
+  that format. `--page` is the page ops without `page` work on. A rejected
+  batch, or one that changed nothing in a file already of that format, writes
+  nothing.
+- The envelope names every file written in `output_paths` (none, one or one
+  per page), and a batch's per-op results in `detail.batch`
+  (`{ status, changed, results, created }`). A batch the planner rejected is
+  still exit 0: the job ran and wrote nothing; the caller reads the reasons.
+- The job runs in a hidden window of the diagram tab's own session, so the
+  tab's request refusal holds: nothing leaves the PC. The page opens the file
+  as saved (no recovery question) and never saves, autosaves or copies for
+  recovery; the app writes the files from the page's report and writes a
+  diagram file only when its bytes open as a diagram.
+- `--page`, `--ops` and `--batch` on any other input are bad arguments (exit 1).
+
+`ieumoffice convert <diagram> --to pdf|png|svg`, `ieumoffice diagram apply`
+(Mermaid, `.drawio.svg` / `.drawio.png`) and `ieumoffice create --type drawio`
+are the callers.
 
 ## How it works
 
@@ -80,7 +117,20 @@ file manager) and the slides recent-files entry.
   document is mounted but it never came from disk" as exit 3.
 - **Password-protected documents** cannot be answered without a user. Workbooks
   and decks are not opened at all (no prompt), so they fail as an unreadable
-  input; Word documents fail on the readiness timeout rather than immediately.
+  input; Word and Hangul documents fail on the readiness timeout rather than
+  immediately.
+- **Hangul documents** (`.hwp`, `.hwpx`) export to PDF only: the pages the
+  editor draws for print, with their text, through the same print job as File
+  › Export as PDF and Save As › PDF. A file that does not open is exit 3
+  (`the input document did not open`).
+- **A recovery copy is not used.** Every hidden view reads the file as it is
+  on disk. A copy the app kept of that file's unsaved changes is neither
+  offered (there is no one to answer, and the prompt's Esc means restore) nor
+  read, kept or removed, and the hidden view writes none of its own. Each
+  editor checks `isHeadlessMode()` where it settles a copy on open and where it
+  writes one (docs `docs-recovery.ts`, sheets `recoveredOpenFor` /
+  `writeSessionCopy`, slides, markdown, html, hwp, diagram `recovery-main.ts`);
+  a new exporter that opens through the editor's normal open path keeps both.
 - **Large workbooks** normally wait for the user's "Full Load" click before
   PDF export is allowed. Headless makes that call itself.
 - **Only the active sheet** is exported for spreadsheets, exactly as in the

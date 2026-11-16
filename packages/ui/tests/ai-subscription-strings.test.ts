@@ -14,8 +14,7 @@ const NON_LATIN: readonly Lang[] = ['zh', 'ja', 'ko', 'th', 'ru', 'ar', 'he', 'h
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 describe('AI_SUBSCRIPTION_STRINGS', () => {
-  it('covers all 21 ui languages', () => {
-    expect(LANGS).toHaveLength(21)
+  it('covers every UI language', () => {
     expect(Object.keys(AI_SUBSCRIPTION_STRINGS).sort()).toEqual([...LANGS].sort())
   })
 
@@ -73,9 +72,12 @@ describe('AI_SUBSCRIPTION_STRINGS', () => {
   it('names the vendors in text and never as a feature of this product', () => {
     for (const lang of LANGS) {
       for (const key of KEYS) {
+        if (key === 'claudeDesktopNote') continue
         const text = AI_SUBSCRIPTION_STRINGS[lang][key]
         expect(text, `${lang}.${key}`).not.toMatch(/Claude Code|GenOffice/)
       }
+      expect(AI_SUBSCRIPTION_STRINGS[lang].claudeDesktopNote, lang).toMatch(/Claude Code/)
+      expect(AI_SUBSCRIPTION_STRINGS[lang].claudeDesktopNote, lang).not.toMatch(/GenOffice/)
       // the two notices keep the company names as they are written
       expect(AI_SUBSCRIPTION_STRINGS[lang].noticeSend, lang).toMatch(/Anthropic/)
       expect(AI_SUBSCRIPTION_STRINGS[lang].noticeSend, lang).toMatch(/OpenAI/)
@@ -93,7 +95,7 @@ describe('the AI entry label', () => {
     expect(aiSubscriptionText('ko', 'aiAssistant')).toBe('AI 도우미')
   })
 
-  it('is a short label in all 21 languages: no placeholder, no sentence', () => {
+  it('is a short label in every UI language: no placeholder, no sentence', () => {
     for (const lang of LANGS) {
       const label = AI_SUBSCRIPTION_STRINGS[lang].aiAssistant
       expect(label.length, lang).toBeLessThanOrEqual(24)
