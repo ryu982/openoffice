@@ -34,6 +34,7 @@ import {
   HANCOM_KEYS_MODULE,
   PC_FONTS_MODULE,
   STUDIO_PATCHES,
+  WHEEL_ZOOM_MODULE,
   missingHancomCommands,
   missingPluginHooks,
   rhwpPatches,
@@ -94,6 +95,8 @@ const HANCOM_KEYS = join(PLUGIN_DIR, 'hancom-keys.mjs')
 const FORMAT_COPY = join(PLUGIN_DIR, 'format-copy.mjs')
 const CLIPBOARD_HTML = join(PLUGIN_DIR, 'clipboard-html.mjs')
 const PC_FONTS = join(PLUGIN_DIR, 'pc-fonts.mjs')
+/** The Ctrl+wheel zoom steps every editor shares; it has no imports, so the studio takes it as is. */
+const WHEEL_ZOOM = join(APP, '..', '..', 'packages', 'ui', 'src', 'wheel-zoom.ts')
 const HANJA_CACHE = join(APP, 'node_modules', '.cache', 'libhangul-hanja')
 const STAMP = join(OUT, '.stamp')
 
@@ -122,6 +125,8 @@ function stampValue() {
     hash.update(file)
     hash.update(readFileSync(join(PLUGIN_DIR, file)))
   }
+  // the shared wheel-zoom module lives outside studio-plugin/ and is compiled in too
+  hash.update(readFileSync(WHEEL_ZOOM))
   hash.update(HANJA_COMMIT)
   // and so is the engine: a rebuilt WASM must reach the studio
   hash.update(readFileSync(join(CORE_DIR, 'rhwp_bg.wasm')))
@@ -250,6 +255,7 @@ async function buildStudio() {
         [FORMAT_COPY_MODULE]: FORMAT_COPY,
         [CLIPBOARD_HTML_MODULE]: CLIPBOARD_HTML,
         [PC_FONTS_MODULE]: PC_FONTS,
+        [WHEEL_ZOOM_MODULE]: WHEEL_ZOOM,
       },
     },
     // upstream registers a service worker for its website build; this build

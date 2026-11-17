@@ -1,7 +1,12 @@
-// PowerPoint zoom stepping: +/- walk a preset ladder, a Ctrl+wheel notch and the
-// status-bar buttons move 10 percentage points, everything clamps to 10-400%.
+// PowerPoint zoom stepping: +/- walk a preset ladder, the status-bar buttons
+// move 10 percentage points, a Ctrl+wheel notch 5 onto the 5% grid, everything
+// clamps to 10-400%.
 
-import { clampZoom as clampZoomTo, notchStep as notchStepTo } from '@genoffice/ui'
+import {
+  clampZoom as clampZoomTo,
+  notchStep as notchStepTo,
+  wheelZoomStep as wheelZoomStepTo,
+} from '@genoffice/ui'
 
 export const ZOOM_MIN = 0.1
 export const ZOOM_MAX = 4
@@ -27,4 +32,8 @@ export function prevPreset(z: number): number {
 
 export function notchStep(z: number, dir: 1 | -1): number {
   return notchStepTo(z, dir, ZOOM_MIN, ZOOM_MAX)
+}
+
+export function wheelStep(z: number, dir: 1 | -1): number {
+  return wheelZoomStepTo(z, dir, ZOOM_MIN, ZOOM_MAX)
 }

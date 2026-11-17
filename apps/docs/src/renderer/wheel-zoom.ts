@@ -1,4 +1,4 @@
-import { clampZoom, notchStep, type ZoomWheelIntent } from '@genoffice/ui'
+import { clampZoom, wheelZoomStepPercent, type ZoomWheelIntent } from '@genoffice/ui'
 
 export const DOCS_ZOOM_MIN = 10
 export const DOCS_ZOOM_MAX = 500
@@ -12,15 +12,9 @@ export function stepDocsZoom(zoom: number, dir: 1 | -1): number {
   return clampDocsZoom(Math.round(zoom) + dir * 10)
 }
 
-/** Word steps 10 percentage points per wheel notch; a pinch stays continuous. */
-export function nextDocsZoom(
-  zoom: number,
-  intent: Exclude<ZoomWheelIntent, null>,
-  deltaY: number,
-): number {
-  if (intent === 'pinch') return clampDocsZoom(zoom - deltaY * 0.6)
-  const dir = intent === 'zoom-in' ? 1 : -1
-  return Math.round(notchStep(zoom / 100, dir, DOCS_ZOOM_MIN / 100, DOCS_ZOOM_MAX / 100) * 100)
+/** A Ctrl+wheel step: five points, onto the 5% grid (a pinch too, in the same steps). */
+export function nextDocsZoom(zoom: number, intent: Exclude<ZoomWheelIntent, null>): number {
+  return wheelZoomStepPercent(zoom, intent === 'zoom-in' ? 1 : -1, DOCS_ZOOM_MIN, DOCS_ZOOM_MAX)
 }
 
 export type ZoomFitMode = 'width' | 'text' | 'page' | 'multi'

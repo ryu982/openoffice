@@ -1,4 +1,4 @@
-import { createZoomWheelClassifier, notchStep } from '@genoffice/ui'
+import { createZoomWheelClassifier, wheelZoomStep } from '@genoffice/ui'
 
 import { SHEET_ZOOM_MAX as MAX_PERCENT, SHEET_ZOOM_MIN as MIN_PERCENT } from './zoom-range'
 
@@ -24,22 +24,21 @@ type WheelLike = Pick<
 >
 
 /// Runs ahead of Univer's own Ctrl+wheel zoom (which scales by pixel delta, so
-/// a Windows mouse notch jumps 14 points): a notch steps 10 points here and is
-/// stopped before Univer sees it; a trackpad pinch falls through to Univer's
-/// continuous zoom untouched.
+/// the step would follow the OS scroll setting): every Ctrl/⌘+wheel event is
+/// stopped before Univer sees it, and a notch, or a trackpad pinch's travel,
+/// steps five points onto the 5% grid.
 export function createWheelZoomStepper(target: WheelZoomTarget): (event: WheelLike) => void {
   const classifier = createZoomWheelClassifier()
   return (event) => {
     if (!event.ctrlKey && !event.metaKey) return
     if (target.isCellEditing()) return
     const intent = classifier.feed(event, event.timeStamp)
-    if (intent === 'pinch') return
     event.preventDefault()
     event.stopPropagation()
     if (!intent) return
     const zoom = target.getZoom()
     if (zoom === undefined) return
-    const next = notchStep(zoom, intent === 'zoom-in' ? 1 : -1, SHEET_ZOOM_MIN, SHEET_ZOOM_MAX)
+    const next = wheelZoomStep(zoom, intent === 'zoom-in' ? 1 : -1, SHEET_ZOOM_MIN, SHEET_ZOOM_MAX)
     if (next !== zoom) target.setZoom(next)
   }
 }

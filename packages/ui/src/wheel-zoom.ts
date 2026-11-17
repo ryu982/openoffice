@@ -1,5 +1,5 @@
-// Wheel-stream intent for zoom and paging, shared by the Docs/Sheets/Slides
-// renderers.
+// Wheel-stream intent for paging (Slides) and Ctrl/⌘+wheel zoom (every editor
+// with a view zoom; the HWP editor's build patch imports this file too).
 //
 // The hard part is telling one user intent apart from a stream of WheelEvents:
 //  - a mouse wheel emits one large delta per notch, with real time between
@@ -117,40 +117,60 @@ export function createWheelPager(): { feed: (deltaY: number, now: number) => Fli
   return { feed }
 }
 
-export type ZoomWheelIntent = 'pinch' | 'zoom-in' | 'zoom-out' | null
+export type ZoomWheelIntent = 'zoom-in' | 'zoom-out' | null
+
+/** Percentage points one Ctrl/⌘+wheel step moves the view zoom, in every editor. */
+export const WHEEL_ZOOM_STEP = 5
+/** In a continuous stream (trackpad pinch or two-finger scroll, a fast spin),
+ * the delta that adds up to one step. Chromium sends a pinch as
+ * -100·ln(scale) per frame, so this is about a tenth of finger spread per step. */
+const STREAM_STEP_PX = 10
 
 /**
- * Ctrl/Cmd+wheel intent for the zoom handler, sharing the pager's notch/stream
- * reasoning so a Windows mouse notch steps once while a trackpad pinch stays
- * continuous. Chromium synthesizes a pinch as ctrlKey wheel events with small
- * fractional deltas (never metaKey); a wheel notch is a line-mode delta or an
- * integer pixel delta, and Cmd+two-finger streams accumulate to one step via
- * the pager instead of stepping per event.
+ * Ctrl/⌘+wheel intent for the zoom handlers. Each event moves the zoom at most
+ * one step, and how far the OS says the wheel went never matters: Windows
+ * scales a notch's pixel delta by the "lines per notch" setting (33px at one
+ * line, 100px at three, a whole page at "one screen"), macOS by its scroll
+ * speed, and Chromium hands a trackpad pinch over as ctrlKey wheel events.
+ *  - line/page deltas are one notch each;
+ *  - a sparse event (≥ DISCRETE_MS after the last, outside a running stream)
+ *    is a notch: one step, whatever its size;
+ *  - a dense stream (pinch, two-finger scroll, a fast spin) adds its signed
+ *    deltas up and steps each time they reach STREAM_STEP_PX, then starts over,
+ *    so a large coalesced frame is still one step. A frame delayed past
+ *    DISCRETE_MS by the re-render of the last step stays part of the stream.
  */
 export function createZoomWheelClassifier(): {
-  feed: (
-    ev: Pick<WheelEvent, 'deltaY' | 'deltaMode' | 'ctrlKey' | 'metaKey'>,
-    now: number,
-  ) => ZoomWheelIntent
+  feed: (ev: Pick<WheelEvent, 'deltaY' | 'deltaMode'>, now: number) => ZoomWheelIntent
 } {
-  const pager = createWheelPager()
-  const feed = (
-    ev: Pick<WheelEvent, 'deltaY' | 'deltaMode' | 'ctrlKey' | 'metaKey'>,
-    now: number,
-  ): ZoomWheelIntent => {
-    if (ev.deltaY === 0) return null
-    if (
-      ev.deltaMode === 0 &&
-      ev.ctrlKey &&
-      !ev.metaKey &&
-      !Number.isInteger(ev.deltaY) &&
-      Math.abs(ev.deltaY) < NOTCH
-    ) {
-      return 'pinch'
+  let lastTime = -Infinity
+  let streaming = false
+  let acc = 0
+  const intent = (delta: number): ZoomWheelIntent => (delta > 0 ? 'zoom-out' : 'zoom-in')
+  const feed = (ev: Pick<WheelEvent, 'deltaY' | 'deltaMode'>, now: number): ZoomWheelIntent => {
+    if (!ev.deltaY) return null
+    const dt = now - lastTime
+    lastTime = now
+    if (ev.deltaMode !== 0) {
+      streaming = false
+      acc = 0
+      return intent(ev.deltaY)
     }
-    if (ev.deltaMode !== 0) return ev.deltaY > 0 ? 'zoom-out' : 'zoom-in'
-    const flip = pager.feed(ev.deltaY, now)
-    return flip === 0 ? null : flip > 0 ? 'zoom-out' : 'zoom-in'
+    if (dt >= DISCRETE_MS && !(streaming && dt <= GAP_MS)) {
+      streaming = false
+      acc = 0
+      return intent(ev.deltaY)
+    }
+    if (!streaming) {
+      // the notch that opened this stream already stepped: count from zero
+      streaming = true
+      acc = 0
+    }
+    acc += ev.deltaY
+    if (Math.abs(acc) < STREAM_STEP_PX) return null
+    const step = intent(acc)
+    acc = 0
+    return step
   }
   return { feed }
 }
@@ -159,7 +179,27 @@ export function clampZoom(z: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, z))
 }
 
-/** One wheel notch / button click: whole percents so repeated steps never drift. */
+/**
+ * One Ctrl/⌘+wheel step on a percent zoom: to the next multiple of
+ * WHEEL_ZOOM_STEP in that direction, so a fit-landed 87% goes to 90% or 85%
+ * and every value the wheel leaves is on the 5% grid.
+ */
+export function wheelZoomStepPercent(pct: number, dir: 1 | -1, min: number, max: number): number {
+  // hundredths first: 0.85 * 100 is 85.00000000000001, which must not count as past 85
+  const p = Math.round(pct * 100) / 100
+  const next =
+    dir > 0
+      ? Math.floor(p / WHEEL_ZOOM_STEP) * WHEEL_ZOOM_STEP + WHEEL_ZOOM_STEP
+      : Math.ceil(p / WHEEL_ZOOM_STEP) * WHEEL_ZOOM_STEP - WHEEL_ZOOM_STEP
+  return clampZoom(next, min, max)
+}
+
+/** wheelZoomStepPercent on a ratio zoom (1 = 100%); clamped as a ratio, since 0.1 * 100 is not 10. */
+export function wheelZoomStep(z: number, dir: 1 | -1, min: number, max: number): number {
+  return clampZoom(wheelZoomStepPercent(z * 100, dir, -Infinity, Infinity) / 100, min, max)
+}
+
+/** One status-bar button click: whole percents so repeated steps never drift. */
 export function notchStep(z: number, dir: 1 | -1, min: number, max: number): number {
   return clampZoom(Math.round(z * 100 + dir * 10) / 100, min, max)
 }

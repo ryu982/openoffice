@@ -4,11 +4,13 @@ import type { PrintLayoutErrorCode, PrintLayoutOptions } from '@genoffice/print-
 import {
   PrintLayoutPanel,
   PrintLayoutSchematic,
+  createZoomWheelClassifier,
   printLayoutIssueText,
   printLayoutProblem,
   showsLayoutSchematic,
   takesNewPrintRoute,
   usePrintLayoutOptions,
+  wheelZoomStepPercent,
   type PrintLabelSpecStore,
   type PrintLayoutPreviewRequest,
   type PrintLayoutProgress,
@@ -22,7 +24,6 @@ import { LruPages } from './preview-cache'
 import {
   MAX_ZOOM,
   MIN_ZOOM,
-  ZOOM_STEPS,
   clampZoom,
   gridOf,
   layoutPageSizes,
@@ -33,6 +34,7 @@ import {
   viewFromValue,
   viewValue,
   visibleSlots,
+  zoomChoices,
   type PageView,
   type PixelSize,
   type ZoomMode,
@@ -541,15 +543,22 @@ export function PrintPreview({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [doPrint, editCurrent, go, onClose, page, percent, view])
 
-  // Ctrl+wheel zooms without moving the page under the pointer. A native listener is
-  // needed: React's wheel listener is passive, where preventDefault does nothing.
+  // Ctrl+wheel zooms without moving the page under the pointer, five percentage points
+  // per notch whatever the OS scroll setting (the zoom list and +/- keep their steps).
+  // A native listener is needed: React's wheel listener is passive, where preventDefault
+  // does nothing. The classifier outlives the listener, which is re-attached per zoom.
+  const zoomWheelRef = useRef<ReturnType<typeof createZoomWheelClassifier> | null>(null)
   useEffect(() => {
     const paneEl = paneRef.current
     if (!paneEl) return
     const onWheel = (event: globalThis.WheelEvent): void => {
       if (!event.ctrlKey) return
       event.preventDefault()
-      setZoomMode(nextZoom(percent, event.deltaY < 0 ? 1 : -1))
+      zoomWheelRef.current ??= createZoomWheelClassifier()
+      const intent = zoomWheelRef.current.feed(event, event.timeStamp)
+      if (!intent) return
+      const dir = intent === 'zoom-in' ? 1 : -1
+      setZoomMode(wheelZoomStepPercent(percent, dir, MIN_ZOOM, MAX_ZOOM))
     }
     paneEl.addEventListener('wheel', onWheel, { passive: false })
     return () => paneEl.removeEventListener('wheel', onWheel)
@@ -648,7 +657,7 @@ export function PrintPreview({
           >
             <option value="fit-page">{t('previewZoomFitPage')}</option>
             <option value="fit-width">{t('previewZoomFitWidth')}</option>
-            {ZOOM_STEPS.map((step) => (
+            {zoomChoices(zoomMode).map((step) => (
               <option key={step} value={step}>
                 {step}%
               </option>

@@ -452,12 +452,12 @@ Geri Al ve Yinele belge geçmişinde adım adım ilerler; imleç bir metin alan�
 
 ### Görünüm
 
-| Eylem                 | macOS              | Windows / Linux       |
-| --------------------- | ------------------ | --------------------- |
-| Yakınlaştır           | ⌘=                 | Ctrl+=                |
-| Uzaklaştır            | ⌘-                 | Ctrl+-                |
-| Genişliğe sığdır      | ⌘0                 | Ctrl+0                |
-| Yakınlaştır (sürekli) | ⌘ + fare tekerleği | Ctrl + fare tekerleği |
+| Eylem                      | macOS              | Windows / Linux       |
+| -------------------------- | ------------------ | --------------------- |
+| Yakınlaştır                | ⌘=                 | Ctrl+=                |
+| Uzaklaştır                 | ⌘-                 | Ctrl+-                |
+| Genişliğe sığdır           | ⌘0                 | Ctrl+0                |
+| Yakınlaştır (%5 adımlarla) | ⌘ + fare tekerleği | Ctrl + fare tekerleği |
 
 Yakınlaştır ayrıca ⌘+ ve Ctrl++ ile de çalışır.
 
