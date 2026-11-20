@@ -25,7 +25,7 @@ import '@genoffice/ui/ai-panel-prefs.css'
 import './ai-panel.css'
 import type { DiagramAiApi } from '../../shared/ipc'
 import type { DrawioFrame } from '../drawio/frame-client'
-import type { DiagramCellChanges } from '../../shared/ai-marks'
+import type { DiagramCellChanges, DiagramCellRef } from '../../shared/ai-marks'
 import { applyLiveOps, liveDiagramRead, markLiveCells, undoLiveBatches } from '../document/live-ops'
 import { useI18n } from '../i18n/locale'
 import { AiPanel } from './AiPanel'
@@ -41,14 +41,27 @@ export interface DiagramAiWiring {
   ready(): boolean
 }
 
+/** The panel's host, which also hears from the editor when draw.io is up. */
+export interface DiagramFrameHost extends DiagramAiHost {
+  /**
+   * draw.io is up with the diagram, maybe again (a language change starts it
+   * anew, and its marks go with the old frame): the marks are drawn again.
+   * They name cells and pages by the file's own ids, which the same diagram
+   * keeps when it is loaded again.
+   */
+  frameReady(): void
+}
+
 export interface DiagramAi {
-  host: DiagramAiHost
+  host: DiagramFrameHost
   open: boolean
   setOpen(open: boolean): void
 }
 
 /** The tools' way into a frame: the one executor of reads and op lists for an open tab. */
-export function diagramAiHost(wiring: DiagramAiWiring): DiagramAiHost {
+export function diagramAiHost(wiring: DiagramAiWiring): DiagramFrameHost {
+  /** the cells marked now, as the panel last asked (also while draw.io was not up) */
+  let marked: readonly DiagramCellRef[] = []
   const frame = (): DrawioFrame => {
     const client = wiring.client()
     if (!client || !wiring.ready()) throw new Error('the diagram editor is not ready')
@@ -68,7 +81,14 @@ export function diagramAiHost(wiring: DiagramAiWiring): DiagramAiHost {
     },
     undo: (tokens) => undoLiveBatches(frame(), tokens),
     // a frame that is not up answers with a refusal, never a throw into the run
-    mark: async (cells) => markLiveCells(frame(), cells),
+    mark: async (cells) => {
+      marked = [...cells]
+      return markLiveCells(frame(), cells)
+    },
+    frameReady: () => {
+      if (marked.length === 0 || !wiring.client() || !wiring.ready()) return
+      void markLiveCells(frame(), marked).catch(() => {})
+    },
   }
 }
 

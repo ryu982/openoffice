@@ -467,9 +467,13 @@ export async function saveHwpSession(
       verify = {}
     }
     if (!verify.recovered || verify.pageCountBefore !== verify.pageCountAfter) {
+      const pages =
+        typeof verify.pageCountBefore === 'number' && typeof verify.pageCountAfter === 'number'
+          ? ` (${verify.pageCountBefore} -> ${verify.pageCountAfter} pages)`
+          : ''
       throw new CliError(
         EXIT.conversion,
-        'the HWP the engine wrote does not read back the same; nothing was written',
+        `the HWP the engine wrote does not read back the same${pages}; nothing was written`,
         { verify },
         {
           reason: 'conversion_failed',

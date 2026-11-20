@@ -32,6 +32,7 @@ import {
   CLIPBOARD_HTML_MODULE,
   FORMAT_COPY_MODULE,
   HANCOM_KEYS_MODULE,
+  NOTE_TEXT_MODULE,
   PC_FONTS_MODULE,
   STUDIO_PATCHES,
   WHEEL_ZOOM_MODULE,
@@ -95,6 +96,7 @@ const HANCOM_KEYS = join(PLUGIN_DIR, 'hancom-keys.mjs')
 const FORMAT_COPY = join(PLUGIN_DIR, 'format-copy.mjs')
 const CLIPBOARD_HTML = join(PLUGIN_DIR, 'clipboard-html.mjs')
 const PC_FONTS = join(PLUGIN_DIR, 'pc-fonts.mjs')
+const NOTE_TEXT = join(PLUGIN_DIR, 'note-text.mjs')
 /** The Ctrl+wheel zoom steps every editor shares; it has no imports, so the studio takes it as is. */
 const WHEEL_ZOOM = join(APP, '..', '..', 'packages', 'ui', 'src', 'wheel-zoom.ts')
 const HANJA_CACHE = join(APP, 'node_modules', '.cache', 'libhangul-hanja')
@@ -255,6 +257,7 @@ async function buildStudio() {
         [FORMAT_COPY_MODULE]: FORMAT_COPY,
         [CLIPBOARD_HTML_MODULE]: CLIPBOARD_HTML,
         [PC_FONTS_MODULE]: PC_FONTS,
+        [NOTE_TEXT_MODULE]: NOTE_TEXT,
         [WHEEL_ZOOM_MODULE]: WHEEL_ZOOM,
       },
     },

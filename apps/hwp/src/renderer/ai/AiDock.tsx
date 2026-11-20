@@ -42,6 +42,8 @@ export interface HwpAiDockProps {
   prefill?: AiPrefill | null
   /** the panel took an `autoRun` request: clear it so it is not sent again */
   onPrefillTaken?: (taken: AiPrefill) => void
+  /** the pages carry marks of the AI's changes now (the plugin's MARKS_EVENT) */
+  marksOnPage?: boolean
 }
 
 /** The panel at the right end, or its rail while collapsed; the panel stays mounted either way. */
@@ -53,6 +55,7 @@ export function HwpAiDock({
   templateDocument,
   prefill,
   onPrefillTaken,
+  marksOnPage,
 }: HwpAiDockProps): ReactElement {
   const { lang, t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -77,6 +80,7 @@ export function HwpAiDock({
         templateDocument={templateDocument}
         prefill={prefill ?? null}
         onPrefillTaken={onPrefillTaken}
+        marksOnPage={marksOnPage}
         onSkillHandoff={() => setOpen(true)}
       />
     </div>

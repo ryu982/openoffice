@@ -982,6 +982,72 @@ describe('a picture dropped from the desktop', () => {
   })
 })
 
+describe('a picture pasted from the clipboard', () => {
+  const FIRST = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7, 7])
+  const photo = () => new File([PNG as BlobPart], 'image.png', { type: 'image/png' })
+
+  /** A paste the way the page sees one: the clipboard's files, and no text. */
+  async function paste(target: Element, files: File[]) {
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: { files, getData: () => '' } })
+    await act(async () => {
+      target.dispatchEvent(event)
+    })
+    await settle()
+    return event
+  }
+
+  const status = () => container.querySelector('.mm-save-status')!.textContent ?? ''
+  const map = () => container.querySelector('.map-container')!
+
+  it('goes on a new topic under the selected one, saved inside the map file', async () => {
+    const { fake } = await openWith(plainSheet())
+    await selectOnMap(FIRST)
+    expect((await paste(map(), [photo()])).defaultPrevented).toBe(true)
+    await until(() => fake.dirty.at(-1) === true, 'the map to change')
+    // the topic pasted onto stays selected: the next picture goes in beside the first
+    await paste(map(), [photo()])
+    await until(
+      () => topicEl(FIRST).closest('me-wrapper')!.querySelectorAll('img').length === 2,
+      'two pictures',
+    )
+
+    await click('[data-action="save"]')
+    await savesReach(fake)
+    const saved = await openXmind(fake.saves[0]!.bytes)
+    if (saved.status !== 'ok') throw new Error('did not open')
+    const first = saved.document.sheets[0]!.rootTopic.children!.attached![0]!
+    expect(first.image).toBeUndefined()
+    const children = first.children!.attached!
+    expect(children).toHaveLength(2)
+    for (const child of children) {
+      expect(child.title ?? '').toBe('')
+      const image = child.image as { src: string }
+      expect(image.src).toMatch(/^xap:resources\/[0-9a-f-]+\.png$/)
+      expect(await saved.document.readEntry(image.src.slice('xap:'.length))).toEqual(PNG)
+    }
+  })
+
+  it('asks for a topic when none is selected, and leaves the map as it was', async () => {
+    const { fake } = await openWith(plainSheet())
+    await paste(map(), [photo()])
+    expect(status()).toContain('Select a topic first')
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+  })
+
+  it('leaves a title being typed, and a paste without a picture, alone', async () => {
+    const { fake } = await openWith(plainSheet())
+    await typeTitle(FIRST, 'One')
+    const typing = await paste(container.querySelector('#input-box')!, [photo()])
+    expect(typing.defaultPrevented).toBe(false)
+
+    const text = await paste(map(), [new File(['notes'], 'notes.txt', { type: 'text/plain' })])
+    expect(text.defaultPrevented).toBe(false)
+    expect(fake.dirty.at(-1) ?? false).toBe(false)
+  })
+})
+
 describe('"Insert picture" on the toolbar', () => {
   const FIRST = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1'
   const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7, 7])

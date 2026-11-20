@@ -560,7 +560,7 @@ export default function App() {
     [activeKey],
   )
 
-  // a picture dragged from the desktop onto a topic: the same way in as an AI picture
+  // a picture dragged from the desktop onto a topic, or pasted under one: the same way in as an AI picture
   const pictureDrop = usePictureDrop({ host: ai.host, controller: activeController, say })
 
   const runCommand = useCallback(
@@ -996,6 +996,7 @@ export default function App() {
           onDragOver={pictureDrop.onDragOver}
           onDragLeave={pictureDrop.onDragLeave}
           onDrop={pictureDrop.onDrop}
+          onPaste={pictureDrop.onPaste}
         >
           {tabs.map((tab) => (
             <div

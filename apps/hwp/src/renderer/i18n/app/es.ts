@@ -22,6 +22,8 @@ export const es = {
     'No se guardó nada: la copia que se iba a escribir no coincidía, al releerla, con el documento en pantalla. Prueba «Guardar como» para escribir un archivo nuevo.',
   saveVerifyHint:
     'El original no ha cambiado. En Guardar como, elige HWPX o usa Exportar como PDF.',
+  saveVerifyPages: 'En pantalla: {before} páginas → al volver a leer: {after} páginas',
+  saveAsHwpx: 'Guardar como HWPX…',
   saveProtected:
     'No se guardó: este documento está protegido con contraseña y, al guardarlo aquí, se escribiría sin ella.',
   backupKept: 'Guardado. La versión anterior se conservó como {name}.',

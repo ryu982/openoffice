@@ -36,10 +36,31 @@ function fingerprint(value: unknown): string {
   })
 }
 
+interface NodePrint {
+  print: string
+  /** what tells the same element apart when its durable id was reissued */
+  type: string
+  sourceId: string
+}
+
 interface SlidePrint {
   /** the slide without its elements: background, hidden, size */
   own: string
-  nodes: Map<string, string>
+  nodes: Map<string, NodePrint>
+}
+
+function nodePrint(node: RenderNode): NodePrint {
+  return { print: fingerprint(node), type: node.type, sourceId: node.sourceId }
+}
+
+/**
+ * An element's first edit gives it a creation id, and with it a new durable id
+ * (`e_3` becomes `e_5ef01f3a`) while its parse id stays, so the diff sees one
+ * element leave and another arrive. A removed and an added element of one kind
+ * under one parse id are the same element, counted once.
+ */
+function sameElement(a: NodePrint, b: NodePrint): boolean {
+  return a.type === b.type && a.sourceId === b.sourceId
 }
 
 /** The deck at one moment, small enough to keep for the length of a run */
@@ -49,11 +70,11 @@ export function deckFingerprint(slides: readonly RenderSlide[]): DeckFingerprint
   const out = new Map<string, SlidePrint>()
   slides.forEach((slide, index) => {
     const { nodes, ...own } = slide
-    const prints = new Map<string, string>()
+    const prints = new Map<string, NodePrint>()
     for (const node of nodes) {
       // master/layout decoration is not the slide's own content
       if (node.decoration) continue
-      prints.set(nodeKey(node), fingerprint(node))
+      prints.set(nodeKey(node), nodePrint(node))
     }
     out.set(slideKey(slide, index), { own: fingerprint(own), nodes: prints })
   })
@@ -85,11 +106,23 @@ export function deckChanges(before: DeckFingerprint, after: readonly RenderSlide
     const was = before.get(key)
     const changed = new Set<string>()
     let slideChanged = !was || was.own !== now.own
+    const added: NodePrint[] = []
     for (const [id, print] of now.nodes) {
-      if (was?.nodes.get(id) !== print) changed.add(id)
+      const old = was?.nodes.get(id)
+      if (old?.print === print.print) continue
+      changed.add(id)
+      if (!old) added.push(print)
     }
     let removed = 0
-    if (was) for (const id of was.nodes.keys()) if (!now.nodes.has(id)) removed++
+    if (was) {
+      for (const [id, print] of was.nodes) {
+        if (now.nodes.has(id)) continue
+        // the same element under a reissued id is already counted as changed
+        const same = added.findIndex((a) => sameElement(a, print))
+        if (same >= 0) added.splice(same, 1)
+        else removed++
+      }
+    }
     count += changed.size + removed
     if (changed.size > 0 || removed > 0) slideChanged = true
     if (slideChanged) marks.set(key, changed)

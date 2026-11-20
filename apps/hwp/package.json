@@ -20,6 +20,7 @@
     "@genoffice/doc-rules": "*",
     "@genoffice/electron-utils": "*",
     "@genoffice/file-parse": "*",
+    "@genoffice/font-metrics": "*",
     "@genoffice/i18n": "*",
     "@genoffice/print-layout": "*",
     "@genoffice/project-store": "*",

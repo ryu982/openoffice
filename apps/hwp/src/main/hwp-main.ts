@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { copyFile, readFile, stat } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { BrowserWindow, WebContentsView, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
@@ -24,15 +24,17 @@ import {
   ensurePrintLayoutIpc,
 } from '@genoffice/electron-utils/print-arranged'
 import { hwpToText } from '@genoffice/file-parse'
+import { localFontNamesFor } from '@genoffice/font-metrics'
 import { getUiLang } from '@genoffice/i18n'
 import { registerHwpAttachmentIpc } from './attachments-ipc'
 import { registerHwpImageIpc } from './ai-image'
-import { atomicWriteFile } from './atomic-write'
+import { atomicWriteFile, copyFileReplacing } from './atomic-write'
 import { readHwpDefaultFormat } from './default-format'
 import { badJob, printJobToPdf, printJobToPrinter } from './print-document'
 import { registerHwpPrintLayout } from './print-layout'
 import { tm } from './dialog-strings'
 import { fieldKindsOf } from './field-kinds'
+import { fontFileReadsOfProcess } from './font-file-reads'
 import type { FieldKinds } from './field-kinds'
 import { lostMemoCountOf } from './memos'
 import {
@@ -50,7 +52,13 @@ import {
 import type { HwpRecoveryHost } from './recovery'
 import { applySaveFixes } from './save-fixes'
 import { backupPathFor, bytesMatchFormat, needsBackup } from './save-plan'
-import { saveAsDefaultPath, saveAsFilters, saveAsTarget } from './save-as-formats'
+import {
+  saveAsDefaultPath,
+  saveAsFilters,
+  saveAsHwpxDefaultPath,
+  saveAsHwpxFilters,
+  saveAsTarget,
+} from './save-as-formats'
 import { sectionTailsOf } from './section-tails'
 import type { SectionTails } from './section-tails'
 import { newTabsOf } from './tab-widths'
@@ -214,8 +222,8 @@ function recordedDiskState(wcId: number, path: string): SaveDiskState | undefine
 }
 
 /** Record what the file holds now; an unreadable file leaves no record and no conflict. */
-async function rememberDiskState(wcId: number, path: string): Promise<void> {
-  const state = await recordDiskState(path)
+async function rememberDiskState(wcId: number, path: string, read?: Uint8Array): Promise<void> {
+  const state = await recordDiskState(path, read)
   if (!state) return
   const states = diskStatesByWc.get(wcId) ?? new Map<string, SaveDiskState>()
   states.set(path, state)
@@ -583,6 +591,7 @@ function registerHwpIpc(): void {
   })
 
   // ---- headless export mode (--headless-export) ----
+  ipcMain.handle(HWP_CHANNELS.isHeadlessExport, (e): boolean => headlessTargetByWc.has(e.sender.id))
   ipcMain.handle(HWP_CHANNELS.consumeHeadlessExport, (e): string | null => {
     const target = headlessTargetByWc.get(e.sender.id) ?? null
     headlessTargetByWc.delete(e.sender.id)
@@ -613,6 +622,13 @@ function registerHwpIpc(): void {
   })
   ipcMain.handle(HWP_CHANNELS.memoModalState, () => memoModalByWc.size > 0)
 
+  // the editor's font detection reads within this view's own open-file limit (font-file-reads.ts)
+  ipcMain.handle(HWP_CHANNELS.fontFileReads, (e) =>
+    fontFileReadsOfProcess(e.sender.getOSProcessId()),
+  )
+  // per-face SFNT metadata read from disk in main so the renderer does not call FontData.blob()
+  // across every installed font (#488, #591)
+  ipcMain.handle(HWP_CHANNELS.fontNames, (_e, faces: unknown) => localFontNamesFor(faces))
   ipcMain.handle(HWP_CHANNELS.consumePending, (e) => {
     noteHwpPathConsumed(e.sender.id)
     return openPathByWc.get(e.sender.id) ?? null
@@ -631,7 +647,7 @@ function registerHwpIpc(): void {
     // the document the view holds from now on is this file: what is kept follows it (a
     // restored copy included: its saves correct against the file at its path)
     const wcId = e.sender.id
-    await rememberDiskState(wcId, path)
+    await rememberDiskState(wcId, path, bytes)
     trackedByWc.delete(wcId)
     trackingDroppedByWc.delete(wcId)
     if (bytesMatchFormat(bytes, 'hwp') && hasTrackedChanges(bytes)) {
@@ -721,8 +737,9 @@ function registerHwpIpc(): void {
     try {
       const current = savePathByWc.get(wcId)
       const currentFormat = current ? hwpFormatOfPath(current) : null
+      const saveAsHwpx = mode === 'saveAsHwpx'
       let target: string
-      if (mode !== 'saveAs' && current && currentFormat) {
+      if (mode !== 'saveAs' && !saveAsHwpx && current && currentFormat) {
         target = current
       } else {
         const win =
@@ -741,18 +758,21 @@ function registerHwpIpc(): void {
               newDir ?? configuredDefaultSaveDir(app),
               copy?.name ?? `${tm('untitledFile')}.${preferred}`,
             ))
-        const fallback: HwpFormat =
-          currentFormat ?? copy?.format ?? hwpFormatOfPath(offered) ?? preferred
+        const fallback: HwpFormat = saveAsHwpx
+          ? 'hwpx'
+          : (currentFormat ?? copy?.format ?? hwpFormatOfPath(offered) ?? preferred)
         // Save As also lists PDF, a copy written by the PDF export (save-as-formats.ts)
         const offerExports = mode === 'saveAs'
         const picked = await showSaveDialogWithMemory(dialog, win, {
           title: tm('dlgSaveTitle'),
           // a new document has no file yet: it is offered under the untitled name in the
           // default save folder, where the shell moves it into the folder it was made from
-          defaultPath: saveAsDefaultPath(offered, offerExports),
+          defaultPath: saveAsHwpx
+            ? saveAsHwpxDefaultPath(offered)
+            : saveAsDefaultPath(offered, offerExports),
           // one type per format, so the user can pick the other one; the document's
           // own format comes first, so it is the dialog's default type
-          filters: saveAsFilters(fallback, offerExports, tm),
+          filters: saveAsHwpx ? saveAsHwpxFilters(tm) : saveAsFilters(fallback, offerExports, tm),
         })
         if (picked.canceled || !picked.filePath) {
           settleSave(wcId, false)
@@ -871,7 +891,7 @@ function registerHwpIpc(): void {
         let backupPath: string | undefined
         if (needsBackup(target, existsSync(target), written)) {
           backupPath = backupPathFor(target)
-          await copyFile(target, backupPath)
+          await copyFileReplacing(target, backupPath)
         }
         await atomicWriteFile(target, Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
         await rememberDiskState(wcId, target)

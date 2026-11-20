@@ -22,6 +22,8 @@ export const it = {
     'Non è stato salvato nulla: la copia da scrivere, riletta, non corrispondeva al documento sullo schermo. Prova «Salva con nome» per scrivere un nuovo file.',
   saveVerifyHint:
     "L'originale è invariato. In Salva con nome scegli HWPX, oppure usa Esporta come PDF.",
+  saveVerifyPages: 'A schermo: {before} pagine → alla rilettura: {after} pagine',
+  saveAsHwpx: 'Salva come HWPX…',
   saveProtected:
     'Non salvato: questo documento è protetto da password e salvarlo qui lo scriverebbe senza password.',
   backupKept: 'Salvato. La versione precedente è stata conservata come {name}.',

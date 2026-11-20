@@ -11,6 +11,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
+
 type IpcHandler = (event: { sender: FakeWebContents }, ...args: unknown[]) => unknown
 
 interface FakeWebContents {
@@ -119,15 +130,34 @@ async function openedView(path: string): Promise<FakeWebContents> {
   return contents
 }
 
+describe('opening a document', () => {
+  it('reads the file once: its content also gives the recorded disk state', async () => {
+    const path = await createDocument()
+    fileReads.mockClear()
+    const contents = await openedView(path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+
+    setOpenPathProbe((each) => each === path)
+    const mine = { text: '<p>Mine</p>', imageSources: [], mode: 'save', auto: true }
+    // another pane's write: the recorded state is there, and an automatic save stands down
+    writeFileSync(path, '<p>Changed elsewhere</p>')
+    expect(await save(contents, mine)).toEqual({ ok: false, error: 'external-modified' })
+    // the file as it was read, written again: the recorded state is that content's
+    writeFileSync(path, '<p>Original</p>')
+    expect(await save(contents, mine)).toMatchObject({ ok: true, path })
+    expect(showMessageBox).not.toHaveBeenCalled()
+  })
+})
+
 describe('a save with no copy pair is unchanged', () => {
   it('does not ask anything even when another program changed the disk', async () => {
     const path = await createDocument()
     const contents = await openedView(path)
     writeFileSync(path, '<p>Changed elsewhere</p>')
 
-    expect(await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' })).toMatchObject(
-      { ok: true, path },
-    )
+    expect(
+      await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' }),
+    ).toMatchObject({ ok: true, path })
     expect(readFileSync(path, 'utf8')).toBe('<p>Mine</p>')
     expect(showMessageBox).not.toHaveBeenCalled()
   })
@@ -170,9 +200,9 @@ describe('a copy pair holds this document (the path is open in another pane)', (
     setOpenPathProbe((each) => each === path)
     showMessageBox.mockResolvedValue({ response: 0, checkboxChecked: false })
 
-    expect(await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' })).toMatchObject(
-      { ok: true, path },
-    )
+    expect(
+      await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' }),
+    ).toMatchObject({ ok: true, path })
     expect(readFileSync(path, 'utf8')).toBe('<p>Mine</p>')
 
     // the record was refreshed on save: the disk still matches it, so no second question
@@ -188,9 +218,9 @@ describe('a copy pair holds this document (the path is open in another pane)', (
     const contents = await openedView(path)
     setOpenPathProbe((each) => each === path)
 
-    expect(await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' })).toMatchObject(
-      { ok: true, path },
-    )
+    expect(
+      await save(contents, { text: '<p>Mine</p>', imageSources: [], mode: 'save' }),
+    ).toMatchObject({ ok: true, path })
     expect(showMessageBox).not.toHaveBeenCalled()
   })
 })

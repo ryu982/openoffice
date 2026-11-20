@@ -208,8 +208,14 @@ const READING_CALLS: ReadonlySet<string> = new Set([
   'previewPage',
   'reveal',
   'clearMarks',
-  'hasMarks',
   'installFileMenu',
+  // the memo column reads the memos and draws their anchors; the lock only holds the
+  // editor's input while a memo dialog is open (and is set as the column mounts)
+  'listMemos',
+  'memoSelection',
+  'showMemoAnchors',
+  'selectMemo',
+  'setMemoLock',
 ])
 
 /**

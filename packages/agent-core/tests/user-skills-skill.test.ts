@@ -572,13 +572,49 @@ describe('a skill named by its bare name', () => {
     expect(fileReads).toEqual([['user:hwp-exam-paper', 'reference/tone.md']])
   })
 
-  it('refuses a source no listed skill of the name has', async () => {
-    const { deps, reads } = depsOf([view('user:letter')])
-    const result = await createUserSkillsSkill(deps).executeTool(
-      call(USE_SKILL_TOOL, { id: 'builtin:letter' }),
+  it('asks for the id as the list gives it, with a real source in its example', () => {
+    const { deps } = depsOf([view('builtin:hwp-document')])
+    const use = createUserSkillsSkill(deps).tools.find((tool) => tool.name === USE_SKILL_TOOL)!
+    const { id } = use.inputSchema.properties as Record<string, { description: string }>
+    expect(id!.description).toMatch(/as the skills list gives it/)
+    expect(id!.description).toMatch(/e\.g\. (builtin|app|user|plugin|codex|project):[a-z0-9-]+$/)
+  })
+
+  it('reads the one usable skill of the name under a source the model got wrong', async () => {
+    const { deps, reads, fileReads } = depsOf([
+      view('builtin:hwp-document'),
+      view('user:hwp-document', { enabled: false }),
+    ])
+    const skill = createUserSkillsSkill(deps)
+    const used = await skill.executeTool(call(USE_SKILL_TOOL, { id: 'app:hwp-document' }))
+    expect(used.isError).toBeFalsy()
+    expect(used.output).toContain('<skill id="builtin:hwp-document"')
+    await skill.executeTool(
+      call(READ_SKILL_FILE_TOOL, { id: 'app:HWP-Document', path: 'reference/tone.md' }),
     )
+    expect(reads).toEqual(['builtin:hwp-document'])
+    expect(fileReads).toEqual([['builtin:hwp-document', 'reference/tone.md']])
+  })
+
+  it.each([
+    ['a name no skill has', [view('user:letter')], 'builtin:memo'],
+    ['a name only a turned-off skill has', [view('user:letter', { enabled: false })], 'app:letter'],
+    [
+      'a name only a skill for other editors has',
+      [view('user:letter', { editors: ['docs'] })],
+      'app:letter',
+    ],
+    [
+      'a name two usable skills share',
+      [view('user:letter'), view('codex:letter', { editors: undefined })],
+      'app:letter',
+    ],
+    ['more than a source in front of the name', [view('user:letter')], 'app:user:letter'],
+  ])('refuses an id under a source no skill of its name has: %s', async (_name, views, id) => {
+    const { deps, reads } = depsOf(views)
+    const result = await createUserSkillsSkill(deps).executeTool(call(USE_SKILL_TOOL, { id }))
     expect(result.isError).toBe(true)
-    expect(result.output).toBe('No skill with id builtin:letter. Use an id from the skills list.')
+    expect(result.output).toBe(`No skill with id ${id}. Use an id from the skills list.`)
     expect(reads).toEqual([])
   })
 

@@ -83,10 +83,45 @@ async function setBold(editor: Page, word: string): Promise<void> {
       if (i >= 0) at = pos + i
       return at < 0
     })
+    // End on a caret at the document start, away from the word. A range set by
+    // script on a never-focused editor stays out of the DOM, so the click that
+    // first focuses the editor races ProseMirror's 20 ms focus timer, which
+    // writes the stale selection back over the clicked caret when the click's
+    // selectionchange is read late (seen on slow CI runners).
+    let start = -1
+    ed.state.doc.descendants((n: { isText: boolean }, pos: number) => {
+      if (start < 0 && n.isText) start = pos
+      return start < 0
+    })
     ed.chain()
       .setTextSelection({ from: at, to: at + w.length })
       .setMark('bold')
+      .setTextSelection(start)
       .run()
+  }, word)
+  // Focus the editor with a real click on the first word: whichever side wins
+  // the focus race, the caret ends in that word, and every later click lands
+  // in a focused editor. (A scripted focus is not reported as focus on CI.)
+  const c = await wordCenter(editor, 'alpha')
+  await editor.mouse.click(c.x, c.y)
+  await expect
+    .poll(async () => (await selection(editor)).focused && (await caretInWord(editor, 'alpha')))
+    .toBe(true)
+}
+
+/** true when the caret is collapsed inside (or at either edge of) the first `word` */
+async function caretInWord(editor: Page, word: string): Promise<boolean> {
+  return editor.evaluate((w) => {
+    const ed = (window as unknown as AidocsWindow).__aidocs!.editor as any
+    let at = -1
+    ed.state.doc.descendants((n: { isText: boolean; text?: string }, pos: number) => {
+      if (at >= 0) return false
+      const i = n.isText ? (n.text ?? '').indexOf(w) : -1
+      if (i >= 0) at = pos + i
+      return at < 0
+    })
+    const { from, to } = ed.state.selection
+    return at >= 0 && from === to && from >= at && from <= at + w.length
   }, word)
 }
 
@@ -214,11 +249,12 @@ test.describe('docs selection bar and format painter', () => {
       expect(await boldText(editor)).toEqual(['beta'])
       const painter = editor.getByRole('button', { name: /^Format Painter/ })
       // ProseMirror syncs a pointer-placed caret on a deferred selectionchange;
-      // wait for it so the next chord reads the clicked position
+      // wait until the caret sits in the clicked word so the next chord reads
+      // the clicked position (an empty selection alone may still be the old caret)
       const clickWord = async (word: string) => {
         const c = await wordCenter(editor, word)
         await editor.mouse.click(c.x, c.y)
-        await expect.poll(async () => (await selection(editor)).text).toBe('')
+        await expect.poll(() => caretInWord(editor, word)).toBe(true)
         await editor.waitForTimeout(50)
       }
 

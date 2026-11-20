@@ -197,4 +197,21 @@ describe('Save As', () => {
     expect(existsSync(target)).toBe(false)
     expect(showSaveDialog).toHaveBeenCalledTimes(1)
   })
+
+  it('saveAsHwpx suggests .hwpx and saves a bare name from a Linux dialog as .hwpx', async () => {
+    const { contents } = await openDocument('report.hwp')
+    showSaveDialog.mockResolvedValueOnce({ canceled: false, filePath: join(dir, 'rescued') })
+    const lang = getUiLang()
+    setUiLang('en')
+    let begin: BeginSaveResult
+    try {
+      begin = await call<Promise<BeginSaveResult>>(HWP_CHANNELS.beginSave, contents, 'saveAsHwpx')
+    } finally {
+      setUiLang(lang)
+    }
+    const options = lastDialog()
+    expect(options.defaultPath).toBe(join(dir, 'report.hwpx'))
+    expect(options.filters).toEqual([{ name: 'HWP Documents (HWPX)', extensions: ['hwpx'] }])
+    expect(begin).toEqual({ ok: true, path: join(dir, 'rescued.hwpx'), format: 'hwpx' })
+  })
 })

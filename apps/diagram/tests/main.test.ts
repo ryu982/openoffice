@@ -9,6 +9,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
+
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const openExternal = vi.fn(async (_url: string) => {})
@@ -115,7 +126,7 @@ import {
   requestDiagramSave,
   setDiagramProvisionalTitleHook,
 } from '../src/main/diagram-main'
-import { createRecoveryStore, setHeadlessMode } from '@genoffice/electron-utils'
+import { createRecoveryStore, setHeadlessMode, setOpenPathProbe } from '@genoffice/electron-utils'
 import { writeViewCopy } from '../src/main/recovery-main'
 import { DIAGRAM_CHANNELS } from '../src/shared/ipc'
 import type { OpenFileResult, SaveDiagramResult, SaveTargetResult } from '../src/shared/ipc'
@@ -229,6 +240,42 @@ describe('open', () => {
     const result = await call<OpenFileResult>(DIAGRAM_CHANNELS.openFile, contents, path)
     expect(result).toMatchObject({ status: 'import', importer: 'vsdx', title: 'Network plan' })
     expect(diagramFilePath(contents.id)).toBeUndefined()
+  })
+})
+
+describe('the disk state an open records', () => {
+  it('comes from the one read of the file', async () => {
+    const path = copyFixture('out.drawio')
+    const original = readFileSync(path)
+    const other = readFileSync(join(fixtures, 'sample.drawio'))
+    const contents = view(path)
+    fileReads.mockClear()
+    await call(DIAGRAM_CHANNELS.openFile, contents, path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+
+    send(DIAGRAM_CHANNELS.dirtyChanged, contents, true)
+    const autoSave = async () => {
+      const target = await call<SaveTargetResult>(DIAGRAM_CHANNELS.saveTarget, contents, {
+        mode: 'save',
+      })
+      const token = (target as { token: string }).token
+      return call(DIAGRAM_CHANNELS.save, contents, {
+        token,
+        bytes: new Uint8Array(other),
+        auto: true,
+      })
+    }
+    setOpenPathProbe((each) => each === path)
+    try {
+      // another pane's write: the recorded state is there, and an automatic save stands down
+      writeFileSync(path, other)
+      expect(await autoSave()).toEqual({ ok: false, error: 'external-modified' })
+      // the file as it was read, written again: the recorded state is that content's
+      writeFileSync(path, original)
+      expect(await autoSave()).toEqual({ ok: true, path })
+    } finally {
+      setOpenPathProbe(null)
+    }
   })
 })
 

@@ -1269,6 +1269,61 @@ export async function setTopicPicture(
   }
 }
 
+/**
+ * Puts a picture on a new topic under `parentId` on the sheet on screen, as
+ * one step the user can undo: a picture pasted onto a topic goes in as its
+ * child. The new topic has no title; the picture is all it shows. The bytes
+ * become a new entry of the document first, and the topic goes in the way
+ * every other edit does (`setTopicPicture`). The new topic's id, or null when
+ * the parent is not on the sheet or the picture did not land.
+ */
+export async function addPictureTopic(
+  host: MapAiHost,
+  parentId: string,
+  picture: PictureBytes,
+): Promise<string | null> {
+  host.flush()
+  const where = sheetOf(host, undefined)
+  if ('error' in where) return null
+  const { session, key } = where
+  const controller = await controllerFor(host, key)
+  if (!controller) return null
+  controller.commitEdit()
+  controller.flush()
+
+  const data = JSON.parse(controller.mind.getDataString()) as { nodeData: MapNode }
+  const parent = locate(data.nodeData, parentId)
+  if (!parent) return null
+
+  const entryName = session.addPicture(picture.bytes, picture.ext)
+  const node: MapNode = {
+    id: newXmindId(),
+    topic: '',
+    metadata: {
+      ...emptyMeta(),
+      image: { src: `xap:${entryName}`, entryName, width: null, height: null },
+    },
+  }
+  if (parent.node === data.nodeData && controller.layout === 'both') {
+    node.direction = balancedSide(data.nodeData)
+  }
+  place(parent.node, node, undefined)
+  try {
+    controller.edit((root) => takeTree(root, data.nodeData))
+  } catch (error) {
+    session.removePicture(entryName)
+    throw error
+  }
+  const shown = topicInView(session.view(key).root, node.id)
+  if (shown?.image?.entryName !== entryName) {
+    // a topic that landed without its picture is that step taken back, not an empty topic left on the map
+    if (shown) controller.undo()
+    session.removePicture(entryName)
+    return null
+  }
+  return node.id
+}
+
 // ---- writing a whole map ----
 
 /** True when the sheet holds nothing but its central topic and its title. */

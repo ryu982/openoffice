@@ -560,6 +560,7 @@ import {
 import { PROJECT_UNAVAILABLE, ProjectFolderTools, type DownloadAsk } from './projects/project-tools'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager, canonicalPath, type DetachedTab } from './tab-manager'
+import { shellWindowTitle } from './window-title'
 import { tabMenuTemplate, type TabMenuActions, isProgramFile } from './tab-menu'
 import { runTabDocumentAction, type TabDocumentAction } from './tab-document-actions'
 import { duplicateDocumentFile } from './tab-duplicate'
@@ -5461,6 +5462,14 @@ function refreshTitleBarOverlay(): void {
   shellWindow.setTitleBarOverlay(tabStripOverlay(nativeTheme.shouldUseDarkColors, currentUiScale))
 }
 
+/** name the active document in the taskbar and Alt+Tab (shellWindowTitle) */
+function syncShellWindowTitle(): void {
+  const win = shellWindow
+  if (!win || win.isDestroyed() || !tabManager) return
+  const title = shellWindowTitle(tabManager.list(), productName(currentLang()))
+  if (win.getTitle() !== title) win.setTitle(title)
+}
+
 function createShellWindow(): void {
   // Last session's geometry, when a display can still show it (issue #2049).
   // A saved position on an unplugged monitor falls back to the default
@@ -5508,6 +5517,9 @@ function createShellWindow(): void {
   // reopens maximized instead of as a screen-sized ordinary window
   if (restored?.maximized) win.maximize()
   shellWindow = win
+  // the title follows the active tab (syncShellWindowTitle); the renderer's
+  // <title> and its language-change rewrite must not put the product name back
+  win.on('page-title-updated', (event) => event.preventDefault())
   nativeTheme.on('updated', refreshTitleBarOverlay)
   win.once('closed', () => nativeTheme.off('updated', refreshTitleBarOverlay))
   // dragging the window by the tab strip's blank (draggable) area produces no
@@ -5528,6 +5540,7 @@ function createShellWindow(): void {
     win,
     () => {
       win.webContents.send(TABS_CHANNELS.changed, manager.list())
+      syncShellWindowTitle()
       publishOpenDocumentsIfOwner([...manager.openFilePaths(), ...detachedFilePaths()])
       refreshDocumentLinkMenu()
       pushHwpRecoveryTitles(manager)
@@ -7201,6 +7214,7 @@ function registerHomeIpc(): void {
     installDockMenu()
     installBackToHomeItems()
     notifyQuickLookLangOrThemeChanged()
+    syncShellWindowTitle()
     for (const wc of webContents.getAllWebContents()) wc.send('app:language-changed', lang)
   })
 

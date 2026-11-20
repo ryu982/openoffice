@@ -138,3 +138,15 @@ export function receiptState(receipt: AiRunReceipt): AiChangesState {
   if (receipt.guard?.kind === 'univer' && !receipt.guard.complete) return 'expired'
   return 'applied'
 }
+
+/**
+ * The status line after the card took a run back: the notice that offered undo
+ * for the run's unsaved changes now says they went back; any other line stays.
+ */
+export function statusAfterRevert(
+  current: string,
+  appliedNotice: string,
+  reverted: string,
+): string {
+  return current === appliedNotice ? reverted : current
+}

@@ -97,6 +97,7 @@ import {
 import { aiCreateRefusal } from '@genoffice/electron-utils/ai-create-guard'
 import { aiRunRefusal } from '@genoffice/electron-utils/ai-run-guard'
 import { registerAiJob } from '@genoffice/electron-utils/ai-activity'
+import { copyFileExclusive } from '@genoffice/electron-utils/copy-file'
 import { screenMediaCall } from './screen-media-call'
 import {
   encryptOoxml,
@@ -6140,7 +6141,7 @@ async function reserveSnapshotPath(): Promise<string> {
 async function placeStagedSave(stagedPath: string, targetPath: string): Promise<void> {
   const besideTarget = join(dirname(targetPath), `.${randomUUID()}.tmp.xlsx`)
   try {
-    await copyFile(stagedPath, besideTarget)
+    await copyFileExclusive(stagedPath, besideTarget)
     await promoteFileAtomically(besideTarget, targetPath)
   } catch (error) {
     await rm(besideTarget, { force: true }).catch(() => undefined)
@@ -6225,7 +6226,7 @@ async function openWorkbookSession(
   // the user sees, not the converted temp copy (CSV) or recovery copy (restore).
   const diskStatePath = restoreTarget ?? csvSourcePath ?? path
   try {
-    const [opened, digest, snapshotStat, restoreTargetSha, csvSourceSha, diskState] =
+    const [opened, digest, snapshotStat, restoreTargetSha, csvSourceSha, stagedDiskState] =
       await Promise.all([
         staged?.opened ??
           client
@@ -6240,8 +6241,19 @@ async function openWorkbookSession(
         csvSourcePath === undefined
           ? Promise.resolve(undefined)
           : sha256File(csvSourcePath).catch(() => undefined),
-        recordDiskState(diskStatePath),
+        // after a save the written file is read back; a file being opened is hashed above
+        staged === undefined ? null : recordDiskState(diskStatePath),
       ])
+    // The file this copy is judged by was hashed just above: itself, or the
+    // snapshot copied from it here. It is not read again for the same digest.
+    const openedSha =
+      restoreTarget !== undefined
+        ? restoreTargetSha
+        : csvSourcePath !== undefined
+          ? csvSourceSha
+          : digest
+    const diskState =
+      staged === undefined ? await recordDiskState(diskStatePath, openedSha) : stagedDiskState
     // an encrypted workbook writes no recovery copy: it would be plaintext
     const automaticRecoveryDisabled =
       password !== undefined || !allowsAutomaticWorkbookRecovery(opened.sheets)

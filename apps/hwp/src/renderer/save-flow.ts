@@ -1,13 +1,20 @@
 import type {
+  BeginSaveMode,
   HwpApi,
   HwpFormat,
   MeasuredTab,
   MemoSnapshot,
-  SaveMode,
   SavePreview,
   TabMeasure,
   TabSpot,
 } from '../shared/ipc'
+
+/** Result of the engine's self-read-back check before writing `.hwp`. */
+export interface SaveVerifyInfo {
+  pageCountBefore: number
+  pageCountAfter: number
+  recovered: boolean
+}
 
 /** The part of the embedded editor a save needs. */
 export interface SaveEditorPort {
@@ -16,11 +23,7 @@ export interface SaveEditorPort {
   exportHwp(): Promise<Uint8Array>
   exportHwpx(): Promise<Uint8Array>
   /** serialize to HWP, reload the result inside the engine, report whether it came back whole */
-  exportHwpVerify(): Promise<{
-    pageCountBefore: number
-    pageCountAfter: number
-    recovered: boolean
-  }>
+  exportHwpVerify(): Promise<SaveVerifyInfo>
   /** the memos the editor holds; null when it cannot list them */
   listMemos(): Promise<MemoSnapshot[] | null>
   /** hold off user input while memos are listed and the bytes are exported */
@@ -61,6 +64,7 @@ export type SaveOutcome =
       kind: 'failed'
       reason: 'protected' | 'tracked' | 'verify' | 'export' | 'write'
       detail?: string
+      verify?: SaveVerifyInfo
     }
 
 const fileNameOf = (path: string) => path.split(/[\\/]/).pop() ?? path
@@ -130,7 +134,7 @@ async function exportHwpxWithMemos(editor: SaveEditorPort): Promise<{
 export async function runSave(
   editor: SaveEditorPort,
   api: Pick<HwpApi, 'beginSave' | 'newTabs' | 'commitSave' | 'abortSave'>,
-  mode: SaveMode,
+  mode: BeginSaveMode,
   /** the app's own 30-second save: a copy-pair conflict stands down instead of asking */
   automatic = false,
 ): Promise<SaveOutcome> {
@@ -162,7 +166,7 @@ export async function runSave(
       const verify = await editor.exportHwpVerify()
       if (!verify.recovered || verify.pageCountBefore !== verify.pageCountAfter) {
         api.abortSave()
-        return { kind: 'failed', reason: 'verify' }
+        return { kind: 'failed', reason: 'verify', verify }
       }
       bytes = await editor.exportHwp()
     } else {

@@ -7,7 +7,16 @@
  */
 import { test, expect } from '@playwright/test'
 import type { ElectronApplication, Frame, Page } from '@playwright/test'
-import { closeAndSaveVideo, launchShell, waitForPageWithUrl } from './helpers'
+import { execFile } from 'node:child_process'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
+import { closeAndSaveVideo, launchShell, screenshotPath, waitForPageWithUrl } from './helpers'
+
+const execFileAsync = promisify(execFile)
+const REPO_ROOT = join(__dirname, '..')
 
 const STUDIO_IFRAME = '.hwp-editor-host iframe'
 
@@ -256,6 +265,7 @@ test.describe('hwp: Hangul clicks and copied cells', () => {
     test.setTimeout(300_000)
     const launched = await launchShell({ onboardingSeen: true, videoDir: 'hwp-cell-paste-2' })
     const { app, page } = launched
+    const scratchDir = await mkdtemp(join(tmpdir(), 'hwp-cell-paste-'))
     try {
       const hwp = await openHwp(app, page)
       const frame = await studioFrame(hwp)
@@ -336,7 +346,7 @@ test.describe('hwp: Hangul clicks and copied cells', () => {
       })
       await expect(dialog).toBeVisible()
       await expect(dialog.locator('[name="ieum-cell-paste"][value="overwrite"]')).toBeChecked()
-      await expect(dialog.locator('[name="ieum-cell-paste"][value="nested"]')).toBeDisabled()
+      await expect(dialog.locator('[name="ieum-cell-paste"][value="nested"]')).toBeEnabled()
       await hwp.keyboard.press('Enter')
       await expect(dialog).toHaveCount(0)
       await expect
@@ -372,6 +382,54 @@ test.describe('hwp: Hangul clicks and copied cells', () => {
         ])
       await hwp.keyboard.press('Control+z')
 
+      // again, 셀 안에 표로 넣기: the copied 3×3 goes into the caret's cell as a table
+      await t2Cell()
+      const host = await caretCell(frame)
+      const hostBefore = await hostState(frame, host)
+      expect(hostBefore.inner).toBeNull()
+      await hwp.keyboard.press('Control+v')
+      await dialog.locator('[name="ieum-cell-paste"][value="nested"]').check()
+      await dialog.locator('.dialog-btn-primary').click()
+      await expect(dialog).toHaveCount(0)
+      const pasted = {
+        cells: hostBefore.cells,
+        inner: {
+          dims: { rowCount: 3, colCount: 3, cellCount: 9 },
+          texts: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+          widths: hostBefore.sourceWidths,
+          treatAsChar: true,
+          outer: [141, 141, 141, 141],
+        },
+      }
+      await expect
+        .poll(async () => {
+          const now = await hostState(frame, host)
+          return { cells: now.cells, inner: now.inner }
+        })
+        .toEqual(pasted)
+      // the host row grows with the new table; the grid stays 3×3
+      const hostAfter = await hostState(frame, host)
+      expect(hostAfter.dims).toEqual(hostBefore.dims)
+      expect(hostAfter.rowHeight).toBeGreaterThan(hostBefore.rowHeight + 1000)
+      await hwp.screenshot({ path: screenshotPath('hwp-cell-paste-nested') })
+      // one undo step takes it back, redo puts it again
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await hostState(frame, host)).inner).toBeNull()
+      expect((await hostState(frame, host)).cells).toEqual(hostBefore.cells)
+      await hwp.keyboard.press('Control+Shift+z')
+      await expect.poll(async () => (await hostState(frame, host)).inner).toEqual(pasted.inner)
+      // saved as .hwp and .hwpx, the document opens again with the table in the cell
+      for (const kind of ['hwp', 'hwpx'] as const) {
+        const file = join(scratchDir, `nested.${kind}`)
+        await writeFile(file, Buffer.from(await exported(frame, kind), 'base64'))
+        expect(await savedInner(file, host), kind).toEqual({
+          host: { rowCount: 3, colCount: 3, cellCount: 9 },
+          inner: { rowCount: 3, colCount: 3, cellCount: 9 },
+        })
+      }
+      await hwp.keyboard.press('Control+z')
+      await expect.poll(async () => (await hostState(frame, host)).inner).toBeNull()
+
       // in the body text, Ctrl+V makes the copied table again
       await hwp.mouse.click(box.x + 400, lineY)
       await hwp.keyboard.press('End')
@@ -386,6 +444,188 @@ test.describe('hwp: Hangul clicks and copied cells', () => {
         ])
     } finally {
       await closeAndSaveVideo(launched, 'hwp-cell-paste-2')
+      await rm(scratchDir, { recursive: true, force: true })
     }
   })
 })
+
+interface HostCell {
+  sec: number
+  ppi: number
+  ci: number
+  cell: number
+}
+
+interface TableDims {
+  rowCount: number
+  colCount: number
+  cellCount: number
+}
+
+interface HostState {
+  dims: TableDims
+  /** The host table's cells' text, the caret's cell left out. */
+  cells: string[]
+  /** The caret cell's row height on the page, in HWPUNIT. */
+  rowHeight: number
+  /** The widths of the host's first row, as the copy's source was made, in HWPUNIT. */
+  sourceWidths: number[]
+  inner: {
+    dims: TableDims
+    texts: string[]
+    widths: number[]
+    treatAsChar: boolean
+    outer: number[]
+  } | null
+}
+
+type PasteProbe =
+  { op: 'where' } | { op: 'state'; host: HostCell } | { op: 'export'; kind: 'hwp' | 'hwpx' }
+
+/** Reads the document through the editor's own engine (a command the test registers). */
+async function pasteProbe<T>(frame: Frame, call: PasteProbe): Promise<T> {
+  return frame.evaluate((c) => {
+    type W = Record<string, (...args: unknown[]) => unknown>
+    const win = window as unknown as {
+      rhwpStudio: {
+        automation: {
+          registerCommand(def: { id: string; label: string; execute(s: unknown): void }): void
+          execute(id: string): void
+        }
+        __pasteProbe?: boolean
+      }
+      __pasteCall?: PasteProbe
+      __pasteOut?: unknown
+    }
+    const studio = win.rhwpStudio
+    if (!studio.__pasteProbe) {
+      studio.automation.registerCommand({
+        id: 'ext:e2e-nested-paste',
+        label: 'E2E nested paste probe',
+        execute(raw) {
+          const services = raw as {
+            wasm: W
+            getInputHandler(): { getCursorPosition(): Record<string, number> }
+          }
+          const w = services.wasm
+          const J = JSON.stringify
+          const call = win.__pasteCall!
+          if (call.op === 'where') {
+            const pos = services.getInputHandler().getCursorPosition()
+            win.__pasteOut = {
+              sec: pos.sectionIndex,
+              ppi: pos.parentParaIndex,
+              ci: pos.controlIndex,
+              cell: pos.cellIndex,
+            }
+            return
+          }
+          if (call.op === 'export') {
+            const bytes = (call.kind === 'hwp' ? w.exportHwp() : w.exportHwpx()) as Uint8Array
+            let binary = ''
+            for (const byte of bytes) binary += String.fromCharCode(byte)
+            win.__pasteOut = btoa(binary)
+            return
+          }
+          const { sec, ppi, ci, cell } = call.host
+          type Step = { controlIndex: number; cellIndex: number; cellParaIndex: number }
+          const text = (path: Step[]) => {
+            const count = w.getCellParagraphCountByPath(sec, ppi, J(path)) as number
+            const lines = []
+            for (let p = 0; p < count; p += 1) {
+              const at = [...path.slice(0, -1), { ...path[path.length - 1]!, cellParaIndex: p }]
+              lines.push(String(w.getTextInCellByPath(sec, ppi, J(at), 0, 200)))
+            }
+            return lines.join('\n')
+          }
+          const dims = w.getTableDimensions(sec, ppi, ci) as TableDims
+          const cells: string[] = []
+          for (let i = 0; i < dims.cellCount; i += 1) {
+            if (i !== cell) cells.push(text([{ controlIndex: ci, cellIndex: i, cellParaIndex: 0 }]))
+          }
+          const boxes = w.getTableCellBboxes(sec, ppi, ci) as { h: number }[]
+          // the copy's source was made as this table was: its columns are as wide as these
+          const sourceWidths: number[] = []
+          for (let i = 0; i < dims.colCount; i += 1) {
+            const props = w.getCellProperties(sec, ppi, ci, i) as { width: number }
+            sourceWidths.push(Number(props.width))
+          }
+          const innerAt = (i: number): Step[] => [
+            { controlIndex: ci, cellIndex: cell, cellParaIndex: 0 },
+            { controlIndex: 0, cellIndex: i, cellParaIndex: 0 },
+          ]
+          let inner: HostState['inner']
+          try {
+            const innerDims = w.getTableDimensionsByPath(sec, ppi, J(innerAt(0))) as TableDims
+            const props = w.getTablePropertiesByPath(sec, ppi, J(innerAt(0))) as Record<
+              string,
+              number | boolean
+            >
+            const texts: string[] = []
+            const widths: number[] = []
+            for (let i = 0; i < innerDims.cellCount; i += 1) {
+              texts.push(text(innerAt(i)))
+              if (i < innerDims.colCount) {
+                const own = w.getCellPropertiesByPath(sec, ppi, J(innerAt(0)), i) as {
+                  width: number
+                }
+                widths.push(Number(own.width))
+              }
+            }
+            inner = {
+              dims: innerDims,
+              texts,
+              widths,
+              treatAsChar: Boolean(props.treatAsChar),
+              outer: [props.outerLeft, props.outerRight, props.outerTop, props.outerBottom].map(
+                Number,
+              ),
+            }
+          } catch {
+            inner = null
+          }
+          // the boxes are page pixels; 75 HWPUNIT to the pixel
+          win.__pasteOut = { dims, cells, rowHeight: boxes[cell]!.h * 75, sourceWidths, inner }
+        },
+      })
+      studio.__pasteProbe = true
+    }
+    win.__pasteCall = c
+    win.__pasteOut = undefined
+    studio.automation.execute('ext:e2e-nested-paste')
+    return win.__pasteOut as T
+  }, call)
+}
+
+const caretCell = (frame: Frame) => pasteProbe<HostCell>(frame, { op: 'where' })
+const hostState = (frame: Frame, host: HostCell) =>
+  pasteProbe<HostState>(frame, { op: 'state', host })
+const exported = (frame: Frame, kind: 'hwp' | 'hwpx') =>
+  pasteProbe<string>(frame, { op: 'export', kind })
+
+/** The host table and the table in its cell, as a saved file opens again in the engine. */
+async function savedInner(file: string, host: HostCell): Promise<unknown> {
+  const core = pathToFileURL(join(REPO_ROOT, 'vendor/rhwp-core/rhwp.js')).href
+  const wasm = join(REPO_ROOT, 'vendor/rhwp-core/rhwp_bg.wasm')
+  const inner = [
+    { controlIndex: host.ci, cellIndex: host.cell, cellParaIndex: 0 },
+    { controlIndex: 0, cellIndex: 0, cellParaIndex: 0 },
+  ]
+  const script = [
+    "import { readFileSync } from 'node:fs'",
+    `const { default: init, HwpDocument } = await import(${JSON.stringify(core)})`,
+    `await init({ module_or_path: readFileSync(${JSON.stringify(wasm)}) })`,
+    'const doc = new HwpDocument(readFileSync(process.argv[1]))',
+    `const host = JSON.parse(doc.getTableDimensions(${host.sec}, ${host.ppi}, ${host.ci}))`,
+    `const inner = JSON.parse(doc.getTableDimensionsByPath(${host.sec}, ${host.ppi}, ${JSON.stringify(JSON.stringify(inner))}))`,
+    'const pick = (d) => ({ rowCount: d.rowCount, colCount: d.colCount, cellCount: d.cellCount })',
+    'process.stdout.write(JSON.stringify({ host: pick(host), inner: pick(inner) }))',
+  ].join('\n')
+  const { stdout } = await execFileAsync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    script,
+    file,
+  ])
+  return JSON.parse(stdout) as unknown
+}

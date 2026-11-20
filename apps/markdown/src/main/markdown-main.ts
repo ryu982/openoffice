@@ -631,8 +631,8 @@ const vaultFs = nodeFs()
 // overwriting it; an automatic save defers silently to the next manual one.
 const docDiskStates = new Map<number, Map<string, SaveDiskState>>()
 
-async function rememberDiskState(wcId: number, path: string): Promise<void> {
-  const state = await recordDiskState(path)
+async function rememberDiskState(wcId: number, path: string, read?: Uint8Array): Promise<void> {
+  const state = await recordDiskState(path, read)
   if (!state) return
   const states = docDiskStates.get(wcId) ?? new Map<string, SaveDiskState>()
   states.set(path, state)
@@ -1237,10 +1237,10 @@ function registerMarkdownIpc(): void {
     if (typeof path !== 'string' || !allowedByWc.get(e.sender.id)?.has(path)) {
       throw new Error('markdown: path not granted to this view')
     }
-    const text = await readFile(path, 'utf8')
+    const bytes = await readFile(path)
     // The reader's copy: this view's save guard compares against this state
-    await rememberDiskState(e.sender.id, path)
-    return text
+    await rememberDiskState(e.sender.id, path, bytes)
+    return bytes.toString('utf8')
   })
 
   ipcMain.handle(MARKDOWN_CHANNELS.recoveryOpen, (e) => recovery.resolveOpen(e.sender))

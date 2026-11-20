@@ -12,6 +12,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
+
 const hoisted = vi.hoisted(() => ({
   userDataDir: '',
   handlers: new Map<string, (...args: never[]) => unknown>(),
@@ -132,6 +143,25 @@ async function openDeck(path: string): Promise<void> {
 async function saveDeck(auto = false): Promise<SaveResult> {
   return (await call('slides:save', auto)) as SaveResult
 }
+
+describe('opening a deck', () => {
+  it('reads the file once: its content also gives the recorded disk state', async () => {
+    const path = makeDeckFile()
+    fileReads.mockClear()
+    await openDeck(path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+
+    setOpenPathProbe((p) => p === path)
+    call('slides:autosave-pref', true)
+    // another pane's write: the recorded state is there, and an automatic save stands down
+    writeFileSync(path, externalBytes)
+    expect(await saveDeck(true)).toEqual({ ok: false, reason: 'external-modified' })
+    // the file as it was read, written again: the recorded state is that content's
+    writeFileSync(path, blankBytes)
+    expect((await saveDeck(true)).ok).toBe(true)
+    expect(showMessageBox).not.toHaveBeenCalled()
+  })
+})
 
 describe('split-view save guard (slides)', () => {
   it('asks before a manual save overwrites a sibling copy, and cancelling keeps the disk bytes', async () => {

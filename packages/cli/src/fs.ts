@@ -117,7 +117,13 @@ export function writeOutput(abs: string, bytes: Uint8Array | string): void {
   let keepTempOnError = false
   try {
     writeFileSync(tmp, bytes, mode === undefined ? {} : { mode })
-    if (mode !== undefined) chmodSync(tmp, mode)
+    if (mode !== undefined) {
+      try {
+        chmodSync(tmp, mode)
+      } catch {
+        // a mount without permissions (gvfs) refuses chmod; the temp was created with this mode, less the umask
+      }
+    }
     for (let attempt = 0; ; attempt++) {
       try {
         renameSync(tmp, abs)

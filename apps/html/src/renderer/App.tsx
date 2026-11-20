@@ -126,9 +126,6 @@ const MIN_ZOOM = 50
 const MAX_ZOOM = 200
 const ZOOM_STEP = 10
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
-/** Ctrl/⌘+wheel on the stage and inside the frame share one classifier, so a pinch
- * that crosses the frame edge stays one stream. Five points per notch, onto the 5% grid. */
-const zoomWheel = createZoomWheelClassifier()
 const wheelZoomed = (z: number, intent: 'zoom-in' | 'zoom-out') =>
   wheelZoomStepPercent(z, intent === 'zoom-in' ? 1 : -1, MIN_ZOOM, MAX_ZOOM)
 const inTextField = (target: EventTarget | null) =>
@@ -274,6 +271,9 @@ export default function App() {
   const [servedVersion, setServedVersion] = useState(-1)
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  /** Ctrl/⌘+wheel on the stage and inside the frame share one classifier, so a pinch
+   * that crosses the frame edge stays one stream. Five points per notch, onto the 5% grid. */
+  const zoomWheelRef = useRef<ReturnType<typeof createZoomWheelClassifier> | null>(null)
   const [panelOpen, setPanelOpen] = useState(
     () => localStorage.getItem('htmlapp.stylePanel') !== '0',
   )
@@ -1020,7 +1020,8 @@ export default function App() {
           if (canvasModeRef.current === 'present') return
           // the frame's own clock differs from this one: time the event on arrival
           const deltaMode = typeof msg.deltaMode === 'number' ? msg.deltaMode : 0
-          const intent = zoomWheel.feed(
+          zoomWheelRef.current ??= createZoomWheelClassifier()
+          const intent = zoomWheelRef.current.feed(
             { deltaY: Number(msg.delta) || 0, deltaMode },
             performance.now(),
           )
@@ -1844,7 +1845,8 @@ export default function App() {
       if (canvasModeRef.current === 'present') return
       if (!(event.target as HTMLElement | null)?.closest?.('.preview-stage')) return
       event.preventDefault()
-      const intent = zoomWheel.feed(event, performance.now())
+      zoomWheelRef.current ??= createZoomWheelClassifier()
+      const intent = zoomWheelRef.current.feed(event, performance.now())
       if (intent) setZoom((z) => wheelZoomed(z, intent))
     }
     window.addEventListener('wheel', onWheel, { passive: false })

@@ -254,6 +254,30 @@ body {
   overflow-wrap: anywhere;
 }
 
+.hwp-notice-action {
+  flex: none;
+  align-self: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-caption);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hwp-notice-action:hover {
+  background: var(--hover);
+}
+
+.hwp-notice-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .hwp-notice-close {
   flex: none;
   width: 24px;
