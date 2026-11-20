@@ -596,6 +596,45 @@ describe('layoutSheetPrint', () => {
     expect(html).toContain('<th class="hd hd-left">1</th>')
   })
 
+  it("prints a merged cell's right and bottom edges from the cells along them", () => {
+    // An outside border on A1:C3 with B1:C1 and A2:A3 merged, stored the
+    // way Univer and Excel store it: each edge on the cells it runs along,
+    // so B1 (the anchor of B1:C1) has no right edge and A2 no bottom edge.
+    const line = { s: 1, cl: { rgb: '#000000' } }
+    const bd = (row: number, column: number) => {
+      const edges: Record<string, typeof line> = {}
+      if (row === 0) edges.t = line
+      if (row === 2) edges.b = line
+      if (column === 0) edges.l = line
+      if (column === 2) edges.r = line
+      return Object.keys(edges).length > 0 ? { bd: edges } : null
+    }
+    const worksheet: PrintWorksheet = {
+      getLastRow: () => 2,
+      getLastColumn: () => 2,
+      getRowHeight: () => 20,
+      getColumnWidth: () => 100,
+      getMergedRanges: () => [
+        { getRow: () => 0, getColumn: () => 1, getHeight: () => 1, getWidth: () => 2 },
+        { getRow: () => 1, getColumn: () => 0, getHeight: () => 2, getWidth: () => 1 },
+      ],
+      getRange: ((row: number, column: number, numRows?: number, numColumns?: number) => ({
+        getDisplayValues: () =>
+          Array.from({ length: numRows ?? 1 }, () => Array<string>(numColumns ?? 1).fill('')),
+        getValues: () => [],
+        getCellStyleData: () => bd(row, column),
+      })) as PrintWorksheet['getRange'],
+    }
+    const html = assemblePrintHtml([layout(worksheet, payloadSetup({}))]).html
+    const cells = [...html.matchAll(/<td[^>]*style="([^"]*)">/g)].map((match) => match[1] ?? '')
+    // rows: [A1, B1:C1], [A2:A3, B2, C2], [B3, C3]
+    expect(cells[1]).toContain('inset -0.75pt 0 0 #000000')
+    expect(cells[1]).toContain('inset 0 0.75pt 0 #000000')
+    expect(cells[2]).toContain('inset 0 -0.75pt 0 #000000')
+    expect(cells[2]).toContain('inset 0.75pt 0 0 #000000')
+    expect(cells[4]).toContain('inset -0.75pt 0 0 #000000')
+  })
+
   it('spans merged cells inside repeated title rows', () => {
     const worksheet: PrintWorksheet = {
       ...tallWorksheet(40),

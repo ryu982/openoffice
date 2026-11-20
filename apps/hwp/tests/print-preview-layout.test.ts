@@ -418,3 +418,48 @@ describe('the arranged save notice', () => {
     expect(strings.ko.printLayoutSaved).toBe('배치한 결과를 PDF로 저장했습니다.')
   })
 })
+
+describe('the preview wheel zoom', () => {
+  it('steps five points per notch on both Ctrl+wheel and Cmd+wheel', async () => {
+    let triggerResize: (() => void) | undefined
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: () => void) {
+          triggerResize = cb
+        }
+        observe() {}
+        disconnect() {}
+      },
+    )
+    await mount()
+    const viewport = container.querySelector<HTMLElement>('.hwp-preview-viewport')!
+    Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 800 })
+    Object.defineProperty(viewport, 'clientHeight', { configurable: true, value: 600 })
+    await act(async () => {
+      triggerResize?.()
+    })
+    const select = container.querySelector<HTMLSelectElement>('.hwp-preview-field select')!
+    const wheel = (deltaY: number, mods: { ctrlKey?: boolean; metaKey?: boolean }, ts: number) => {
+      const event = new WheelEvent('wheel', {
+        deltaY,
+        ...mods,
+        bubbles: true,
+        cancelable: true,
+      })
+      Object.defineProperty(event, 'timeStamp', { value: ts })
+      viewport.dispatchEvent(event)
+    }
+    await act(async () => {
+      // first notch snaps the fitted zoom onto the 5% grid, then we step from a known value
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!
+      setter.call(select, '100')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(select.value).toBe('100')
+    await act(async () => wheel(-100, { ctrlKey: true }, 100))
+    expect(select.value).toBe('105')
+    await act(async () => wheel(100, { metaKey: true }, 600))
+    expect(select.value).toBe('100')
+  })
+})

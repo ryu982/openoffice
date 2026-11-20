@@ -82,6 +82,7 @@ import {
   adapterRevertVerdict,
   joinUndoGuards,
   receiptState,
+  statusAfterRevert,
   univerApplyGuard,
   univerRevertOutcome,
   univerRevertVerdict,
@@ -119,6 +120,7 @@ import {
   useProjectPanel,
   type ProjectPanel,
   useSubscriptionUsageUpdates,
+  aiChangesLabels,
 } from '@genoffice/ui'
 
 import {
@@ -4430,6 +4432,12 @@ export function App({
       // taken back: nothing left to mark (a refused or expired run still stands)
       if (receipt.marked && (state === 'reverted' || state === 'partial')) {
         aiMarksRef.current?.clear()
+      }
+      // the status line still offered undo for these changes: it now says they went back
+      if (state === 'reverted' || state === 'partial') {
+        const applied = t('appAiChangesNotSaved')
+        const reverted = aiChangesLabels(getLang()).reverted
+        setMessage((current) => statusAfterRevert(current, applied, reverted))
       }
       patchReceiptAt(index, (current) => ({ ...current, state }))
     }

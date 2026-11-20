@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconClose } from '@genoffice/ui/icons'
 import {
   ADMINISTRATION_RULES,
@@ -84,9 +84,12 @@ export function DocCheckPanel({ bridge, format, onClose, onHandOff, revision = 0
     void run()
   }, [run])
 
-  // an AI run changes the document: read it again once the run has stopped writing
+  // an AI run changes the document: read it again once the run has stopped writing. Only
+  // a change after the panel opened: the count it opens with was read on opening, and a
+  // second read then would take the hand-off button away (busy) under the user's click
+  const openedAtRevision = useRef(revision)
   useEffect(() => {
-    if (revision === 0) return
+    if (revision === openedAtRevision.current) return
     const timer = setTimeout(() => void run(), REREAD_DELAY_MS)
     return () => clearTimeout(timer)
   }, [revision, run])

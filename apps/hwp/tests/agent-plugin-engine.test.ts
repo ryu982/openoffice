@@ -659,19 +659,16 @@ describe('form fields in the real engine', () => {
     expect(editor.lines().slice(-4, -2)).toEqual([`소속: ${GUIDE} (과)`, '참고'])
   })
 
-  it('rolls the whole change back when it would cost a field its value', () => {
-    // in front of a paragraph is done by splitting at its start; where the paragraph has a
-    // field the plugin does not try
+  it('adds a paragraph in front of a line with a filled field and keeps the field as it was', () => {
     const editor = openEditor({ fields: true })
     editor.plugin.fillField(1, '홍길동')
     const lines = editor.lines()
-    const steps = editor.steps()
     expect(editor.plugin.insertParagraphs('홍길동', null, 'before', ['x'])).toMatchObject({
-      ok: false,
-      reason: 'has_objects',
+      ok: true,
     })
-    expect(editor.lines()).toEqual(lines)
-    expect(editor.steps()).toBe(steps)
+    const at = lines.indexOf('성명: 홍길동 (인)')
+    expect(editor.lines()).toEqual([...lines.slice(0, at), 'x', ...lines.slice(at)])
+    expect(editor.plugin.listFields().map((field) => field.value)).toEqual(['홍길동', '', ''])
   })
 })
 

@@ -221,8 +221,10 @@ function attach(made: DrawioUi): void {
   ui.editor.addListener('pageSelected', () => {
     emit({ name: 'currentPage', id: currentPageId() })
     // the page's marks, once draw.io has drawn it
-    setTimeout(() => cellMarks.redraw(), 0)
+    cellMarks.redrawSoon()
   })
+  // a marked cell deleted and brought back (undo, redo) is marked again
+  ui.editor.graph.getModel().addListener(mxEvent.CHANGE, () => cellMarks.redrawSoon())
   emit({ name: 'ready' })
 }
 

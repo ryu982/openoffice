@@ -22,6 +22,8 @@ export const tr = {
     'Hiçbir şey kaydedilmedi: yazılmak üzere olan kopya, geri okunduğunda ekrandaki belgeyle aynı değildi. Yeni bir dosyaya yazmak için Farklı Kaydet komutunu deneyin.',
   saveVerifyHint:
     'Özgün dosya değişmedi. Farklı Kaydet penceresinde HWPX seçin veya PDF olarak dışa aktarmayı kullanın.',
+  saveVerifyPages: 'Ekranda: {before} sayfa → yeniden okunduğunda: {after} sayfa',
+  saveAsHwpx: 'HWPX olarak kaydet…',
   saveProtected: 'Kaydedilmedi: bu belge parola korumalı ve burada kaydetmek onu parolasız yazar.',
   backupKept: 'Kaydedildi. Önceki sürüm {name} olarak saklandı.',
   openedTracked:

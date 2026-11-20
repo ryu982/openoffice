@@ -233,6 +233,7 @@ export function AiPanel({
   onSkillHandoff,
   prefill,
   onPrefillTaken,
+  marksOnPage,
 }: {
   /** the document operations of the open editor */
   bridge: AgentBridge
@@ -253,6 +254,11 @@ export function AiPanel({
    * request runs once even when the panel mounts again with the same props
    */
   onPrefillTaken?: (taken: AiPrefill) => void
+  /**
+   * the pages carry marks of the AI's changes now, as the editor's plugin tells: a user edit
+   * takes them off, and the card's button to clear them goes with them
+   */
+  marksOnPage?: boolean
 }): ReactElement {
   const { lang, t } = useI18n()
   const [chat, setChat] = useState<ChatEntry[]>([])
@@ -272,6 +278,12 @@ export function AiPanel({
   const [reverting, setReverting] = useState(false)
   /** the editor shows marks over what the last run changed */
   const [marksShown, setMarksShown] = useState(false)
+  /** what the plugin said last, for the end of a run: a run that only removed things marks none */
+  const marksOnPageRef = useRef(marksOnPage === true)
+  marksOnPageRef.current = marksOnPage === true
+  useEffect(() => {
+    if (!marksOnPage) setMarksShown(false)
+  }, [marksOnPage])
   /** the memos an edit would remove, while the user decides whether to go on */
   const [memoApproval, setMemoApproval] = useState<AgentMemoRemovalRefusal | null>(null)
   const memoGateRef = useRef<MemoApprovalGate | null>(null)
@@ -559,25 +571,6 @@ export function AiPanel({
       window.clearInterval(timer)
     }
   }, [busy])
-  // the plugin takes the marks off by itself when the user edits the document: the card's
-  // button to clear them goes with them
-  useEffect(() => {
-    if (busy || !marksShown) return
-    let stopped = false
-    const readMarks = async (): Promise<void> => {
-      try {
-        const result = await bridgeRef.current.hasMarks()
-        if (!stopped && !result.shown) setMarksShown(false)
-      } catch {
-        // the editor is not ready, or is gone: the button stays as it is
-      }
-    }
-    const timer = window.setInterval(() => void readMarks(), SELECTION_POLL_MS)
-    return () => {
-      stopped = true
-      window.clearInterval(timer)
-    }
-  }, [busy, marksShown])
   const scope = selected && selected.key !== scopeCleared ? selected : null
   const scopeRef = useRef(scope)
   scopeRef.current = scope
@@ -724,8 +717,8 @@ export function AiPanel({
     const items = runChangesRef.current
     runChangesRef.current = []
     if (items.length === 0) return {}
-    // the plugin marked each change on the pages as it made it
-    setMarksShown(true)
+    // the plugin marked each change on the pages as it made it (and said so)
+    setMarksShown(marksOnPageRef.current)
     const foreign = runForeignRef.current
     // a run whose starting point is unknown cannot be checked, so it is not offered for undo
     return {
@@ -780,8 +773,12 @@ export function AiPanel({
       label: tGlobal,
       onChange: (change) => {
         runChangesRef.current.push(change)
-        // the view follows the work: a change far down the document would go unseen
-        if (change.place) void bridgeRef.current.reveal(change.place).catch(() => {})
+        // the view follows the work: a change far down the document would go unseen. The
+        // caret goes there without selecting it: the mark shows the change, and a selection
+        // laid over the last change would hide its mark once the run ends
+        if (change.place) {
+          void bridgeRef.current.reveal({ ...change.place, length: 0 }).catch(() => {})
+        }
       },
       confirmMemoRemoval: (refusal) => memoGateRef.current!.ask(refusal),
       imageGenAvailable: () => imageGenAvailableRef.current,

@@ -7,10 +7,50 @@
  * else behaves exactly as before, and neither asking nor standing down may leave
  * the .bak backup or touch the file.
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { constants, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFile, open } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  const copyFile = vi.fn(actual.copyFile)
+  const open = vi.fn(actual.open)
+  return {
+    ...actual,
+    default: { ...actual, readFile, copyFile, open },
+    readFile,
+    copyFile,
+    open,
+  }
+})
+
+const actualPromises = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+
+const errnoError = (code: string) => Object.assign(new Error(`${code}: injected`), { code })
+
+/**
+ * The platform copy failing as libuv fails on a mount that refuses chmod: an
+ * exclusive copy refuses a file that is already there; otherwise the
+ * destination has been created or truncated by then and is removed on the way out.
+ */
+function failPlatformCopyLikeLibuv(code: string): void {
+  vi.mocked(copyFile).mockImplementation(async (_source, target, mode) => {
+    const path = String(target)
+    if (((mode ?? 0) & constants.COPYFILE_EXCL) !== 0 && existsSync(path))
+      throw errnoError('EEXIST')
+    writeFileSync(path, '')
+    rmSync(path)
+    throw errnoError(code)
+  })
+}
 
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
@@ -104,8 +144,21 @@ beforeEach(() => {
 
 afterEach(() => {
   setOpenPathProbe(null)
+  vi.mocked(copyFile).mockImplementation(actualPromises.copyFile)
+  vi.mocked(open).mockImplementation(actualPromises.open)
   rmSync(dir, { recursive: true, force: true })
+  Object.defineProperty(process, 'platform', hostPlatform)
 })
+
+/**
+ * The mount these tests describe (gvfs SMB, WebDAV) is a POSIX one: on Windows
+ * the copy helpers keep to CopyFileW and never reach the fallback under test.
+ * `node:path` and the rest settled at import, so only the platform checks made
+ * at call time see the change.
+ */
+const hostPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
+const usePosixMount = () =>
+  Object.defineProperty(process, 'platform', { ...hostPlatform, value: 'linux' })
 
 /** HWPX bytes enough for the container check (ZIP magic). */
 const SAVED_BYTES = Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x21, 0x22, 0x23])
@@ -133,6 +186,26 @@ async function saveThrough(
     auto: auto === true,
   })
 }
+
+describe('opening a document', () => {
+  it('reads the file once: its content also gives the recorded disk state', async () => {
+    writeFileSync(docPath, 'v1')
+    fileReads.mockClear()
+    const contents = await openView(docPath)
+    expect(fileReads.mock.calls.filter(([path]) => path === docPath)).toHaveLength(1)
+    setOpenPathProbe((path) => path === docPath)
+    // another pane's write: the recorded state is there, and an automatic save stands down
+    writeFileSync(docPath, 'v2-sibling')
+    expect((await saveThrough(contents, SAVED_BYTES, true)).ok).toBe(false)
+    // the file as it was read, written again: the recorded state is that content's
+    writeFileSync(docPath, 'v1')
+    expect(await saveThrough(contents, SAVED_BYTES, true)).toMatchObject({
+      ok: true,
+      path: docPath,
+    })
+    expect(showMessageBox).not.toHaveBeenCalled()
+  })
+})
 
 describe('same-document save guard', () => {
   it('does not ask for a file open nowhere else, whatever the disk holds', async () => {
@@ -205,5 +278,34 @@ describe('same-document save guard', () => {
     const second = await saveThrough(contents, Uint8Array.from([...SAVED_BYTES, 0x44]))
     expect(second).toMatchObject({ ok: true, path: docPath })
     expect(showMessageBox).not.toHaveBeenCalled()
+  })
+})
+
+describe('the .bak backup on a mount that refuses the platform copy', () => {
+  beforeEach(usePosixMount)
+
+  it('still makes the backup and lands the save when the platform copy fails', async () => {
+    writeFileSync(docPath, 'v1')
+    const contents = await openView(docPath)
+    failPlatformCopyLikeLibuv('ENOTSUP')
+    const result = await saveThrough(contents, SAVED_BYTES)
+    expect(result).toMatchObject({ ok: true, path: docPath, backupPath: `${docPath}.bak` })
+    expect(readFileSync(docPath)).toEqual(Buffer.from(SAVED_BYTES))
+    expect(readFileSync(`${docPath}.bak`, 'utf8')).toBe('v1')
+  })
+
+  it('stops the save when no backup can be made, and keeps the document and the older .bak', async () => {
+    writeFileSync(docPath, 'v1')
+    writeFileSync(`${docPath}.bak`, 'v0-older-backup')
+    const contents = await openView(docPath)
+    failPlatformCopyLikeLibuv('ENOTSUP')
+    vi.mocked(open).mockImplementation(async (...args) => {
+      if (args[1] !== undefined && args[1] !== 'r') throw errnoError('EACCES')
+      return actualPromises.open(...(args as Parameters<typeof actualPromises.open>))
+    })
+    const result = await saveThrough(contents, SAVED_BYTES)
+    expect(result.ok).toBe(false)
+    expect(readFileSync(docPath, 'utf8')).toBe('v1')
+    expect(readFileSync(`${docPath}.bak`, 'utf8')).toBe('v0-older-backup')
   })
 })

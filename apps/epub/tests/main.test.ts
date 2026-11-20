@@ -11,6 +11,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
+
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const protocolHandlers = new Map<string, (request: Request) => Promise<Response>>()
@@ -108,6 +119,7 @@ import type {
   EpubOpenFileResult,
   EpubSaveResult,
 } from '../src/shared/ipc'
+import { setOpenPathProbe } from '@genoffice/electron-utils'
 import { buildBook, entryText } from './helpers/book'
 
 let dir: string
@@ -330,6 +342,32 @@ describe('editing and saving', () => {
     expect(epubIsDirty(contents.id)).toBe(true)
     showMessageBox.mockResolvedValueOnce({ response: 1 })
     expect(await requestEpubClose(contents as never)).toBe(true)
+  })
+})
+
+describe('the disk state an open records', () => {
+  it('comes from the one read of the file', async () => {
+    fileReads.mockClear()
+    const { path, contents, opened } = await openBook()
+    expect(opened.status).toBe('ok')
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+
+    const original = readFileSync(path)
+    expect((await edit(contents, 'Changed.')).ok).toBe(true)
+    setOpenPathProbe((each) => each === path)
+    try {
+      // another pane's write: the recorded state is there, and an automatic save stands down
+      writeFileSync(path, Buffer.concat([original, Buffer.from('changed elsewhere')]))
+      expect(await save(contents, { mode: 'save', auto: true })).toEqual({
+        ok: false,
+        error: 'external-modified',
+      })
+      // the file as it was read, written again: the recorded state is that content's
+      writeFileSync(path, original)
+      expect(await save(contents, { mode: 'save', auto: true })).toMatchObject({ ok: true, path })
+    } finally {
+      setOpenPathProbe(null)
+    }
   })
 })
 

@@ -13,8 +13,9 @@ import {
   textInsertRect,
   withAiEditScope,
 } from '../src/renderer/ai/ai-run-changes'
+import { pdfRectToCss, viewToPdf, type PageGeom } from '../src/renderer/annotations'
 import type { EditSnapshot } from '../src/renderer/edit-state'
-import type { LocalTextInsert } from '../src/renderer/text-edit-preview'
+import { textInsertPreviewStyle, type LocalTextInsert } from '../src/renderer/text-edit-preview'
 
 const empty = (): EditSnapshot => ({
   markups: [],
@@ -82,6 +83,8 @@ describe('revertedStacks', () => {
 })
 
 const measure = (line: string, fontSize: number) => line.length * fontSize * 0.5
+const flat: PageGeom = { pw: 600, ph: 800, rot: 0 }
+const geomOf = () => flat
 
 describe('runMarks', () => {
   it('marks what the run added or changed, not what was there before or what it removed', () => {
@@ -143,7 +146,7 @@ describe('runMarks', () => {
       rotations: new Map([[0, 90]]),
       deleted: new Set([4]),
     }
-    expect(runMarks(before, after, measure)).toEqual([
+    expect(runMarks(before, after, measure, geomOf)).toEqual([
       { pageIndex: 1, rect: [10, 20, 50, 30] },
       { pageIndex: 0, rect: [98, 99, 201, 121] },
       { pageIndex: 0, rect: [5, 5, 15, 15] },
@@ -153,23 +156,58 @@ describe('runMarks', () => {
     ])
   })
 
-  it('boxes a text insert by its lines, and leaves invisible OCR text and rotated pages out', () => {
-    const insert = (input: Partial<LocalTextInsert['input']>): LocalTextInsert => ({
-      id: 'x',
-      input: {
-        pageIndex: 0,
-        origin: [100, 500],
-        text: 'abcd\nab',
-        fontSize: 10,
-        color: [0, 0, 0],
-        ...input,
-      },
-    })
-    expect(textInsertRect(insert({}), measure)).toEqual([100, 485.5, 120, 510])
-    expect(textInsertRect(insert({ align: 'right' }), measure)?.[0]).toBe(80)
-    expect(textInsertRect(insert({ rotate: 90 }), measure)).toBeNull()
+  const insert = (input: Partial<LocalTextInsert['input']>): LocalTextInsert => ({
+    id: 'x',
+    input: {
+      pageIndex: 0,
+      origin: [100, 500],
+      text: 'abcd\nab',
+      fontSize: 10,
+      color: [0, 0, 0],
+      ...input,
+    },
+  })
+
+  it('boxes a text insert like its preview: one size above the baseline, preview line height', () => {
+    // widest line 20 pt; two lines of 1.2 × the 0.92 preview size
+    expect(textInsertRect(insert({}), flat, measure)).toEqual([100, 500 - 2 * 11.04 + 10, 120, 510])
+    expect(textInsertRect(insert({ lineLeading: 12 }), flat, measure)).toEqual([100, 486, 120, 510])
+    expect(textInsertRect(insert({ align: 'right' }), flat, measure)?.[0]).toBe(80)
+    expect(textInsertRect(insert({ align: 'center' }), flat, measure)?.[0]).toBe(90)
+    expect(textInsertRect(insert({ text: '' }), flat, measure)).toBeNull()
+  })
+
+  it.each([0, 90, 180, 270])(
+    'puts the mark on the preview of text inserted on a %i° page',
+    (rot) => {
+      const geom: PageGeom = { pw: 600, ph: 800, rot, x0: 5, y0: 7 }
+      // as insert_text records it: the origin from a display point, the page's turn in rotate
+      const placed = insert({ origin: viewToPdf(geom, 100, 200), rotate: rot, lineLeading: 12 })
+      const rect = textInsertRect(placed, geom, measure)!
+      const box = pdfRectToCss(geom, rect, 2)
+      expect(box.left).toBeCloseTo(200)
+      expect(box.top).toBeCloseTo(380)
+      expect(box.width).toBeCloseTo(40)
+      expect(box.height).toBeCloseTo(48)
+      const preview = textInsertPreviewStyle(placed, geom, 2)
+      expect(box.left).toBeCloseTo(preview.left as number)
+      expect(box.top).toBeCloseTo(preview.top as number)
+      // centered lines hang left of the origin by half the widest line on every turn
+      const centered = textInsertRect(
+        { ...placed, input: { ...placed.input, align: 'center' } },
+        geom,
+        measure,
+      )!
+      expect(pdfRectToCss(geom, centered, 1).left).toBeCloseTo(90)
+    },
+  )
+
+  it('leaves invisible OCR text and pages without a known size out', () => {
     const after = { ...empty(), textInserts: [insert({ invisible: true })] }
-    expect(runMarks(empty(), after, measure)).toEqual([])
+    expect(runMarks(empty(), after, measure, geomOf)).toEqual([])
+    const visible = { ...empty(), textInserts: [insert({ rotate: 90 })] }
+    expect(runMarks(empty(), visible, measure, () => null)).toEqual([])
+    expect(runMarks(empty(), visible, measure, () => ({ ...flat, rot: 90 }))).toHaveLength(1)
   })
 })
 

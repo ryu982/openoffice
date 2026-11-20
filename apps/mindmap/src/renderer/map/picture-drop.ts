@@ -1,20 +1,21 @@
 /**
  * A picture file put on a topic of the map: dragged from the desktop onto it,
- * or chosen in the file window that "Insert picture" opens.
+ * or chosen in the file window that "Insert picture" opens. A picture pasted
+ * from the clipboard onto a topic goes on a new topic under it.
  *
  * The drop goes the way an AI picture does (`setTopicImage`): the bytes become
  * a new entry of the document, and the topic takes the reference through the
  * library tree, `MapController.edit` and reconciling, as one step of the undo
  * history. Nothing here writes to the source tree.
  *
- * The bytes are read from the dropped or chosen `File` in this window; no
+ * The bytes are read from the dropped, chosen or pasted `File` in this window; no
  * path crosses to the main process. A drag that carries no picture is left alone, so a
  * document dropped on the map still opens through the shell's drop-open
  * bridge (`installDropOpenBridge`): this zone cancels only the drops it takes.
  */
 import type { Topic } from 'mind-elixir'
 import { MAX_PICTURE_BYTES } from '../ai/image-tools'
-import { setTopicImage, type MapAiHost, type PictureBytes } from '../ai/map-tools'
+import { addPictureTopic, setTopicImage, type MapAiHost, type PictureBytes } from '../ai/map-tools'
 import { pictureType } from './images'
 
 /** File names a picture drop takes: any picture, so an unsupported one is answered rather than ignored. */
@@ -112,5 +113,24 @@ export async function dropPicture(
   if (!read.ok) return read.reason
   const result = await setTopicImage(host, { topicId }, read.picture, null)
   if (result.isError) return 'failed'
+  return pictures.length > 1 ? 'done-first-only' : 'done'
+}
+
+/**
+ * Puts the first picture of a paste on a new topic under the selected one
+ * (`addPictureTopic`). The topic pasted onto keeps its own picture and stays
+ * selected, so the next picture pasted goes in beside this one.
+ */
+export async function pastePicture(
+  host: MapAiHost,
+  parentId: string,
+  files: readonly File[],
+): Promise<PictureDropOutcome> {
+  const pictures = files.filter(isPictureFile)
+  const first = pictures[0]
+  if (!first) return 'unsupported'
+  const read = await readDroppedPicture(first)
+  if (!read.ok) return read.reason
+  if ((await addPictureTopic(host, parentId, read.picture)) === null) return 'failed'
   return pictures.length > 1 ? 'done-first-only' : 'done'
 }

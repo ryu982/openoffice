@@ -16,7 +16,7 @@
  * what the AI reads come from the document, not from the screen.
  */
 import type { EditSnapshot } from '../edit-state'
-import { quadToRect } from '../annotations'
+import { pdfToView, quadToRect, viewToPdf, type PageGeom } from '../annotations'
 import { shiftRect, unionCover, type LocalTextInsert } from '../text-edit-preview'
 
 export type PdfRect = [number, number, number, number]
@@ -106,25 +106,31 @@ function drawingRect(input: Record<string, unknown>): PdfRect | null {
 }
 
 /**
- * The box a pending text insert covers on the page, from its origin, size and
- * measured lines. Null on a rotated page, where the text runs across the box
- * this would give.
+ * The box a pending text insert covers on the page, laid out like its preview
+ * (textInsertPreviewStyle): the text runs left to right on the screen however
+ * the page is turned, its top sits one font size above the first baseline,
+ * each line is the preview's line height (the insert's own leading, else 1.2
+ * of the 0.92 preview size), and center/right lines hang left of the origin
+ * by the widest line. The box is found in display space and mapped back to
+ * user space, so the mark lands on the preview on a rotated page too.
+ * `measure` gives a line's width as the preview draws it.
  */
 export function textInsertRect(
   insert: LocalTextInsert,
+  geom: PageGeom,
   measure: (line: string, fontSize: number, insert: LocalTextInsert) => number,
 ): PdfRect | null {
-  const { origin, fontSize, text, lineLeading, align, rotate } = insert.input
-  if (rotate) return null
+  const { origin, fontSize, text, lineLeading, align } = insert.input
   const lines = text.split('\n')
   const width = Math.max(0, ...lines.map((line) => measure(line, fontSize, insert)))
   if (!(width > 0)) return null
-  const leading = lineLeading ?? fontSize * 1.2
-  const left =
-    align === 'center' ? origin[0] - width / 2 : align === 'right' ? origin[0] - width : origin[0]
-  const top = origin[1] + fontSize
-  const bottom = origin[1] - (lines.length - 1) * leading - fontSize * 0.25
-  return [left, bottom, left + width, top]
+  const lineHeight = lineLeading ?? fontSize * 0.92 * 1.2
+  const [vx, vy] = pdfToView(geom, origin[0], origin[1])
+  const left = align === 'center' ? vx - width / 2 : align === 'right' ? vx - width : vx
+  const top = vy - fontSize
+  const [ax, ay] = viewToPdf(geom, left, top)
+  const [bx, by] = viewToPdf(geom, left + width, top + lines.length * lineHeight)
+  return [Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)]
 }
 
 /**
@@ -137,6 +143,7 @@ export function runMarks(
   before: EditSnapshot,
   after: EditSnapshot,
   measure: (line: string, fontSize: number, insert: LocalTextInsert) => number,
+  geomOf: (pageIndex: number) => PageGeom | null,
 ): PdfAiMark[] {
   const fresh = <T>(list: readonly T[], old: readonly T[]): T[] => {
     const known = new Set(old)
@@ -159,7 +166,8 @@ export function runMarks(
     )
   }
   for (const insert of fresh(after.textInserts, before.textInserts)) {
-    if (!insert.input.invisible) add(insert.input.pageIndex, textInsertRect(insert, measure))
+    const geom = insert.input.invisible ? null : geomOf(insert.input.pageIndex)
+    if (geom) add(insert.input.pageIndex, textInsertRect(insert, geom, measure))
   }
   for (const image of fresh(after.imageEdits, before.imageEdits)) {
     if (image.input.kind !== 'deleteImage') add(image.input.pageIndex, image.input.rect)

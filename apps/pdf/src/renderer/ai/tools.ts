@@ -473,7 +473,7 @@ export const AGENT_TOOLS: AgentToolDef[] = [
   {
     name: 'edit_text',
     description:
-      'Replace a short text run on a page (rewrites the PDF content; takes effect on save). old_text must be a verbatim fragment that actually exists on that page (confirm with read_pages or search_text first); only the first occurrence on the page is edited unless occurrence is given. The replacement is drawn from the original position without reflowing the page, so keep it close to the original length. An empty new_text deletes the run outright (the space it occupied stays blank; nothing moves up) — never substitute a placeholder such as "." for deletion. Alignment cannot be changed here (a run keeps its position); use edit_block with align for that.',
+      'Replace a short text run on a page (rewrites the PDF content; takes effect on save). old_text must be a verbatim fragment that actually exists on that page (confirm with read_pages or search_text first); only the first occurrence on the page is edited unless occurrence is given. The replacement is drawn from the original position without reflowing the page, so keep it close to the original length. When old_text is only part of a line, the rest of that line moves to follow the replacement (the line is redrawn from its start). An empty new_text deletes the run outright (the space it occupied stays blank; nothing moves up) — never substitute a placeholder such as "." for deletion. Alignment cannot be changed here (a run keeps its position); use edit_block with align for that.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -175,8 +175,8 @@ const COPY_NOW_TIMEOUT_MS = 5000
 // overwriting it; an automatic save defers silently to the next manual one.
 const docDiskStates = new Map<number, Map<string, SaveDiskState>>()
 
-async function rememberDiskState(wcId: number, path: string): Promise<void> {
-  const state = await recordDiskState(path)
+async function rememberDiskState(wcId: number, path: string, read?: Uint8Array): Promise<void> {
+  const state = await recordDiskState(path, read)
   if (!state) return
   const states = docDiskStates.get(wcId) ?? new Map<string, SaveDiskState>()
   states.set(path, state)
@@ -614,7 +614,7 @@ function registerMindmapIpc(): void {
         if (bytes && (await openXmind(bytes)).status === 'ok') {
           // the file still opens: it stays the save target
           savePathByWc.set(wcId, path)
-          await rememberDiskState(wcId, path)
+          await rememberDiskState(wcId, path, bytes)
           return { status: 'ok', bytes: restored, restored: 'file' }
         }
         // The file is gone or no longer opens, so it is not written over: the
@@ -640,7 +640,7 @@ function registerMindmapIpc(): void {
     // reload of a view whose file opens again after it was replaced on disk.
     unopenedByWc.delete(wcId)
     savePathByWc.set(wcId, path)
-    await rememberDiskState(wcId, path)
+    await rememberDiskState(wcId, path, bytes)
     return { status: 'ok', bytes }
   })
 

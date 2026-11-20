@@ -74,6 +74,7 @@ import { GraphView } from './components/GraphView'
 import { ToastHost } from './components/toast'
 import { showToast } from './components/toast-bus'
 import { TableMenu } from './components/TableMenu'
+import { SelectionFormatBar } from './components/SelectionFormatBar'
 import { FrontmatterPanel } from './components/FrontmatterPanel'
 import { AiAskPopover } from './components/AiAskPopover'
 import { useAiVisible } from './ai-visibility'
@@ -1208,8 +1209,7 @@ export default function App() {
         event.preventDefault()
         openFind(true)
       } else if (isSourceViewKey(event)) {
-        // Obsidian's edit/preview toggle: the source view. Shift is excluded so
-        // Ctrl+Shift+E (and Ctrl+Shift+V, paste without formatting) stay free.
+        // Obsidian's edit/preview toggle; Ctrl+Shift+E formats inline code.
         event.preventDefault()
         toggleSource()
       } else if (key === 'o' && event.shiftKey) {
@@ -1706,6 +1706,9 @@ export default function App() {
         />
       )}
       {!sourceMode && <TableMenu editor={editor} scrollRef={scrollRef} zoom={zoom} />}
+      {editor && status === 'ready' && !sourceMode && !sourceViewOpen && !presenting && (
+        <SelectionFormatBar editor={editor} scrollRef={scrollRef} zoom={zoom} />
+      )}
       {editor && !sourceMode && status === 'ready' && aiOn && (
         <AiAskPopover
           editor={editor}

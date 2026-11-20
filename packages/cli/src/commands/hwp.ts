@@ -1,5 +1,6 @@
-import { copyFileSync, existsSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { basename } from 'node:path'
+import { copyFileReplacing } from '@genoffice/electron-utils/atomic-write'
 import { flagBool } from '../args'
 import { BATCH_OPTIONS, batchCounts, batchMode, batchResult, failedBatch } from '../batch'
 import { HWP_PREVIEW_CHARS, hwpText } from '../formats/hwp'
@@ -254,7 +255,7 @@ export async function runHwpBatch(
   let backupPath: string | undefined
   if (existsSync(target.output)) {
     backupPath = hwpBackupPath(target.output)
-    copyFileSync(target.output, backupPath)
+    await copyFileReplacing(target.output, backupPath)
   }
   writeOutput(target.output, saved.bytes)
   const warnings: string[] = []

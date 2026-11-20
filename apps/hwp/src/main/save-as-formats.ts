@@ -37,6 +37,19 @@ export function saveAsDefaultPath(suggestion: string, offerExports: boolean): st
   return offerExports ? suggestion.replace(/\.hwpx?$/i, '') : suggestion
 }
 
+/** Filters for the HWPX-only Save As path (e.g. saving as HWPX after HWP verification blocks). */
+export function saveAsHwpxFilters(label: (key: SaveAsLabelKey) => string): SaveAsFilter[] {
+  return [{ name: label('filterHwpx'), extensions: ['hwpx'] }]
+}
+
+/**
+ * Suggestion for the HWPX-only Save As path: always carries `.hwpx` so dialogs that do not
+ * append a filter extension (Linux GTK / xdg-desktop-portal) still return an `.hwpx` path.
+ */
+export function saveAsHwpxDefaultPath(suggestion: string): string {
+  return `${suggestion.replace(/\.hwpx?$/i, '')}.hwpx`
+}
+
 /**
  * What the dialog's answer means. With PDF offered, a .pdf name writes the PDF
  * copy. Anything else — .hwp/.hwpx, or a bare name from a dialog that does not

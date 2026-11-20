@@ -45,7 +45,20 @@ export function studioLocale(lang: Lang): 'ko' | 'en' {
  * `chrome=embed` makes the studio drop its own document lifecycle (new, open,
  * save, print, document drops): the tab owns the file, and a document swapped
  * inside the editor would later be saved over the tab's file.
+ *
+ * `fontReads` is how many font files the editor's font detection may read, from this
+ * view's open-file limit (studio-plugin/pc-fonts.mjs reads it as soon as it looks at the
+ * PC's fonts, before anything else could tell it); none where it reads them all.
+ *
+ * `headless` marks a hidden `--headless-export` window: Electron keeps its initial
+ * `document.visibilityState` as `visible` (especially with backgroundThrottling off),
+ * so the studio needs an explicit flag to skip the start-up font enumeration.
  */
-export function studioUrl(lang: Lang): string {
-  return `./studio/index.html?chrome=embed&lang=${studioLocale(lang)}`
+export function studioUrl(lang: Lang, fontReads: number | null = null, headless = false): string {
+  const reads =
+    fontReads !== null && Number.isInteger(fontReads) && fontReads > 0
+      ? `&fontReads=${fontReads}`
+      : ''
+  const mode = headless ? '&headless=1' : ''
+  return `./studio/index.html?chrome=embed&lang=${studioLocale(lang)}${reads}${mode}`
 }

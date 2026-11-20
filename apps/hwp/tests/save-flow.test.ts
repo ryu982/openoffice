@@ -325,16 +325,20 @@ describe('runSave', () => {
     })
   })
 
-  it('writes nothing when the HWP read-back loses pages', async () => {
+  it('writes nothing when the HWP read-back loses pages, and reports before/after counts', async () => {
     const ed = editor({
       exportHwpVerify: vi.fn(async () => ({
-        pageCountBefore: 9,
-        pageCountAfter: 8,
-        recovered: true,
+        pageCountBefore: 11,
+        pageCountAfter: 7,
+        recovered: false,
       })),
     })
     const host = api({ ok: true, path: 'C:/d/a.hwp', format: 'hwp' })
-    expect(await runSave(ed, host, 'save')).toEqual({ kind: 'failed', reason: 'verify' })
+    expect(await runSave(ed, host, 'save')).toEqual({
+      kind: 'failed',
+      reason: 'verify',
+      verify: { pageCountBefore: 11, pageCountAfter: 7, recovered: false },
+    })
     expect(host.commitSave).not.toHaveBeenCalled()
     expect(host.abortSave).toHaveBeenCalledOnce()
     expect(ed.notifySaved).not.toHaveBeenCalled()
@@ -349,8 +353,28 @@ describe('runSave', () => {
       })),
     })
     const host = api({ ok: true, path: 'C:/d/a.hwp', format: 'hwp' })
-    expect(await runSave(ed, host, 'save')).toEqual({ kind: 'failed', reason: 'verify' })
+    expect(await runSave(ed, host, 'save')).toEqual({
+      kind: 'failed',
+      reason: 'verify',
+      verify: { pageCountBefore: 9, pageCountAfter: 9, recovered: false },
+    })
     expect(host.commitSave).not.toHaveBeenCalled()
+  })
+
+  it('passes saveAsHwpx through to beginSave and writes HWPX without HWP read-back check', async () => {
+    const ed = editor()
+    const host = api(
+      { ok: true, path: '/tmp/report.hwpx', format: 'hwpx' },
+      { ok: true, path: '/tmp/report.hwpx' },
+    )
+    expect(await runSave(ed, host, 'saveAsHwpx')).toEqual({
+      kind: 'saved',
+      path: '/tmp/report.hwpx',
+    })
+    expect(host.beginSave).toHaveBeenCalledWith('saveAsHwpx')
+    expect(ed.exportHwpVerify).not.toHaveBeenCalled()
+    expect(ed.exportHwpx).toHaveBeenCalledOnce()
+    expect(ed.notifySaved).toHaveBeenCalledWith('report.hwpx')
   })
 
   it('releases the pending save when the export throws', async () => {

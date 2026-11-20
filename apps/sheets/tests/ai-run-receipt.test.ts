@@ -9,6 +9,7 @@ import {
   adapterRevertVerdict,
   joinUndoGuards,
   receiptState,
+  statusAfterRevert,
   univerApplyGuard,
   univerRevertOutcome,
   univerRevertVerdict,
@@ -140,5 +141,14 @@ describe('receiptState', () => {
     for (const state of ['reverted', 'partial', 'refused', 'expired'] as const) {
       expect(receiptState({ opCount: 3, undoSteps: 1, guard, state })).toBe(state)
     }
+  })
+})
+
+describe('statusAfterRevert', () => {
+  it('replaces only the notice that offered undo for the run', () => {
+    expect(
+      statusAfterRevert('applied, undo with Ctrl+Z', 'applied, undo with Ctrl+Z', 'undone'),
+    ).toBe('undone')
+    expect(statusAfterRevert('saved', 'applied, undo with Ctrl+Z', 'undone')).toBe('saved')
   })
 })

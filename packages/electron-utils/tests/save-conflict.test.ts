@@ -60,8 +60,27 @@ describe('recordDiskState', () => {
     })
   })
 
+  it('hashes the content a caller has just read instead of reading the file again', async () => {
+    const state = await recordDiskState(doc, Buffer.from('as read'))
+    expect(state).toEqual({
+      mtimeMs: expect.any(Number),
+      size: 2,
+      hash: createHash('sha256').update('as read').digest('hex'),
+    })
+  })
+
+  it('takes the digest of content that went by in pieces in place of the content', async () => {
+    const digest = createHash('sha256').update('in pieces').digest('hex')
+    expect(await recordDiskState(doc, digest)).toEqual({
+      mtimeMs: expect.any(Number),
+      size: 2,
+      hash: digest,
+    })
+  })
+
   it('answers null when the path is not a readable file', async () => {
     expect(await recordDiskState(join(dir, 'missing.docx'))).toBeNull()
+    expect(await recordDiskState(join(dir, 'missing.docx'), Buffer.from('as read'))).toBeNull()
   })
 })
 

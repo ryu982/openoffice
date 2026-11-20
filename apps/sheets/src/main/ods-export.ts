@@ -7,10 +7,11 @@
 /// session throughout — nothing here renames or re-targets it.
 
 import { randomUUID } from 'node:crypto'
-import { copyFile, mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 
+import { copyFileExclusive } from '@genoffice/electron-utils/copy-file'
 import { promoteFileAtomically } from '@genoffice/xlsx-gateway/gateway/xlsx-package-io'
 
 import type { OdsConversionResult, OdsDroppedCounts } from './xlsx-sidecar-client'
@@ -126,7 +127,7 @@ export async function exportWorkbookAsOds(input: {
 async function placeFile(sourcePath: string, targetPath: string): Promise<void> {
   const besideTarget = join(dirname(targetPath), `.${randomUUID()}.tmp.ods`)
   try {
-    await copyFile(sourcePath, besideTarget)
+    await copyFileExclusive(sourcePath, besideTarget)
     await promoteFileAtomically(besideTarget, targetPath)
   } catch (error) {
     await rm(besideTarget, { force: true }).catch(() => undefined)

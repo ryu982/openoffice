@@ -11,6 +11,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
+
 type Handler = (event: unknown, ...args: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const showMessageBox = vi.fn()
@@ -128,6 +139,27 @@ async function openedView(path: string): Promise<FakeContents> {
   expect((await open(contents, path)).status).toBe('ok')
   return contents
 }
+
+describe('opening a map', () => {
+  it('reads the file once: its content also gives the recorded disk state', async () => {
+    const path = join(dir, 'map.xmind')
+    const original = Buffer.from(await mapBytes('Original'))
+    writeFileSync(path, original)
+    fileReads.mockClear()
+    const contents = await openedView(path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+
+    setOpenPathProbe((each) => each === path)
+    const mine = { bytes: await mapBytes('Edited here'), mode: 'save', auto: true }
+    // another pane's write: the recorded state is there, and an automatic save stands down
+    await externalWrite(path)
+    expect(await save(contents, mine)).toEqual({ ok: false, error: 'external-modified' })
+    // the file as it was read, written again: the recorded state is that content's
+    writeFileSync(path, original)
+    expect(await save(contents, mine)).toEqual({ ok: true, path })
+    expect(showMessageBox).not.toHaveBeenCalled()
+  })
+})
 
 describe('a save with no copy pair is unchanged', () => {
   it('does not ask anything even when another program changed the disk', async () => {

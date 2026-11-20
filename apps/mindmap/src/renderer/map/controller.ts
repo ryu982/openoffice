@@ -412,6 +412,7 @@ export class MapController {
         },
       },
       // Text from the clipboard that is not a copied topic is not pasted into the map.
+      // A picture is: the map card puts it on a new topic (`use-picture-drop.ts`).
       pasteHandler: () => {},
     })
     this.mind = mind

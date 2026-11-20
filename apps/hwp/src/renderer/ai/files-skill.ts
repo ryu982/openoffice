@@ -17,7 +17,7 @@ The user may attach local files to the conversation (see the "attachment list" i
 - When the user's request involves attachment content, read it with read_attachment first, then answer or write; do not guess content from file names.
 - Long files are read in pages: the result reports the total character count and the current range; to continue, set offset to the end position of the previous slice.
 - Image attachments (png/jpg/gif/webp) are already sent as images with the user message — just look at them; read_attachment is only for text-like attachments.
-- An attached image cannot be placed into the document: use it only as something to read (a photographed form, a table to copy values from).
+- An attached image goes into the document only with insert_image (attachment set to its name) when the user asks for it; otherwise it is something to read (a photographed form, a table to copy values from).
 - Attached Hangul (HWP / HWPX), Word, Excel, PowerPoint and PDF files are read as text: tables come as rows with " | " between cells.
 - Do not call read_attachment when there are no attachments or they are unrelated to the request.`
 

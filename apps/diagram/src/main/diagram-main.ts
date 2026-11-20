@@ -211,8 +211,8 @@ function mayWrite(wcId: number): boolean {
 // ── Split-copy save guard (decision 0036), as in the mind map editor ──
 const docDiskStates = new Map<number, Map<string, SaveDiskState>>()
 
-async function rememberDiskState(wcId: number, path: string): Promise<void> {
-  const state = await recordDiskState(path)
+async function rememberDiskState(wcId: number, path: string, read?: Uint8Array): Promise<void> {
+  const state = await recordDiskState(path, read)
   if (!state) return
   const states = docDiskStates.get(wcId) ?? new Map<string, SaveDiskState>()
   states.set(path, state)
@@ -702,7 +702,7 @@ function registerDiagramIpc(): void {
         const fileStillOpens = bytes !== null && openDiagram(name, bytes, nodePageCodec).ok
         if (fileStillOpens) {
           savePathByWc.set(wcId, path)
-          await rememberDiskState(wcId, path)
+          await rememberDiskState(wcId, path, bytes ?? undefined)
         } else {
           savePathByWc.delete(wcId)
           viewRestoredUntitled(wcId, path)
@@ -730,7 +730,7 @@ function registerDiagramIpc(): void {
     unopenedByWc.delete(wcId)
     savePathByWc.set(wcId, path)
     cleanPathByWc.set(wcId, path)
-    await rememberDiskState(wcId, path)
+    await rememberDiskState(wcId, path, bytes)
     return {
       status: 'ok',
       xml: opened.file.xml,

@@ -368,7 +368,12 @@ function tools(): AgentToolDef[] {
         'and a skill written for this editor fits.',
       inputSchema: {
         type: 'object',
-        properties: { id: { type: 'string', description: 'the skill id, e.g. app:home-letter' } },
+        properties: {
+          id: {
+            type: 'string',
+            description: 'the skill id as the skills list gives it, e.g. app:home-letter',
+          },
+        },
         required: ['id'],
       },
     },
@@ -517,16 +522,20 @@ export function createUserSkillsSkill(deps: UserSkillsDeps): AgentSkill {
    * the entry of an id. A bare name (an editor's instructions name a built-in skill so) is
    * matched without case, as one name wins over the others (pickEnabledUserSkills), and never
    * finds a skill that stands back for another: of those that may be used here, the winner,
-   * else the first; with none such one of that name that may not, so the answer says why
+   * else the first; with none such one of that name that may not, so the answer says why.
    */
   const find = (id: string) => {
     const all = deps.list()
     const exact = all.find((s) => s.id === id)
-    if (exact || id.includes(':')) return exact
+    if (exact) return exact
+    const colon = id.indexOf(':')
     const named = all.filter(
-      (s) => s.name.toLowerCase() === id.toLowerCase() && !skillStandsBack(s, all, deps.editor),
+      (s) =>
+        s.name.toLowerCase() === id.slice(colon + 1).toLowerCase() &&
+        !skillStandsBack(s, all, deps.editor),
     )
     const usable = named.filter((s) => !entryRefusal(s, s.id, deps.editor))
+    if (colon >= 0) return usable.length === 1 ? usable[0] : undefined
     if (usable.length > 0) return usable.find((s) => !s.shadowedBy) ?? usable[0]
     return named.find((s) => skillUsedIn(s.editors, deps.editor)) ?? named[0]
   }

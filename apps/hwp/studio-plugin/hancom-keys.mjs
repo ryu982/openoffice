@@ -32,6 +32,17 @@ import {
 } from './table-sizes.mjs'
 
 export { installHanjaKey } from './hanja.mjs'
+export {
+  axisLockedPoint,
+  cancelObjectDrag,
+  copyObjectDrag,
+  cropChange,
+  cropDragBox,
+  croppedBox,
+  cropsPicture,
+  dragKeepsRatio,
+  ratioResizedBox,
+} from './object-drag.mjs'
 
 export const HANCOM_KEYS_MODULE = '@ieum/hancom-keys'
 
@@ -132,6 +143,605 @@ function tellUser(message) {
   } catch {
     // the editor is closing; nothing to tell
   }
+}
+
+/**
+ * The table commands that name their table by the outermost table's numbers: the caret's
+ * parentParaIndex/controlIndex/cellIndex, or a cell block's or a selected table's sec/ppi/ci.
+ * In a table inside a cell or a text box those numbers are the outer table's, so the command
+ * changed the outer table (a row in the form, a merge of its cells). The studio's dispatcher
+ * asks nestedTableCommand before it runs one (studio-nested-table-dispatch): there the editing
+ * commands run on the inner table by its path, and the others are refused with the reason. A
+ * table in the body takes every command as before.
+ *
+ * The editing commands, which run on the inner table by its path (innerTableServices).
+ */
+export const NESTED_TABLE_EDITS = Object.freeze([
+  // rows and columns: the menu and right-click items, Alt+Insert/Alt+Enter and Alt+Delete
+  'table:insert-row-col',
+  'table:delete-row-col',
+  'table:insert-row-above',
+  'table:insert-row-below',
+  'table:insert-col-left',
+  'table:insert-col-right',
+  'table:delete-row',
+  'table:delete-col',
+  'ieum:table-insert-row-below',
+  // merge (M) and split (S)
+  'table:cell-merge',
+  'table:cell-split',
+  // a cell's border and fill: the studio's dialogs and a cell block's L/C/B/F
+  'table:border-each',
+  'table:border-one',
+  'ieum:cell-border-each',
+  'ieum:cell-background-each',
+  'ieum:cell-border-one',
+  'ieum:cell-background-one',
+  // 표/셀 속성 (P), from a cell, a cell block or a selected table, and its L/C on a selected table
+  'table:cell-props',
+  'format:object-properties',
+  'ieum:table-border-each',
+  'ieum:table-border-background',
+  // equal sizes (H/W) and the sizing keys (Ctrl/Alt/Shift+arrow on a block, Shift+arrow on a table)
+  'table:cell-height-equal',
+  'table:cell-width-equal',
+  'ieum:table-block-resize',
+  'ieum:table-row-column-resize',
+  'ieum:table-cell-resize',
+  'ieum:table-resize',
+])
+
+/** The table commands that stay refused in a table inside a cell or a text box. */
+export const NESTED_TABLE_LATER = Object.freeze([
+  // split (Ctrl+N,A) and attach (Ctrl+N,Z)
+  'table:split',
+  'table:attach',
+  'table:caption-toggle',
+  // formulas and the number formats of a cell
+  'table:formula',
+  'table:block-formula',
+  'table:thousand-sep',
+  'table:decimal-add',
+  'table:decimal-remove',
+  // transposing
+  'table:transpose-copy',
+  'table:transpose-paste',
+  'ieum:table-transpose',
+  // a selected table's order and text wrap (Shift+PageUp/Down, Shift+Home/End)
+  'ieum:table-order',
+  'ieum:table-wrap',
+])
+
+const NESTED_TABLE_EDIT_SET = new Set(NESTED_TABLE_EDITS)
+const NESTED_TABLE_LATER_SET = new Set(NESTED_TABLE_LATER)
+
+/** Commands that act on a table only with the table selected as an object (a picture's own otherwise). */
+const TABLE_OBJECT_ONLY = new Set(['format:object-properties'])
+
+const depthOf = (path) => (Array.isArray(path) ? path.length : 0)
+
+/**
+ * Whether the table a command would act on is inside a cell ('cell') or a text box ('textBox'),
+ * or null for a table in the body. A selected table counts by its own path, a cell block by its
+ * table's, the caret by the cell it is in. Headers, footers and notes are left as they were.
+ */
+export function nestedTableAt(ih) {
+  const cursor = ih?.cursor
+  if (!cursor) return null
+  if (cursor.isInHeaderFooter?.() || cursor.isInFootnote?.()) return null
+  let depth
+  if (cursor.isInTableObjectSelection?.()) {
+    depth = depthOf(cursor.getSelectedTableRef?.()?.cellPath)
+  } else if (cursor.isInCellSelectionMode?.()) {
+    depth = depthOf(cursor.getCellTableContext?.()?.cellPath)
+  } else {
+    const pos = cursor.getPosition?.() ?? ih.getCursorPosition?.()
+    depth = pos?.parentParaIndex === undefined ? 0 : depthOf(pos.cellPath)
+  }
+  if (depth < 2) return null
+  return cursor.isInTextBox?.() ? 'textBox' : 'cell'
+}
+
+function nestedTableNotice(where) {
+  if (where === 'either') {
+    return koreanUi
+      ? '표 안의 표나 글상자 안의 표에서는 아직 할 수 없습니다.'
+      : 'This cannot be done in a table inside a table or a text box yet.'
+  }
+  if (where === 'textBox') {
+    return koreanUi
+      ? '글상자 안의 표에서는 아직 할 수 없습니다.'
+      : 'This cannot be done in a table inside a text box yet.'
+  }
+  return koreanUi
+    ? '표 안의 표에서는 아직 할 수 없습니다.'
+    : 'This cannot be done in a table inside a table yet.'
+}
+
+/** A step of a cell path, copied. */
+const stepOf = ({ controlIndex, cellIndex, cellParaIndex }) => ({
+  controlIndex,
+  cellIndex,
+  cellParaIndex,
+})
+
+/** The path the engine's table calls take: the steps down to the table, the last naming it. */
+export function tablePathOf(cellPath) {
+  const last = cellPath[cellPath.length - 1]
+  return [
+    ...cellPath.slice(0, -1).map(stepOf),
+    { controlIndex: last.controlIndex, cellIndex: 0, cellParaIndex: 0 },
+  ]
+}
+
+/** The path to one cell (and paragraph) of the table a table path names. */
+export function cellPathOf(tablePath, cellIdx, cellParaIdx = 0) {
+  const last = tablePath[tablePath.length - 1]
+  return [
+    ...tablePath.slice(0, -1).map(stepOf),
+    { controlIndex: last.controlIndex, cellIndex: cellIdx, cellParaIndex: cellParaIdx },
+  ]
+}
+
+const sameStep = (a, b) =>
+  a.controlIndex === b.controlIndex &&
+  a.cellIndex === b.cellIndex &&
+  a.cellParaIndex === b.cellParaIndex
+
+/** Whether a cell path goes through a cell of the table a table path names. */
+function throughTable(cellPath, tablePath) {
+  const n = tablePath.length
+  if (depthOf(cellPath) < n) return false
+  for (let i = 0; i < n - 1; i += 1) if (!sameStep(cellPath[i], tablePath[i])) return false
+  return cellPath[n - 1].controlIndex === tablePath[n - 1].controlIndex
+}
+
+/** Whether a cell path is in a cell of the inner table `target` names (directly, not deeper). */
+function sameTable(cellPath, target) {
+  return !!target && depthOf(cellPath) === target.path.length && throughTable(cellPath, target.path)
+}
+
+/**
+ * The table inside a cell or a text box a table command would act on, chosen as nestedTableAt
+ * chooses: `sec`/`ppi`/`ci` are the numbers the studio's commands name it by (the outermost
+ * table's or text box's), `path` the engine's path to it. Null for a table in the body.
+ */
+export function innerTableTarget(ih) {
+  const where = nestedTableAt(ih)
+  if (!where) return null
+  const cursor = ih.cursor
+  let at
+  if (cursor.isInTableObjectSelection?.()) {
+    const ref = cursor.getSelectedTableRef()
+    at = { sec: ref.sec, ppi: ref.ppi, ci: ref.ci, cellPath: ref.cellPath }
+  } else if (cursor.isInCellSelectionMode?.()) {
+    const context = cursor.getCellTableContext()
+    at = { sec: context.sec, ppi: context.ppi, ci: context.ci, cellPath: context.cellPath }
+  } else {
+    const pos = cursor.getPosition?.() ?? ih.getCursorPosition()
+    at = {
+      sec: pos.sectionIndex,
+      ppi: pos.parentParaIndex,
+      ci: pos.controlIndex,
+      cellPath: pos.cellPath,
+    }
+  }
+  if (at.ppi === undefined || at.ci === undefined) return null
+  return { sec: at.sec, ppi: at.ppi, ci: at.ci, path: tablePathOf(at.cellPath), where, told: false }
+}
+
+const tableJson = (t) => JSON.stringify(t.path)
+const cellJson = (t, cellIdx, cellParaIdx = 0) =>
+  JSON.stringify(cellPathOf(t.path, cellIdx, cellParaIdx))
+
+/**
+ * The studio's flat table calls (on the bridge) and the path calls that stand in for them on an
+ * inner table, rhwp patch 0055 and the earlier path calls. Each takes the bridge, the target and
+ * the flat call's arguments after (section, paragraph, control).
+ */
+const PATH_CALLS = new Map(
+  Object.entries({
+    getTableDimensions: (b, t) => b.getTableDimensionsByPath(t.sec, t.ppi, tableJson(t)),
+    getTableCellBboxes: (b, t) => b.getTableCellBboxesByPath(t.sec, t.ppi, tableJson(t)),
+    getTableCellBboxesAtPage: (b, t, page) =>
+      b
+        .getTableCellBboxesByPath(t.sec, t.ppi, tableJson(t))
+        .filter((box) => box.pageIndex === undefined || box.pageIndex === page),
+    getCellInfo: (b, t, cellIdx) => b.getCellInfoByPath(t.sec, t.ppi, cellJson(t, cellIdx)),
+    getCellProperties: (b, t, cellIdx) =>
+      b.getCellPropertiesByPath(t.sec, t.ppi, tableJson(t), cellIdx),
+    getCellOwnProperties: (b, t, cellIdx) =>
+      b.getCellOwnPropertiesByPath(t.sec, t.ppi, tableJson(t), cellIdx),
+    getCellParagraphCount: (b, t, cellIdx) =>
+      b.getCellParagraphCountByPath(t.sec, t.ppi, cellJson(t, cellIdx)),
+    getCellParagraphLength: (b, t, cellIdx, para) =>
+      b.getCellParagraphLengthByPath(t.sec, t.ppi, cellJson(t, cellIdx, para)),
+    getTextInCell: (b, t, cellIdx, para, offset, count) =>
+      b.getTextInCellByPath(t.sec, t.ppi, cellJson(t, cellIdx, para), offset, count),
+    getTableProperties: (b, t) => b.getTablePropertiesByPath(t.sec, t.ppi, tableJson(t)),
+    setTableProperties: (b, t, props) =>
+      b.setTablePropertiesByPath(t.sec, t.ppi, tableJson(t), props),
+    setCellProperties: (b, t, cellIdx, props) =>
+      b.setCellPropertiesByPath(t.sec, t.ppi, tableJson(t), cellIdx, props),
+    setCellZoneProperties: (b, t, range, props) =>
+      b.setCellZonePropertiesByPath(t.sec, t.ppi, tableJson(t), range, props),
+    applyCellBorderFillIds: (b, t, payload) =>
+      b.applyCellBorderFillIdsByPath(t.sec, t.ppi, tableJson(t), payload),
+    insertTableRow: (b, t, row, below) =>
+      b.insertTableRowByPath(t.sec, t.ppi, tableJson(t), row, below),
+    insertTableColumn: (b, t, col, right) =>
+      b.insertTableColumnByPath(t.sec, t.ppi, tableJson(t), col, right),
+    deleteTableRow: (b, t, row) => b.deleteTableRowByPath(t.sec, t.ppi, tableJson(t), row),
+    deleteTableColumn: (b, t, col) => b.deleteTableColumnByPath(t.sec, t.ppi, tableJson(t), col),
+    mergeTableCells: (b, t, ...range) =>
+      b.mergeTableCellsByPath(t.sec, t.ppi, tableJson(t), ...range),
+    splitTableCell: (b, t, row, col) =>
+      b.splitTableCellByPath(t.sec, t.ppi, tableJson(t), row, col),
+    splitTableCellInto: (b, t, ...rest) =>
+      b.splitTableCellIntoByPath(t.sec, t.ppi, tableJson(t), ...rest),
+    splitTableCellsInRange: (b, t, ...rest) =>
+      b.splitTableCellsInRangeByPath(t.sec, t.ppi, tableJson(t), ...rest),
+    resizeTableCells: (b, t, updates) =>
+      b.resizeTableCellsByPath(t.sec, t.ppi, tableJson(t), updates),
+    resizeTableCell: (b, t, ...rest) =>
+      b.resizeTableCellByPath(t.sec, t.ppi, tableJson(t), ...rest),
+    setTableCellExtents: (b, t, vertical, extents) =>
+      b.setTableCellExtentsByPath(t.sec, t.ppi, tableJson(t), vertical, extents),
+  }),
+)
+
+/**
+ * Flat calls that change a table or its cells and have no path call here: named with an inner
+ * table's numbers they would change the outer table, so they are refused instead.
+ */
+const FLAT_ONLY_EDITS = new Set([
+  'splitTable',
+  'mergeTableWithNext',
+  'moveTableOffset',
+  'deleteTableControl',
+  'evaluateTableFormula',
+  'setTableCellFormula',
+  'pasteTableCellsTransposed',
+  'transposeTableCellsInPlace',
+  'changeShapeZOrder',
+  'insertTextInCell',
+  'insertTextInCellDeferredPagination',
+  'deleteTextInCell',
+  'deleteTextInCellDeferredPagination',
+  'replaceTextInCellDeferredPagination',
+  'deleteRangeInCell',
+  'splitParagraphInCell',
+  'mergeParagraphInCell',
+  'applyCharFormatInCell',
+  'setCharShapeIdInCell',
+  'applyParaFormatInCell',
+  'setCellParaShapeId',
+  'applyCellStyle',
+  'insertPictureInCell',
+  'pasteInternalInCell',
+  'pasteHtmlInCell',
+  'setFormValueInCell',
+])
+
+/** What the engine says when it refuses an inner table: a wrong path, drawn borders, a caption. */
+const INNER_TABLE_REFUSAL = /경로\[|개체로 그린|캡션/
+
+const INNER_TABLE = Symbol('ieum inner table')
+
+/** The inner table a bridge from innerTableBridge stands for, or null. */
+export function innerTableOf(bridge) {
+  return bridge?.[INNER_TABLE] ?? null
+}
+
+function tellRefusal(target) {
+  if (target.told) return
+  target.told = true
+  tellUser(nestedTableNotice(target.where))
+}
+
+function pathCall(bridge, target, name, call, args) {
+  if (name === 'deleteTableRow' || name === 'deleteTableColumn') {
+    // the last row or column stays, quietly, as in a body table
+    const dims = bridge.getTableDimensionsByPath(target.sec, target.ppi, tableJson(target))
+    if ((name === 'deleteTableRow' ? dims.rowCount : dims.colCount) <= 1) {
+      throw new Error('the last row or column of a table stays')
+    }
+  }
+  try {
+    return call(bridge, target, ...args)
+  } catch (error) {
+    if (INNER_TABLE_REFUSAL.test(String(error?.message ?? error))) tellRefusal(target)
+    throw error
+  }
+}
+
+/**
+ * The studio's bridge for a command on an inner table: a flat table call named with the target's
+ * numbers goes to the path call for the inner table instead, a flat edit with no path call is
+ * refused, and every other call is the bridge's own.
+ */
+export function innerTableBridge(bridge, target) {
+  const onTarget = (args) =>
+    args[0] === target.sec && args[1] === target.ppi && args[2] === target.ci
+  return new Proxy(bridge, {
+    get(real, prop) {
+      if (prop === INNER_TABLE) return target
+      const value = Reflect.get(real, prop, real)
+      if (typeof value !== 'function') return value
+      const call = typeof prop === 'string' ? PATH_CALLS.get(prop) : undefined
+      if (call) {
+        return (...args) =>
+          onTarget(args)
+            ? pathCall(real, target, prop, call, args.slice(3))
+            : value.apply(real, args)
+      }
+      if (FLAT_ONLY_EDITS.has(prop)) {
+        return (...args) => {
+          if (!onTarget(args)) return value.apply(real, args)
+          tellRefusal(target)
+          throw new Error(`${prop} does not reach a table inside a cell or a text box`)
+        }
+      }
+      return value.bind(real)
+    },
+  })
+}
+
+/**
+ * The caret as the studio's commands read it for the target: the cell of the inner table it is
+ * in, by that table's cell number. A caret elsewhere (a table selected while the caret is outside
+ * it) reads as the table's first cell.
+ */
+function caretOnTable(target, pos) {
+  const n = target.path.length
+  if (pos && throughTable(pos.cellPath, target.path)) {
+    const step = pos.cellPath[n - 1]
+    if (pos.cellPath.length === n) {
+      return { ...pos, cellIndex: step.cellIndex, cellParaIndex: step.cellParaIndex }
+    }
+    return {
+      ...pos,
+      paragraphIndex: step.cellParaIndex,
+      charOffset: 0,
+      cellIndex: step.cellIndex,
+      cellParaIndex: step.cellParaIndex,
+      cellPath: pos.cellPath.slice(0, n).map(stepOf),
+    }
+  }
+  return {
+    sectionIndex: target.sec,
+    paragraphIndex: 0,
+    charOffset: 0,
+    parentParaIndex: target.ppi,
+    controlIndex: target.ci,
+    cellIndex: 0,
+    cellParaIndex: 0,
+    cellPath: cellPathOf(target.path, 0),
+    ...(target.where === 'textBox' ? { isTextBox: true } : {}),
+  }
+}
+
+/** The row and column of the target's cell a caret is in, or null. */
+function placeOnTable(view, target, pos) {
+  if (!pos || !throughTable(pos.cellPath, target.path)) return null
+  try {
+    const cellIdx = pos.cellPath[target.path.length - 1].cellIndex
+    const info = view.getCellInfo(target.sec, target.ppi, target.ci, cellIdx)
+    return { row: info.row, col: info.col }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where the caret goes after an edit of the inner table: the cell the command named, with the
+ * cell path to it (the studio's commands name a cell by `cellIndex`, a nested caret goes by its
+ * path). A cell number the edit took away (the last row deleted) becomes the cell now at the
+ * caret's old row and column, as the studio's own row deletion does; a paragraph or offset past
+ * the cell's end comes back inside it.
+ */
+function settleCaret(view, target, pos, before) {
+  if (!pos || !throughTable(pos.cellPath, target.path)) return pos
+  const { sec, ppi, ci } = target
+  const n = target.path.length
+  const step = pos.cellPath[n - 1]
+  const atTable = pos.cellPath.length === n
+  let cellIdx = atTable ? (pos.cellIndex ?? step.cellIndex) : step.cellIndex
+  let para = atTable ? (pos.cellParaIndex ?? step.cellParaIndex) : step.cellParaIndex
+  let offset = pos.charOffset
+  let path = pos.cellPath
+  const dims = view.getTableDimensions(sec, ppi, ci)
+  if (!(cellIdx >= 0 && cellIdx < dims.cellCount)) {
+    const row = Math.min(before?.row ?? dims.rowCount - 1, dims.rowCount - 1)
+    const col = Math.min(before?.col ?? dims.colCount - 1, dims.colCount - 1)
+    const hit = view
+      .getTableCellBboxes(sec, ppi, ci)
+      .find(
+        (box) =>
+          row >= box.row &&
+          row < box.row + Math.max(1, box.rowSpan) &&
+          col >= box.col &&
+          col < box.col + Math.max(1, box.colSpan),
+      )
+    cellIdx = hit ? hit.cellIdx : dims.cellCount - 1
+    para = 0
+    offset = 0
+    path = path.slice(0, n)
+  } else if (!atTable) {
+    return pos
+  }
+  const paragraphs = view.getCellParagraphCount(sec, ppi, ci, cellIdx)
+  if (!(para >= 0 && para < paragraphs)) {
+    para = 0
+    offset = 0
+  }
+  offset = Math.max(0, Math.min(offset, view.getCellParagraphLength(sec, ppi, ci, cellIdx, para)))
+  return {
+    ...pos,
+    paragraphIndex: para,
+    charOffset: offset,
+    cellIndex: cellIdx,
+    cellParaIndex: para,
+    cellPath: [
+      ...path.slice(0, n - 1).map(stepOf),
+      { controlIndex: step.controlIndex, cellIndex: cellIdx, cellParaIndex: para },
+    ],
+  }
+}
+
+/**
+ * An edit operation of a command on an inner table, as one snapshot (one undo step): it gets the
+ * inner table's bridge, and the caret it leaves is settled in the table. A command object (the
+ * studio's border/fill command, which undoes by the flat calls) runs inside the snapshot.
+ */
+function inTableOperation(target, desc, caret) {
+  const run = (bridge, act) => {
+    const view = innerTableBridge(bridge, target)
+    const before = placeOnTable(view, target, caret)
+    const pos = act(view)
+    return pos === null ? null : settleCaret(view, target, pos, before)
+  }
+  if (desc.kind === 'snapshot') {
+    return { ...desc, operation: (bridge) => run(bridge, desc.operation) }
+  }
+  if (desc.kind === 'command') {
+    const { command } = desc
+    return {
+      kind: 'snapshot',
+      operationType: command.type ?? 'innerTableCommand',
+      operation: (bridge) =>
+        run(bridge, (view) => {
+          let pos
+          try {
+            pos = command.execute(view)
+          } finally {
+            // the snapshot undoes it; what the command kept for its own undo goes
+            command.discard?.(view)
+          }
+          return command.isNoOp?.() ? null : pos
+        }),
+    }
+  }
+  tellRefusal(target)
+  throw new Error('a recorded edit does not reach a table inside a cell or a text box')
+}
+
+/**
+ * The input handler as a command on an inner table sees it: its bridge reaches the inner table,
+ * its edits are snapshots on it, and the caret reads as a cell of it.
+ */
+function innerTableHandler(ih, target, bridge = ih.wasm) {
+  const wasm = innerTableBridge(bridge, target)
+  const executeOperation = (desc) =>
+    ih.executeOperation(inTableOperation(target, desc, ih.getCursorPosition()))
+  const getCursorPosition = () => caretOnTable(target, ih.getCursorPosition())
+  return new Proxy(ih, {
+    get(real, prop) {
+      if (prop === 'wasm') return wasm
+      if (prop === 'executeOperation') return executeOperation
+      if (prop === 'getCursorPosition') return getCursorPosition
+      if (prop === INNER_TABLE) return target
+      const value = Reflect.get(real, prop, real)
+      return typeof value === 'function' ? value.bind(real) : value
+    },
+  })
+}
+
+/** The command services for a command on an inner table (innerTableHandler, innerTableBridge). */
+export function innerTableServices(services, target) {
+  const ih = innerTableHandler(services.getInputHandler(), target, services.wasm)
+  return { ...services, wasm: ih.wasm, getInputHandler: () => ih }
+}
+
+/**
+ * The studio's dispatcher asks this before it runs an enabled command. Null: run it as it is (no
+ * table command, or its table is in the body). Otherwise its table is inside a cell or a text box:
+ * an editing command gets the services that reach that table, any other is refused with the
+ * reason (false).
+ */
+export function nestedTableCommand(commandId, services) {
+  const edit = NESTED_TABLE_EDIT_SET.has(commandId)
+  if (!edit && !NESTED_TABLE_LATER_SET.has(commandId)) return null
+  const ih = services?.getInputHandler?.()
+  if (TABLE_OBJECT_ONLY.has(commandId) && !ih?.cursor?.isInTableObjectSelection?.()) return null
+  const target = innerTableTarget(ih)
+  if (!target) return null
+  if (!edit) {
+    tellUser(nestedTableNotice(target.where))
+    return false
+  }
+  return innerTableServices(services, target)
+}
+
+/**
+ * A command on a table inside a cell or a text box that came without nestedTableCommand's
+ * services would reach the outer table by its numbers: told, and left alone.
+ */
+function outsideScope(bridge, cellPath) {
+  if (depthOf(cellPath) < 2 || innerTableOf(bridge)) return false
+  // the path alone does not say whether it starts in a text box
+  tellUser(nestedTableNotice('either'))
+  return true
+}
+
+/** A table's cells in reading order, each once (a cell over pages has a box on each). */
+function readingOrder(boxes) {
+  const seen = new Set()
+  const cells = []
+  for (const box of boxes) {
+    if (seen.has(box.cellIdx)) continue
+    seen.add(box.cellIdx)
+    cells.push(box)
+  }
+  return cells.sort((a, b) => (a.row !== b.row ? a.row - b.row : a.col - b.col))
+}
+
+/**
+ * Tab in the last cell of a table inside a cell or a text box adds a row below it and goes to
+ * the new row's first cell, as Tab does in a body table and as Hancom Hangul 2024 does there too
+ * (measured 2026-11-17: the 6×2 table in a form cell, a 2×2 table two levels down and one in a
+ * text box each got a row; the outer table stayed). False when the caret is not in such a last
+ * cell, so the studio moves on to the next cell. One undo step.
+ */
+export function innerTableTabRow(ih) {
+  const cursor = ih?.cursor
+  if (!cursor || cursor.isInCellSelectionMode?.() || cursor.isInTableObjectSelection?.()) {
+    return false
+  }
+  const target = innerTableTarget(ih)
+  if (!target) return false
+  const scoped = innerTableHandler(ih, target)
+  const view = scoped.wasm
+  const { sec, ppi, ci } = target
+  const pos = scoped.getCursorPosition()
+  try {
+    const order = readingOrder(view.getTableCellBboxes(sec, ppi, ci))
+    if (order.length === 0 || order[order.length - 1].cellIdx !== pos.cellIndex) return false
+    const info = view.getCellInfo(sec, ppi, ci, pos.cellIndex)
+    const after = info.row + Math.max(1, info.rowSpan || 1) - 1
+    scoped.executeOperation({
+      kind: 'snapshot',
+      operationType: 'insertTableRow',
+      operation: (bridge) => {
+        bridge.insertTableRow(sec, ppi, ci, after, true)
+        const next = readingOrder(bridge.getTableCellBboxes(sec, ppi, ci))
+        const cell =
+          next.find((box) => box.row === after + 1) ??
+          next.find((box) => box.row > after) ??
+          next[next.length - 1]
+        return {
+          ...pos,
+          paragraphIndex: 0,
+          charOffset: 0,
+          cellIndex: cell?.cellIdx ?? pos.cellIndex,
+          cellParaIndex: 0,
+        }
+      },
+    })
+  } catch {
+    return false
+  }
+  return true
 }
 
 const digitOf = (n) => String(n % 10)
@@ -580,6 +1190,15 @@ export function hancomTableObjectKey(ih, e) {
     firstCellOfSelectedTable(ih)
     return true
   }
+  // A plain arrow moves the selected table, by the outer table's numbers: for a table inside
+  // a cell or a text box it would move the outer one, so the key stops here with the reason.
+  if (ARROWS[e.key] && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const where = nestedTableAt(ih)
+    if (!where) return false
+    e.preventDefault()
+    tellUser(nestedTableNotice(where))
+    return true
+  }
   // Shift+arrow resizes the table, Shift+PageUp/Down changes its order, Shift+Home/End
   // its text wrapping (Hancom's table-object shortcuts)
   if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -631,6 +1250,303 @@ export function hancomTableObjectKey(ih, e) {
   ih._cellBlockLetterImeGuard?.arm(e)
   if (dispatcher.isEnabled(id)) dispatcher.dispatch(id)
   return true
+}
+
+/** Hangul's steps for a selected picture or drawing object (help: 개체 이동하기). */
+export const OBJECT_MOVE_STEP_MM = 0.2
+export const OBJECT_SIZE_STEP_MM = 1
+
+/** The objects Tab goes through: what the studio selects as a picture-like object. */
+const CYCLED_OBJECT_TYPES = new Set(['image', 'shape', 'group', 'ole', 'equation'])
+
+/**
+ * Hancom's keys with a picture or drawing object selected (단축키 일람, 개체를 선택한 상태에서):
+ * arrows move it 0.2 mm and Shift+arrows size it 1 mm, Tab/Shift+Tab select the next/previous
+ * object on the page, Shift+PageUp/Down put it in front of/behind the other objects, Shift+Home/End
+ * in front of/behind the text, G/U group and ungroup, L opens its line tab, C the fill tab of a
+ * drawing object, Ctrl+E deletes it, Ctrl+Insert copies it and Shift+Delete cuts it. The first key
+ * of a sequence keeps it selected, so Ctrl+N,C captions it. Called before the studio's
+ * object-selection branch, which would close the selection on these keys and type a letter into
+ * the document; P, Delete, Enter, Esc and Ctrl+C/X/V stay with the studio.
+ */
+export function hancomPictureObjectKey(ih, e) {
+  const cursor = ih?.cursor
+  if (!cursor?.isInPictureObjectSelection?.()) return false
+  const dispatcher = ih.dispatcher
+  if (!dispatcher) return false
+  const ctrl = e.ctrlKey || e.metaKey
+  if (ctrl && !e.shiftKey && !e.altKey && hancomChordStart(ih, e)) return true
+  if (e.altKey) return false
+  if (ARROWS[e.key] && !ctrl) {
+    // a move step the user set in the studio's 격자 설정 (표/개체 이동) is theirs to keep
+    if (ih.ieumGridStepSet) return false
+    e.preventDefault()
+    stepSelectedObject(ih, e.key, e.shiftKey)
+    return true
+  }
+  if (e.key === 'Tab' && !ctrl) {
+    e.preventDefault()
+    selectNextObject(ih, e.shiftKey ? -1 : 1)
+    return true
+  }
+  if (e.shiftKey && !ctrl) {
+    if (e.key === 'PageUp' || e.key === 'PageDown') {
+      e.preventDefault()
+      orderSelectedObject(ih, e.key === 'PageUp' ? 'front' : 'back')
+      return true
+    }
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault()
+      wrapSelectedObjects(ih, e.key === 'Home' ? 'InFrontOfText' : 'BehindText')
+      return true
+    }
+    if (e.key === 'Delete') {
+      e.preventDefault()
+      dispatcher.dispatch('edit:cut')
+      return true
+    }
+    return false
+  }
+  if (ctrl) {
+    if (e.shiftKey) return false
+    if (e.key === 'Insert') {
+      e.preventDefault()
+      dispatcher.dispatch('edit:copy')
+      return true
+    }
+    if (letterOf(e) !== 'e') return false
+    e.preventDefault()
+    dispatcher.dispatch('edit:delete')
+    return true
+  }
+  const letter = letterOf(e)
+  if (!['g', 'u', 'l', 'c'].includes(letter)) return false
+  // one of our letters: keep it out of the document even when it does nothing here
+  e.preventDefault()
+  ih._cellBlockLetterImeGuard?.arm(e)
+  const ref = cursor.getSelectedPictureRef?.()
+  if (letter === 'g') {
+    if (dispatcher.isEnabled('insert:group-shapes')) dispatcher.dispatch('insert:group-shapes')
+  } else if (letter === 'u') {
+    if (ref?.type === 'group' && dispatcher.isEnabled('insert:ungroup-shapes')) {
+      dispatcher.dispatch('insert:ungroup-shapes')
+    }
+  } else if (ref && ref.type !== 'equation' && (letter === 'l' || ref.type !== 'image')) {
+    // a picture has no fill tab: Hangul's C is for drawing objects and text boxes
+    openObjectTab(dispatcher, letter === 'l' ? 'line' : 'fill')
+  }
+  return true
+}
+
+/** An arrow with the studio's own move or size, at Hangul's step instead of the grid's. */
+function stepSelectedObject(ih, key, size) {
+  const kept = ih.gridStepMm
+  ih.gridStepMm = size ? OBJECT_SIZE_STEP_MM : OBJECT_MOVE_STEP_MM
+  try {
+    if (size) ih.resizeSelectedPicture(key)
+    else ih.moveSelectedPicture(key)
+  } finally {
+    ih.gridStepMm = kept
+  }
+}
+
+/** Compares two document paths (the layout's stableIndex), shorter first on a common start. */
+function comparePaths(a, b) {
+  for (let i = 0; i < Math.min(a.length, b.length); i += 1) {
+    if (a[i] !== b[i]) return a[i] - b[i]
+  }
+  return a.length - b.length
+}
+
+/**
+ * The page's objects in document order, as Tab goes through them: body objects the studio selects
+ * as pictures (not the master page's decorations, not header or footer objects).
+ */
+export function cycledObjects(controls) {
+  return controls
+    .filter(
+      (c) =>
+        CYCLED_OBJECT_TYPES.has(c.type) &&
+        c.secIdx !== undefined &&
+        c.paraIdx !== undefined &&
+        c.controlIdx !== undefined &&
+        !c.headerFooter &&
+        c.plane !== 1,
+    )
+    .map((c) => ({ c, path: c.stableIndex ?? [c.secIdx, c.paraIdx, c.controlIdx] }))
+    .sort((a, b) => comparePaths(a.path, b.path))
+    .map(({ c }) => c)
+}
+
+const sameObject = (control, ref) =>
+  control.secIdx === ref.sec &&
+  control.paraIdx === ref.ppi &&
+  control.controlIdx === ref.ci &&
+  JSON.stringify(control.cellPath ?? []) === JSON.stringify(ref.cellPath ?? [])
+
+/** Tab/Shift+Tab: the next/previous object on the selected object's page, round the end. */
+function selectNextObject(ih, direction) {
+  const ref = ih.cursor.getSelectedPictureRef?.()
+  if (!ref) return false
+  const page = ih.findPictureBbox?.(ref)?.pageIndex ?? ref.pageIndex
+  if (page === undefined) return false
+  let objects
+  try {
+    objects = cycledObjects(ih.wasm.getPageControlLayout(page).controls ?? [])
+  } catch {
+    return false
+  }
+  if (objects.length === 0) return false
+  const at = objects.findIndex((c) => sameObject(c, ref))
+  if (at !== -1 && objects.length === 1) return false
+  const next =
+    at === -1
+      ? objects[direction > 0 ? 0 : objects.length - 1]
+      : objects[(at + direction + objects.length) % objects.length]
+  selectObjectControl(ih, next, page)
+  return true
+}
+
+/** Selects the object a page layout entry names, as the studio does for a clicked one. */
+function selectObjectControl(ih, control, page) {
+  ih.cursor.clearSelection?.()
+  ih.exitPictureObjectSelectionIfNeeded?.()
+  ih.cursor.enterPictureObjectSelectionDirect(
+    control.secIdx,
+    control.paraIdx,
+    control.controlIdx,
+    control.type,
+    control.cellIdx,
+    control.cellParaIdx,
+    control.headerFooter,
+    control.outerTableControlIdx,
+    control.cellPath,
+    control.noteRef,
+    control.missing,
+    page,
+  )
+  ih.active = true
+  ih.caret?.hide?.()
+  ih.selectionRenderer?.clear?.()
+  ih.renderPictureObjectSelection()
+  ih.eventBus.emit('picture-object-selection-changed', true)
+}
+
+/** Which of two layout entries is drawn above the other: plane, then z-order, then path. */
+function drawnAbove(a, b) {
+  if ((a.plane ?? 2) !== (b.plane ?? 2)) return (a.plane ?? 2) > (b.plane ?? 2)
+  if ((a.zOrder ?? 0) !== (b.zOrder ?? 0)) return (a.zOrder ?? 0) > (b.zOrder ?? 0)
+  return comparePaths(a.stableIndex ?? [], b.stableIndex ?? []) > 0
+}
+
+/**
+ * The objects whose boxes hold a page point, the top one first: what Alt+click goes round.
+ * Objects behind the text count too; they are the ones a plain click cannot reach.
+ */
+export function objectsAtPoint(controls, x, y) {
+  return cycledObjects(controls)
+    .filter((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h)
+    .sort((a, b) => (drawnAbove(a, b) ? -1 : drawnAbove(b, a) ? 1 : 0))
+}
+
+/**
+ * Hangul's Alt+click (help: 개체 선택, "<Alt>로 선택"): selects the object under the pointer even
+ * when another lies over it, and each further Alt+click the next one down, round to the top. A
+ * text box is selected as an object, not opened for typing. Called from the studio's mousedown
+ * before its own picture handling (studio-hancom-object-alt-click); false leaves the click to it.
+ */
+export function hancomAltClickObject(ih, e) {
+  if (!e?.altKey || e.shiftKey || e.ctrlKey || e.metaKey || e.button !== 0) return false
+  const scroll = ih?.container?.querySelector?.('#scroll-content')
+  if (!scroll) return false
+  const zoom = ih.viewportManager.getZoom()
+  const rect = scroll.getBoundingClientRect()
+  const cx = e.clientX - rect.left
+  const cy = e.clientY - rect.top
+  const page = ih.virtualScroll.getPageAtPoint(cx, cy)
+  if (page === undefined || page < 0) return false
+  const x = (cx - ih.virtualScroll.getPageLeftResolved(page, scroll.clientWidth)) / zoom
+  const y = (cy - ih.virtualScroll.getPageOffset(page)) / zoom
+  let hits
+  try {
+    hits = objectsAtPoint(ih.wasm.getPageControlLayout(page).controls ?? [], x, y)
+  } catch {
+    return false
+  }
+  if (hits.length === 0) return false
+  e.preventDefault()
+  const ref = ih.cursor.isInPictureObjectSelection?.() ? ih.cursor.getSelectedPictureRef?.() : null
+  const at = ref ? hits.findIndex((c) => sameObject(c, ref)) : -1
+  selectObjectControl(ih, hits[(at + 1) % hits.length], page)
+  ih.textarea?.focus?.()
+  return true
+}
+
+/**
+ * Shift+PageUp/Down: the selected picture or drawing object goes to the front/back of the
+ * objects, in one undo step (vendor/rhwp-core patch 0053 orders pictures with the shapes).
+ */
+function orderSelectedObject(ih, mode) {
+  const ref = ih.cursor.getSelectedPictureRef?.()
+  if (!ref || ref.type === 'equation') return false
+  if ((ref.cellPath?.length ?? 0) > 0 || ref.headerFooter) return false
+  let moved = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'objectOrder',
+      operation: (bridge) => {
+        const done = bridge.changeShapeZOrder(ref.sec, ref.ppi, ref.ci, mode)
+        if (!done?.ok || !done.moves?.length) return null
+        moved = true
+        return ih.getCursorPosition()
+      },
+    })
+  } catch {
+    return false
+  }
+  ih.renderPictureObjectSelection()
+  return moved
+}
+
+/**
+ * Shift+Home/End: the selected objects go in front of or behind the text (본문과의 배치), in one
+ * undo step. An object placed like a character has no such placement and stays.
+ */
+function wrapSelectedObjects(ih, textWrap) {
+  const refs = ih.cursor.getSelectedPictureRefs?.() ?? []
+  const targets = refs.length > 0 ? refs : [ih.cursor.getSelectedPictureRef?.()].filter(Boolean)
+  let changed = false
+  try {
+    ih.executeOperation({
+      kind: 'snapshot',
+      operationType: 'objectWrap',
+      operation: () => {
+        for (const ref of targets) {
+          const props = ih.getObjectProperties(ref)
+          if (props.treatAsChar || props.textWrap === textWrap) continue
+          ih.setObjectProperties(ref, { textWrap })
+          changed = true
+        }
+        return changed ? ih.getCursorPosition() : null
+      },
+    })
+  } catch {
+    return false
+  }
+  if (changed) ih.eventBus.emit('document-changed')
+  ih.renderPictureObjectSelection()
+  return changed
+}
+
+/** L/C: the studio's object properties dialog, on its line or fill tab. */
+function openObjectTab(dispatcher, tab) {
+  if (!dispatcher.isEnabled('format:object-properties')) return false
+  dispatcher.dispatch('format:object-properties')
+  const tabs = globalThis.document?.querySelectorAll?.(`.dialog-tab[data-tab="${tab}"]`)
+  const button = tabs?.[tabs.length - 1]
+  button?.click()
+  return Boolean(button)
 }
 
 /**
@@ -1057,20 +1973,13 @@ export function fillCellBlock(ih) {
  * for each cell on its own (each) or for the selected cells as one (asOne). A single cell has
  * no "as one", so it opens for that cell.
  */
-function openCellBlockBorder(services, studio, applyMode, tab, ko) {
+function openCellBlockBorder(services, studio, applyMode, tab) {
   const ih = services.getInputHandler()
   if (!ih?.cursor?.isInCellSelectionMode?.() || !studio.CellBorderBgDialog) return false
   const pos = ih.getCursorPosition()
   if (pos.parentParaIndex === undefined || pos.controlIndex === undefined) return false
   if (pos.cellIndex === undefined) return false
-  if ((pos.cellPath?.length ?? 0) > 1) {
-    tellUser(
-      ko
-        ? '표 안의 표는 아직 테두리와 배경을 바꿀 수 없습니다.'
-        : 'A table inside a cell cannot be changed yet.',
-    )
-    return false
-  }
+  if (outsideScope(services.wasm, pos.cellPath)) return false
   const mode = applyMode === 'asOne' && ih.hasMultiCellSelection?.() ? 'asOne' : 'each'
   const dialog = new studio.CellBorderBgDialog(
     services.wasm,
@@ -1110,8 +2019,11 @@ export function hancomBlockCellProps(dialog, props) {
   const ih = dialog.services?.getInputHandler?.()
   const block = ih?.getSelectedCellBlock?.()
   const at = dialog.tableCtx
-  if (!block || block.cellPath || !at) return
+  if (!block || !at) return
   if (block.sec !== at.sec || block.ppi !== at.ppi || block.ci !== at.ci) return
+  // a block in a table inside a cell or a text box: the dialog's bridge must reach that table
+  const inner = innerTableOf(dialog.wasm)
+  if (block.cellPath ? !sameTable(block.cellPath, inner) : inner) return
   const shown = dialog.cellProps ?? {}
   const changed = {}
   for (const [key, value] of Object.entries(props)) {
@@ -1191,10 +2103,15 @@ export function cellBlockCopy(ih) {
   const range = cursor?.getSelectedCellRange?.()
   if (!context || !range) return null
   if ((context.cellPath?.length ?? 0) > 1) {
+    const inTextBox = nestedTableAt(ih) === 'textBox'
     tellUser(
       koreanUi
-        ? '표 안의 표는 아직 복사할 수 없습니다.'
-        : 'A table inside a cell cannot be copied yet.',
+        ? inTextBox
+          ? '글상자 안의 표는 아직 복사할 수 없습니다.'
+          : '표 안의 표는 아직 복사할 수 없습니다.'
+        : inTextBox
+          ? 'A table inside a text box cannot be copied yet.'
+          : 'A table inside a cell cannot be copied yet.',
     )
     return null
   }
@@ -1219,6 +2136,7 @@ export function cellBlockCopy(ih) {
         colSpan: Math.min(info.col + Math.max(1, info.colSpan) - 1, endCol) - info.col + 1,
         text: cellTextOf(ih, context, i),
         look: looks?.[i] ?? null,
+        own: cellLookOf(props),
         // HWPUNIT: 100 to the point
         width: Number(props?.width) > 0 ? Number(props.width) / 100 : 0,
         height: Number(props?.height) > 0 ? Number(props.height) / 100 : 0,
@@ -1253,7 +2171,10 @@ export function cellBlockCopy(ih) {
         const spans =
           (cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '') +
           (cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '')
-        return `<td${spans} style="${escapeHtml(style)}">${content}</td>`
+        // the cell's own lines and fill, which the HTML style can only approximate, for a
+        // paste here that rebuilds the cells as a table (셀 안에 표로 넣기)
+        const own = cell.own ? ` ${CELL_LOOK_ATTR}="${escapeHtml(JSON.stringify(cell.own))}"` : ''
+        return `<td${spans}${own} style="${escapeHtml(style)}">${content}</td>`
       })
     htmlRows.push(`<tr>${cells.join('')}</tr>`)
   }
@@ -1345,12 +2266,8 @@ function htmlCellText(cell) {
     .trim()
 }
 
-/**
- * The cells of a pasted HTML table, row by row, when the clipboard holds just a table (cells
- * from a spreadsheet or another table). A merged source cell keeps its text in its first slot
- * and leaves the slots it spans alone (null). Null when the HTML is not a lone table.
- */
-export function cellGridFromHtml(html) {
+/** The one table of pasted HTML when the HTML holds nothing else, or null. */
+function loneTableOf(html) {
   if (!html || !/<table[\s>]/i.test(html)) return null
   const Parser = globalThis.DOMParser
   if (!Parser) return null
@@ -1369,6 +2286,17 @@ export function cellGridFromHtml(html) {
   for (const style of [...doc.querySelectorAll('style, script, title')]) style.remove()
   const outside = (doc.body?.textContent ?? '').replace(table.textContent ?? '', '')
   if (outside.trim() !== '') return null
+  return table
+}
+
+/**
+ * The cells of a pasted HTML table, row by row, when the clipboard holds just a table (cells
+ * from a spreadsheet or another table). A merged source cell keeps its text in its first slot
+ * and leaves the slots it spans alone (null). Null when the HTML is not a lone table.
+ */
+export function cellGridFromHtml(html) {
+  const table = loneTableOf(html)
+  if (!table) return null
   const grid = []
   const rows = [...table.querySelectorAll('tr')].filter((tr) => tr.closest('table') === table)
   rows.forEach((tr, r) => {
@@ -1389,6 +2317,200 @@ export function cellGridFromHtml(html) {
   const width = Math.max(0, ...grid.map((row) => row.length))
   if (grid.length === 0 || width === 0) return null
   return grid.map((row) => Array.from({ length: width }, (_, c) => row[c] ?? null))
+}
+
+/** Attribute this editor's cell copy puts on each cell: the cell's own lines, fill and margins. */
+const CELL_LOOK_ATTR = 'data-ieum-cell'
+
+/** The cell property keys that attribute carries (getCellProperties' names). */
+const CELL_LOOK_KEYS = [
+  'borderLeft',
+  'borderRight',
+  'borderTop',
+  'borderBottom',
+  'paddingLeft',
+  'paddingRight',
+  'paddingTop',
+  'paddingBottom',
+  'applyInnerMargin',
+  'verticalAlign',
+]
+
+/** A cell's look as this editor's copy carries it; fills other than none or solid stay out. */
+function cellLookOf(props) {
+  if (!props) return null
+  const look = {}
+  for (const key of CELL_LOOK_KEYS) if (props[key] !== undefined) look[key] = props[key]
+  if (props.fillType === 'none' || props.fillType === 'solid') {
+    for (const key of ['fillType', 'fillColor', 'patternColor', 'patternType'])
+      if (props[key] !== undefined) look[key] = props[key]
+  }
+  return look
+}
+
+/** Points in one CSS length unit; a bare number is pixels, as browsers read it. */
+const CSS_POINTS = { pt: 1, px: 0.75, mm: 72 / 25.4, cm: 72 / 2.54, in: 72, '': 0.75 }
+
+/** A CSS length in points, or 0 when it is none. */
+function cssPoints(value) {
+  const m = /^(-?\d*\.?\d+)\s*(pt|px|mm|cm|in)?$/i.exec(String(value ?? '').trim())
+  return m ? Number(m[1]) * CSS_POINTS[(m[2] ?? '').toLowerCase()] : 0
+}
+
+/** The declarations of an inline style, by lower-case name. */
+function inlineStyle(el) {
+  const out = new Map()
+  for (const part of (el.getAttribute('style') ?? '').split(';')) {
+    const at = part.indexOf(':')
+    if (at > 0) out.set(part.slice(0, at).trim().toLowerCase(), part.slice(at + 1).trim())
+  }
+  return out
+}
+
+const CSS_NAMED_COLORS = { black: '#000000', white: '#ffffff', red: '#ff0000', blue: '#0000ff' }
+
+/** A CSS colour as #rrggbb, or null. */
+function cssColor(value) {
+  const v = String(value ?? '')
+    .trim()
+    .toLowerCase()
+  if (CSS_NAMED_COLORS[v]) return CSS_NAMED_COLORS[v]
+  let m = /^#([0-9a-f]{6})$/.exec(v)
+  if (m) return `#${m[1]}`
+  m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(v)
+  if (m) return `#${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}`
+  m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(v)
+  if (m)
+    return `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`
+  return null
+}
+
+/** CSS line styles as the engine's line kinds (none, solid, dashed, dotted, double). */
+const CSS_LINE_TYPES = { none: 0, hidden: 0, solid: 1, dashed: 2, dotted: 3, double: 8 }
+
+/** A line's thickness in points as the engine's line width step, as its HTML import does. */
+function lineWidthStep(points) {
+  const mm = points * 0.3528
+  const steps = [0.11, 0.14, 0.18, 0.23, 0.28, 0.35, 0.45]
+  const step = steps.findIndex((limit) => mm < limit)
+  return step === -1 ? 7 : step
+}
+
+/** A CSS border value ("solid #000000 0.28pt") as the engine's line, as its HTML import reads it. */
+function cssLine(value) {
+  let type = 1
+  let points = 0
+  let color = '#000000'
+  for (const token of String(value).match(/\w+\([^)]*\)|\S+/g) ?? []) {
+    const word = token.toLowerCase()
+    if (word in CSS_LINE_TYPES) type = CSS_LINE_TYPES[word]
+    else if (word === 'thin') points = 0.75
+    else if (word === 'medium') points = 2.25
+    else if (word === 'thick') points = 3.75
+    else if (cssColor(word)) color = cssColor(word)
+    else if (cssPoints(word) > 0) points = cssPoints(word)
+  }
+  if (type === 0 || points <= 0.01) return { type: 0, width: 0, color: '#000000' }
+  return { type, width: lineWidthStep(points), color }
+}
+
+/** A cell's look from its inline style, read the way the engine's HTML table import reads it. */
+function cssCellLook(td) {
+  const style = inlineStyle(td)
+  const look = {}
+  const sides = {
+    borderLeft: 'left',
+    borderRight: 'right',
+    borderTop: 'top',
+    borderBottom: 'bottom',
+  }
+  for (const [key, side] of Object.entries(sides)) {
+    const value = style.get(`border-${side}`) ?? style.get('border')
+    if (value !== undefined) look[key] = cssLine(value)
+  }
+  const fill = cssColor(style.get('background-color') ?? style.get('background'))
+  if (fill)
+    Object.assign(
+      look,
+      fill === '#ffffff' ? { fillType: 'none' } : { fillType: 'solid', fillColor: fill },
+    )
+  const align = (style.get('vertical-align') ?? td.getAttribute('valign') ?? '').toLowerCase()
+  const vertical = { top: 0, middle: 1, center: 1, bottom: 2 }[align]
+  if (vertical !== undefined) look.verticalAlign = vertical
+  return look
+}
+
+/** A cell's size along one axis in HWPUNIT from its style or attribute; 0 when not given. */
+function cellExtent(td, name) {
+  const value = inlineStyle(td).get(name) ?? td.getAttribute(name)
+  return Math.round(cssPoints(value) * 100)
+}
+
+/**
+ * The cells of a pasted HTML table as a table to rebuild (셀 안에 표로 넣기): each cell's place
+ * and spans, its contents as HTML, its look (lines, fill, vertical alignment, and margins when
+ * this editor copied it), and each column's width and row's height in HWPUNIT (0 where no
+ * single cell gives it). Null when the HTML is not a lone table, as for cellGridFromHtml.
+ */
+export function cellTableFromHtml(html) {
+  const table = loneTableOf(html)
+  if (!table) return null
+  const taken = []
+  const cells = []
+  const rows = [...table.querySelectorAll('tr')].filter((tr) => tr.closest('table') === table)
+  rows.forEach((tr, r) => {
+    taken[r] ??= []
+    let c = 0
+    for (const td of [...tr.children].filter((el) => /^(TD|TH)$/.test(el.tagName))) {
+      while (taken[r][c]) c += 1
+      const rowSpan = Math.max(1, Number(td.getAttribute('rowspan')) || 1)
+      const colSpan = Math.max(1, Number(td.getAttribute('colspan')) || 1)
+      for (let dr = 0; dr < rowSpan; dr += 1) {
+        taken[r + dr] ??= []
+        for (let dc = 0; dc < colSpan; dc += 1) taken[r + dr][c + dc] = true
+      }
+      let own
+      try {
+        own = JSON.parse(td.getAttribute(CELL_LOOK_ATTR) ?? 'null')
+      } catch {
+        // an attribute this editor did not write
+        own = null
+      }
+      cells.push({
+        row: r,
+        col: c,
+        rowSpan,
+        colSpan,
+        // line breaks between tags would read as paragraphs of their own
+        content: td.innerHTML.replace(/>\s*\n\s*</g, '><').trim(),
+        // only the keys this editor's copy writes reach the engine, whoever wrote the attribute
+        look: { ...cssCellLook(td), ...(own && typeof own === 'object' ? cellLookOf(own) : {}) },
+        width: cellExtent(td, 'width'),
+        height: cellExtent(td, 'height'),
+      })
+      c += colSpan
+    }
+  })
+  const rowCount = taken.length
+  const colCount = Math.max(0, ...taken.map((row) => row.length))
+  if (rowCount === 0 || colCount === 0) return null
+  const colWidths = Array.from({ length: colCount }, () => 0)
+  const rowHeights = Array.from({ length: rowCount }, () => 0)
+  for (const cell of cells) {
+    if (cell.colSpan === 1) colWidths[cell.col] = Math.max(colWidths[cell.col], cell.width)
+    if (cell.rowSpan === 1) rowHeights[cell.row] = Math.max(rowHeights[cell.row], cell.height)
+  }
+  // a column only merged cells cover takes what is left of their width
+  for (const cell of cells.filter((x) => x.colSpan > 1 && x.width > 0)) {
+    const span = colWidths.slice(cell.col, cell.col + cell.colSpan)
+    const open = span.filter((w) => w === 0).length
+    const rest = cell.width - span.reduce((a, b) => a + b, 0)
+    if (open > 0 && rest > 0) {
+      for (let c = cell.col; c < cell.col + cell.colSpan; c += 1)
+        if (colWidths[c] === 0) colWidths[c] = Math.floor(rest / open)
+    }
+  }
+  return { rows: rowCount, cols: colCount, cells, colWidths, rowHeights }
 }
 
 /**
@@ -1453,8 +2575,9 @@ export const CELL_PASTE_MODES = ['overwrite', 'up', 'down', 'left', 'right']
 
 /**
  * Paste copied cells with the caret in one cell of a table (no block), as Hangul does: the
- * 셀 붙이기 dialog asks where they go, and they overwrite the table from the caret's cell or
- * come in as new rows or columns beside it. Only a clipboard that holds a table of more than
+ * 셀 붙이기 dialog asks where they go, and they overwrite the table from the caret's cell,
+ * come in as new rows or columns beside it, or go into the caret's cell as a table of their own
+ * (pasteCellsAsTable). Only a clipboard that holds a table of more than
  * one cell (cells copied here or in Hangul, a spreadsheet range) is taken; anything else, a
  * selection, and places other than a cell of a body table keep the studio's paste.
  */
@@ -1495,7 +2618,8 @@ function cellPasteAtCaret(ih, e) {
   const caret = cursor.getPosition()
   if (caret?.parentParaIndex === undefined || caret.cellIndex === undefined) return false
   if ((caret.cellPath?.length ?? 0) > 1) return false
-  const grid = cellGridFromHtml(e?.clipboardData?.getData?.('text/html') ?? '')
+  const html = e?.clipboardData?.getData?.('text/html') ?? ''
+  const grid = cellGridFromHtml(html)
   if (!grid || grid.length * grid[0].length < 2) return false
   const at = { sec: caret.sectionIndex, ppi: caret.parentParaIndex, ci: caret.controlIndex }
   let cell
@@ -1506,7 +2630,11 @@ function cellPasteAtCaret(ih, e) {
   } catch {
     return false
   }
-  const paste = (mode) => pasteCellsAt(ih, at, cell, grid, mode, caret)
+  const paste = (mode) => {
+    if (mode !== 'nested') return pasteCellsAt(ih, at, cell, grid, mode, caret)
+    const table = cellTableFromHtml(html)
+    return table ? pasteCellsAsTable(ih, at, cell, table, caret) : false
+  }
   if (!modalDialog) {
     // a host without the dialog base (a test): Hangul's default, overwrite
     paste('overwrite')
@@ -1615,11 +2743,109 @@ export function pasteCellsAt(ih, at, cell, grid, mode, caret) {
   return true
 }
 
+/** Outer margin, every side, of the table 셀 안에 표로 넣기 makes (Hangul 2024, measured). */
+const NESTED_PASTE_MARGIN = 141
+
 /**
- * Hangul's 셀 붙이기 dialog: where the copied cells go. Overwrite is the default. Putting the
- * cells into the caret's cell as a table of their own is shown but cannot be chosen: the
- * engine cannot make a table inside a cell.
+ * 셀 안에 표로 넣기: put copied cells into the caret's cell as a table of their own, one undo
+ * step, as Hangul 2024 does (measured through its automation, 2026-11-17). The table goes in
+ * at the caret inside the caret's paragraph, the text before and after it staying in that
+ * paragraph; it is treat-as-char with a 0.5 mm outer margin. Its columns keep the copied
+ * widths (not fitted to the cell) and its cells their text, paragraphs, character shapes,
+ * lines and fill. The host table keeps its grid and its other cells; its row grows with the
+ * new table. `table` is cellTableFromHtml's reading of the clipboard; `cell` the caret's cell.
+ * The caret stays where it was in the caret's paragraph, at the table: a caret right after a
+ * table in a cell has no place of its own in the editor.
  */
+export function pasteCellsAsTable(ih, at, cell, table, caret) {
+  const { sec, ppi } = at
+  const host = {
+    controlIndex: at.ci,
+    cellIndex: caret.cellIndex,
+    cellParaIndex: caret.cellParaIndex ?? 0,
+  }
+  const hostAt = (cellParaIndex) => JSON.stringify([{ ...host, cellParaIndex }])
+  ih.executeOperation({
+    kind: 'snapshot',
+    operationType: 'ieumPasteCellsAsTable',
+    operation: (bridge) => {
+      const known = (sizes) => (sizes.every((size) => size > 0) ? sizes : undefined)
+      let colWidths = known(table.colWidths)
+      if (!colWidths && table.colWidths.some((w) => w > 0)) {
+        // columns nobody gave a width share the cell, as the engine's HTML table import does
+        const props = answerOf(bridge.getCellProperties(sec, ppi, at.ci, host.cellIndex))
+        const inner =
+          Number(props?.width) - Number(props?.paddingLeft) - Number(props?.paddingRight)
+        const share = Math.max(100, Math.floor((inner - 2 * NESTED_PASTE_MARGIN) / table.cols) || 0)
+        colWidths = table.colWidths.map((w) => w || share)
+      }
+      const made = answerOf(
+        bridge.createTableInCellByPath(sec, ppi, [host], caret.charOffset ?? 0, {
+          rowCount: table.rows,
+          colCount: table.cols,
+          treatAsChar: true,
+          ...(colWidths ? { colWidths } : {}),
+          ...(known(table.rowHeights) ? { rowHeights: table.rowHeights } : {}),
+        }),
+      )
+      if (!made?.ok) throw new Error('the cell took no table')
+      const tablePara = made.cellParaIdx
+      const ctrl = made.cellPath[made.cellPath.length - 1].controlIndex
+      const steps = made.cellPath.slice(0, -1)
+      const cellAt = (cellIndex) =>
+        JSON.stringify([...steps, { controlIndex: ctrl, cellIndex, cellParaIndex: 0 }])
+      const tableAt = cellAt(0)
+      for (const c of table.cells) {
+        if (c.rowSpan > 1 || c.colSpan > 1) {
+          bridge.mergeTableCellsByPath(
+            sec,
+            ppi,
+            tableAt,
+            c.row,
+            c.col,
+            Math.min(table.rows, c.row + c.rowSpan) - 1,
+            Math.min(table.cols, c.col + c.colSpan) - 1,
+          )
+        }
+      }
+      const dims = answerOf(bridge.getTableDimensionsByPath(sec, ppi, tableAt))
+      const byPlace = new Map()
+      for (let i = 0; i < dims.cellCount; i += 1) {
+        const info = answerOf(bridge.getCellInfoByPath(sec, ppi, cellAt(i)))
+        byPlace.set(`${info.row}:${info.col}`, i)
+      }
+      for (const c of table.cells) {
+        const index = byPlace.get(`${c.row}:${c.col}`)
+        if (index === undefined) continue
+        if (c.content.replace(/<[^>]*>/g, '').trim() !== '' || /<img\b/i.test(c.content))
+          bridge.pasteHtmlInCellByPath(sec, ppi, cellAt(index), 0, c.content)
+        if (Object.keys(c.look).length > 0)
+          bridge.setCellPropertiesByPath(sec, ppi, tableAt, index, c.look)
+      }
+      bridge.setTablePropertiesByPath(sec, ppi, tableAt, {
+        outerLeft: NESTED_PASTE_MARGIN,
+        outerRight: NESTED_PASTE_MARGIN,
+        outerTop: NESTED_PASTE_MARGIN,
+        outerBottom: NESTED_PASTE_MARGIN,
+      })
+      // the engine puts a new table in a paragraph of its own between the text before and
+      // after the caret; Hangul keeps the caret's paragraph whole around it
+      bridge.mergeParagraphInCellByPath(sec, ppi, hostAt(tablePara + 1))
+      if (tablePara > host.cellParaIndex)
+        bridge.mergeParagraphInCellByPath(sec, ppi, hostAt(tablePara))
+      const cellPath = [{ ...host }]
+      return {
+        ...caret,
+        cellParaIndex: host.cellParaIndex,
+        cellPath: Array.isArray(caret.cellPath) ? cellPath : caret.cellPath,
+      }
+    },
+  })
+  ih.updateCaret?.()
+  return true
+}
+
+/** Hangul's 셀 붙이기 dialog: where the copied cells go. Overwrite is the default. */
 function cellPasteDialog(ModalDialog, ko, onPaste) {
   const choices = [
     { mode: 'up', ko: '위쪽에 끼워 넣기', en: 'Insert above' },
@@ -1644,7 +2870,7 @@ function cellPasteDialog(ModalDialog, ko, onPaste) {
         h.textContent = text
         return h
       }
-      const option = (mode, text, disabled = false) => {
+      const option = (mode, text) => {
         const label = doc.createElement('label')
         label.style.cssText = 'display:flex;align-items:center;gap:6px;white-space:nowrap'
         const input = doc.createElement('input')
@@ -1652,23 +2878,15 @@ function cellPasteDialog(ModalDialog, ko, onPaste) {
         input.name = 'ieum-cell-paste'
         input.value = mode
         input.checked = mode === this.mode
-        input.disabled = disabled
         input.addEventListener('change', () => {
           if (input.checked) this.mode = mode
         })
         label.append(input, text)
-        if (disabled) {
-          label.style.opacity = '0.5'
-          label.title = ko
-            ? '셀 안에 표를 만드는 기능은 아직 없습니다.'
-            : 'A table cannot be made inside a cell yet.'
-        } else {
-          // a double click on a choice pastes at once
-          label.addEventListener('dblclick', () => {
-            this.mode = mode
-            this.confirm()
-          })
-        }
+        // a double click on a choice pastes at once
+        label.addEventListener('dblclick', () => {
+          this.mode = mode
+          this.confirm()
+        })
         return label
       }
       body.appendChild(heading(ko ? '끼워 넣기' : 'Insert'))
@@ -1683,7 +2901,7 @@ function cellPasteDialog(ModalDialog, ko, onPaste) {
       over.style.cssText = 'display:grid;gap:6px;margin-top:6px'
       over.append(
         option('overwrite', ko ? '덮어쓰기' : 'Overwrite'),
-        option('nested', ko ? '셀 안에 표로 넣기' : 'Insert as a table in the cell', true),
+        option('nested', ko ? '셀 안에 표로 넣기' : 'Insert as a table in the cell'),
       )
       body.appendChild(over)
       return body
@@ -1719,7 +2937,7 @@ function cellPasteDialog(ModalDialog, ko, onPaste) {
     }
 
     onConfirm() {
-      if (CELL_PASTE_MODES.includes(this.mode)) onPaste(this.mode)
+      if (CELL_PASTE_MODES.includes(this.mode) || this.mode === 'nested') onPaste(this.mode)
       return true
     }
   }
@@ -1845,7 +3063,7 @@ export function insertRowBelow(services) {
   const ih = services?.getInputHandler?.()
   const pos = ih?.getCursorPosition?.()
   if (!ih || !pos || pos.cellIndex === undefined) return false
-  if ((pos.cellPath?.length ?? 0) > 1) return false
+  if (outsideScope(services.wasm, pos.cellPath)) return false
   let info
   try {
     info = services.wasm.getCellInfo(
@@ -1900,24 +3118,23 @@ export function insertRowBelow(services) {
 
 /**
  * Ctrl+Enter adds a row below and Ctrl+Backspace deletes the row the caret is in, as
- * Hangul does in a table cell. Both run the studio's table commands, one undo step each.
- * Outside a cell the keys keep their meanings (page break, delete the word before). A
- * table inside a cell is left to Phase 2: the keys are consumed there, so a page break
- * cannot land in a cell.
+ * Hangul does in a table cell. Both run the studio's table commands, one undo step each; in a
+ * table inside a cell or a text box they reach that table by its path (nestedTableCommand).
+ * Outside a table the keys keep their meanings (page break, delete the word before); so does
+ * a text box itself, which is no table.
  */
 function hancomTableRowKey(ih, e) {
   const cursor = ih?.cursor
-  if (!cursor?.isInCell?.() || cursor.isInTextBox?.()) return false
+  if (!cursor?.isInCell?.()) return false
   if (cursor.isInHeaderFooter?.() || cursor.isInFootnote?.()) return false
   if (cursor.isInCellSelectionMode?.() || cursor.isInTableObjectSelection?.()) return false
   if (ih.isFormMode?.()) return false
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return false
   const pos = ih.getCursorPosition?.()
   if (!pos) return false
-  const nested = (pos.cellPath?.length ?? 0) > 1
+  if (cursor.isInTextBox?.() && depthOf(pos.cellPath) < 2) return false
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
-    if (nested) return true
     if (ih.dispatcher?.isEnabled?.('ieum:table-insert-row-below')) {
       ih.dispatcher.dispatch('ieum:table-insert-row-below')
     }
@@ -1925,14 +3142,12 @@ function hancomTableRowKey(ih, e) {
   }
   if (e.key === 'Backspace' && e.ctrlKey && !e.metaKey) {
     e.preventDefault()
-    if (nested) return true
     // the last row stays: the engine refuses to empty a table, and this keeps it quiet
     try {
-      const dims = ih.wasm?.getTableDimensions?.(
-        pos.sectionIndex,
-        pos.parentParaIndex,
-        pos.controlIndex,
-      )
+      const inner = innerTableTarget(ih)
+      const dims = inner
+        ? innerTableBridge(ih.wasm, inner).getTableDimensions(inner.sec, inner.ppi, inner.ci)
+        : ih.wasm?.getTableDimensions?.(pos.sectionIndex, pos.parentParaIndex, pos.controlIndex)
       if (dims?.rowCount <= 1) return true
     } catch {
       // let the command answer; it refuses the last row too
@@ -2154,8 +3369,8 @@ function applyCellExtents(
  * average) or each row (W) come out equally sized, and where rows hold different numbers of cells
  * the grid splits (table-sizes.mjs equalExtents). One snapshot, one undo step. A block on part of
  * the table sizes only its own cells within its edges, as Hangul's help has it (issue #299); a
- * block that leaves cells out or cuts through a merged cell, and a table inside a cell, are left
- * alone with the reason.
+ * block that leaves cells out or cuts through a merged cell is left alone with the reason. A table
+ * inside a cell or a text box is sized the same way, through its path (nestedTableCommand).
  */
 export function equalizeTableCells(services, axis, ko) {
   const ih = services?.getInputHandler?.()
@@ -2168,15 +3383,7 @@ export function equalizeTableCells(services, axis, ko) {
   const ppi = context?.ppi ?? pos?.parentParaIndex
   const ci = context?.ci ?? pos?.controlIndex
   if (ppi === undefined || ci === undefined) return false
-  const nested = (context?.cellPath?.length ?? pos?.cellPath?.length ?? 0) > 1
-  if (nested) {
-    tellUser(
-      ko
-        ? '표 안의 표는 아직 크기를 같게 할 수 없습니다.'
-        : 'A table inside a cell cannot be sized equally yet.',
-    )
-    return false
-  }
+  if (outsideScope(services.wasm, context?.cellPath ?? pos?.cellPath)) return false
   // a text box is a one-cell table to the engine, but it is not a table to Hangul
   if (pos?.isTextBox && (pos.cellPath?.length ?? 0) < 2) return false
   const at = { sec, ppi, ci }
@@ -2357,8 +3564,8 @@ export function hancomRowDragUpdates(ih, state, delta, alt) {
 }
 
 /**
- * The block's table, with its range grown over the merged cells it cuts through, or null (a table
- * inside a cell, with the reason told).
+ * The block's table, with its range grown over the merged cells it cuts through, or null. A table
+ * inside a cell or a text box is reached through its path (nestedTableCommand).
  */
 function blockTable(services) {
   const ih = services?.getInputHandler?.()
@@ -2366,14 +3573,7 @@ function blockTable(services) {
   const context = cursor?.getCellTableContext?.()
   const range = cursor?.getSelectedCellRange?.()
   if (!ih || !context || !range) return null
-  if ((context.cellPath?.length ?? 0) > 1) {
-    tellUser(
-      koreanUi
-        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
-        : 'A table inside a cell cannot be resized yet.',
-    )
-    return null
-  }
+  if (outsideScope(services.wasm, context.cellPath)) return null
   let table
   try {
     table = tableCells(services.wasm, context)
@@ -2440,7 +3640,7 @@ const CELL_STEP = 283
  * Shift+arrow in a cell block: the current cell's right/bottom boundary moves and the
  * next cell's opposite boundary moves back, as Hangul does; the cells beside it stay, so
  * the grid splits into spans and a later Shift+arrow can move the same cell again. One
- * snapshot, so one undo step. Tables inside a cell are left to Phase 2.
+ * snapshot, so one undo step. A table inside a cell or a text box takes it through its path.
  *
  * Shift+←/→ is the engine's resizeTableCell (vendor/rhwp-core patches 0016, 0027). Shift+↑/↓ is
  * worked out here from the heights the cells draw at (table-sizes.mjs moveCellEdge), as Hancom
@@ -2457,14 +3657,7 @@ export function resizeSelectedCell(services, direction) {
   if (direction !== 'left' && direction !== 'right' && direction !== 'up' && direction !== 'down') {
     return false
   }
-  if ((context.cellPath?.length ?? 0) > 1) {
-    tellUser(
-      koreanUi
-        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
-        : 'A table inside a cell cannot be resized yet.',
-    )
-    return false
-  }
+  if (outsideScope(services.wasm, context.cellPath)) return false
   let cells
   try {
     cells = tableCells(services.wasm, context).cells
@@ -2828,18 +4021,11 @@ function transposeSelectedTable(services, ko) {
 }
 
 /** L/C in table-object selection: the border or background dialog for the whole table. */
-function openSelectedTableBorder(services, studio, tab, ko) {
+function openSelectedTableBorder(services, studio, tab) {
   const ih = services.getInputHandler()
   const table = selectedTableOf(ih, services.wasm)
   if (!ih || !table || !studio.TableCellPropsDialog) return false
-  if ((table.ref.cellPath?.length ?? 0) > 1) {
-    tellUser(
-      ko
-        ? '표 안의 표는 아직 테두리와 배경을 바꿀 수 없습니다.'
-        : 'A table inside a cell cannot be changed yet.',
-    )
-    return false
-  }
+  if (outsideScope(services.wasm, table.ref.cellPath)) return false
   // Hangul's L/C on a selected table: the table's own border and fill (개체 속성의 테두리·채우기)
   const { ref } = table
   const dialog = new studio.TableCellPropsDialog(
@@ -2864,14 +4050,7 @@ function resizeSelectedTable(services, direction) {
   const ih = services.getInputHandler()
   const table = selectedTableOf(ih, services.wasm)
   if (!ih || !table) return false
-  if ((table.ref.cellPath?.length ?? 0) > 1) {
-    tellUser(
-      koreanUi
-        ? '표 안의 표는 아직 크기를 바꿀 수 없습니다.'
-        : 'A table inside a cell cannot be resized yet.',
-    )
-    return false
-  }
+  if (outsideScope(services.wasm, table.ref.cellPath)) return false
   const at = { sec: table.ref.sec, ppi: table.ref.ppi, ci: table.ref.ci }
   let cells
   try {
@@ -3132,7 +4311,7 @@ export function hancomCommands(locale, studio = {}) {
       shortcutLabel: 'L',
       canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
       execute(services) {
-        openSelectedTableBorder(services, studio, 'border', ko)
+        openSelectedTableBorder(services, studio, 'border')
       },
     },
     {
@@ -3142,7 +4321,7 @@ export function hancomCommands(locale, studio = {}) {
       shortcutLabel: 'C',
       canExecute: (ctx) => ctx.inTableObjectSelection && !ctx.isFormMode,
       execute(services) {
-        openSelectedTableBorder(services, studio, 'background', ko)
+        openSelectedTableBorder(services, studio, 'background')
       },
     },
     ...[
@@ -3171,7 +4350,7 @@ export function hancomCommands(locale, studio = {}) {
       shortcutLabel: key,
       canExecute: (ctx) => ctx.inCellSelectionMode && !ctx.isFormMode,
       execute(services) {
-        openCellBlockBorder(services, studio, applyMode, tab, ko)
+        openCellBlockBorder(services, studio, applyMode, tab)
       },
     })),
     {
