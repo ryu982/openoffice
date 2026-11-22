@@ -53,6 +53,18 @@ import {
   type RichMark,
   type SnapAttachTarget,
 } from '../canvas/paper-style'
+import {
+  duplicateSelectionOps,
+  freshIdMaker,
+  layerOrderOps,
+  mergeSelections,
+  moveSelectionOps,
+  objectsInArea,
+  rectFromPoints,
+  shiftedObject,
+  toggleInSelection,
+  unionExtent,
+} from '../canvas/selection'
 import { SHAPE_KINDS, shapePath, shapeTextBox } from '../canvas/shape-paths'
 import { STICKER_IDS, StickerIcon } from '../canvas/stickers'
 import type { WhiteboardSession } from '../document/session'
@@ -68,6 +80,7 @@ import {
   AlignCenterIcon,
   AlignLeftIcon,
   AlignRightIcon,
+  AreaSelectIcon,
   ArrowEndIcon,
   ArrowStartIcon,
   BackIcon,
@@ -102,7 +115,20 @@ import {
 } from './icons'
 
 type ToolKind =
-  'select' | 'sticky' | 'text' | 'shape' | 'connector' | 'pen' | 'highlighter' | 'eraser'
+  | 'select'
+  | 'marquee'
+  | 'sticky'
+  | 'text'
+  | 'shape'
+  | 'connector'
+  | 'pen'
+  | 'highlighter'
+  | 'eraser'
+
+/** Pointer travel, in screen pixels, under which a press counts as a click rather than a drag. */
+const CLICK_SLOP = 3
+/** Offset of the copies when a selection is duplicated. */
+const DUPLICATE_OFFSET = 28
 
 type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se'
 
@@ -246,7 +272,15 @@ export function WhiteboardEditor({
   // Active pointer interaction refs.
   const stageRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{
-    kind: 'move' | 'pan' | 'draw' | 'resize' | 'connector-draw' | 'endpoint-drag'
+    kind:
+      | 'move'
+      | 'pan'
+      | 'draw'
+      | 'resize'
+      | 'connector-draw'
+      | 'endpoint-drag'
+      | 'marquee'
+      | 'group-move'
     startClientX: number
     startClientY: number
     startPanX: number
@@ -261,6 +295,12 @@ export function WhiteboardEditor({
     startPoint?: Point
     startAttach?: SnapAttachTarget | null
     whichEnd?: 'start' | 'end'
+    /** Marquee: the drag adds to the selection it started with instead of replacing it. */
+    additive?: boolean
+    /** Group move: every object that moves together. */
+    groupIds?: readonly string[]
+    /** Group move: the object a press without a drag narrows the selection to. */
+    collapseTo?: string
   } | null>(null)
 
   const [liveStroke, setLiveStroke] = useState<Array<[number, number, number]> | null>(null)
@@ -283,6 +323,19 @@ export function WhiteboardEditor({
     dw: number
     dh: number
   } | null>(null)
+  // Area selection being dragged: its corners on the board, and the selection a Shift/Ctrl drag
+  // adds to.
+  const [marquee, setMarquee] = useState<{
+    start: Point
+    end: Point
+    base: readonly string[]
+  } | null>(null)
+  // Several selected objects being dragged together.
+  const [groupDelta, setGroupDelta] = useState<{
+    ids: ReadonlySet<string>
+    dx: number
+    dy: number
+  } | null>(null)
 
   useEffect(() => session.subscribe(() => setTick((n) => n + 1)), [session])
 
@@ -304,8 +357,11 @@ export function WhiteboardEditor({
 
   // Apply in-flight move/resize deltas so attached connectors follow objects live during drag.
   const displayedObjects = useMemo(() => {
-    if (!dragDelta && !endpointPreview) return pageObjects
+    if (!dragDelta && !endpointPreview && !groupDelta) return pageObjects
     return pageObjects.map((o) => {
+      if (groupDelta && groupDelta.ids.has(o.id)) {
+        return shiftedObject(o, groupDelta.dx, groupDelta.dy)
+      }
       if (dragDelta && dragDelta.id === o.id) {
         return {
           ...o,
@@ -326,7 +382,7 @@ export function WhiteboardEditor({
       }
       return o
     })
-  }, [dragDelta, endpointPreview, pageObjects])
+  }, [dragDelta, endpointPreview, groupDelta, pageObjects])
 
   const objectsById = useMemo(
     () => new Map(displayedObjects.map((o) => [o.id, o])),
@@ -334,6 +390,30 @@ export function WhiteboardEditor({
   )
 
   const selectedObj = selectedIds.length === 1 ? (objectsById.get(selectedIds[0]!) ?? null) : null
+  const selectedObjects = useMemo(
+    () => selectedIds.flatMap((id) => objectsById.get(id) ?? []),
+    [objectsById, selectedIds],
+  )
+  const multiSelected = selectedObjects.length > 1
+
+  // While an area is dragged, the objects it would select are drawn as selected.
+  const marqueeRect = marquee ? rectFromPoints(marquee.start, marquee.end) : null
+  const shownSelection = useMemo(() => {
+    if (!marquee) return new Set(selectedIds)
+    const area = rectFromPoints(marquee.start, marquee.end)
+    return new Set(mergeSelections(marquee.base, objectsInArea(pageObjects, area, objectsById)))
+  }, [marquee, objectsById, pageObjects, selectedIds])
+  const shownMulti = shownSelection.size > 1
+  const shownGroupBox = useMemo(
+    () =>
+      shownMulti
+        ? unionExtent(
+            displayedObjects.filter((o) => shownSelection.has(o.id)),
+            objectsById,
+          )
+        : null,
+    [displayedObjects, objectsById, shownMulti, shownSelection],
+  )
 
   const clientToBoard = useCallback(
     (clientX: number, clientY: number) => {
@@ -396,7 +476,7 @@ export function WhiteboardEditor({
       setTool(next)
       setStickerOpen(false)
       if (next !== 'shape') setShapePopoverOpen(false)
-      if (next !== 'select') session.setSelection([])
+      if (next !== 'select' && next !== 'marquee') session.setSelection([])
     },
     [session],
   )
@@ -448,7 +528,26 @@ export function WhiteboardEditor({
         session.redo()
         return
       }
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a') {
+        // Select every object on the page instead of the page's text.
+        e.preventDefault()
+        const pageId = session.getActivePageId()
+        setTool('select')
+        session.setSelection(
+          session
+            .getDocument()
+            .objects.filter((o) => o.pageId === pageId)
+            .map((o) => o.id),
+        )
+        return
+      }
       if (e.key === 'Escape') {
+        const drag = dragRef.current
+        if (drag?.kind === 'marquee' || drag?.kind === 'group-move') {
+          dragRef.current = null
+          setMarquee(null)
+          setGroupDelta(null)
+        }
         setStickerOpen(false)
         setShapePopoverOpen(false)
         setTool('select')
@@ -465,6 +564,7 @@ export function WhiteboardEditor({
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const k = e.key.toLowerCase()
         if (k === 'v') selectTool('select')
+        else if (k === 'm') selectTool('marquee')
         else if (k === 'n') selectTool('sticky')
         else if (k === 't') selectTool('text')
         else if (k === 'r') selectTool('shape')
@@ -817,6 +917,23 @@ export function WhiteboardEditor({
         setLiveStroke(pts)
         return
       }
+      if ((tool === 'select' || tool === 'marquee') && e.button === 0) {
+        // Drag out an area to select the objects inside it; Shift or Ctrl/⌘ adds to the
+        // selection. A press without a drag clears the selection as before.
+        const additive = e.shiftKey || e.ctrlKey || e.metaKey
+        e.currentTarget.setPointerCapture(e.pointerId)
+        dragRef.current = {
+          kind: 'marquee',
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startPanX: pan.x,
+          startPanY: pan.y,
+          startPoint: pt,
+          additive,
+        }
+        setMarquee({ start: pt, end: pt, base: additive ? session.getSelection() : [] })
+        return
+      }
 
       // Click empty stage clears selection.
       session.setSelection([])
@@ -840,9 +957,9 @@ export function WhiteboardEditor({
 
   const handleObjectPointerDown = useCallback(
     (e: ReactPointerEvent, obj: BoardObject) => {
-      if (tool === 'connector' || tool === 'pen' || tool === 'highlighter') {
-        // Let pointer event bubble to the SVG stage so connectors can snap-start on objects
-        // and pen/highlighter can draw freely over objects.
+      if (tool === 'connector' || tool === 'pen' || tool === 'highlighter' || tool === 'marquee') {
+        // Let pointer event bubble to the SVG stage so connectors can snap-start on objects,
+        // pen/highlighter can draw freely over objects, and an area drag can start on one.
         return
       }
       e.stopPropagation()
@@ -857,7 +974,32 @@ export function WhiteboardEditor({
       }
       if (tool !== 'select') return
 
-      session.setSelection([obj.id])
+      // Shift or Ctrl/⌘ adds the object to the selection or takes it out. Pressing an object
+      // that is part of a larger selection drags the whole selection.
+      const current = session.getSelection()
+      // Other buttons leave a selection of several objects as it is.
+      if (e.button !== 0 && current.length > 1 && current.includes(obj.id)) return
+      const toggle = e.shiftKey || e.ctrlKey || e.metaKey
+      const next = toggle
+        ? toggleInSelection(current, obj.id)
+        : current.length > 1 && current.includes(obj.id)
+          ? current
+          : [obj.id]
+      session.setSelection(next)
+      if (!next.includes(obj.id)) return
+      if (next.length > 1) {
+        dragRef.current = {
+          kind: 'group-move',
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startPanX: pan.x,
+          startPanY: pan.y,
+          objectId: obj.id,
+          groupIds: next,
+          ...(toggle ? {} : { collapseTo: obj.id }),
+        }
+        return
+      }
       if (obj.kind === 'connector') return
       dragRef.current = {
         kind: 'move',
@@ -927,6 +1069,18 @@ export function WhiteboardEditor({
         const pressure = e.pressure > 0 ? e.pressure : 0.5
         drag.points.push([pt.x, pt.y, pressure])
         setLiveStroke([...drag.points])
+        return
+      }
+      if (drag.kind === 'marquee') {
+        const pt = clientToBoard(e.clientX, e.clientY)
+        setMarquee((m) => (m ? { ...m, end: pt } : m))
+        return
+      }
+      if (drag.kind === 'group-move' && drag.groupIds) {
+        const ids = drag.groupIds
+        const dx = (e.clientX - drag.startClientX) / zoom
+        const dy = (e.clientY - drag.startClientY) / zoom
+        setGroupDelta((g) => ({ ids: g?.ids ?? new Set(ids), dx, dy }))
         return
       }
       if (drag.kind === 'connector-draw' && drag.startPoint) {
@@ -1012,6 +1166,39 @@ export function WhiteboardEditor({
       const drag = dragRef.current
       dragRef.current = null
       if (!drag) return
+
+      const travelled =
+        Math.abs(e.clientX - drag.startClientX) > CLICK_SLOP ||
+        Math.abs(e.clientY - drag.startClientY) > CLICK_SLOP
+
+      if (drag.kind === 'marquee' && drag.startPoint) {
+        setMarquee(null)
+        if (!travelled) {
+          if (!drag.additive) session.setSelection([])
+          return
+        }
+        const area = rectFromPoints(drag.startPoint, clientToBoard(e.clientX, e.clientY))
+        const inside = objectsInArea(pageObjects, area, objectsById)
+        session.setSelection(
+          drag.additive ? mergeSelections(session.getSelection(), inside) : inside,
+        )
+        if (tool === 'marquee') setTool('select')
+        return
+      }
+
+      if (drag.kind === 'group-move' && drag.groupIds) {
+        setGroupDelta(null)
+        if (!travelled) {
+          if (drag.collapseTo) session.setSelection([drag.collapseTo])
+          return
+        }
+        const dx = Math.round((e.clientX - drag.startClientX) / zoom)
+        const dy = Math.round((e.clientY - drag.startClientY) / zoom)
+        if (dx !== 0 || dy !== 0) {
+          session.applyEditorOps(moveSelectionOps(pageObjects, drag.groupIds, dx, dy))
+        }
+        return
+      }
 
       if (drag.kind === 'connector-draw' && drag.startPoint) {
         const pt = clientToBoard(e.clientX, e.clientY)
@@ -1131,6 +1318,7 @@ export function WhiteboardEditor({
       clientToBoard,
       dragDelta,
       endpointPreview,
+      objectsById,
       pageObjects,
       penColor,
       penWidth,
@@ -1139,6 +1327,15 @@ export function WhiteboardEditor({
       zoom,
     ],
   )
+
+  // A pointer that is cancelled or loses capture mid-drag drops the area or group drag.
+  const handleStagePointerCancel = useCallback(() => {
+    const kind = dragRef.current?.kind
+    if (kind !== 'marquee' && kind !== 'group-move') return
+    dragRef.current = null
+    setMarquee(null)
+    setGroupDelta(null)
+  }, [])
 
   const handleOpenLinkCard = useCallback(
     (url: string) => {
@@ -1150,6 +1347,24 @@ export function WhiteboardEditor({
   )
 
   const handleDuplicateSelected = useCallback(() => {
+    const ids = session.getSelection()
+    if (ids.length > 1) {
+      const nextId = freshIdMaker(
+        session.getDocument().objects.map((o) => o.id),
+        () => `obj-${crypto.randomUUID().slice(0, 8)}`,
+      )
+      session.applyEditorOps(
+        duplicateSelectionOps(
+          pageObjects,
+          ids,
+          DUPLICATE_OFFSET,
+          DUPLICATE_OFFSET,
+          objectsById,
+          nextId,
+        ),
+      )
+      return
+    }
     if (!selectedObj) return
     session.addObject({
       kind: selectedObj.kind,
@@ -1159,20 +1374,14 @@ export function WhiteboardEditor({
       height: selectedObj.height,
       props: structuredClone(selectedObj.props),
     })
-  }, [selectedObj, session])
+  }, [objectsById, pageObjects, selectedObj, session])
 
+  // One user undo step for one object or many; the selection keeps its own stacking order.
   const handleLayerOrder = useCallback(
     (direction: 'front' | 'back') => {
-      if (!selectedObj) return
-      void session.applyOps([
-        {
-          op: 'move',
-          id: selectedObj.id,
-          ...(direction === 'front' ? { toFront: true } : { toBack: true }),
-        },
-      ])
+      session.applyEditorOps(layerOrderOps(pageObjects, session.getSelection(), direction))
     },
-    [selectedObj, session],
+    [pageObjects, session],
   )
 
   const handleToggleMark = useCallback(
@@ -1264,22 +1473,42 @@ export function WhiteboardEditor({
     : 18
 
   // Compute floating dark format bar anchor above selected object (never shifts stage layout).
+  // Hidden while an area is dragged, as the press used to clear the selection right away.
   const showFormatBar = Boolean(
-    (tool === 'select' && selectedObj) || tool === 'sticky' || tool === 'pen',
+    (tool === 'select' && !marquee && (selectedObj || multiSelected)) ||
+    tool === 'sticky' ||
+    tool === 'pen',
   )
   const formatBarPos = useMemo(() => {
     if (!showFormatBar) return null
     const stageW = stageRef.current?.clientWidth ?? 900
-    if (tool === 'select' && selectedObj) {
-      const box = objectBounds(selectedObj, objectsById)
+    if (tool === 'select' && (selectedObj || multiSelected)) {
+      const box = selectedObj
+        ? objectBounds(selectedObj, objectsById)
+        : (unionExtent(selectedObjects, objectsById) ?? { x: 0, y: 0, width: 0, height: 0 })
+      // The bar for several objects holds fewer buttons, so it is narrower.
+      const half = selectedObj ? 210 : 130
       const cx = pan.x + (box.x + box.width / 2) * zoom
       const topY = pan.y + box.y * zoom - 60
       const fallbackY = pan.y + (box.y + box.height) * zoom + 16
-      const clampedLeft = Math.max(TOOLBAR_LEFT_CLEARANCE, Math.min(cx - 210, stageW - 440))
+      const clampedLeft = Math.max(
+        TOOLBAR_LEFT_CLEARANCE,
+        Math.min(cx - half, stageW - 2 * half - 20),
+      )
       return { left: Math.round(clampedLeft), top: Math.round(topY < 10 ? fallbackY : topY) }
     }
     return { left: Math.max(TOOLBAR_LEFT_CLEARANCE, Math.round(stageW / 2 - 140)), top: 14 }
-  }, [objectsById, pan.x, pan.y, selectedObj, showFormatBar, tool, zoom])
+  }, [
+    multiSelected,
+    objectsById,
+    pan.x,
+    pan.y,
+    selectedObj,
+    selectedObjects,
+    showFormatBar,
+    tool,
+    zoom,
+  ])
 
   const snapHighlightIds = useMemo(() => {
     const ids = new Set<string>()
@@ -1448,6 +1677,19 @@ export function WhiteboardEditor({
               <SelectIcon size={20} />
               <span className="wb-tool-key" aria-hidden="true">
                 V
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`wb-tool-btn${tool === 'marquee' ? ' active' : ''}`}
+              aria-label={t('toolAreaSelect')}
+              data-tip={`${t('toolAreaSelect')} (M)`}
+              aria-pressed={tool === 'marquee'}
+              onClick={() => selectTool('marquee')}
+            >
+              <AreaSelectIcon size={20} />
+              <span className="wb-tool-key" aria-hidden="true">
+                M
               </span>
             </button>
             <button
@@ -1938,6 +2180,52 @@ export function WhiteboardEditor({
                   </button>
                 </>
               )}
+
+              {/* Several objects: how many, layer order, duplicate, delete */}
+              {tool === 'select' && multiSelected && (
+                <>
+                  <span className="wb-format-count">
+                    {t('selectionCount', { count: selectedObjects.length })}
+                  </span>
+                  <span className="wb-format-sep" />
+                  <button
+                    type="button"
+                    className="wb-format-btn"
+                    aria-label={t('toolBringFront')}
+                    data-tip={t('toolBringFront')}
+                    onClick={() => handleLayerOrder('front')}
+                  >
+                    <FrontIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-format-btn"
+                    aria-label={t('toolSendBack')}
+                    data-tip={t('toolSendBack')}
+                    onClick={() => handleLayerOrder('back')}
+                  >
+                    <BackIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-format-btn"
+                    aria-label={t('toolDuplicate')}
+                    data-tip={t('toolDuplicate')}
+                    onClick={handleDuplicateSelected}
+                  >
+                    <DuplicateIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-format-btn danger"
+                    aria-label={t('toolDelete')}
+                    data-tip={t('toolDelete')}
+                    onClick={() => session.deleteSelected()}
+                  >
+                    <TrashIcon size={16} />
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -2007,7 +2295,11 @@ export function WhiteboardEditor({
             className="wb-stage-svg"
             style={{
               cursor:
-                tool === 'connector' || tool === 'shape' || tool === 'sticky' || tool === 'pen'
+                tool === 'connector' ||
+                tool === 'shape' ||
+                tool === 'sticky' ||
+                tool === 'pen' ||
+                tool === 'marquee'
                   ? 'crosshair'
                   : tool === 'text'
                     ? 'text'
@@ -2018,6 +2310,8 @@ export function WhiteboardEditor({
             onPointerDown={handleStagePointerDown}
             onPointerMove={handleStagePointerMove}
             onPointerUp={handleStagePointerUp}
+            onPointerCancel={handleStagePointerCancel}
+            onLostPointerCapture={handleStagePointerCancel}
             onWheel={(e) => {
               if (e.ctrlKey || e.metaKey) {
                 e.preventDefault()
@@ -2095,7 +2389,7 @@ export function WhiteboardEditor({
 
               {/* Board objects */}
               {displayedObjects.map((obj) => {
-                const isSelected = selectedIds.includes(obj.id)
+                const isSelected = shownSelection.has(obj.id)
                 const isHighlighted = highlightSet.has(obj.id)
                 const isSnapTarget = snapHighlightIds.has(obj.id)
                 const invZ = 1 / zoom
@@ -2164,6 +2458,7 @@ export function WhiteboardEditor({
                       })()}
 
                     {/* Selection frame: 4 corner paper handles for boxes, circular endpoint handles for connectors */}
+                    {/* With several objects selected, each shows its frame without handles. */}
                     {isSelected && obj.kind !== 'connector' && (
                       <>
                         <rect
@@ -2174,31 +2469,33 @@ export function WhiteboardEditor({
                           height={obj.height}
                           strokeWidth={2 * invZ}
                         />
-                        {(
-                          [
-                            ['nw', obj.x, obj.y, 'nwse-resize'],
-                            ['ne', obj.x + obj.width, obj.y, 'nesw-resize'],
-                            ['sw', obj.x, obj.y + obj.height, 'nesw-resize'],
-                            ['se', obj.x + obj.width, obj.y + obj.height, 'nwse-resize'],
-                          ] as const
-                        ).map(([corner, hx, hy, cursor]) => (
-                          <rect
-                            key={corner}
-                            x={hx - handleSize / 2}
-                            y={hy - handleSize / 2}
-                            width={handleSize}
-                            height={handleSize}
-                            fill={PAPER_COLORS.paper}
-                            stroke={PAPER_COLORS.accent}
-                            strokeWidth={1.6 * invZ}
-                            style={{ cursor }}
-                            onPointerDown={(e) => handleResizePointerDown(e, obj, corner)}
-                          />
-                        ))}
+                        {!shownMulti &&
+                          (
+                            [
+                              ['nw', obj.x, obj.y, 'nwse-resize'],
+                              ['ne', obj.x + obj.width, obj.y, 'nesw-resize'],
+                              ['sw', obj.x, obj.y + obj.height, 'nesw-resize'],
+                              ['se', obj.x + obj.width, obj.y + obj.height, 'nwse-resize'],
+                            ] as const
+                          ).map(([corner, hx, hy, cursor]) => (
+                            <rect
+                              key={corner}
+                              x={hx - handleSize / 2}
+                              y={hy - handleSize / 2}
+                              width={handleSize}
+                              height={handleSize}
+                              fill={PAPER_COLORS.paper}
+                              stroke={PAPER_COLORS.accent}
+                              strokeWidth={1.6 * invZ}
+                              style={{ cursor }}
+                              onPointerDown={(e) => handleResizePointerDown(e, obj, corner)}
+                            />
+                          ))}
                       </>
                     )}
 
                     {isSelected &&
+                      !shownMulti &&
                       obj.kind === 'connector' &&
                       (() => {
                         const cp = obj.props as unknown as ConnectorProps
@@ -2233,6 +2530,33 @@ export function WhiteboardEditor({
                   </g>
                 )
               })}
+
+              {/* Dashed box around a selection of several objects */}
+              {shownGroupBox && (
+                <rect
+                  className="wb-group-rect"
+                  x={shownGroupBox.x - 6 / zoom}
+                  y={shownGroupBox.y - 6 / zoom}
+                  width={shownGroupBox.width + 12 / zoom}
+                  height={shownGroupBox.height + 12 / zoom}
+                  rx={4 / zoom}
+                  strokeWidth={1.5 / zoom}
+                  strokeDasharray={`${6 / zoom} ${4 / zoom}`}
+                />
+              )}
+
+              {/* Area being dragged out to select the objects inside it */}
+              {marqueeRect && (
+                <rect
+                  className="wb-marquee-rect"
+                  x={marqueeRect.x}
+                  y={marqueeRect.y}
+                  width={marqueeRect.width}
+                  height={marqueeRect.height}
+                  strokeWidth={1.5 / zoom}
+                  strokeDasharray={`${5 / zoom} ${4 / zoom}`}
+                />
+              )}
 
               {/* Live in-progress connector drag preview */}
               {liveConnector &&

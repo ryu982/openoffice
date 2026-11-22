@@ -743,6 +743,13 @@ body,
   color: var(--wb-danger);
 }
 
+.wb-format-count {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wb-format-fg);
+}
+
 .wb-width-dot {
   display: block;
   border-radius: 999px;
@@ -762,6 +769,20 @@ body,
 
 .wb-selection-rect {
   fill: none;
+  stroke: var(--wb-selection);
+  pointer-events: none;
+}
+
+.wb-group-rect {
+  fill: none;
+  stroke: var(--wb-selection);
+  stroke-opacity: 0.7;
+  pointer-events: none;
+}
+
+.wb-marquee-rect {
+  fill: var(--wb-selection);
+  fill-opacity: 0.08;
   stroke: var(--wb-selection);
   pointer-events: none;
 }

@@ -33,6 +33,13 @@ function makeIcon(paths: ReactNode, defaultStroke = 1.8) {
 }
 
 export const SelectIcon = makeIcon(<path d="M5 3l13 6.5-5.5 1.8L10.5 17z" />)
+// Dashed selection area, left open at its lower right corner where a small pointer sits.
+export const AreaSelectIcon = makeIcon(
+  <>
+    <path d="M10 16H3V3h13v7" strokeDasharray="1.2 3" />
+    <path d="M12 12l8 4-3.4 1.1-1.2 3.4z" />
+  </>,
+)
 export const StickyIcon = makeIcon(
   <>
     <path d="M4 4h16v10l-6 6H4z" />

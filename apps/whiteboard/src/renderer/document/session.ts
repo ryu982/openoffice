@@ -500,6 +500,25 @@ export class WhiteboardSession implements WhiteboardAiHost {
     return true
   }
 
+  /**
+   * Applies editor ops as one user undo step, kept apart from AI steps. Objects the ops add
+   * become the selection.
+   */
+  applyEditorOps(ops: readonly Record<string, unknown>[]): boolean {
+    if (ops.length === 0) return false
+    const res = planBoardEdit(this.doc, ops, {
+      defaultPageId: this.activePageId,
+      mode: 'all_or_nothing',
+    })
+    if (!res.ok || !res.changed) return false
+    this.commitDocument(res.doc)
+    if (res.created.length > 0) {
+      this.selectedIds = [...res.created]
+      this.emit()
+    }
+    return true
+  }
+
   deleteSelected(): boolean {
     if (this.selectedIds.length === 0) return false
     const ops = this.selectedIds.map((id) => ({ op: 'delete', id }))
