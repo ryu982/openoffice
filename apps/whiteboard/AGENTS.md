@@ -35,7 +35,7 @@
 - **UI 크롬은 `@genoffice/ui` 토큰만 쓰고(`check:theme-colors`), 보드 용지·오브젝트·PNG·SVG·PDF·인쇄 출력은 앱 다크 테마와 무관하게 항상 밝은 색을 유지한다.**
 - **창구 이름은 `whiteboard:`로 시작한다.** 공용 `ai:*`·구독 창구는 여기서 등록하지 않는다.
 - **AI 끄기(`aiVisible(useAppChoice(window.aiOfficeEditorChoice))`)를 따른다.** AI가 꺼지면 AI 패널과 레일을 그리지 않는다.
-- **사용자가 한 편집은 `applyEditorOps`·`addObject`·`updateObject` 같은 사용자 단계로, AI 도구의 편집은 `applyOps`로 넣는다.** `applyOps`는 AI 단계로 기록되므로 사용자 편집을 그리로 넣으면 AI 차례 되돌리기(`undoBatches`)가 그 편집까지 되돌린다.
+- **사용자가 한 편집은 `applyEditorOps`·`addObject`·`updateObject`·`insertEditorImage` 같은 사용자 단계로, AI 도구의 편집은 `applyOps`·`insertImage`로 넣는다.** 이 둘은 AI 단계로 기록되므로 사용자 편집을 그리로 넣으면 AI 차례 되돌리기(`undoBatches`)가 그 편집까지 되돌린다.
 - **`useAutoSavePref`에는 늘 같은 객체를 넘긴다(`AUTO_SAVE_API`).** 렌더마다 새 객체를 넘기면 기본값 묻기와 다시 그리기가 끝없이 돈다.
 - 문구는 22개 언어 모두 채우고, 제품 이름은 `GenOffice`로 적는다.
 

@@ -653,7 +653,7 @@ export function WhiteboardEditor({
     setShapePopoverOpen(false)
     const picked = await window.whiteboardApi.core.pickImageFile()
     if (!picked.ok || !picked.bytes) return
-    const res = await session.insertImage({ bytes: picked.bytes, alt: picked.name })
+    const res = await session.insertEditorImage({ bytes: picked.bytes, alt: picked.name })
     if (!res.ok) onToast(res.error)
   }, [onToast, session])
 
@@ -810,7 +810,12 @@ export function WhiteboardEditor({
         if (ext === 'pdf') {
           await openPdfBytesForImport(buf, file.name)
         } else if (IMAGE_DROP_EXTS.has(ext)) {
-          const res = await session.insertImage({ bytes: buf, alt: file.name, x: pt.x, y: pt.y })
+          const res = await session.insertEditorImage({
+            bytes: buf,
+            alt: file.name,
+            x: pt.x,
+            y: pt.y,
+          })
           if (!res.ok) onToast(res.error)
         }
       }
