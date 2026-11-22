@@ -444,7 +444,19 @@ export class WhiteboardSession implements WhiteboardAiHost {
     return res
   }
 
+  /**
+   * Inserts an image for the AI tools as one AI step, undone with its turn by `undoBatches`.
+   * The user's own inserts go through `insertEditorImage`.
+   */
   async insertImage(input: InsertImageInput): Promise<InsertImageResult> {
+    return this.insertImageStep(input, { isAiStep: true })
+  }
+
+  /** Embeds the image and inserts its object as one undo step of the given kind. */
+  private insertImageStep(
+    input: InsertImageInput,
+    step: { isAiStep?: boolean },
+  ): InsertImageResult {
     try {
       const { resourceId, meta } = this.addImageResource(input.bytes)
       const maxW = 480
@@ -468,7 +480,7 @@ export class WhiteboardSession implements WhiteboardAiHost {
       if (!res.ok) {
         return { ok: false, error: res.failures?.[0]?.error?.message ?? 'failed to insert image' }
       }
-      this.commitDocument(res.doc, { isAiStep: true })
+      this.commitDocument(res.doc, step)
       return { ok: true, objectId: res.created[0]!, resourceId }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
@@ -517,6 +529,14 @@ export class WhiteboardSession implements WhiteboardAiHost {
       this.emit()
     }
     return true
+  }
+
+  /**
+   * Inserts an image the user picked or dropped as one user undo step, kept apart from AI steps
+   * so that undoing an AI turn never removes it.
+   */
+  async insertEditorImage(input: InsertImageInput): Promise<InsertImageResult> {
+    return this.insertImageStep(input, {})
   }
 
   deleteSelected(): boolean {

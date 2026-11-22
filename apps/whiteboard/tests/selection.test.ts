@@ -18,6 +18,14 @@ import {
 import { WhiteboardSession } from '../src/renderer/document/session'
 import { appStrings } from '../src/renderer/i18n/strings-app'
 
+const ONE_BY_ONE_PNG = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+  0x42, 0x60, 0x82,
+])
+
 function box(id: string, x: number, y: number, width: number, height: number): BoardObject {
   return {
     id,
@@ -219,6 +227,20 @@ describe('selection edits on a board', () => {
       session.applyEditorOps(moveSelectionOps(session.getDocument().objects, ['b'], 5, 0)),
     ).toBe(true)
     expect(await session.undoBatches(1)).toBe(false)
+    expect(objectOf(session, 'a')).toMatchObject({ x: 500 })
+    session.dispose()
+  })
+
+  it('keeps a user image insert after an AI turn from being undone with that turn', async () => {
+    ensureWhiteboardEngineSync()
+    const session = boardWithLinkedNotes()
+    await session.applyOps([{ op: 'update', id: 'a', x: 500 }])
+    const inserted = await session.insertEditorImage({ bytes: ONE_BY_ONE_PNG, alt: 'photo.png' })
+    if (!inserted.ok) throw new Error(inserted.error)
+    const board = structuredClone(session.getDocument())
+    expect(await session.undoBatches(1)).toBe(false)
+    expect(session.getDocument()).toEqual(board)
+    expect(objectOf(session, inserted.objectId)).toMatchObject({ kind: 'image' })
     expect(objectOf(session, 'a')).toMatchObject({ x: 500 })
     session.dispose()
   })
