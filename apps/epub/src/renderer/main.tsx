@@ -1,12 +1,12 @@
 import { createRoot } from 'react-dom/client'
 import { htmlDir, htmlLang, type Lang } from '@genoffice/i18n'
-import { installScreenTips } from '@genoffice/ui'
+import { applyAiPanelPrefs, installScreenTips } from '@genoffice/ui'
 import '@genoffice/ui/tokens.css'
 import '@genoffice/ui/screentip.css'
 import '@genoffice/ui/dropdown.css'
 import App from './App'
 import { LocaleProvider } from './i18n/locale'
-import type { UiTheme } from '../shared/ipc'
+import type { EpubAiApi, UiTheme } from '../shared/ipc'
 import './styles.css'
 
 installScreenTips()
@@ -25,6 +25,12 @@ void (async () => {
   document.documentElement.dir = htmlDir(lang)
   applyTheme(theme)
   window.epubApi.onThemeChanged(applyTheme)
+  const aiApi = window.epubApi as Partial<EpubAiApi> | undefined
+  await aiApi
+    ?.getAiPanelPrefs?.()
+    .then(applyAiPanelPrefs)
+    .catch(() => {})
+  aiApi?.onAiPanelPrefsChanged?.(applyAiPanelPrefs)
   createRoot(document.getElementById('root')!).render(
     <LocaleProvider initial={lang}>
       <App />

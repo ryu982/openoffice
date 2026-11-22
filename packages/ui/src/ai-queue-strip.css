@@ -14,9 +14,10 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 8px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--color-bg-subtle);
+  border-radius: var(--radius-16) var(--radius-16) 0 0;
+  background: var(--ai-card-bg);
 }
 
 .ai-queue-strip .ai-queue-head {

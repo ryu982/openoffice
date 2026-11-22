@@ -41,6 +41,8 @@ Přihlášení se uloží v tomto počítači a zašifruje prostředky, které o
 - AI nemůže soubory na Disku měnit, mazat ani sdílet.
 - Jakmile konverzace obsahuje obsah přečtený z Disku, přestane používat vyhledávání na webu, vyhledávání obrázků, čtení stránek z webové adresy a vkládání obrázků z webové adresy. Chcete-li je znovu použít, začněte novou konverzaci.
 
+Čtení Disku Google pro aktuální chat můžete přepínat také tlačítkem **Připojené služby** vedle pole AI. Při vypnutí funkcí AI zůstává Disk Google v **Nastavení ▸ Integrace** pro otevírání a ukládání souborů a skryje se pouze přepínač AI.
+
 ## Odpojení
 
 V **Nastavení ▸ Integrace** klikněte na **Odpojit**. GenOffice odstraní přihlášení z tohoto počítače a požádá Google o odebrání přístupu. Kopie souborů v tomto počítači zůstanou. Přístup můžete kdykoli odebrat také v účtu Google v části **Připojení třetích stran**.

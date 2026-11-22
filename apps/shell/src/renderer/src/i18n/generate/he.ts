@@ -6,6 +6,7 @@ export const he = {
   kindSlides: 'מצגת (PPT)',
   kindHtml: 'דף אינטרנט (HTML)',
   kindMindmap: 'מפת חשיבה',
+  kindWhiteboard: "לוח לבן",
   materialsLabel: 'חומרים',
   addMaterials: 'הוספת קבצים…',
   removeMaterial: 'הסרה',

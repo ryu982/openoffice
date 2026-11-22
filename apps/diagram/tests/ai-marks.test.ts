@@ -150,6 +150,46 @@ describe('the marks in the frame', () => {
     expect(live.size).toBe(0)
   })
 
+  it('marks a deleted cell again once it is back, after draw.io is done, drawing once', () => {
+    const { host, live, marks } = frame()
+    const there = new Set(['a', 'b'])
+    host.stateOf = (id) => (there.has(id) ? { id } : null)
+    const tasks: Array<() => void> = []
+    host.later = (task) => void tasks.push(task)
+    marks.set(
+      [
+        { page: 'p1', id: 'a' },
+        { page: 'p1', id: 'b' },
+      ],
+      FILL,
+      LINE,
+    )
+    expect([...live.keys()].sort()).toEqual(['a', 'b'])
+
+    // the person deletes a: draw.io lets go of its highlight
+    there.delete('a')
+    live.delete('a')
+    marks.redrawSoon()
+    marks.redrawSoon()
+    // nothing is drawn inside draw.io's event, and two changes draw once
+    expect(tasks).toHaveLength(1)
+    tasks.shift()!()
+    expect([...live.keys()]).toEqual(['b'])
+
+    // undo brings it back, and its mark with it
+    there.add('a')
+    marks.redrawSoon()
+    tasks.shift()!()
+    expect([...live.keys()].sort()).toEqual(['a', 'b'])
+    expect(host.draw).toHaveBeenCalledTimes(5)
+
+    // without marks, a change does nothing at all
+    marks.set([], FILL, LINE)
+    marks.redrawSoon()
+    expect(tasks).toHaveLength(0)
+    expect(live.size).toBe(0)
+  })
+
   it('draws nothing without colours it can read', () => {
     const { live, marks } = frame()
     marks.set([{ page: 'p1', id: 'a' }], '', '')

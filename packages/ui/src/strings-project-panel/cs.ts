@@ -45,6 +45,7 @@ export const cs = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Myšlenková mapa',
+  editorWhiteboard: 'Tabule',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Domů',

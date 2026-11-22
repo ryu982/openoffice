@@ -41,6 +41,8 @@ Log masuk disimpan pada PC ini dengan penyulitan yang disediakan sistem pengenda
 - AI tidak boleh mengubah, memadam atau berkongsi fail Drive.
 - Sebaik sahaja kandungan yang dibaca daripada Drive ada dalam sembang, sembang itu berhenti menggunakan carian web, carian imej, pembacaan halaman melalui alamat web dan sisipan gambar melalui alamat web. Mulakan sembang baharu untuk menggunakannya semula.
 
+Anda juga boleh mematikan atau menghidupkan bacaan Google Drive bagi sembang semasa melalui butang **Perkhidmatan bersambung**. Apabila ciri AI dimatikan, Google Drive kekal kelihatan di **Tetapan ▸ Integrasi** untuk membuka dan menyimpan fail dengan hanya suis AI disembunyikan.
+
 ## Memutuskan sambungan
 
 Klik **Putuskan sambungan** dalam **Tetapan ▸ Integrasi**. GenOffice membuang log masuk daripada PC ini dan meminta Google menarik balik aksesnya. Salinan fail yang sudah ada pada PC ini kekal. Anda juga boleh membuang akses pada bila-bila masa di **Sambungan pihak ketiga** dalam Akaun Google anda.

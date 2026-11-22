@@ -6,11 +6,38 @@
  * external-change refusal exactly as before. The sidecar, the gateway save
  * and the overwrite dialog are stubs; the files on disk are real.
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import {
+  constants,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return {
+    ...actual,
+    default: { ...actual, readFile },
+    readFile,
+    copyFile: vi.fn(actual.copyFile),
+  }
+})
+const actualCopyFile = (
+  await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+).copyFile
 import { IPC_CHANNELS } from '../src/shared/ipc-channels'
 
 type Handler = (event: { sender: { id: number } }, ...args: unknown[]) => unknown
@@ -200,12 +227,43 @@ beforeEach(() => {
   userDataDirRef.value = mkdtempSync(join(tmpdir(), 'genoffice-sheets-conflict-user-'))
   showMessageBox.mockReset()
   showMessageBox.mockResolvedValue({ response: 0 })
+  vi.mocked(copyFile).mockReset()
 })
 
 afterEach(() => {
   setOpenPathProbe(null)
   rmSync(dir, { recursive: true, force: true })
   rmSync(userDataDirRef.value, { recursive: true, force: true })
+  Object.defineProperty(process, 'platform', hostPlatform)
+})
+
+/**
+ * The mount these tests describe (gvfs SMB, WebDAV) is a POSIX one: on Windows
+ * the copy helpers keep to CopyFileW and never reach the fallback under test.
+ * `node:path` and the rest settled at import, so only the platform checks made
+ * at call time see the change.
+ */
+const hostPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
+const usePosixMount = () =>
+  Object.defineProperty(process, 'platform', { ...hostPlatform, value: 'linux' })
+
+describe('opening a workbook', () => {
+  it('does not read the file again for the recorded disk state: the snapshot digest gives it', async () => {
+    const path = writeWorkbook()
+    const original = readFileSync(path)
+    fileReads.mockClear()
+    const opened = await openWorkbook(path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(0)
+
+    setOpenPathProbe((p) => p === path)
+    // another pane's write: the recorded state is there, and a quiet save stands down
+    writeFileSync(path, externalBytes)
+    expect(await saveWorkbook(opened.sessionId, { quiet: true })).toEqual({ canceled: true })
+    // the file as it was read, written again: the recorded state is that content's
+    writeFileSync(path, original)
+    expect((await saveWorkbook(opened.sessionId)).canceled).toBe(false)
+    expect(showMessageBox).not.toHaveBeenCalled()
+  })
 })
 
 describe('split-view save guard (sheets)', () => {
@@ -319,5 +377,37 @@ describe('split-view save guard (sheets)', () => {
     })
     expect(showMessageBox).toHaveBeenCalledTimes(1)
     expect(readFileSync(path)).toEqual(externalBytes)
+  })
+})
+
+/**
+ * The platform copy into `folder` as libuv runs it on a mount that refuses
+ * fchmod (gvfs SMB, WebDAV): the destination is created or truncated, then
+ * removed, then the error is thrown. Copies elsewhere work as usual.
+ */
+function failPlatformCopyIn(folder: string, code: string): void {
+  vi.mocked(copyFile).mockImplementation(async (source, target, mode) => {
+    const path = String(target)
+    if (dirname(path) !== folder) return actualCopyFile(source, target, mode)
+    if (((mode ?? 0) & constants.COPYFILE_EXCL) !== 0 && existsSync(path))
+      throw Object.assign(new Error('EEXIST: injected'), { code: 'EEXIST' })
+    writeFileSync(path, '')
+    rmSync(path)
+    throw Object.assign(new Error(`${code}: injected`), { code })
+  })
+}
+
+describe('a document folder where the platform copy fails', () => {
+  beforeEach(usePosixMount)
+
+  it('still saves the workbook and leaves nothing else beside it', async () => {
+    const path = writeWorkbook()
+    const opened = await openWorkbook(path)
+    failPlatformCopyIn(dir, 'ENOTSUP')
+
+    const result = await saveWorkbook(opened.sessionId)
+    expect(result.canceled).toBe(false)
+    expect(readFileSync(path, 'utf8')).toBe('original-bytes-saved')
+    expect(readdirSync(dir)).toEqual(['book.xlsx'])
   })
 })

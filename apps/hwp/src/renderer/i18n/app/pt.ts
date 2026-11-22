@@ -22,6 +22,8 @@ export const pt = {
     'Nada foi salvo: a cópia que seria gravada, ao ser relida, não correspondia ao documento na tela. Tente "Salvar como" para gravar um novo arquivo.',
   saveVerifyHint:
     'O original não foi alterado. Em Salvar como, escolha HWPX ou use Exportar como PDF.',
+  saveVerifyPages: 'Na tela: {before} páginas → ao reler: {after} páginas',
+  saveAsHwpx: 'Salvar como HWPX…',
   saveProtected:
     'Não salvo: este documento é protegido por senha, e salvá-lo aqui o gravaria sem a senha.',
   backupKept: 'Salvo. A versão anterior foi mantida como {name}.',

@@ -69,6 +69,8 @@ Le impostazioni possono registrare GenOffice come gestore dei file .docx / .xlsx
 
 Sotto **Server HTTP locale** l'app può anche eseguire il server per conto proprio — un interruttore di attivazione e una porta — e **Avanzato** aggiunge l'URL di controllo integrità e il file di registro, invece di lasciarlo all'assistente. Ascolta solo su localhost.
 
+In cima a **Impostazioni ▸ Integrazioni**, **Servizi connessi** raggruppa Google Drive, Notion, Canva, Vault Obsidian, Korean Law MCP, kordoc MCP e i server MCP personalizzati sopra la sezione degli agenti di codice.
+
 ## Riepilogo rapido dei comandi
 
 | Comando             | Cosa fa                      |

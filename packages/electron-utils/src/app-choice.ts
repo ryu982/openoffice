@@ -24,6 +24,7 @@ export const EDITOR_ITEM_IDS = [
   'html',
   'mindmap',
   'diagram',
+  'whiteboard',
   'hwp',
   'epub',
 ] as const

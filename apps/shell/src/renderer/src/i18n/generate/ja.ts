@@ -6,6 +6,7 @@ export const ja = {
   kindSlides: 'プレゼンテーション（PPT）',
   kindHtml: 'ウェブページ（HTML）',
   kindMindmap: 'マインドマップ',
+  kindWhiteboard: "ホワイトボード",
   materialsLabel: '資料',
   addMaterials: 'ファイルを追加…',
   removeMaterial: '外す',

@@ -72,6 +72,13 @@ export const OFFICE_TYPES: readonly OfficeType[] = [
     progId: 'IeumOffice.Diagram',
     item: 'diagram',
   },
+  {
+    ext: 'whiteboard',
+    uti: 'io.github.pblsketch.ieumoffice.whiteboard',
+    mime: 'application/vnd.ieumoffice.whiteboard+zip',
+    progId: 'IeumOffice.Whiteboard',
+    item: 'whiteboard',
+  },
 ]
 
 const LINUX_DESKTOP_ID = 'ieumoffice.desktop'

@@ -33,6 +33,7 @@ export const HOME_KIND_LABEL: Record<HomeKind, { title: StringKey; sub?: string 
   html: { title: 'newHtml', sub: '.html' },
   xmind: { title: 'newMindmap', sub: '.xmind' },
   drawio: { title: 'newDiagram', sub: '.drawio' },
+  whiteboard: { title: 'newWhiteboard', sub: '.whiteboard' },
   hwp: { title: 'newHwp', sub: '.hwp' },
   pdf: { title: 'newPdf', sub: '.pdf' },
   pdfTools: { title: 'pdfToolsCard' },

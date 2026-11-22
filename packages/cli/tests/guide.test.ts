@@ -125,7 +125,15 @@ describe('op catalogs', () => {
     const fp = await run(['guide', '--fingerprint', '--json'])
     expect(fp.code).toBe(0)
     const { fingerprints } = fp.json().detail
-    expect(Object.keys(fingerprints)).toEqual(['slides', 'docs', 'sheets', 'hwp', 'diagram', 'map'])
+    expect(Object.keys(fingerprints)).toEqual([
+      'slides',
+      'docs',
+      'sheets',
+      'hwp',
+      'diagram',
+      'map',
+      'whiteboard',
+    ])
     for (const v of Object.values(fingerprints)) expect(v).toMatch(/^[0-9a-f]{12}$/)
     const typo = await run(['guide', 'sheet', '--fingerprint', '--json'])
     expect(typo.code).toBe(1)

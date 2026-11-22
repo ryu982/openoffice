@@ -69,6 +69,8 @@ Met de instellingen kun je GenOffice registreren als verwerker van .docx / .xlsx
 
 Onder **Lokale HTTP-server** kan de app de server ook zelf draaien — een inschakelschakelaar en een poort —, terwijl **Geavanceerd** de URL voor de statuscontrole en het logbestand toevoegt, in plaats van hem over te laten aan de assistent. Hij luistert alleen op localhost.
 
+Bovenaan **Instellingen ▸ Integraties** groepeert **Verbonden services** Google Drive, Notion, Canva, Obsidian-kluis, Korean Law MCP, kordoc MCP en eigen MCP-servers boven het gedeelte voor codeeragents.
+
 ## Commandoregel in één oogopslag
 
 | Opdracht               | Wat het doet               |

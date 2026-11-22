@@ -5,8 +5,10 @@ import { mcpServersText, type McpServersStringKey } from '../i18n/strings-mcp-se
 import { useI18n } from '../locale'
 import { McpServerAddForm } from './McpServerForm'
 import { McpServerItem } from './McpServerItem'
+import { ConnectorPresets } from './ConnectorPresets'
 import { mcpServersApi } from './mcp-model'
 import { subscribeMcpOpenServer } from './mcp-open-request'
+import { connectorsText } from '../i18n/strings-connectors'
 import './mcp-servers.css'
 
 export type McpText = (key: McpServersStringKey, params?: Params) => string
@@ -71,23 +73,42 @@ export function McpServersCard() {
   if (!api) return null
 
   const servers = view?.servers ?? []
+  const customServers = servers.filter(
+    (server) => server.presetId == null && server.kind !== 'vault',
+  )
   const names = servers.map((server) => server.name)
 
   return (
     <section className="set-intg-part mcp-card" data-testid="mcp-servers">
-      <h4 className="set-pane-subtitle">{s('title')}</h4>
+      <h4 className="set-pane-subtitle">{connectorsText(lang, 'sectionTitle')}</h4>
       <div className="set-field-desc set-intg-who" data-testid="mcp-servers-who">
         {s('direction')}
       </div>
       <div className="set-field-desc set-intg-lead">{s('desc')}</div>
       {view && !view.sealing && <div className="mcp-note set-field-desc">{s('noSealing')}</div>}
 
+      {view && (
+        <ConnectorPresets
+          lang={lang}
+          locale={dateLocale}
+          s={s}
+          servers={servers}
+          names={names}
+          openIds={openIds}
+          requested={requested}
+          onOpen={setOpen}
+          onChanged={() => void refresh()}
+        />
+      )}
+
+      <h5 className="set-intg-sub">{connectorsText(lang, 'customTitle')}</h5>
+
       {view &&
-        (servers.length === 0 ? (
+        (customServers.length === 0 ? (
           <div className="set-field-desc mcp-empty">{s('empty')}</div>
         ) : (
           <ul className="mcp-list">
-            {servers.map((server) => (
+            {customServers.map((server) => (
               <McpServerItem
                 key={server.id}
                 s={s}

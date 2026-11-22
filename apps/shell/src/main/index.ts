@@ -22,6 +22,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  net,
   screen,
   safeStorage,
   powerMonitor,
@@ -67,6 +68,8 @@ import menuEpubIcon1x from './assets/menu-epub.png?asset'
 import menuEpubIcon2x from './assets/menu-epub@2x.png?asset'
 import menuDiagramIcon1x from './assets/menu-diagram.png?asset'
 import menuDiagramIcon2x from './assets/menu-diagram@2x.png?asset'
+import menuWhiteboardIcon1x from './assets/menu-whiteboard.png?asset'
+import menuWhiteboardIcon2x from './assets/menu-whiteboard@2x.png?asset'
 import menuHomeIcon1x from './assets/menu-home.png?asset'
 import menuHomeIcon2x from './assets/menu-home@2x.png?asset'
 import { createI18n, isLang, normalizeLang, setUiLang, type Lang } from '@genoffice/i18n'
@@ -166,10 +169,12 @@ import {
   attachableMaxBytes,
   diagramPictureExtOfName,
   parseFileToText,
+  stopParseSidecar,
 } from '@genoffice/file-parse'
 import { createDocList } from './doc-picker/doc-list'
 import { resolveDocAsker } from './doc-picker/doc-asker'
 import { createDocPicker } from './doc-picker/doc-picker-window'
+import { createConnectorPicker } from './connector-picker/picker-window'
 import { handleDroppedFiles, type DroppedFilesDeps } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
 
@@ -233,6 +238,7 @@ import { createSlidesControl } from './mcp/slides-bridge'
 import { createSheetsControl, installSheetsBridge } from './mcp/sheets-bridge'
 import { createOpenDocumentsControl, createOpenTargetResolver } from './mcp/open-documents-bridge'
 import { createDiagramControl } from './mcp/diagram-bridge'
+import { createWhiteboardControl } from './mcp/whiteboard-bridge'
 import { sanitizeFileBase } from './mcp/tools/document-tools'
 import { createFileViaCli } from './mcp/headless-cli'
 import {
@@ -414,6 +420,25 @@ import {
 } from '../../../diagram/src/main/mcp-queries'
 import { exportDiagramHeadless } from '../../../diagram/src/main/headless-main'
 import type { DiagramMenuCommand } from '../../../diagram/src/shared/ipc'
+import {
+  configureWhiteboardRuntime,
+  excalidrawOpenRefusal,
+  exportWhiteboardHeadless,
+  setWhiteboardFileSavedHook,
+  setWhiteboardProvisionalTitleHook,
+  whiteboardApplyOps,
+  whiteboardNotifyFileRenamed,
+  whiteboardOpenRefusal,
+  whiteboardReadPage,
+  whiteboardReadText,
+  whiteboardSaveToPath,
+  whiteboardSendMenuCommand,
+  whiteboardTriggerExport,
+  whiteboardTriggerPrint,
+  whiteboardTriggerSave,
+} from '../../../whiteboard/src/main/whiteboard-main'
+import { openWhiteboardChecked } from './whiteboard-open-gate'
+import type { WhiteboardMenuCommand } from '../../../whiteboard/src/shared/ipc'
 import type {
   AutoSaveDefault,
   AuthorNameSetting,
@@ -480,6 +505,7 @@ import {
   HWP_RE,
   EPUB_RE,
   DIAGRAM_RE,
+  WHITEBOARD_RE,
   PDF_RE,
   PPTX_RE,
   TEXT_RE,
@@ -560,6 +586,7 @@ import {
 import { PROJECT_UNAVAILABLE, ProjectFolderTools, type DownloadAsk } from './projects/project-tools'
 import { runHeadlessExport, type HeadlessExporters } from './headless-export'
 import { TabManager, canonicalPath, type DetachedTab } from './tab-manager'
+import { shellWindowTitle } from './window-title'
 import { tabMenuTemplate, type TabMenuActions, isProgramFile } from './tab-menu'
 import { runTabDocumentAction, type TabDocumentAction } from './tab-document-actions'
 import { duplicateDocumentFile } from './tab-duplicate'
@@ -785,6 +812,9 @@ const EPUB_OUT = app.isPackaged
 const DIAGRAM_OUT = app.isPackaged
   ? join(process.resourcesPath, 'modules', 'diagram')
   : join(APPS_ROOT, 'diagram', 'out')
+const WHITEBOARD_OUT = app.isPackaged
+  ? join(process.resourcesPath, 'modules', 'whiteboard')
+  : join(APPS_ROOT, 'whiteboard', 'out')
 const SIDECAR_BIN = app.isPackaged
   ? join(process.resourcesPath, 'native', SIDECAR_EXE)
   : join(APPS_ROOT, 'sheets', 'native', 'xlsx-engine', 'target', 'release', SIDECAR_EXE)
@@ -947,6 +977,13 @@ configureDiagramRuntime({
   drawioDir: join(DIAGRAM_OUT, 'drawio'),
   bridgeFile: join(DIAGRAM_OUT, 'bridge', 'bridge.js'),
   packaged: app.isPackaged,
+  newDocumentDir: (id) => newDocumentFolderFor(id),
+  writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
+})
+configureWhiteboardRuntime({
+  preloadPath: join(WHITEBOARD_OUT, 'preload', 'index.js'),
+  rendererUrl: process.env.WHITEBOARD_RENDERER_URL,
+  rendererFile: join(WHITEBOARD_OUT, 'renderer', 'index.html'),
   newDocumentDir: (id) => newDocumentFolderFor(id),
   writeNewDocument: (id, fileName, bytes) => writeProjectNewDocument(id, fileName, bytes),
 })
@@ -1234,6 +1271,7 @@ const tMain = createI18n({
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名思维导图',
     untitledDiagram: '未命名图表',
+    untitledWhiteboard: '未命名白板',
     untitledHwp: '未命名 HWP',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
@@ -1241,6 +1279,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '思维导图',
     menuNewDiagram: '图表',
+    menuNewWhiteboard: '白板',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: '导入 PDF…',
@@ -1282,6 +1321,7 @@ const tMain = createI18n({
     filterHwp: 'HWP 文档 (HWP, HWPX)',
     filterEpub: '电子书 (EPUB)',
     filterDiagram: '图表 (draw.io, VSDX)',
+    filterWhiteboard: '白板 (.whiteboard, Excalidraw)',
     menuFind: '查找…',
     menuReplace: '替换…',
     menuTranslateBook: '翻译图书…',
@@ -1400,6 +1440,7 @@ const tMain = createI18n({
     untitledHtml: 'Untitled HTML',
     untitledMindmap: 'Untitled Mind Map',
     untitledDiagram: 'Untitled Diagram',
+    untitledWhiteboard: 'Untitled Whiteboard',
     untitledHwp: 'Untitled HWP',
     untitledPdf: 'Untitled PDF',
     menuNewSlide: 'AI Slides',
@@ -1407,6 +1448,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mind Map',
     menuNewDiagram: 'Diagram',
+    menuNewWhiteboard: 'Whiteboard',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Import PDF…',
@@ -1444,6 +1486,7 @@ const tMain = createI18n({
     filterHwp: 'HWP Documents (HWP, HWPX)',
     filterEpub: 'E-books (EPUB)',
     filterDiagram: 'Diagrams (draw.io, VSDX)',
+    filterWhiteboard: 'Whiteboards (.whiteboard, Excalidraw)',
     menuFind: 'Find…',
     menuReplace: 'Replace…',
     menuTranslateBook: 'Translate Book…',
@@ -1566,6 +1609,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML chưa có tiêu đề',
     untitledMindmap: 'Sơ đồ tư duy chưa có tiêu đề',
     untitledDiagram: 'Sơ đồ chưa có tiêu đề',
+    untitledWhiteboard: 'Bảng trắng chưa đặt tên',
     untitledHwp: 'HWP chưa có tiêu đề',
     untitledPdf: 'PDF chưa có tiêu đề',
     menuNewSlide: 'AI Slides',
@@ -1573,6 +1617,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Sơ đồ tư duy',
     menuNewDiagram: 'Sơ đồ',
+    menuNewWhiteboard: 'Bảng trắng',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Nhập PDF…',
@@ -1614,6 +1659,7 @@ const tMain = createI18n({
     filterHwp: 'Tài liệu HWP (HWP, HWPX)',
     filterEpub: 'Sách điện tử (EPUB)',
     filterDiagram: 'Sơ đồ (draw.io, VSDX)',
+    filterWhiteboard: 'Bảng trắng (.whiteboard, Excalidraw)',
     menuFind: 'Tìm…',
     menuReplace: 'Thay thế…',
     menuTranslateBook: 'Dịch sách…',
@@ -1741,6 +1787,7 @@ const tMain = createI18n({
     untitledHtml: 'Başlıksız HTML',
     untitledMindmap: 'Başlıksız Zihin Haritası',
     untitledDiagram: 'Başlıksız Diyagram',
+    untitledWhiteboard: 'Adsız Beyaz Tahta',
     untitledHwp: 'Başlıksız HWP',
     untitledPdf: 'Başlıksız PDF',
     menuNewSlide: 'AI Sunumlar',
@@ -1748,6 +1795,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Zihin Haritası',
     menuNewDiagram: 'Diyagram',
+    menuNewWhiteboard: 'Beyaz Tahta',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF İçe Aktar…',
@@ -1785,6 +1833,7 @@ const tMain = createI18n({
     filterHwp: 'HWP belgeleri (HWP, HWPX)',
     filterEpub: 'E-kitaplar (EPUB)',
     filterDiagram: 'Diyagramlar (draw.io, VSDX)',
+    filterWhiteboard: 'Beyaz Tahtalar (.whiteboard, Excalidraw)',
     menuFind: 'Bul…',
     menuReplace: 'Değiştir…',
     menuTranslateBook: 'Kitabı çevir…',
@@ -1907,6 +1956,7 @@ const tMain = createI18n({
     untitledHtml: '無題の HTML',
     untitledMindmap: '無題のマインドマップ',
     untitledDiagram: '無題のダイアグラム',
+    untitledWhiteboard: '無題のホワイトボード',
     untitledHwp: '無題の HWP',
     untitledPdf: '無題の PDF',
     menuNewSlide: 'AI Slides',
@@ -1914,6 +1964,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'マインドマップ',
     menuNewDiagram: 'ダイアグラム',
+    menuNewWhiteboard: 'ホワイトボード',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF を取り込む…',
@@ -1955,6 +2006,7 @@ const tMain = createI18n({
     filterHwp: 'HWP ドキュメント (HWP, HWPX)',
     filterEpub: '電子書籍 (EPUB)',
     filterDiagram: 'ダイアグラム (draw.io, VSDX)',
+    filterWhiteboard: 'ホワイトボード (.whiteboard, Excalidraw)',
     menuFind: '検索…',
     menuReplace: '置換…',
     menuTranslateBook: '本を翻訳…',
@@ -2079,6 +2131,7 @@ const tMain = createI18n({
     untitledHtml: '제목 없는 HTML',
     untitledMindmap: '제목 없는 마인드맵',
     untitledDiagram: '제목 없는 다이어그램',
+    untitledWhiteboard: '제목 없는 화이트보드',
     untitledHwp: '제목 없는 한글 문서',
     untitledPdf: '제목 없는 PDF',
     menuNewSlide: 'AI Slides',
@@ -2086,6 +2139,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '마인드맵',
     menuNewDiagram: '다이어그램',
+    menuNewWhiteboard: '화이트보드',
     menuNewHwp: 'AI 한글',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF 가져오기…',
@@ -2127,6 +2181,7 @@ const tMain = createI18n({
     filterHwp: '한글 문서 (HWP, HWPX)',
     filterEpub: '전자책 (EPUB)',
     filterDiagram: '다이어그램 (draw.io, VSDX)',
+    filterWhiteboard: '화이트보드 (.whiteboard, Excalidraw)',
     menuFind: '찾기…',
     menuReplace: '바꾸기…',
     menuTranslateBook: '책 번역…',
@@ -2249,6 +2304,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML sans titre',
     untitledMindmap: 'Carte mentale sans titre',
     untitledDiagram: 'Diagramme sans titre',
+    untitledWhiteboard: 'Tableau blanc sans titre',
     untitledHwp: 'HWP sans titre',
     untitledPdf: 'PDF sans titre',
     menuNewSlide: 'AI Slides',
@@ -2256,6 +2312,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Carte mentale',
     menuNewDiagram: 'Diagramme',
+    menuNewWhiteboard: 'Tableau blanc',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importer un PDF…',
@@ -2297,6 +2354,7 @@ const tMain = createI18n({
     filterHwp: 'Documents HWP (HWP, HWPX)',
     filterEpub: 'Livres numériques (EPUB)',
     filterDiagram: 'Diagrammes (draw.io, VSDX)',
+    filterWhiteboard: 'Tableaux blancs (.whiteboard, Excalidraw)',
     menuFind: 'Rechercher…',
     menuReplace: 'Remplacer…',
     menuTranslateBook: 'Traduire le livre…',
@@ -2422,6 +2480,7 @@ const tMain = createI18n({
     untitledHtml: 'Unbenanntes HTML',
     untitledMindmap: 'Unbenannte Mindmap',
     untitledDiagram: 'Unbenanntes Diagramm',
+    untitledWhiteboard: 'Unbenanntes Whiteboard',
     untitledHwp: 'Unbenanntes HWP',
     untitledPdf: 'Unbenanntes PDF',
     menuNewSlide: 'AI Slides',
@@ -2429,6 +2488,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
     menuNewDiagram: 'Diagramm',
+    menuNewWhiteboard: 'Whiteboard',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF importieren…',
@@ -2470,6 +2530,7 @@ const tMain = createI18n({
     filterHwp: 'HWP-Dokumente (HWP, HWPX)',
     filterEpub: 'E-Books (EPUB)',
     filterDiagram: 'Diagramme (draw.io, VSDX)',
+    filterWhiteboard: 'Whiteboards (.whiteboard, Excalidraw)',
     menuFind: 'Suchen…',
     menuReplace: 'Ersetzen…',
     menuTranslateBook: 'Buch übersetzen…',
@@ -2595,6 +2656,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML sin título',
     untitledMindmap: 'Mapa mental sin título',
     untitledDiagram: 'Diagrama sin título',
+    untitledWhiteboard: 'Pizarra sin título',
     untitledHwp: 'HWP sin título',
     untitledPdf: 'PDF sin título',
     menuNewSlide: 'AI Slides',
@@ -2602,6 +2664,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
     menuNewDiagram: 'Diagrama',
+    menuNewWhiteboard: 'Pizarra',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importar PDF…',
@@ -2643,6 +2706,7 @@ const tMain = createI18n({
     filterHwp: 'Documentos HWP (HWP, HWPX)',
     filterEpub: 'Libros electrónicos (EPUB)',
     filterDiagram: 'Diagramas (draw.io, VSDX)',
+    filterWhiteboard: 'Pizarras (.whiteboard, Excalidraw)',
     menuFind: 'Buscar…',
     menuReplace: 'Reemplazar…',
     menuTranslateBook: 'Traducir libro…',
@@ -2767,6 +2831,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML ไม่มีชื่อ',
     untitledMindmap: 'แผนที่ความคิดไม่มีชื่อ',
     untitledDiagram: 'ไดอะแกรมไม่มีชื่อ',
+    untitledWhiteboard: 'ไวท์บอร์ดไม่มีชื่อ',
     untitledHwp: 'HWP ไม่มีชื่อ',
     untitledPdf: 'PDF ไม่มีชื่อ',
     menuNewSlide: 'AI Slides',
@@ -2774,6 +2839,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'แผนที่ความคิด',
     menuNewDiagram: 'ไดอะแกรม',
+    menuNewWhiteboard: 'ไวท์บอร์ด',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'นำเข้า PDF…',
@@ -2815,6 +2881,7 @@ const tMain = createI18n({
     filterHwp: 'เอกสาร HWP (HWP, HWPX)',
     filterEpub: 'หนังสืออิเล็กทรอนิกส์ (EPUB)',
     filterDiagram: 'ไดอะแกรม (draw.io, VSDX)',
+    filterWhiteboard: 'ไวท์บอร์ด (.whiteboard, Excalidraw)',
     menuFind: 'ค้นหา…',
     menuReplace: 'แทนที่…',
     menuTranslateBook: 'แปลหนังสือ…',
@@ -2935,6 +3002,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML tanpa judul',
     untitledMindmap: 'Peta pikiran tanpa judul',
     untitledDiagram: 'Diagram tanpa judul',
+    untitledWhiteboard: 'Papan Tulis Tanpa Judul',
     untitledHwp: 'HWP tanpa judul',
     untitledPdf: 'PDF tanpa judul',
     menuNewSlide: 'AI Slides',
@@ -2942,6 +3010,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta pikiran',
     menuNewDiagram: 'Diagram',
+    menuNewWhiteboard: 'Papan Tulis',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Impor PDF…',
@@ -2983,6 +3052,7 @@ const tMain = createI18n({
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
     filterEpub: 'Buku elektronik (EPUB)',
     filterDiagram: 'Diagram (draw.io, VSDX)',
+    filterWhiteboard: 'Papan Tulis (.whiteboard, Excalidraw)',
     menuFind: 'Cari…',
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemahkan buku…',
@@ -3107,6 +3177,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML без названия',
     untitledMindmap: 'Интеллект-карта без названия',
     untitledDiagram: 'Диаграмма без названия',
+    untitledWhiteboard: 'Доска без названия',
     untitledHwp: 'HWP без названия',
     untitledPdf: 'PDF без названия',
     menuNewSlide: 'AI Slides',
@@ -3114,6 +3185,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Интеллект-карта',
     menuNewDiagram: 'Диаграмма',
+    menuNewWhiteboard: 'Доска',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Импортировать PDF…',
@@ -3155,6 +3227,7 @@ const tMain = createI18n({
     filterHwp: 'Документы HWP (HWP, HWPX)',
     filterEpub: 'Электронные книги (EPUB)',
     filterDiagram: 'Диаграммы (draw.io, VSDX)',
+    filterWhiteboard: 'Доски (.whiteboard, Excalidraw)',
     menuFind: 'Найти…',
     menuReplace: 'Заменить…',
     menuTranslateBook: 'Перевести книгу…',
@@ -3278,6 +3351,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML بدون عنوان',
     untitledMindmap: 'خريطة ذهنية بدون عنوان',
     untitledDiagram: 'مخطط بدون عنوان',
+    untitledWhiteboard: 'لوح أبيض بدون عنوان',
     untitledHwp: 'HWP بدون عنوان',
     untitledPdf: 'PDF بدون عنوان',
     menuNewSlide: 'AI Slides',
@@ -3285,6 +3359,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'خريطة ذهنية',
     menuNewDiagram: 'مخطط',
+    menuNewWhiteboard: 'لوح أبيض',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'استيراد PDF…',
@@ -3326,6 +3401,7 @@ const tMain = createI18n({
     filterHwp: 'مستندات HWP (HWP, HWPX)',
     filterEpub: 'كتب إلكترونية (EPUB)',
     filterDiagram: 'مخططات (draw.io, VSDX)',
+    filterWhiteboard: 'ألواح بيضاء (.whiteboard, Excalidraw)',
     menuFind: 'بحث…',
     menuReplace: 'استبدال…',
     menuTranslateBook: 'ترجمة الكتاب…',
@@ -3446,6 +3522,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML sem título',
     untitledMindmap: 'Mapa mental sem título',
     untitledDiagram: 'Diagrama sem título',
+    untitledWhiteboard: 'Quadro branco sem título',
     untitledHwp: 'HWP sem título',
     untitledPdf: 'PDF sem título',
     menuNewSlide: 'AI Slides',
@@ -3453,6 +3530,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa mental',
     menuNewDiagram: 'Diagrama',
+    menuNewWhiteboard: 'Quadro branco',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importar PDF…',
@@ -3494,6 +3572,7 @@ const tMain = createI18n({
     filterHwp: 'Documentos HWP (HWP, HWPX)',
     filterEpub: 'Livros digitais (EPUB)',
     filterDiagram: 'Diagramas (draw.io, VSDX)',
+    filterWhiteboard: 'Quadros brancos (.whiteboard, Excalidraw)',
     menuFind: 'Localizar…',
     menuReplace: 'Substituir…',
     menuTranslateBook: 'Traduzir livro…',
@@ -3618,6 +3697,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML senza titolo',
     untitledMindmap: 'Mappa mentale senza titolo',
     untitledDiagram: 'Diagramma senza titolo',
+    untitledWhiteboard: 'Lavagna senza titolo',
     untitledHwp: 'HWP senza titolo',
     untitledPdf: 'PDF senza titolo',
     menuNewSlide: 'AI Slides',
@@ -3625,6 +3705,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mappa mentale',
     menuNewDiagram: 'Diagramma',
+    menuNewWhiteboard: 'Lavagna',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importa PDF…',
@@ -3666,6 +3747,7 @@ const tMain = createI18n({
     filterHwp: 'Documenti HWP (HWP, HWPX)',
     filterEpub: 'Libri digitali (EPUB)',
     filterDiagram: 'Diagrammi (draw.io, VSDX)',
+    filterWhiteboard: 'Lavagne (.whiteboard, Excalidraw)',
     menuFind: 'Trova…',
     menuReplace: 'Sostituisci…',
     menuTranslateBook: 'Traduci libro…',
@@ -3790,6 +3872,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML bez tytułu',
     untitledMindmap: 'Mapa myśli bez tytułu',
     untitledDiagram: 'Diagram bez tytułu',
+    untitledWhiteboard: 'Tablica bez tytułu',
     untitledHwp: 'HWP bez tytułu',
     untitledPdf: 'PDF bez tytułu',
     menuNewSlide: 'AI Slides',
@@ -3797,6 +3880,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mapa myśli',
     menuNewDiagram: 'Diagram',
+    menuNewWhiteboard: 'Tablica',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importuj PDF…',
@@ -3838,6 +3922,7 @@ const tMain = createI18n({
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
     filterEpub: 'E-booki (EPUB)',
     filterDiagram: 'Diagramy (draw.io, VSDX)',
+    filterWhiteboard: 'Tablice (.whiteboard, Excalidraw)',
     menuFind: 'Znajdź…',
     menuReplace: 'Zamień…',
     menuTranslateBook: 'Przetłumacz książkę…',
@@ -3961,6 +4046,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML bez názvu',
     untitledMindmap: 'Myšlenková mapa bez názvu',
     untitledDiagram: 'Diagram bez názvu',
+    untitledWhiteboard: 'Tabule bez názvu',
     untitledHwp: 'HWP bez názvu',
     untitledPdf: 'PDF bez názvu',
     menuNewSlide: 'AI Slides',
@@ -3968,6 +4054,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Myšlenková mapa',
     menuNewDiagram: 'Diagram',
+    menuNewWhiteboard: 'Tabule',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Importovat PDF…',
@@ -4009,6 +4096,7 @@ const tMain = createI18n({
     filterHwp: 'Dokumenty HWP (HWP, HWPX)',
     filterEpub: 'E-knihy (EPUB)',
     filterDiagram: 'Diagramy (draw.io, VSDX)',
+    filterWhiteboard: 'Tabule (.whiteboard, Excalidraw)',
     menuFind: 'Najít…',
     menuReplace: 'Nahradit…',
     menuTranslateBook: 'Přeložit knihu…',
@@ -4131,6 +4219,7 @@ const tMain = createI18n({
     untitledHtml: 'Naamloos HTML',
     untitledMindmap: 'Naamloze mindmap',
     untitledDiagram: 'Naamloos diagram',
+    untitledWhiteboard: 'Naamloos whiteboard',
     untitledHwp: 'Naamloos HWP',
     untitledPdf: 'Naamloze PDF',
     menuNewSlide: 'AI Slides',
@@ -4138,6 +4227,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Mindmap',
     menuNewDiagram: 'Diagram',
+    menuNewWhiteboard: 'Whiteboard',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF importeren…',
@@ -4179,6 +4269,7 @@ const tMain = createI18n({
     filterHwp: 'HWP-documenten (HWP, HWPX)',
     filterEpub: 'E-boeken (EPUB)',
     filterDiagram: 'Diagrammen (draw.io, VSDX)',
+    filterWhiteboard: 'Whiteboards (.whiteboard, Excalidraw)',
     menuFind: 'Zoeken…',
     menuReplace: 'Vervangen…',
     menuTranslateBook: 'Boek vertalen…',
@@ -4304,6 +4395,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML tanpa tajuk',
     untitledMindmap: 'Peta minda tanpa tajuk',
     untitledDiagram: 'Rajah tanpa tajuk',
+    untitledWhiteboard: 'Papan Putih Tanpa Tajuk',
     untitledHwp: 'HWP tanpa tajuk',
     untitledPdf: 'PDF tanpa tajuk',
     menuNewSlide: 'AI Slides',
@@ -4311,6 +4403,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'Peta minda',
     menuNewDiagram: 'Rajah',
+    menuNewWhiteboard: 'Papan Putih',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'Import PDF…',
@@ -4352,6 +4445,7 @@ const tMain = createI18n({
     filterHwp: 'Dokumen HWP (HWP, HWPX)',
     filterEpub: 'Buku elektronik (EPUB)',
     filterDiagram: 'Rajah (draw.io, VSDX)',
+    filterWhiteboard: 'Papan Putih (.whiteboard, Excalidraw)',
     menuFind: 'Cari…',
     menuReplace: 'Ganti…',
     menuTranslateBook: 'Terjemah buku…',
@@ -4474,6 +4568,7 @@ const tMain = createI18n({
     untitledHtml: 'HTML ללא שם',
     untitledMindmap: 'מפת חשיבה ללא שם',
     untitledDiagram: 'תרשים ללא שם',
+    untitledWhiteboard: 'לוח לבן ללא כותרת',
     untitledHwp: 'HWP ללא שם',
     untitledPdf: 'PDF ללא שם',
     menuNewSlide: 'AI Slides',
@@ -4481,6 +4576,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'מפת חשיבה',
     menuNewDiagram: 'תרשים',
+    menuNewWhiteboard: 'לוח לבן',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'ייבוא PDF…',
@@ -4522,6 +4618,7 @@ const tMain = createI18n({
     filterHwp: 'מסמכי HWP (HWP, HWPX)',
     filterEpub: 'ספרים אלקטרוניים (EPUB)',
     filterDiagram: 'תרשימים (draw.io, VSDX)',
+    filterWhiteboard: 'לוחות לבנים (.whiteboard, Excalidraw)',
     menuFind: 'חיפוש…',
     menuReplace: 'החלפה…',
     menuTranslateBook: 'תרגום הספר…',
@@ -4643,6 +4740,7 @@ const tMain = createI18n({
     untitledHtml: 'अनाम HTML',
     untitledMindmap: 'अनाम माइंड मैप',
     untitledDiagram: 'अनाम आरेख',
+    untitledWhiteboard: 'शीर्षकहीन व्हाइटबोर्ड',
     untitledHwp: 'अनाम HWP',
     untitledPdf: 'अनाम PDF',
     menuNewSlide: 'AI Slides',
@@ -4650,6 +4748,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: 'माइंड मैप',
     menuNewDiagram: 'आरेख',
+    menuNewWhiteboard: 'व्हाइटबोर्ड',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: 'PDF आयात करें…',
@@ -4691,6 +4790,7 @@ const tMain = createI18n({
     filterHwp: 'HWP दस्तावेज़ (HWP, HWPX)',
     filterEpub: 'ई-बुक (EPUB)',
     filterDiagram: 'आरेख (draw.io, VSDX)',
+    filterWhiteboard: 'व्हाइटबोर्ड (.whiteboard, Excalidraw)',
     menuFind: 'खोजें…',
     menuReplace: 'बदलें…',
     menuTranslateBook: 'पुस्तक का अनुवाद करें…',
@@ -4814,6 +4914,7 @@ const tMain = createI18n({
     untitledHtml: '未命名 HTML',
     untitledMindmap: '未命名心智圖',
     untitledDiagram: '未命名圖表',
+    untitledWhiteboard: '未命名白板',
     untitledHwp: '未命名 HWP',
     untitledPdf: '未命名 PDF',
     menuNewSlide: 'AI Slides',
@@ -4821,6 +4922,7 @@ const tMain = createI18n({
     menuNewHtml: 'AI HTML',
     menuNewMindmap: '心智圖',
     menuNewDiagram: '圖表',
+    menuNewWhiteboard: '白板',
     menuNewHwp: 'AI HWP',
     menuNewPdf: 'AI PDF',
     menuImportPdf: '匯入 PDF…',
@@ -4862,6 +4964,7 @@ const tMain = createI18n({
     filterHwp: 'HWP 文件 (HWP, HWPX)',
     filterEpub: '電子書 (EPUB)',
     filterDiagram: '圖表 (draw.io, VSDX)',
+    filterWhiteboard: '白板 (.whiteboard, Excalidraw)',
     menuFind: '尋找…',
     menuReplace: '取代…',
     menuTranslateBook: '翻譯書籍…',
@@ -5076,6 +5179,7 @@ function afterFileMoved(oldPath: string, newPath: string): void {
     else if (t.kind === 'hwp') hwpFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'epub') epubFileRenamed(t.webContents, oldPath, newPath)
     else if (t.kind === 'diagram') diagramFileRenamed(t.webContents, oldPath, newPath)
+    else if (t.kind === 'whiteboard') whiteboardNotifyFileRenamed(t.webContents, newPath)
     else if (t.kind === 'pdf') pdfFileRenamed(t.webContents, oldPath, newPath)
   }
 }
@@ -5165,6 +5269,7 @@ const SEARCH_EXT_FAMILY: Record<string, readonly string[]> = {
   hwp: ['hwp', 'hwpx'],
   xmind: ['xmind', 'mm'],
   drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+  whiteboard: ['whiteboard', 'excalidraw', 'excalidraw.png', 'excalidraw.svg'],
 }
 
 /** one recursive watcher per tree root; follows the save-folder setting and the added folders */
@@ -5311,6 +5416,9 @@ function applyMenuFor(kind: TabKind): void {
       break
     case 'diagram':
       buildDiagramMenu()
+      break
+    case 'whiteboard':
+      buildWhiteboardMenu()
       break
     default:
       buildHomeMenu()
@@ -5461,6 +5569,14 @@ function refreshTitleBarOverlay(): void {
   shellWindow.setTitleBarOverlay(tabStripOverlay(nativeTheme.shouldUseDarkColors, currentUiScale))
 }
 
+/** name the active document in the taskbar and Alt+Tab (shellWindowTitle) */
+function syncShellWindowTitle(): void {
+  const win = shellWindow
+  if (!win || win.isDestroyed() || !tabManager) return
+  const title = shellWindowTitle(tabManager.list(), productName(currentLang()))
+  if (win.getTitle() !== title) win.setTitle(title)
+}
+
 function createShellWindow(): void {
   // Last session's geometry, when a display can still show it (issue #2049).
   // A saved position on an unplugged monitor falls back to the default
@@ -5508,6 +5624,9 @@ function createShellWindow(): void {
   // reopens maximized instead of as a screen-sized ordinary window
   if (restored?.maximized) win.maximize()
   shellWindow = win
+  // the title follows the active tab (syncShellWindowTitle); the renderer's
+  // <title> and its language-change rewrite must not put the product name back
+  win.on('page-title-updated', (event) => event.preventDefault())
   nativeTheme.on('updated', refreshTitleBarOverlay)
   win.once('closed', () => nativeTheme.off('updated', refreshTitleBarOverlay))
   // dragging the window by the tab strip's blank (draggable) area produces no
@@ -5528,6 +5647,7 @@ function createShellWindow(): void {
     win,
     () => {
       win.webContents.send(TABS_CHANNELS.changed, manager.list())
+      syncShellWindowTitle()
       publishOpenDocumentsIfOwner([...manager.openFilePaths(), ...detachedFilePaths()])
       refreshDocumentLinkMenu()
       pushHwpRecoveryTitles(manager)
@@ -5553,7 +5673,9 @@ function createShellWindow(): void {
                     ? tm('untitledHwp')
                     : kind === 'diagram'
                       ? tm('untitledDiagram')
-                      : tm('untitledSheet'),
+                      : kind === 'whiteboard'
+                        ? tm('untitledWhiteboard')
+                        : tm('untitledSheet'),
     // the tab strip is interface chrome, so its height follows the scale
     () => currentUiScale,
     // every split change: remember it, re-role the pane views, tell the strip
@@ -5788,6 +5910,16 @@ function createShellWindow(): void {
     manager.setTabTitleFor(wc.id, title)
     detachedSetTitleFor(wc.id, title)
   })
+  setWhiteboardFileSavedHook((wc, path) => {
+    manager.setTabFileFor(wc.id, path)
+    detachedSetFileFor(wc.id, path)
+    recordRecentFile(path)
+    applyPendingDir(wc.id, path)
+  })
+  setWhiteboardProvisionalTitleHook((wcId, title) => {
+    manager.setTabTitleFor(wcId, title)
+    detachedSetTitleFor(wcId, title)
+  })
   // A redacted copy becomes this tab's document; the source still exists.
   setPdfRedactionSavedHook((wc, path) => {
     manager.setTabFileFor(wc.id, path)
@@ -5916,6 +6048,10 @@ const OPEN_DIALOG_EXTENSIONS = [
   'drawio.svg',
   'drawio.png',
   'vsdx',
+  'whiteboard',
+  'excalidraw',
+  'excalidraw.png',
+  'excalidraw.svg',
 ]
 
 function notifyUnsupportedFile(filePath: string): void {
@@ -6200,6 +6336,26 @@ function routeDocumentPath(filePath: string): boolean {
       warn: (message, path) => showAppWarning(message, basename(path)),
     })
   }
+  if (WHITEBOARD_RE.test(filePath)) {
+    const existing = tabManager.findWhiteboardTabByPath(filePath)
+    if (existing) {
+      recordRecentFile(filePath)
+      tabManager.activateTab(existing)
+      return true
+    }
+    return openWhiteboardChecked(filePath, {
+      refusal: (path) => whiteboardOpenRefusal(path),
+      excalidrawRefusal: (path) => excalidrawOpenRefusal(path),
+      open: (path) => {
+        if (!tabManager) return
+        const opened = tabManager.findWhiteboardTabByPath(path)
+        recordRecentFile(path)
+        if (opened) tabManager.activateTab(opened)
+        else tabManager.openWhiteboardTab(path)
+      },
+      warn: (message, path) => showAppWarning(message, basename(path)),
+    })
+  }
   notifyUnsupportedFile(filePath)
   return false
 }
@@ -6478,6 +6634,14 @@ function newMindmapTab(): void {
 function newDiagramTab(): void {
   try {
     bindPendingDir('diagram', tabManager?.openDiagramTab())
+  } catch (err) {
+    surfaceNewTabError(err)
+  }
+}
+
+function newWhiteboardTab(): void {
+  try {
+    bindPendingDir('whiteboard', tabManager?.openWhiteboardTab())
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -7054,6 +7218,10 @@ function registerHomeIpc(): void {
           name: tm('filterDiagram'),
           extensions: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
         },
+        {
+          name: tm('filterWhiteboard'),
+          extensions: ['whiteboard', 'excalidraw', 'excalidraw.png', 'excalidraw.svg'],
+        },
       ],
       properties: ['openFile', 'multiSelections'],
     })
@@ -7093,6 +7261,11 @@ function registerHomeIpc(): void {
   ipcMain.handle(HOME_CHANNELS.newDiagram, (_event, opts?: NewFileOpts) => {
     rememberPendingDir('diagram', opts)
     newDiagramTab()
+  })
+
+  ipcMain.handle(HOME_CHANNELS.newWhiteboard, (_event, opts?: NewFileOpts) => {
+    rememberPendingDir('whiteboard', opts)
+    newWhiteboardTab()
   })
 
   ipcMain.handle(HOME_CHANNELS.newHwp, (_event, opts?: NewFileOpts) => {
@@ -7201,6 +7374,7 @@ function registerHomeIpc(): void {
     installDockMenu()
     installBackToHomeItems()
     notifyQuickLookLangOrThemeChanged()
+    syncShellWindowTitle()
     for (const wc of webContents.getAllWebContents()) wc.send('app:language-changed', lang)
   })
 
@@ -7685,6 +7859,7 @@ interface MenuIconSet {
   hwp: NativeImage
   epub: NativeImage
   diagram: NativeImage
+  whiteboard: NativeImage
   home: NativeImage
 }
 let menuIconCache: MenuIconSet | null = null
@@ -7700,6 +7875,7 @@ function menuIcons(): MenuIconSet {
     hwp: loadMenuIcon(menuHwpIcon1x, menuHwpIcon2x),
     epub: loadMenuIcon(menuEpubIcon1x, menuEpubIcon2x),
     diagram: loadMenuIcon(menuDiagramIcon1x, menuDiagramIcon2x),
+    whiteboard: loadMenuIcon(menuWhiteboardIcon1x, menuWhiteboardIcon2x),
     home: loadMenuIcon(menuHomeIcon1x, menuHomeIcon2x),
   }
   return menuIconCache
@@ -7717,6 +7893,7 @@ const TAB_MENU_ICON: Record<TabKind, keyof MenuIconSet> = {
   hwp: 'hwp',
   epub: 'epub',
   diagram: 'diagram',
+  whiteboard: 'whiteboard',
   help: 'home',
 }
 
@@ -7736,6 +7913,7 @@ const NEW_KIND_MENU: Record<
   html: { label: 'menuNewHtml', icon: 'html', open: () => newHtmlTab() },
   xmind: { label: 'menuNewMindmap', icon: 'mindmap', open: () => newMindmapTab() },
   drawio: { label: 'menuNewDiagram', icon: 'diagram', open: () => newDiagramTab() },
+  whiteboard: { label: 'menuNewWhiteboard', icon: 'whiteboard', open: () => newWhiteboardTab() },
   hwp: { label: 'menuNewHwp', icon: 'hwp', open: () => newHwpTab() },
   pdf: { label: 'menuNewPdf', icon: 'pdf', open: () => void newPdfTab() },
 }
@@ -8225,6 +8403,10 @@ function activeMindmapTarget() {
 }
 function activeDiagramTarget() {
   return activeEditorTarget('diagram', () => tabManager?.activeDiagramTab())
+}
+
+function activeWhiteboardTarget() {
+  return activeEditorTarget('whiteboard', () => tabManager?.activeWhiteboardTab())
 }
 
 /** the document a kind's File menu acts on, for the provenance entries (spec 8.2, 9) */
@@ -9252,6 +9434,137 @@ function buildDiagramMenu(): void {
         diagramKey(labels.zoomIn, 'CmdOrCtrl+=', 'zoom-in'),
         diagramKey(labels.zoomOut, 'CmdOrCtrl+-', 'zoom-out'),
         { label: tm('menuZoomFit'), click: toDiagram('zoom-fit') },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: labels.fullscreen },
+      ],
+    },
+    windowMenuTemplate(process.platform, appMenuLabels(currentLang())),
+    {
+      role: 'help',
+      label: tm('menuHelp'),
+      submenu: [
+        { label: tm('thirdPartyNotices'), click: () => void openThirdPartyNotices() },
+        { type: 'separator' },
+        ...helpCheckUpdatesItems(appMenuLabels(currentLang())),
+        aboutMenuItem(appMenuLabels(currentLang())),
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+function buildWhiteboardMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const labels = appMenuLabels(currentLang())
+  const toBoard = (command: WhiteboardMenuCommand) => () => {
+    const tab = activeWhiteboardTarget()
+    if (tab) whiteboardSendMenuCommand(tab.webContents, command)
+  }
+  const exportItem = (
+    label: string,
+    format: 'png' | 'svg' | 'pdf',
+  ): MenuItemConstructorOptions => ({
+    label,
+    click: () => {
+      const tab = activeWhiteboardTarget()
+      if (tab) whiteboardTriggerExport(tab.webContents, format)
+    },
+  })
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [macAppMenuTemplate(appMenuLabels(currentLang()))] : []),
+    {
+      label: tm('menuFile'),
+      submenu: [
+        {
+          label: tm('menuSectionNew'),
+          accelerator: 'CmdOrCtrl+N',
+          click: () => newWhiteboardTab(),
+        },
+        {
+          label: tm('menuOpen'),
+          accelerator: 'CmdOrCtrl+O',
+          click: () => void openFileViaDialog(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('backToHome'),
+          accelerator: 'Shift+CmdOrCtrl+H',
+          click: () => tabManager?.openHomeTab(),
+        },
+        { type: 'separator' },
+        {
+          label: tm('menuSave'),
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            const tab = activeWhiteboardTarget()
+            if (tab) void whiteboardTriggerSave(tab.webContents, 'save')
+          },
+        },
+        {
+          label: tm('menuSaveAs'),
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            const tab = activeWhiteboardTarget()
+            if (tab) void whiteboardTriggerSave(tab.webContents, 'save-as')
+          },
+        },
+        { type: 'separator' },
+        exportItem(tm('menuExportMapImage'), 'png'),
+        exportItem(tm('menuExportSvg'), 'svg'),
+        exportItem(tm('menuExportPdf'), 'pdf'),
+        { type: 'separator' },
+        {
+          label: tm('menuPrint'),
+          accelerator: 'CmdOrCtrl+P',
+          click: () => {
+            const tab = activeWhiteboardTarget()
+            if (tab) whiteboardTriggerPrint(tab.webContents)
+          },
+        },
+        { type: 'separator' },
+        { label: tm('menuClose'), accelerator: 'CmdOrCtrl+W', click: () => closeFocusedEditor() },
+      ],
+    },
+    {
+      label: labels.edit,
+      submenu: [
+        {
+          label: labels.undo,
+          accelerator: 'CmdOrCtrl+Z',
+          registerAccelerator: false,
+          click: toBoard('undo'),
+        },
+        {
+          label: labels.redo,
+          accelerator: isMac ? 'Shift+Cmd+Z' : 'Ctrl+Y',
+          registerAccelerator: false,
+          click: toBoard('redo'),
+        },
+        { type: 'separator' },
+        { role: 'cut', label: labels.cut },
+        { role: 'copy', label: labels.copy },
+        { role: 'paste', label: labels.paste },
+        { role: 'delete', label: labels.delete },
+        { type: 'separator' },
+        { role: 'selectAll', label: labels.selectAll },
+      ],
+    },
+    {
+      label: labels.view,
+      submenu: [
+        {
+          label: labels.zoomIn,
+          accelerator: 'CmdOrCtrl+=',
+          registerAccelerator: false,
+          click: toBoard('zoom-in'),
+        },
+        {
+          label: labels.zoomOut,
+          accelerator: 'CmdOrCtrl+-',
+          registerAccelerator: false,
+          click: toBoard('zoom-out'),
+        },
+        { label: tm('menuZoomFit'), click: toBoard('zoom-fit') },
         { type: 'separator' },
         { role: 'togglefullscreen', label: labels.fullscreen },
       ],
@@ -10336,6 +10649,7 @@ const headlessExporters: HeadlessExporters = {
   html: (input, outPath, format) => exportHtmlHeadless(input, outPath, format),
   hwp: (input, outPath) => exportHwpPdfHeadless(input, outPath),
   diagram: exportDiagramHeadless,
+  whiteboard: (_input, _outPath, _format, request) => exportWhiteboardHeadless(request),
 }
 
 /**
@@ -10392,6 +10706,7 @@ app.whenReady().then(async () => {
     epub: join(EPUB_OUT, 'renderer'),
     // the diagram tab's own partition gets the same root from the editor (diagram-session.ts)
     diagram: join(DIAGRAM_OUT, 'renderer'),
+    whiteboard: join(WHITEBOARD_OUT, 'renderer'),
     // the manual shares the shell's own renderer bundle (help mode)
     help: join(__dirname, '../renderer'),
   })
@@ -10566,6 +10881,29 @@ app.whenReady().then(async () => {
     }),
     lang: () => currentLang(),
     theme: () => currentTheme(),
+  })
+  // Direct attachment picker for Obsidian vault notes, Notion pages, and Canva designs.
+  createConnectorPicker({
+    hub: mcpHub,
+    openIntegrations: () => {
+      const win = shellWindow
+      if (!win || win.isDestroyed()) return
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+      tabManager?.openHomeTab()
+      win.webContents.send(HOME_CHANNELS.openSettings, { section: 'integrations' })
+    },
+    lang: () => currentLang(),
+    theme: () => currentTheme(),
+    tempDir: app.getPath('temp'),
+    isUnsaved: (absPath) => fileHasUnsavedChanges(absPath),
+    openGeneratedPath: (path) => openGeneratedDocument(path),
+    fetchUrlBytes: async (url, signal) => {
+      const res = await net.fetch(url, signal ? { signal } : undefined)
+      if (!res.ok) throw new Error(`Download failed (${res.status})`)
+      return new Uint8Array(await res.arrayBuffer())
+    },
   })
   // Which open documents have unsaved changes, for the attachment readers of the
   // editor mains and the knowledge base: a file being edited is not read as
@@ -10777,6 +11115,13 @@ app.whenReady().then(async () => {
         save: epubSaveToPath,
       },
       diagram: { read: diagramReadText, save: diagramSaveToPath },
+      whiteboard: {
+        read: whiteboardReadText,
+        save: async (contents, filePath) => {
+          const ok = await whiteboardSaveToPath(contents, filePath)
+          if (!ok) throw new Error('whiteboard save failed')
+        },
+      },
     }),
     // the headless create_*/read_* tools delegate to the bundled genoffice CLI
     // (the same engines, no second implementation); it runs on the app's own
@@ -10815,6 +11160,26 @@ app.whenReady().then(async () => {
       },
       readPage: diagramReadPage,
       applyOps: diagramApplyOps,
+    }),
+    whiteboardControl: createWhiteboardControl({
+      list: async () => {
+        const tabs = tabManager ? await tabManager.openDocuments() : []
+        return [...tabs, ...(await detachedOpenDocuments())]
+      },
+      webContentsFor: (tabId) => liveDocumentContents(tabId),
+      isDetached: (tabId) => isDetachedTabId(tabId),
+      activate: (tabId) => {
+        if (!activateDetached(tabId)) tabManager?.activateTab(tabId)
+      },
+      revealWindow: (tabId) => {
+        if (!isDetachedTabId(tabId)) revealShellWindow()
+      },
+      readPage: (contents, page) => whiteboardReadPage(contents, page),
+      applyOps: (contents, payload) =>
+        whiteboardApplyOps(contents, payload.ops ?? [], {
+          ...(payload.template ? { template: payload.template } : {}),
+          ...(payload.defaultPageId ? { defaultPageId: payload.defaultPageId } : {}),
+        }),
     }),
     logFilePath: join(app.getPath('userData'), 'mcp-log.txt'),
   })
@@ -11072,6 +11437,7 @@ function releaseAppResources(): void {
     // the settings file is not writable now; the list order is only a convenience
   }
   fileIndexer?.stop()
+  stopParseSidecar()
   fileIndexStore?.close()
   for (const watcher of folderWatchers.values()) watcher.close()
   controlServer?.close()
@@ -11086,6 +11452,10 @@ function releaseAppResources(): void {
 
 // app.exit() and process.exit() skip before-quit / will-quit (the headless
 // export ends that way, and so does an exit on a fatal error); 'exit' is the
-// one event every such way out still emits, so no subscription CLI outlives
+// one event every such way out still emits, so no child process outlives
 // the app. A process killed outright runs nothing: the next start cleans up.
-process.on('exit', () => shutdownSubscriptionChildren())
+process.on('exit', () => {
+  fileIndexer?.stop()
+  stopParseSidecar()
+  shutdownSubscriptionChildren()
+})

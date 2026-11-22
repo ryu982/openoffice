@@ -53,6 +53,7 @@ export const EDITOR_ITEM_TAB_KIND: Readonly<Record<EditorItemId, TabKind | null>
   html: 'html',
   mindmap: 'mindmap',
   diagram: 'diagram',
+  whiteboard: 'whiteboard',
   hwp: 'hwp',
   epub: 'epub',
 }
@@ -68,6 +69,7 @@ export const EDITOR_ITEM_HOME_KIND: Readonly<Record<EditorItemId, HomeKind | nul
   html: 'html',
   mindmap: 'xmind',
   diagram: 'drawio',
+  whiteboard: 'whiteboard',
   hwp: 'hwp',
   epub: null,
 }

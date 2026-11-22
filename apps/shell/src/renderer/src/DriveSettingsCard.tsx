@@ -11,7 +11,7 @@ import './drive.css'
  * read the picked files, disconnect (decisions 0033, 0085). Nothing shows in
  * a build without a Google client.
  */
-export function DriveSettingsCard() {
+export function DriveSettingsCard({ aiOn = true }: { aiOn?: boolean } = {}) {
   const { lang } = useI18n()
   const t = (key: DriveStringKey, params?: Record<string, string>) => driveUiText(lang, key, params)
   const state = useDriveState()
@@ -108,17 +108,19 @@ export function DriveSettingsCard() {
         </>
       )}
 
-      <label className="set-drive-toggle">
-        <input
-          type="checkbox"
-          checked={state.aiAccess}
-          onChange={(e) => void api.setAiAccess(e.target.checked)}
-        />
-        <span>
-          <span className="set-drive-toggle-title">{t('driveAiAccess')}</span>
-          <span className="set-field-desc">{t('driveAiAccessDesc')}</span>
-        </span>
-      </label>
+      {aiOn && (
+        <label className="set-drive-toggle">
+          <input
+            type="checkbox"
+            checked={state.aiAccess}
+            onChange={(e) => void api.setAiAccess(e.target.checked)}
+          />
+          <span>
+            <span className="set-drive-toggle-title">{t('driveAiAccess')}</span>
+            <span className="set-field-desc">{t('driveAiAccessDesc')}</span>
+          </span>
+        </label>
+      )}
       <div className="set-field-desc">{t('drivePrivacy')}</div>
     </section>
   )

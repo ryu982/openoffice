@@ -3,8 +3,10 @@ import { copyFile, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { atomicWriteFile } from '../atomic-write'
 import {
+  MCP_PRESET_IDS,
   permissionOf,
   type McpInstructions,
+  type McpPresetId,
   type McpServerKind,
   type McpServersView,
   type McpServerRecordView,
@@ -12,8 +14,10 @@ import {
   type McpToolDefinition,
   type McpToolEntry,
   type McpTransport,
+  type McpVaultEntry,
 } from '../../shared/mcp-servers-api'
 import { launchReviewNeeded } from './fingerprint'
+import { matchPresetOfServer } from './presets'
 import {
   openServerSecrets,
   sealServerSecrets,
@@ -53,6 +57,8 @@ export interface McpServerConfig {
   id: string
   name: string
   kind: McpServerKind
+  /** preset id when registered from the curated catalog (matched again on read) */
+  presetId: McpPresetId | null
   enabled: boolean
   keepResultsInside: boolean
   // remote
@@ -70,7 +76,9 @@ export interface McpServerConfig {
   approvedLaunch: string | null
   /** fingerprint of the resolved plan the person allowed (`planFingerprint`), or null */
   approvedPlan: string | null
-  // both
+  // vault (built-in Obsidian connector)
+  vaults: McpVaultEntry[]
+  // common
   instructions: McpInstructions | null
   pendingInstructions: string | null
   tools: Record<string, McpToolEntry>
@@ -92,6 +100,8 @@ export function emptyMcpServersFile(): McpServersFile {
 export interface NewMcpServerInput {
   name: string
   kind: McpServerKind
+  presetId?: McpPresetId | null
+  keepResultsInside?: boolean
   url?: string
   transport?: McpTransport
   headers?: Record<string, string>
@@ -99,29 +109,34 @@ export interface NewMcpServerInput {
   command?: string
   args?: string[]
   env?: Record<string, string>
+  vaults?: McpVaultEntry[]
 }
 
 /**
- * A server as first registered (4.7): on, keeping results inside, no tools
- * yet, and a local launch not approved until the person presses "allow".
+ * A server as first registered (4.7): on, keeping results inside by default,
+ * no tools yet, and a local launch not approved until the person presses "allow".
  */
 export function newMcpServerConfig(input: NewMcpServerInput): McpServerConfig {
+  const remote = input.kind === 'remote'
   const local = input.kind === 'local'
+  const vault = input.kind === 'vault'
   return {
     id: randomUUID(),
     name: input.name,
     kind: input.kind,
+    presetId: input.presetId ?? null,
     enabled: true,
-    keepResultsInside: true,
-    url: local ? '' : (input.url ?? ''),
-    transport: local ? 'auto' : (input.transport ?? 'auto'),
-    headers: local ? {} : { ...input.headers },
-    oauth: local || !input.oauth ? null : { ...input.oauth },
+    keepResultsInside: input.keepResultsInside !== false,
+    url: remote ? (input.url ?? '') : '',
+    transport: remote ? (input.transport ?? 'auto') : 'auto',
+    headers: remote ? { ...input.headers } : {},
+    oauth: remote && input.oauth ? { ...input.oauth } : null,
     command: local ? (input.command ?? '') : '',
     args: local ? [...(input.args ?? [])] : [],
     env: local ? { ...input.env } : {},
     approvedLaunch: null,
     approvedPlan: null,
+    vaults: vault ? (input.vaults ?? []).map((v) => ({ ...v })) : [],
     instructions: null,
     pendingInstructions: null,
     tools: {},
@@ -170,10 +185,32 @@ function instructionsOf(v: unknown): McpInstructions | null {
   return { approved: str(v.approved), text: v.text }
 }
 
+function presetIdOf(v: unknown): McpPresetId | null {
+  return typeof v === 'string' && (MCP_PRESET_IDS as readonly string[]).includes(v)
+    ? (v as McpPresetId)
+    : null
+}
+
+function vaultEntriesOf(v: unknown): McpVaultEntry[] {
+  if (!Array.isArray(v)) return []
+  const out: McpVaultEntry[] = []
+  const ids = new Set<string>()
+  for (const item of v) {
+    if (!isRecord(item)) continue
+    const id = str(item.id) || randomUUID()
+    const name = str(item.name).trim()
+    const path = str(item.path).trim()
+    if (!name || !path || ids.has(id)) continue
+    ids.add(id)
+    out.push({ id, name, path, enabled: item.enabled !== false })
+  }
+  return out
+}
+
 function serverOf(v: unknown): McpServerConfig | null {
   if (!isRecord(v)) return null
   const kind: McpServerKind =
-    v.kind === 'local' || v.kind === 'remote'
+    v.kind === 'local' || v.kind === 'remote' || v.kind === 'vault'
       ? v.kind
       : typeof v.command === 'string'
         ? 'local'
@@ -181,6 +218,7 @@ function serverOf(v: unknown): McpServerConfig | null {
   const server = newMcpServerConfig({
     name: str(v.name),
     kind,
+    presetId: presetIdOf(v.presetId),
     url: str(v.url),
     transport: v.transport === 'sse' ? 'sse' : 'auto',
     headers: stringRecord(v.headers),
@@ -194,6 +232,7 @@ function serverOf(v: unknown): McpServerConfig | null {
     command: str(v.command),
     args: strings(v.args),
     env: stringRecord(v.env),
+    vaults: kind === 'vault' ? vaultEntriesOf(v.vaults) : [],
   })
   const tools = Object.fromEntries(
     (isRecord(v.tools) ? Object.entries(v.tools) : [])
@@ -237,19 +276,24 @@ export function serializeMcpServersFile(file: McpServersFile): string {
       id: s.id,
       name: s.name,
       kind: s.kind,
+      ...(s.presetId ? { presetId: s.presetId } : {}),
       enabled: s.enabled,
       keepResultsInside: s.keepResultsInside,
     }
     const byKind =
       s.kind === 'remote'
         ? { url: s.url, transport: s.transport, headers: s.headers, oauth: s.oauth }
-        : {
-            command: s.command,
-            args: s.args,
-            env: s.env,
-            approvedLaunch: s.approvedLaunch,
-            approvedPlan: s.approvedPlan,
-          }
+        : s.kind === 'local'
+          ? {
+              command: s.command,
+              args: s.args,
+              env: s.env,
+              approvedLaunch: s.approvedLaunch,
+              approvedPlan: s.approvedPlan,
+            }
+          : {
+              vaults: s.vaults,
+            }
     return {
       ...common,
       ...byKind,
@@ -329,6 +373,7 @@ export function createMcpServersStore(filePath: string, codec: McpSecretCodec): 
       id: server.id,
       name: server.name,
       kind: server.kind,
+      presetId: matchPresetOfServer(server),
       enabled: server.enabled,
       keepResultsInside: server.keepResultsInside,
       url: server.url,
@@ -344,6 +389,7 @@ export function createMcpServersStore(filePath: string, codec: McpSecretCodec): 
       command: server.command,
       args: [...server.args],
       env: views(server.env, 'env'),
+      vaults: server.kind === 'vault' ? copy(server.vaults) : [],
       launchReviewNeeded: launchReviewNeeded(server),
       instructions: copy(server.instructions),
       pendingInstructions: server.pendingInstructions,

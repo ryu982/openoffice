@@ -10,6 +10,7 @@ export const hi = {
   item_html: 'HTML संपादक',
   item_mindmap: 'माइंड मैप संपादक',
   item_diagram: 'आरेख संपादक',
+  item_whiteboard: "व्हाइटबोर्ड एडिटर",
   item_hwp: 'हंगुल (HWP) संपादक',
   item_epub: 'EPUB संपादक',
   offMessage: '{item} बंद है। चालू करके खोलें?',

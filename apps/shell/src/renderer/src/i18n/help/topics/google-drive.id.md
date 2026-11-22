@@ -41,6 +41,8 @@ Login disimpan di PC ini dengan enkripsi yang disediakan sistem operasi untuk ak
 - AI tidak dapat mengubah, menghapus, atau membagikan file Drive.
 - Setelah percakapan berisi konten yang dibaca dari Drive, percakapan itu berhenti memakai pencarian web, pencarian gambar, pembacaan halaman melalui alamat web, dan penyisipan gambar melalui alamat web. Mulai percakapan baru untuk menggunakannya lagi.
 
+Anda juga dapat menyalakan atau mematikan pembacaan Google Drive untuk obrolan ini melalui tombol **Layanan terhubung**. Saat fitur AI dimatikan, Google Drive tetap tampil di **Pengaturan ▸ Integrasi** untuk membuka dan menyimpan file, hanya tombol AI yang disembunyikan.
+
 ## Memutuskan koneksi
 
 Klik **Putuskan** di **Pengaturan ▸ Integrasi**. GenOffice menghapus login dari PC ini dan meminta Google mencabut aksesnya. Salinan file yang sudah ada di PC ini tetap tersimpan. Anda juga dapat menghapus akses kapan saja di **Koneksi pihak ketiga** pada Akun Google Anda.

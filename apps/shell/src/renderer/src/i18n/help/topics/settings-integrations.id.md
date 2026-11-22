@@ -69,6 +69,8 @@ Pengaturan dapat mendaftarkan GenOffice sebagai aplikasi penangan .docx / .xlsx 
 
 Di bawah **Server HTTP lokal**, aplikasi juga bisa menjalankan server itu sendiri — sakelar aktif dan port — dan **Lanjutan** menambahkan URL pemeriksaan kesehatan serta file log, alih-alih menghandalkannya kepada asisten. Ia hanya mendengarkan di localhost.
 
+Di bagian atas **Pengaturan ▸ Integrasi**, **Layanan terhubung** menghimpun Google Drive, Notion, Canva, Brankas Obsidian, Korean Law MCP, kordoc MCP, dan server MCP khusus di atas bagian agen koding.
+
 ## Lembar pintasan baris perintah
 
 | Perintah            | Fungsinya                |

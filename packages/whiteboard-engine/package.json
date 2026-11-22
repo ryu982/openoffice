@@ -1,0 +1,27 @@
+{
+  "name": "@genoffice/whiteboard-engine",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Rust WebAssembly core for .whiteboard ZIP archives, domain validation, AI edit planning, declarative template layout, markdown outline extraction, and Excalidraw import",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./pkg/whiteboard_engine.js": "./pkg/whiteboard_engine.js",
+    "./pkg/whiteboard_engine_bg.wasm": "./pkg/whiteboard_engine_bg.wasm",
+    "./pkg/manifest.json": "./pkg/manifest.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:wasm": "node ../../tools/build-whiteboard-engine.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

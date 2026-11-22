@@ -45,6 +45,7 @@ export const ru = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Интеллект-карта',
+  editorWhiteboard: 'Доска',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Главная',

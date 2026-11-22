@@ -20,6 +20,7 @@ export const BUILTIN_SKILL_NAMES = [
   'hwp-exam-paper',
   'mindmap',
   'diagram',
+  'whiteboard',
   'html-document',
 ] as const
 
@@ -51,6 +52,7 @@ const zh = {
     '根据主题或资料制作思维导图：均衡地设 3 到 7 个主分支，标题简短、说明放在备注里，最后检查结构。',
   'builtinSkillDesc.diagram':
     '绘制清晰易读的图表：选对图表类型，流向保持一个方向，文字简短、颜色少用，并检查重叠和孤立的图形。',
+  'builtinSkillDesc.whiteboard': '在白板上组织便利贴、区域、卡片、连线和表格：先规划版面再一次落盘，保持留白清晰、文字简短，并在最后检查重叠。',
   'builtinSkillDesc.html-document':
     '制作屏幕上好读、打印也整洁的 HTML 文档：先确定读者、篇幅和纸张，再检查分页和内容。',
 }
@@ -93,6 +95,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Builds a mind map from a topic or material: three to seven balanced main branches, short titles with the detail in notes, and a structure check at the end.',
     'builtinSkillDesc.diagram':
       'Draws a clear diagram: picks the type that fits, keeps one direction, short labels and few colours, and checks for overlaps and loose shapes.',
+    'builtinSkillDesc.whiteboard': 'Organizes sticky notes, zones, cards, connectors and tables on a whiteboard: plans a clear layout, keeps labels short and whitespace clean, and checks for overlaps.',
     'builtinSkillDesc.html-document':
       'Makes an HTML document that reads well on screen and prints cleanly: settles the reader, length and paper first, then checks the pages and the content.',
   },
@@ -126,6 +129,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'テーマや資料からマインドマップを作ります。主な枝を 3〜7 本でバランスよく取り、タイトルは短く、説明はノートに置き、最後に構成を点検します。',
     'builtinSkillDesc.diagram':
       '読みやすい図を描きます。合った種類を選び、流れは一方向に、文字は短く、色は少なくし、重なりや孤立した図形を点検します。',
+    'builtinSkillDesc.whiteboard': 'ホワイトボード上に付箋・エリア・カード・接続線・表を整理します。見やすい配置を先に組み立て、文字は短く余白を保ち、最後に重なりを点検します。',
     'builtinSkillDesc.html-document':
       '画面で読みやすく、印刷してもきれいな HTML 文書を作ります。読み手・分量・用紙を先に決め、ページ割りと内容を点検します。',
   },
@@ -160,6 +164,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       '주제나 자료로 마인드맵을 만듭니다. 큰 가지 3~7개를 고르게 잡고, 제목은 짧게 쓰고 설명은 메모에 두며, 마지막에 짜임을 점검합니다.',
     'builtinSkillDesc.diagram':
       '읽기 쉬운 다이어그램을 그립니다. 알맞은 종류를 고르고, 흐름은 한 방향으로, 글은 짧게, 색은 적게 쓰며, 겹침과 떨어진 도형을 점검합니다.',
+    'builtinSkillDesc.whiteboard': '화이트보드에 포스트잇·구역·카드·연결선·표를 정리합니다. 보기 좋은 배치를 먼저 짜고 글은 짧고 여백은 넉넉히 두며, 마지막에 겹침을 점검합니다.',
     'builtinSkillDesc.html-document':
       '화면에서 읽기 좋고 인쇄해도 깔끔한 HTML 문서를 만듭니다. 읽는 사람·분량·용지를 먼저 정하고, 쪽 나눔과 내용을 점검합니다.',
   },
@@ -194,6 +199,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Construit une carte mentale à partir d’un sujet ou de documents : trois à sept branches principales équilibrées, des titres courts avec le détail dans les notes, et une vérification de la structure à la fin.',
     'builtinSkillDesc.diagram':
       'Dessine un diagramme clair : choisit le type adapté, garde un seul sens de lecture, des libellés courts et peu de couleurs, puis vérifie les chevauchements et les formes isolées.',
+    'builtinSkillDesc.whiteboard': 'Organise post-its, zones, cartes, connecteurs et tableaux sur un tableau blanc : planifie une mise en page claire, garde des libellés courts et vérifie les chevauchements.',
     'builtinSkillDesc.html-document':
       'Crée un document HTML agréable à lire à l’écran et propre à l’impression : fixe d’abord le lecteur, la longueur et le papier, puis vérifie les pages et le contenu.',
   },
@@ -228,6 +234,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Baut eine Mindmap aus einem Thema oder Material: drei bis sieben ausgewogene Hauptzweige, kurze Titel mit den Details in Notizen und am Ende eine Prüfung der Struktur.',
     'builtinSkillDesc.diagram':
       'Zeichnet ein klares Diagramm: wählt den passenden Typ, hält eine Leserichtung, kurze Beschriftungen und wenige Farben ein und prüft auf Überlappungen und lose Formen.',
+    'builtinSkillDesc.whiteboard': 'Ordnet Haftnotizen, Bereiche, Karten, Verbinder und Tabellen auf einem Whiteboard: plant ein klares Layout, hält Texte kurz und prüft am Ende auf Überlappungen.',
     'builtinSkillDesc.html-document':
       'Erstellt ein HTML-Dokument, das sich am Bildschirm gut liest und sauber druckt: legt zuerst Leser, Länge und Papier fest und prüft dann Seiten und Inhalt.',
   },
@@ -262,6 +269,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Construye un mapa mental a partir de un tema o de materiales: de tres a siete ramas principales equilibradas, títulos cortos con el detalle en las notas y una revisión de la estructura al final.',
     'builtinSkillDesc.diagram':
       'Dibuja un diagrama claro: elige el tipo adecuado, mantiene una sola dirección, etiquetas cortas y pocos colores, y revisa solapamientos y formas sueltas.',
+    'builtinSkillDesc.whiteboard': 'Organiza notas adhesivas, zonas, tarjetas, conectores y tablas en una pizarra: diseña una disposición clara, usa textos breves y revisa posibles solapamientos.',
     'builtinSkillDesc.html-document':
       'Crea un documento HTML que se lee bien en pantalla y se imprime limpio: define primero el lector, la extensión y el papel, y luego revisa las páginas y el contenido.',
   },
@@ -296,6 +304,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'สร้างแผนผังความคิดจากหัวข้อหรือเอกสาร โดยวางกิ่งหลัก 3 ถึง 7 กิ่งให้สมดุล ตั้งชื่อหัวข้อสั้น ๆ ใส่รายละเอียดไว้ในบันทึก แล้วตรวจโครงสร้างตอนท้าย',
     'builtinSkillDesc.diagram':
       'วาดแผนภาพที่อ่านง่าย โดยเลือกชนิดให้เหมาะ ให้ทิศทางไหลไปทางเดียว ใช้ข้อความสั้นและสีน้อย แล้วตรวจการซ้อนทับและรูปร่างที่ไม่ได้เชื่อมต่อ',
+    'builtinSkillDesc.whiteboard': 'จัดระเบียบโพสต์อิท โซน การ์ด เส้นเชื่อม และตารางบนไวท์บอร์ด วางผังให้ชัดเจน ใช้ข้อความสั้น มีพื้นที่ว่างพอเหมาะ และตรวจการซ้อนทับตอนท้าย',
     'builtinSkillDesc.html-document':
       'สร้างเอกสาร HTML ที่อ่านง่ายบนจอและพิมพ์ออกมาเรียบร้อย โดยกำหนดผู้อ่าน ความยาว และกระดาษก่อน แล้วตรวจการแบ่งหน้าและเนื้อหา',
   },
@@ -330,6 +339,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Menyusun peta pikiran dari topik atau bahan: tiga sampai tujuh cabang utama yang seimbang, judul singkat dengan rincian di catatan, dan pemeriksaan struktur di akhir.',
     'builtinSkillDesc.diagram':
       'Menggambar diagram yang jelas: memilih jenis yang sesuai, menjaga satu arah alur, label singkat dan sedikit warna, lalu memeriksa tumpang-tindih dan bentuk yang lepas.',
+    'builtinSkillDesc.whiteboard': 'Menata catatan tempel, zona, kartu, konektor, dan tabel di papan tulis: merancang tata letak yang jelas, label singkat, ruang lega, lalu memeriksa tumpang-tindih.',
     'builtinSkillDesc.html-document':
       'Membuat dokumen HTML yang enak dibaca di layar dan rapi saat dicetak: menetapkan pembaca, panjang, dan kertas lebih dulu, lalu memeriksa halaman dan isinya.',
   },
@@ -364,6 +374,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Строит интеллект-карту по теме или материалам: от трёх до семи уравновешенных главных ветвей, короткие заголовки с подробностями в заметках и проверка структуры в конце.',
     'builtinSkillDesc.diagram':
       'Рисует понятную диаграмму: выбирает подходящий тип, держит одно направление, короткие подписи и мало цветов, проверяет наложения и несвязанные фигуры.',
+    'builtinSkillDesc.whiteboard': 'Организует стикеры, зоны, карточки, связи и таблицы на доске: продумывает чистую компоновку, короткие подписи и отступы, а затем проверяет наложения.',
     'builtinSkillDesc.html-document':
       'Создаёт HTML-документ, который удобно читать на экране и аккуратно печатать: сначала определяет читателя, объём и бумагу, затем проверяет страницы и содержание.',
   },
@@ -397,6 +408,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'ينشئ خريطة ذهنية من موضوع أو مواد: من ثلاثة إلى سبعة فروع رئيسية متوازنة، وعناوين قصيرة مع وضع التفاصيل في الملاحظات، ثم يراجع البنية في النهاية.',
     'builtinSkillDesc.diagram':
       'يرسم مخططًا واضحًا: يختار النوع المناسب، ويحافظ على اتجاه واحد وتسميات قصيرة وألوان قليلة، ثم يتحقق من التداخل والأشكال غير الموصولة.',
+    'builtinSkillDesc.whiteboard': 'ينظم الملاحظات اللاصقة والمناطق والبطاقات والروابط والجداول على السبورة: يخطط تخطيطًا واضحًا بعناوين قصيرة ومساحات مريحة ويتحقق من عدم التداخل.',
     'builtinSkillDesc.html-document':
       'ينشئ مستند HTML سهل القراءة على الشاشة ومرتبًا عند الطباعة: يحدد القارئ والطول والورق أولًا، ثم يراجع الصفحات والمحتوى.',
   },
@@ -431,6 +443,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Monta um mapa mental a partir de um tema ou de materiais: de três a sete ramos principais equilibrados, títulos curtos com o detalhe nas notas e uma conferência da estrutura no final.',
     'builtinSkillDesc.diagram':
       'Desenha um diagrama claro: escolhe o tipo adequado, mantém uma só direção, rótulos curtos e poucas cores, e confere sobreposições e formas soltas.',
+    'builtinSkillDesc.whiteboard': 'Organiza notas adesivas, zonas, cartões, conectores e tabelas em um quadro branco: planeja um layout claro, usa rótulos curtos e verifica sobreposições.',
     'builtinSkillDesc.html-document':
       'Cria um documento HTML bom de ler na tela e limpo na impressão: define primeiro o leitor, o tamanho e o papel, depois confere as páginas e o conteúdo.',
   },
@@ -465,6 +478,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Costruisce una mappa mentale da un argomento o da materiali: da tre a sette rami principali equilibrati, titoli brevi con i dettagli nelle note e un controllo della struttura alla fine.',
     'builtinSkillDesc.diagram':
       'Disegna un diagramma chiaro: sceglie il tipo adatto, mantiene una sola direzione, etichette brevi e pochi colori, e controlla sovrapposizioni e forme isolate.',
+    'builtinSkillDesc.whiteboard': 'Organizza foglietti, aree, schede, connettori e tabelle su una lavagna: imposta un layout chiaro, usa testi brevi e controlla eventuali sovrapposizioni.',
     'builtinSkillDesc.html-document':
       'Crea un documento HTML piacevole da leggere a schermo e pulito in stampa: stabilisce prima lettore, lunghezza e carta, poi controlla le pagine e il contenuto.',
   },
@@ -499,6 +513,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Buduje mapę myśli z tematu lub materiałów: od trzech do siedmiu zrównoważonych głównych gałęzi, krótkie tytuły ze szczegółami w notatkach i sprawdzenie struktury na końcu.',
     'builtinSkillDesc.diagram':
       'Rysuje czytelny diagram: dobiera właściwy typ, trzyma jeden kierunek, krótkie etykiety i niewiele kolorów, a potem sprawdza nakładanie się i luźne kształty.',
+    'builtinSkillDesc.whiteboard': 'Porządkuje karteczki, strefy, karty, łączniki i tabele na tablicy: planuje przejrzysty układ, krótkie etykiety i odstępy, a na końcu sprawdza nakładanie się.',
     'builtinSkillDesc.html-document':
       'Tworzy dokument HTML, który dobrze się czyta na ekranie i czysto drukuje: najpierw ustala czytelnika, długość i papier, potem sprawdza strony i treść.',
   },
@@ -533,6 +548,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Sestaví myšlenkovou mapu z tématu nebo podkladů: tři až sedm vyvážených hlavních větví, krátké názvy s podrobnostmi v poznámkách a na konci kontrola struktury.',
     'builtinSkillDesc.diagram':
       'Nakreslí přehledný diagram: zvolí vhodný typ, drží jeden směr, krátké popisky a málo barev a zkontroluje překryvy a nepřipojené tvary.',
+    'builtinSkillDesc.whiteboard': 'Uspořádá lístečky, zóny, karty, spojnice a tabulky na tabuli: navrhne přehledné rozvržení, krátké popisky a čisté rozestupy a zkontroluje překryvy.',
     'builtinSkillDesc.html-document':
       'Vytvoří dokument HTML, který se dobře čte na obrazovce a čistě tiskne: nejdřív určí čtenáře, rozsah a papír, potom zkontroluje stránky a obsah.',
   },
@@ -567,6 +583,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Bouwt een mindmap uit een onderwerp of materiaal: drie tot zeven evenwichtige hoofdtakken, korte titels met de details in notities en aan het eind een controle van de structuur.',
     'builtinSkillDesc.diagram':
       'Tekent een duidelijk diagram: kiest het passende type, houdt één richting aan, korte labels en weinig kleuren, en controleert op overlappingen en losse vormen.',
+    'builtinSkillDesc.whiteboard': 'Ordent plaknotities, zones, kaarten, verbindingslijnen en tabellen op een whiteboard: plant een heldere indeling, korte labels en controleert op overlappingen.',
     'builtinSkillDesc.html-document':
       'Maakt een HTML-document dat prettig leest op het scherm en netjes afdrukt: legt eerst lezer, lengte en papier vast en controleert daarna de pagina’s en de inhoud.',
   },
@@ -601,6 +618,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Membina peta minda daripada topik atau bahan: tiga hingga tujuh cabang utama yang seimbang, tajuk ringkas dengan butiran dalam nota, dan semakan struktur pada akhirnya.',
     'builtinSkillDesc.diagram':
       'Melukis rajah yang jelas: memilih jenis yang sesuai, mengekalkan satu arah aliran, label ringkas dan sedikit warna, kemudian menyemak pertindihan dan bentuk yang terlepas.',
+    'builtinSkillDesc.whiteboard': 'Menyusun nota lekat, zon, kad, penyambung dan jadual di papan putih: merancang susun atur yang jelas, label ringkas dan menyemak pertindihan.',
     'builtinSkillDesc.html-document':
       'Membuat dokumen HTML yang selesa dibaca pada skrin dan kemas apabila dicetak: menetapkan pembaca, panjang dan kertas dahulu, kemudian menyemak halaman dan kandungannya.',
   },
@@ -634,6 +652,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'בונה מפת חשיבה מנושא או מחומרים: שלושה עד שבעה ענפים ראשיים מאוזנים, כותרות קצרות עם הפירוט בהערות, ובדיקת המבנה בסוף.',
     'builtinSkillDesc.diagram':
       'משרטט תרשים ברור: בוחר את הסוג המתאים, שומר על כיוון אחד, תוויות קצרות ומעט צבעים, ובודק חפיפות וצורות שאינן מחוברות.',
+    'builtinSkillDesc.whiteboard': 'מארגן פתקים דביקים, אזורים, כרטיסים, חיבורים וטבלאות על לוח לבן: מתכנן פריסה ברורה, שומר על תוויות קצרות ורווחים נקיים ובודק חפיפות.',
     'builtinSkillDesc.html-document':
       'יוצר מסמך HTML שנוח לקרוא על המסך ונקי בהדפסה: קובע קודם את הקורא, האורך והנייר, ואז בודק את העמודים והתוכן.',
   },
@@ -668,6 +687,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'किसी विषय या सामग्री से माइंड मैप बनाता है: तीन से सात संतुलित मुख्य शाखाएँ, छोटे शीर्षक और ब्योरा नोट में, और अंत में ढाँचे की जाँच।',
     'builtinSkillDesc.diagram':
       'साफ़ आरेख बनाता है: सही प्रकार चुनता है, प्रवाह एक ही दिशा में, लेबल छोटे और रंग कम रखता है, और ओवरलैप व बिना जुड़ी आकृतियों की जाँच करता है।',
+    'builtinSkillDesc.whiteboard': 'व्हाइटबोर्ड पर स्टिकी नोट्स, ज़ोन, कार्ड, कनेक्टर और तालिकाएँ व्यवस्थित करता है: स्पष्ट लेआउट बनाता है, लेबल छोटे रखता है और अंत में ओवरलैप जाँचता है।',
     'builtinSkillDesc.html-document':
       'ऐसा HTML दस्तावेज़ बनाता है जो स्क्रीन पर पढ़ने में अच्छा और छपने पर साफ़ हो: पहले पाठक, लंबाई और काग़ज़ तय करता है, फिर पृष्ठों और सामग्री की जाँच करता है।',
   },
@@ -698,6 +718,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       '根據主題或資料製作心智圖：均衡地設 3 到 7 個主分支，標題簡短、說明放在備註裡，最後檢查架構。',
     'builtinSkillDesc.diagram':
       '繪製清楚易讀的圖表：選對圖表類型，流向保持同一方向，文字簡短、顏色少用，並檢查重疊和孤立的圖形。',
+    'builtinSkillDesc.whiteboard': '在白板上整理便利貼、區域、卡片、連線與表格：先規劃版面再一次建立，保持留白清楚、文字簡短，最後檢查重疊。',
     'builtinSkillDesc.html-document':
       '製作在螢幕上好讀、列印也整潔的 HTML 文件：先確定讀者、篇幅和紙張，再檢查分頁和內容。',
   },
@@ -732,6 +753,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Dựng sơ đồ tư duy từ một chủ đề hoặc tài liệu: ba đến bảy nhánh chính cân đối, tiêu đề ngắn với chi tiết đặt trong ghi chú, và kiểm tra cấu trúc ở cuối.',
     'builtinSkillDesc.diagram':
       'Vẽ sơ đồ rõ ràng: chọn loại phù hợp, giữ một hướng đi, nhãn ngắn và ít màu, rồi kiểm tra chồng lấn và hình rời rạc.',
+    'builtinSkillDesc.whiteboard': 'Sắp xếp giấy nhớ, khu vực, thẻ, đường nối và bảng trên bảng trắng: bố cục rõ ràng, nhãn ngắn gọn, khoảng trống thoáng và kiểm tra chồng lấn.',
     'builtinSkillDesc.html-document':
       'Tạo tài liệu HTML dễ đọc trên màn hình và gọn gàng khi in: xác định người đọc, độ dài và khổ giấy trước, rồi kiểm tra các trang và nội dung.',
   },
@@ -766,6 +788,7 @@ export const BUILTIN_SKILL_STRINGS = defineStrings({
       'Bir konudan veya malzemeden zihin haritası kurar: üç ila yedi dengeli ana dal, ayrıntısı notlarda duran kısa başlıklar ve sonunda yapı denetimi.',
     'builtinSkillDesc.diagram':
       'Anlaşılır bir diyagram çizer: uygun türü seçer, tek yönü, kısa etiketleri ve az rengi korur, çakışmaları ve bağlantısız şekilleri denetler.',
+    'builtinSkillDesc.whiteboard': 'Beyaz tahtada yapışkan notları, bölgeleri, kartları, bağlantıları ve tabloları düzenler: net bir yerleşim kurar, etiketleri kısa tutar ve çakışmaları denetler.',
     'builtinSkillDesc.html-document':
       'Ekranda rahat okunan ve temiz basılan bir HTML belgesi hazırlar: önce okuru, uzunluğu ve kâğıdı belirler, sonra sayfaları ve içeriği denetler.',
   },

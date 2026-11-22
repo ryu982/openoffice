@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import {
   saveAsDefaultPath,
   saveAsFilters,
+  saveAsHwpxDefaultPath,
+  saveAsHwpxFilters,
   saveAsTarget,
   type SaveAsLabelKey,
 } from '../src/main/save-as-formats'
@@ -66,5 +68,14 @@ describe('the answer', () => {
       path: 'C:/d/a.pdf.hwp',
       kind: 'hwp',
     })
+  })
+})
+
+describe('the HWPX-only Save As path', () => {
+  it('offers only HWPX and keeps the .hwpx extension in the default name', () => {
+    expect(saveAsHwpxFilters(label)).toEqual([{ name: 'filterHwpx', extensions: ['hwpx'] }])
+    expect(saveAsHwpxDefaultPath('/home/u/doc.hwp')).toBe('/home/u/doc.hwpx')
+    expect(saveAsHwpxDefaultPath('/home/u/doc.HWPX')).toBe('/home/u/doc.hwpx')
+    expect(saveAsHwpxDefaultPath('/home/u/doc')).toBe('/home/u/doc.hwpx')
   })
 })

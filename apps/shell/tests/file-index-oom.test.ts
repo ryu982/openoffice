@@ -29,6 +29,7 @@ describe('FileIndexer when a parse exhausts the worker heap', () => {
         { roots: () => [dir], extraPaths: () => [] },
         30_000,
         32,
+        { useSidecar: false },
       )
       await indexer.scan()
       await vi.waitFor(

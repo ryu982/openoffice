@@ -8,7 +8,13 @@ export default defineConfig({
   main: {
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@genoffice/i18n', '@genoffice/electron-utils', '@genoffice/print-layout'],
+        exclude: [
+          '@genoffice/i18n',
+          '@genoffice/electron-utils',
+          '@genoffice/font-metrics',
+          '@genoffice/print-layout',
+          '@genoffice/hwp5-wasm',
+        ],
       }),
     ],
   },

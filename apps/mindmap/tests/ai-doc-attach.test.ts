@@ -163,7 +163,17 @@ describe('mindmap AI panel: attach from a document', () => {
     unmount = () => act(() => root.unmount())
     await settle()
 
-    const button = container.querySelector<HTMLButtonElement>('.ai-doc-attach-btn')
+    const menuBtn = container.querySelector<HTMLButtonElement>('.ai-attach-menu-btn')
+    expect(menuBtn).not.toBeNull()
+    await act(async () => {
+      menuBtn!.click()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    await settle()
+
+    const button = container.querySelector<HTMLButtonElement>(
+      '.ai-attach-menu-item[data-source="docs"]',
+    )
     expect(button).not.toBeNull()
     await act(async () => {
       button!.click()

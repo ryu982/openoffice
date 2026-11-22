@@ -85,6 +85,8 @@ export function entryType(file: { name: string; mimeType: string }): DriveEntryT
     case '.drawio':
     case '.dio':
       return 'diagram'
+    case '.whiteboard':
+      return 'whiteboard'
     default:
       return 'other'
   }

@@ -87,6 +87,8 @@
 !define GENOFFICE_EPUB_PROGID "IeumOffice.EPUBBook"
 ; a Visio drawing opens as a new diagram (it is never written), with the diagram icon
 !define GENOFFICE_VSDX_PROGID "IeumOffice.VSDXDrawing"
+; an Excalidraw scene is imported into a new whiteboard (never overwritten), with the whiteboard icon
+!define GENOFFICE_EXCALIDRAW_PROGID "IeumOffice.ExcalidrawDrawing"
 
 !macro GenOfficeRegisterOpenWithHwp
   WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_HWP_PROGID}" "" "HWP Document"
@@ -148,6 +150,18 @@
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_VSDX_PROGID}"
 !macroend
 
+!macro GenOfficeRegisterOpenWithExcalidraw
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EXCALIDRAW_PROGID}" "" "Excalidraw Drawing"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EXCALIDRAW_PROGID}\DefaultIcon" "" "$INSTDIR\resources\whiteboard.ico"
+  WriteRegStr SHELL_CONTEXT "Software\Classes\${GENOFFICE_EXCALIDRAW_PROGID}\shell\open\command" "" '"$appExe" "%1"'
+  WriteRegNone SHELL_CONTEXT "Software\Classes\.excalidraw\OpenWithProgids" "${GENOFFICE_EXCALIDRAW_PROGID}"
+!macroend
+
+!macro GenOfficeUnregisterOpenWithExcalidraw
+  DeleteRegValue SHELL_CONTEXT "Software\Classes\.excalidraw\OpenWithProgids" "${GENOFFICE_EXCALIDRAW_PROGID}"
+  DeleteRegKey SHELL_CONTEXT "Software\Classes\${GENOFFICE_EXCALIDRAW_PROGID}"
+!macroend
+
 ; Windows' "Default apps" page picks an app by its registered capabilities and
 ; records the ProgId the app declared for the type. Without this entry Windows
 ; only knows the bare IeumOffice.exe application and records
@@ -183,6 +197,8 @@
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".drawio" "IeumOffice.Diagram"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".dio" "IeumOffice.Diagram"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".vsdx" "${GENOFFICE_VSDX_PROGID}"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".whiteboard" "IeumOffice.Whiteboard"
+  WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".excalidraw" "${GENOFFICE_EXCALIDRAW_PROGID}"
   WriteRegStr SHELL_CONTEXT "${GENOFFICE_CAPABILITIES_KEY}\FileAssociations" ".odt" "${GENOFFICE_ODT_PROGID}"
 !macroend
 
@@ -254,6 +270,7 @@
   !insertmacro GenOfficeRegisterOpenWithMindmap
   !insertmacro GenOfficeRegisterOpenWithEpub
   !insertmacro GenOfficeRegisterOpenWithVsdx
+  !insertmacro GenOfficeRegisterOpenWithExcalidraw
   !insertmacro GenOfficeRegisterApplicationCapabilities
   !insertmacro UPDATEFILEASSOC
 !macroend
@@ -272,6 +289,7 @@
   !insertmacro GenOfficeUnregisterOpenWithMindmap
   !insertmacro GenOfficeUnregisterOpenWithEpub
   !insertmacro GenOfficeUnregisterOpenWithVsdx
+  !insertmacro GenOfficeUnregisterOpenWithExcalidraw
   !insertmacro GenOfficeUnregisterApplicationCapabilities
   Pop $0
   !insertmacro UPDATEFILEASSOC

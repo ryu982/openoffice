@@ -69,6 +69,8 @@ Do **Integracji** łączy GenOffice z agentem programistycznym i ma własny arty
 
 W sekcji **Lokalny serwer HTTP** aplikacja może też sama uruchomić ten serwer — przełącznik włączania i port —, a **Zaawansowane** dodaje adres sprawdzenia stanu i plik dziennika, zamiast zostawiać serwer asystentowi. Nasłuchuje wyłącznie na localhost.
 
+Na górze **Ustawienia ▸ Integracje** sekcja **Połączone usługi** grupuje Dysk Google, Notion, Canva, Skarbiec Obsidian, Korean Law MCP, kordoc MCP i własne serwery MCP nad sekcją agentów kodowania.
+
 ## Ściągawka z poleceń
 
 | Polecenie           | Co robi                      |

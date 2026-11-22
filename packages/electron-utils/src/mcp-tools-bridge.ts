@@ -20,6 +20,7 @@ export interface McpToolsBridge {
     tool: string,
     input: Record<string, unknown>,
     callId: string,
+    options?: { disabledVaults?: string[] },
   ): Promise<unknown>
   cancel(callId: string): Promise<void>
   onChanged(listener: () => void): () => void
@@ -27,6 +28,8 @@ export interface McpToolsBridge {
   retry(server: string): Promise<unknown>
   /** open Settings → Integrations at this server */
   openSettings(server: string): Promise<unknown>
+  /** open Settings → Integrations (even when no server is registered yet) */
+  openIntegrations(): Promise<unknown>
 }
 
 const noAnswer: McpToolRefusal = { ok: false, error: 'The MCP connection did not answer.' }
@@ -34,13 +37,16 @@ const noAnswer: McpToolRefusal = { ok: false, error: 'The MCP connection did not
 export function mcpToolsBridge(): McpToolsBridge {
   return {
     list: () => ipcRenderer.invoke(C.list).catch(() => []),
-    call: (server, tool, input, callId) =>
+    call: (server, tool, input, callId, options) =>
       ipcRenderer
         .invoke(C.call, {
           server: String(server),
           tool: String(tool),
           input,
           callId: String(callId),
+          ...(options?.disabledVaults?.length
+            ? { disabledVaults: options.disabledVaults.map(String) }
+            : {}),
         })
         .catch(() => noAnswer),
     cancel: async (callId) => {
@@ -56,5 +62,6 @@ export function mcpToolsBridge(): McpToolsBridge {
     retry: (server) => ipcRenderer.invoke(C.retry, String(server)).catch(() => ({ ok: false })),
     openSettings: (server) =>
       ipcRenderer.invoke(C.openSettings, String(server)).catch(() => ({ ok: false })),
+    openIntegrations: () => ipcRenderer.invoke(C.openIntegrations).catch(() => ({ ok: false })),
   }
 }

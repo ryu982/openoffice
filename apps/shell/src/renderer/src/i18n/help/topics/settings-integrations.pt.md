@@ -69,6 +69,8 @@ As Configurações podem registar o GenOffice como a aplicação que abre fichei
 
 Em **Servidor HTTP local**, a aplicação também pode arrancar o servidor por si — um interruptor de ativação e uma porta —, enquanto **Avançado** acrescenta o URL de verificação de integridade e o arquivo de registro, em vez de o deixar ao assistente. Escuta apenas em localhost.
 
+No topo de **Configurações ▸ Integrações**, **Serviços conectados** reúne Google Drive, Notion, Canva, Cofre Obsidian, Korean Law MCP, kordoc MCP e servidores MCP personalizados acima da seção de agentes de código.
+
 ## Folha de referência da linha de comandos
 
 | Comando             | O que faz                    |

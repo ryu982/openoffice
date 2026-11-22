@@ -1,0 +1,974 @@
+/*
+ * Whiteboard workspace styles — warm paper-craft workspace (left thumbnail page rail,
+ * floating vertical icon tool rail, bottom-left undo/zoom pill groups, and high-contrast
+ * dark floating format bar above selection).
+ *
+ * Every UI chrome color is a token from @genoffice/ui or a --wb-* custom property defined
+ * below for light, dark, and system-dark themes. Board paper and document objects remain
+ * light and theme-invariant.
+ */
+
+:root {
+  --accent: #b4462a;
+  --accent-dark: #8e3520;
+  --accent-soft: rgb(180 70 42 / 12%);
+  --wb-backdrop: #efe9dd;
+  --wb-surface: #faf6ee;
+  --wb-float-bg: #fffdf8;
+  --wb-line: #ddd3c2;
+  --wb-line-strong: #cfc3af;
+  --wb-line-dashed: #b8ac98;
+  --wb-ink: #221d17;
+  --wb-ink-muted: #6b6257;
+  --wb-tool-active-bg: #221d17;
+  --wb-tool-active-fg: #fffdf8;
+  --wb-tool-hover-bg: #f1e3d6;
+  --wb-format-bg: #221d17;
+  --wb-format-fg: #fffdf8;
+  --wb-format-hover: #3a322a;
+  --wb-format-sep: #4a4238;
+  --wb-format-swatch-ring: rgb(255 253 248 / 38%);
+  --wb-paper-shadow: rgb(34 29 23 / 12%);
+  --wb-float-shadow: rgb(34 29 23 / 14%);
+  --wb-selection: #b4462a;
+  --wb-ai-highlight: #d97706;
+  --wb-ai-highlight-glow: rgb(217 119 6 / 26%);
+  --wb-banner-bg: #f5ead8;
+  --wb-banner-border: #d9c29e;
+  --wb-modal-scrim: rgb(34 29 23 / 44%);
+  --wb-present-bg: #181410;
+  --wb-present-bar: rgb(34 29 23 / 90%);
+  --wb-present-text: #fffdf8;
+  --wb-danger: #c62828;
+  --wb-danger-hover: rgb(198 40 40 / 16%);
+  --wb-thumb-paper: #fffdf8;
+  --wb-thumb-dot: rgb(34 29 23 / 18%);
+  --wb-attach: #1e6b66;
+  --wb-attach-fill: rgb(30 107 102 / 8%);
+}
+
+[data-theme='dark'] {
+  --accent: #e07a5f;
+  --accent-dark: #f2a089;
+  --accent-soft: rgb(224 122 95 / 20%);
+  --wb-backdrop: var(--bg);
+  --wb-surface: var(--surface);
+  --wb-float-bg: var(--surface);
+  --wb-line: var(--border);
+  --wb-line-strong: var(--border);
+  --wb-line-dashed: var(--text-muted);
+  --wb-ink: var(--text);
+  --wb-ink-muted: var(--text-muted);
+  --wb-tool-active-bg: var(--accent);
+  --wb-tool-active-fg: #1b1714;
+  --wb-tool-hover-bg: var(--hover);
+  --wb-format-bg: #1e1b18;
+  --wb-format-fg: #f8f5ef;
+  --wb-format-hover: #342f2a;
+  --wb-format-sep: #47413a;
+  --wb-format-swatch-ring: rgb(255 255 255 / 35%);
+  --wb-paper-shadow: rgb(0 0 0 / 48%);
+  --wb-float-shadow: rgb(0 0 0 / 50%);
+  --wb-selection: #e07a5f;
+  --wb-ai-highlight: #fbbf24;
+  --wb-ai-highlight-glow: rgb(251 191 36 / 30%);
+  --wb-banner-bg: rgb(251 191 36 / 14%);
+  --wb-banner-border: rgb(251 191 36 / 45%);
+  --wb-modal-scrim: rgb(0 0 0 / 64%);
+  --wb-danger: #f87171;
+  --wb-danger-hover: rgb(248 113 113 / 18%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent: #e07a5f;
+    --accent-dark: #f2a089;
+    --accent-soft: rgb(224 122 95 / 20%);
+    --wb-backdrop: var(--bg);
+    --wb-surface: var(--surface);
+    --wb-float-bg: var(--surface);
+    --wb-line: var(--border);
+    --wb-line-strong: var(--border);
+    --wb-line-dashed: var(--text-muted);
+    --wb-ink: var(--text);
+    --wb-ink-muted: var(--text-muted);
+    --wb-tool-active-bg: var(--accent);
+    --wb-tool-active-fg: #1b1714;
+    --wb-tool-hover-bg: var(--hover);
+    --wb-format-bg: #1e1b18;
+    --wb-format-fg: #f8f5ef;
+    --wb-format-hover: #342f2a;
+    --wb-format-sep: #47413a;
+    --wb-format-swatch-ring: rgb(255 255 255 / 35%);
+    --wb-paper-shadow: rgb(0 0 0 / 48%);
+    --wb-float-shadow: rgb(0 0 0 / 50%);
+    --wb-selection: #e07a5f;
+    --wb-ai-highlight: #fbbf24;
+    --wb-ai-highlight-glow: rgb(251 191 36 / 30%);
+    --wb-banner-bg: rgb(251 191 36 / 14%);
+    --wb-banner-border: rgb(251 191 36 / 45%);
+    --wb-modal-scrim: rgb(0 0 0 / 64%);
+    --wb-danger: #f87171;
+    --wb-danger-hover: rgb(248 113 113 / 18%);
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--wb-backdrop);
+  color: var(--wb-ink);
+  font-family: var(--gs-font-sans, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif);
+}
+
+.wb-app {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wb-backdrop);
+}
+
+/* ── Main workspace grid: clean header + left thumbnail page rail + full canvas ── */
+
+.wb-main {
+  position: relative;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr);
+  grid-template-columns: 168px minmax(0, 1fr);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--wb-backdrop);
+  color: var(--wb-ink);
+}
+
+/* ── Header ── */
+
+.wb-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px 0 16px;
+  background: var(--wb-surface);
+  border-bottom: 1px solid var(--wb-line);
+  min-width: 0;
+  user-select: none;
+}
+
+.wb-header-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wb-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--wb-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wb-status-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--wb-ink-muted);
+  white-space: nowrap;
+}
+
+.wb-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wb-header-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.wb-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  background: var(--wb-float-bg);
+  color: var(--wb-ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.wb-header-btn:hover:not(:disabled) {
+  background: var(--wb-tool-hover-bg);
+  border-color: var(--wb-line-strong);
+}
+
+.wb-header-btn.wb-present-btn {
+  background: var(--wb-tool-active-bg);
+  border-color: var(--wb-tool-active-bg);
+  color: var(--wb-tool-active-fg);
+}
+
+.wb-header-btn.wb-present-btn:hover {
+  opacity: 0.9;
+}
+
+/* ── Left thumbnail page rail ── */
+
+.wb-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 12px 12px;
+  background: var(--wb-surface);
+  border-right: 1px solid var(--wb-line);
+  min-height: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+.wb-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wb-ink);
+  padding: 0 2px;
+}
+
+.wb-rail-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--wb-ink-muted);
+}
+
+.wb-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.wb-rail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wb-page-tab {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wb-thumb {
+  position: relative;
+  width: 136px;
+  height: 78px;
+  border-radius: 6px;
+  border: 1px solid var(--wb-line);
+  overflow: hidden;
+  background: var(--wb-thumb-paper);
+  box-shadow: 0 1px 3px var(--wb-paper-shadow);
+  transition: border-color 120ms ease;
+}
+
+.wb-page-tab.active .wb-thumb {
+  border: 2px solid var(--accent);
+}
+
+.wb-thumb-freeform {
+  background-image: radial-gradient(circle, var(--wb-thumb-dot) 0.8px, transparent 1px);
+  background-size: 7px 7px;
+}
+
+.wb-thumb-obj {
+  position: absolute;
+  border-radius: 1.5px;
+}
+
+.wb-rail-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 12px;
+  min-width: 0;
+  color: var(--wb-ink);
+}
+
+.wb-rail-label-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-rail-num {
+  color: var(--wb-ink-muted);
+  margin-right: 5px;
+}
+
+.wb-rail-num.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.wb-rail-del {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wb-ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wb-rail-del:hover {
+  background: var(--wb-danger-hover);
+  color: var(--wb-danger);
+}
+
+.wb-rail-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 4px;
+  border-top: 1px solid var(--wb-line);
+}
+
+.wb-add-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px dashed var(--wb-line-dashed);
+  background: transparent;
+  color: var(--wb-ink);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wb-add-page-btn:hover {
+  background: var(--wb-float-bg);
+  border-color: var(--accent);
+}
+
+.wb-rail-pdf-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--wb-line);
+  background: var(--wb-float-bg);
+  color: var(--wb-ink);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wb-rail-pdf-btn:hover {
+  background: var(--wb-tool-hover-bg);
+}
+
+.wb-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-float-bg);
+  color: var(--wb-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ── Canvas stage container ── */
+
+.wb-stage-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wb-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 14px;
+  background: var(--wb-banner-bg);
+  border-bottom: 1px solid var(--wb-banner-border);
+  color: var(--wb-ink);
+  font-size: 12px;
+  flex-shrink: 0;
+  z-index: 15;
+}
+
+.wb-stage-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--wb-backdrop);
+  user-select: none;
+  touch-action: none;
+}
+
+.wb-stage-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.wb-paper-shadow {
+  filter: drop-shadow(0 8px 24px var(--wb-paper-shadow));
+}
+
+/* ── Floating left vertical icon tool rail (signature warm-paper dock) ── */
+
+.wb-toolbar {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 58px;
+  max-height: calc(100% - 148px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 7px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--wb-float-bg);
+  border: 1px solid var(--wb-line);
+  border-radius: 16px;
+  box-shadow: 0 6px 20px var(--wb-float-shadow);
+  z-index: 20;
+}
+
+.wb-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.wb-tool-sep {
+  width: 28px;
+  height: 1px;
+  background: var(--wb-line);
+  margin: 3px 0;
+  flex-shrink: 0;
+}
+
+.wb-tool-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--wb-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 110ms ease,
+    color 110ms ease;
+}
+
+.wb-tool-btn:hover:not(:disabled) {
+  background: var(--wb-tool-hover-bg);
+}
+
+.wb-tool-btn.active {
+  background: var(--wb-tool-active-bg);
+  color: var(--wb-tool-active-fg);
+}
+
+.wb-tool-key {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--wb-ink-muted);
+  pointer-events: none;
+}
+
+.wb-tool-btn.active .wb-tool-key {
+  color: var(--wb-tool-active-fg);
+  opacity: 0.72;
+}
+
+/* ── Side popovers anchored cleanly beside the floating vertical tool rail ── */
+
+.wb-tool-popover {
+  position: absolute;
+  left: 84px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 35;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--wb-float-bg);
+  border: 1px solid var(--wb-line);
+  box-shadow: 0 8px 24px var(--wb-float-shadow);
+}
+
+.wb-shape-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 42px);
+  gap: 4px;
+}
+
+.wb-sticker-popover {
+  display: grid;
+  grid-template-columns: repeat(5, 38px);
+  gap: 5px;
+}
+
+.wb-sticker-btn {
+  width: 38px;
+  height: 38px;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wb-sticker-btn:hover {
+  background: var(--wb-tool-hover-bg);
+  border-color: var(--wb-line);
+}
+
+/* ── Bottom-left floating Undo/Redo & Zoom pill groups ── */
+
+.wb-bottom-left {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 20;
+}
+
+.wb-control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--wb-float-bg);
+  border: 1px solid var(--wb-line);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px var(--wb-float-shadow);
+}
+
+.wb-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--wb-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wb-ctrl-btn:hover:not(:disabled) {
+  background: var(--wb-tool-hover-bg);
+}
+
+.wb-ctrl-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.wb-zoom-level {
+  min-width: 50px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--wb-ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.wb-zoom-level:hover {
+  background: var(--wb-tool-hover-bg);
+}
+
+/* ── High-contrast dark floating contextual format bar above selection ── */
+
+.wb-format-bar {
+  position: absolute;
+  height: 46px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--wb-format-bg);
+  color: var(--wb-format-fg);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px var(--wb-float-shadow);
+  z-index: 30;
+  white-space: nowrap;
+}
+
+.wb-format-sep {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: var(--wb-format-sep);
+}
+
+.wb-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid var(--wb-format-swatch-ring);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 100ms ease;
+}
+
+.wb-swatch:hover {
+  transform: scale(1.14);
+}
+
+.wb-swatch.active {
+  box-shadow:
+    0 0 0 2px var(--wb-format-bg),
+    0 0 0 3.5px var(--wb-format-fg);
+}
+
+.wb-format-btn {
+  min-width: 32px;
+  height: 34px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wb-format-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wb-format-btn:hover {
+  background: var(--wb-format-hover);
+}
+
+.wb-format-btn.active {
+  background: var(--wb-format-sep);
+}
+
+.wb-format-btn.danger:hover {
+  color: var(--wb-danger);
+}
+
+.wb-format-count {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wb-format-fg);
+}
+
+.wb-width-dot {
+  display: block;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* ── Canvas overlays (AI highlight, selection, snap attach, inline text editor) ── */
+
+.wb-ai-highlight-rect {
+  fill: none;
+  stroke: var(--wb-ai-highlight);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 6px var(--wb-ai-highlight-glow));
+  pointer-events: none;
+}
+
+.wb-selection-rect {
+  fill: none;
+  stroke: var(--wb-selection);
+  pointer-events: none;
+}
+
+.wb-group-rect {
+  fill: none;
+  stroke: var(--wb-selection);
+  stroke-opacity: 0.7;
+  pointer-events: none;
+}
+
+.wb-marquee-rect {
+  fill: var(--wb-selection);
+  fill-opacity: 0.08;
+  stroke: var(--wb-selection);
+  pointer-events: none;
+}
+
+.wb-attach-rect {
+  fill: var(--wb-attach-fill);
+  stroke: var(--wb-attach);
+  pointer-events: none;
+}
+
+.wb-inline-editor {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  font-family: inherit;
+  line-height: 1.38;
+  resize: none;
+  outline: none;
+  box-shadow: 0 4px 16px var(--wb-float-shadow);
+  z-index: 35;
+}
+
+/* ── Generic buttons, modals, toasts, presentation ── */
+
+.wb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-float-bg);
+  color: var(--wb-ink);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wb-btn:hover:not(:disabled) {
+  background: var(--wb-tool-hover-bg);
+}
+
+.wb-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wb-btn-primary {
+  background: var(--accent);
+  color: var(--wb-tool-active-fg);
+  border-color: var(--accent);
+}
+
+.wb-btn-primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.wb-btn-secondary {
+  border-color: var(--wb-line);
+}
+
+.wb-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: var(--wb-format-bg);
+  color: var(--wb-format-fg);
+  font-size: 13px;
+  box-shadow: 0 6px 20px var(--wb-float-shadow);
+  z-index: 60;
+}
+
+.wb-modal-scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wb-modal-scrim);
+  z-index: 70;
+}
+
+.wb-modal {
+  width: min(420px, 92vw);
+  background: var(--wb-float-bg);
+  color: var(--wb-ink);
+  border: 1px solid var(--wb-line);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 14px 36px var(--wb-float-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.wb-modal h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.wb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--wb-ink-muted);
+}
+
+.wb-input {
+  padding: 8px 10px;
+  border: 1px solid var(--wb-line);
+  border-radius: 8px;
+  background: var(--wb-surface);
+  color: var(--wb-ink);
+  font-size: 13px;
+}
+
+.wb-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wb-error-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--wb-ink-muted);
+}
+
+.wb-present-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: var(--wb-present-bg);
+}
+
+.wb-present-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.wb-present-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--wb-present-bar);
+  color: var(--wb-present-text);
+  font-size: 13px;
+}
+
+.wb-present-bar button {
+  padding: 6px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--wb-format-sep);
+  background: var(--wb-format-hover);
+  color: var(--wb-present-text);
+  cursor: pointer;
+}

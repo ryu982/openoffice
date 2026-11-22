@@ -69,6 +69,8 @@ Die Einstellungen können GenOffice als Programm für .docx / .xlsx / .pptx / .p
 
 Unter **Lokaler HTTP-Server** kann die App den Server auch selbst betreiben — ein Schalter zum Aktivieren und ein Port —, während **Erweitert** die Zustandsprüfung-URL und die Protokolldatei hinzufügt, statt ihn dem Assistenten zu überlassen. Er lauscht nur auf localhost.
 
+Oben unter **Einstellungen ▸ Integrationen** fasst **Verbundene Dienste** Google Drive, Notion, Canva, Obsidian-Vault, Korean Law MCP, kordoc MCP und eigene MCP-Server oberhalb der Coding-Agent-Verbindung zusammen.
+
 ## Spickzettel für die Kommandozeile
 
 | Befehl              | Was er bewirkt             |

@@ -38,6 +38,7 @@ const REQUIRED = [
   'cli/skills/ieumoffice/SKILL.md',
   'wasm/pdfium.wasm',
   'wasm/rhwp_bg.wasm',
+  'wasm/hwp5_bg.wasm',
   'wasm/hb-subset.wasm',
   'native/xlsx-sidecar',
 ]
@@ -86,7 +87,9 @@ export function archiveVersion(env = process.env, bundle) {
 
 function copyInto(staging, from, entries) {
   for (const entry of entries) {
-    cpSync(join(from, entry), join(staging, ARCHIVE_ROOT, entry), { recursive: true })
+    const dest = join(staging, ARCHIVE_ROOT, entry)
+    mkdirSync(dirname(dest), { recursive: true })
+    cpSync(join(from, entry), dest, { recursive: true })
   }
 }
 
@@ -118,7 +121,9 @@ export function packTarball({ from, out, platform, arch, notices, env = process.
 
   const staging = mkdtempSync(join(tmpdir(), 'ieumoffice-cli-'))
   try {
-    copyInto(staging, from, ['cli', 'wasm', 'native'])
+    // Copy cli/ and wasm/ (including hwp5_bg.wasm), plus ONLY xlsx-sidecar from native/
+    // so the desktop-only ieum-parse-sidecar binary stays out of the standalone CLI tarball.
+    copyInto(staging, from, ['cli', 'wasm', 'native/xlsx-sidecar'])
     for (const notice of noticeFiles) {
       cpSync(notice, join(staging, ARCHIVE_ROOT, notice.split(/[\\/]/).pop()))
     }

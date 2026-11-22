@@ -44,6 +44,7 @@ const CONVERT_SOURCE_EXTS: Record<ConvertKind, readonly string[]> = {
   'mindmap-to-markdown': ['xmind'],
   'mindmap-to-slides': ['xmind'],
   'markdown-to-mindmap': ['md', 'markdown'],
+  'whiteboard-to-markdown': ['whiteboard'],
 }
 
 /**

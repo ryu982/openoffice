@@ -1,10 +1,77 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  constants,
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { copyFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import JSZip from 'jszip'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import init, { HwpDocument } from '@rhwp/core'
 import { run, tempDir } from './helpers'
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {
+    ...actual,
+    chmodSync: vi.fn(actual.chmodSync),
+    copyFileSync: vi.fn(actual.copyFileSync),
+  }
+})
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, copyFile: vi.fn(actual.copyFile) }
+})
+
+const actualFs = await vi.importActual<typeof import('node:fs')>('node:fs')
+const actualPromises = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+
+afterEach(() => {
+  vi.mocked(chmodSync).mockImplementation(actualFs.chmodSync)
+  vi.mocked(copyFileSync).mockImplementation(actualFs.copyFileSync)
+  vi.mocked(copyFile).mockImplementation(actualPromises.copyFile)
+  Object.defineProperty(process, 'platform', hostPlatform)
+})
+
+const errnoError = (code: string) => Object.assign(new Error(`${code}: injected`), { code })
+
+/**
+ * The mount these tests describe (gvfs SMB, WebDAV) is a POSIX one: on Windows
+ * the copy helpers keep to CopyFileW and never reach the fallback under test.
+ * `node:path` and the rest settled at import, so only the platform checks made
+ * at call time see the change.
+ */
+const hostPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
+const usePosixMount = () =>
+  Object.defineProperty(process, 'platform', { ...hostPlatform, value: 'linux' })
+
+/**
+ * A mount that refuses chmod (gvfs SMB, WebDAV). The platform copy fails as
+ * libuv fails there: an exclusive copy refuses a file that is already there;
+ * otherwise the destination has been created or truncated by then and is
+ * removed on the way out.
+ */
+function refuseChmodLikeGvfs(): void {
+  const failCopy = (target: unknown, mode?: number): never => {
+    const path = String(target)
+    if (((mode ?? 0) & constants.COPYFILE_EXCL) !== 0 && existsSync(path))
+      throw errnoError('EEXIST')
+    writeFileSync(path, '')
+    rmSync(path)
+    throw errnoError('ENOTSUP')
+  }
+  vi.mocked(copyFileSync).mockImplementation((_source, target, mode) => failCopy(target, mode))
+  vi.mocked(copyFile).mockImplementation(async (_source, target, mode) => failCopy(target, mode))
+  vi.mocked(chmodSync).mockImplementation(() => {
+    throw errnoError('ENOTSUP')
+  })
+}
 
 /** The documents are built with the engine the editor runs; there is no other writer here. */
 beforeAll(async () => {
@@ -688,5 +755,91 @@ describe('what the read ops answer', () => {
       .map((result) => result.output)
     expect(text).toContain('끝.')
     expect(setup).toContain('"margin_left":30')
+  })
+
+  it('saves a converted markdown table after filling cells past one page per row', async () => {
+    const dir = tempDir()
+    const mdPath = join(dir, 'sample.md')
+    const lines = ['# 표 저장 검증 재현 문서', '']
+    for (let i = 1; i <= 12; i++) {
+      lines.push(`가상 문단 ${i}입니다. 표가 첫 쪽 하단에 걸리도록 본문 길이를 맞춥니다.`, '')
+    }
+    lines.push(
+      '| 항목 | 설명 | 비고 |',
+      '| --- | --- | --- |',
+      '| 항목 1 | 초안 | 초안 |',
+      '| 항목 2 | 초안 | 초안 |',
+      '| 항목 3 | 초안 | 초안 |',
+      '| 항목 4 | 초안 | 초안 |',
+      '| 항목 5 | 초안 | 초안 |',
+      '',
+      '표 뒤 마무리 문단입니다.',
+    )
+    writeFileSync(mdPath, lines.join('\n'), 'utf8')
+    const baseline = join(dir, 'baseline.hwp')
+    const conv = await run(['convert', mdPath, '--to', 'hwp', '--out', baseline, '--json'])
+    expect(conv.code, conv.stdout).toBe(0)
+
+    const longText =
+      '가상 표 셀에 들어가는 반복 문장입니다. 표 행 높이가 한 쪽을 넘겨 불가피하게 나뉘더라도 저장 후 다시 열었을 때 쪽 수와 행 분할이 그대로 유지되어야 합니다. '.repeat(
+        8,
+      )
+    const cells = []
+    for (let row = 2; row <= 6; row++) {
+      for (const col of [2, 3]) {
+        cells.push({ row, col, text: longText })
+      }
+    }
+    const edited = join(dir, 'edited.hwp')
+    const apply = await run([
+      'hwp',
+      'apply',
+      baseline,
+      '--ops',
+      ops(dir, [{ op: 'fill_cells', table: 1, overwrite: true, cells }]),
+      '--out',
+      edited,
+      '--json',
+    ])
+    expect(apply.code, apply.stdout).toBe(0)
+    expect(existsSync(edited)).toBe(true)
+    expect(isOle(edited)).toBe(true)
+    const reopened = new HwpDocument(readFileSync(edited))
+    try {
+      expect(reopened.pageCount()).toBeGreaterThanOrEqual(10)
+      expect(JSON.parse(reopened.exportHwpVerify())).toMatchObject({ recovered: true })
+    } finally {
+      reopened.free()
+    }
+  })
+})
+
+describe('hwp apply in a folder that refuses chmod', () => {
+  beforeEach(usePosixMount)
+
+  it('still edits the file and keeps the old bytes in the .bak', async () => {
+    const dir = tempDir()
+    const original = report().exportHwp()
+    const path = write(dir, 'report.hwp', original)
+    const opsPath = ops(dir, EDITS)
+    refuseChmodLikeGvfs()
+    const r = await run(['hwp', 'apply', path, '--ops', opsPath, '--json'])
+    expect(r.code, r.stdout).toBe(0)
+    expect(textOf(path).join('\n')).toContain('8월 1일부터 시행합니다.')
+    expect(r.json().detail.backup_path).toBe(`${path}.bak`)
+    expect(readFileSync(`${path}.bak`).equals(Buffer.from(original))).toBe(true)
+  })
+
+  it('replaces an older .bak with the bytes from before this edit', async () => {
+    const dir = tempDir()
+    const original = report().exportHwp()
+    const path = write(dir, 'report.hwp', original)
+    writeFileSync(`${path}.bak`, 'an older backup')
+    const opsPath = ops(dir, EDITS)
+    refuseChmodLikeGvfs()
+    const r = await run(['hwp', 'apply', path, '--ops', opsPath, '--json'])
+    expect(r.code, r.stdout).toBe(0)
+    expect(textOf(path).join('\n')).toContain('8월 1일부터 시행합니다.')
+    expect(readFileSync(`${path}.bak`).equals(Buffer.from(original))).toBe(true)
   })
 })

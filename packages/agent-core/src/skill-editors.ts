@@ -22,6 +22,7 @@ export const SKILL_EDITORS = [
   'mindmap',
   'epub',
   'diagram',
+  'whiteboard',
 ] as const
 
 export type SkillEditorId = (typeof SKILL_EDITORS)[number]

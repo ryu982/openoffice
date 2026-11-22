@@ -1,6 +1,8 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import {
+  windowDriveState,
   windowMcpState,
+  type DriveWindowState,
   type McpPermissionRequest,
   type McpServerView,
   type McpWindowState,
@@ -29,6 +31,8 @@ export interface McpWindowView {
   servers: readonly McpServerView[]
   /** the servers turned off in this conversation */
   offInChat: ReadonlySet<string>
+  /** the vault IDs turned off in this conversation */
+  vaultsOffInChat: ReadonlySet<string>
 }
 
 /**
@@ -50,7 +54,33 @@ export function useMcpWindow(state?: McpWindowState | null): McpWindowView {
     subscribe,
     () => resolved?.serversOffInChat() ?? NO_SERVERS_OFF,
   )
-  return { state: resolved, servers, offInChat }
+  const vaultsOffInChat = useSyncExternalStore(
+    subscribe,
+    () => resolved?.vaultsOffInChat() ?? NO_SERVERS_OFF,
+  )
+  return { state: resolved, servers, offInChat, vaultsOffInChat }
+}
+
+export interface DriveWindowView {
+  state: DriveWindowState | null
+  enabled: boolean
+  offInChat: boolean
+}
+
+/** Follow the window's Google Drive AI state and per-chat toggle */
+export function useDriveWindow(state?: DriveWindowState | null): DriveWindowView {
+  const resolved = state === undefined ? windowDriveState() : state
+  const subscribe = useCallback(
+    (listener: () => void) => {
+      if (!resolved) return noUnsubscribe
+      const off = resolved.subscribe(listener)
+      return () => void off()
+    },
+    [resolved],
+  )
+  const enabled = useSyncExternalStore(subscribe, () => resolved?.enabled() ?? false)
+  const offInChat = useSyncExternalStore(subscribe, () => resolved?.offInChat() ?? false)
+  return { state: resolved, enabled, offInChat }
 }
 
 /** The permission requests waiting in this window, in order (spec 7.4); show the first */

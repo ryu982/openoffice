@@ -62,10 +62,12 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Cache cargo (xlsx-sidecar)
+      - name: Cache cargo (native sidecars)
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
-          workspaces: apps/sheets/native/xlsx-engine
+          workspaces: |
+            apps/sheets/native/xlsx-engine
+            packages/file-parse/native/parse-sidecar
 
       # cargo-zigbuild links with zig against the glibc version named in the
       # target, not the runner's. Pinned by version and wheel hash.
@@ -122,6 +124,20 @@ jobs:
           install -m 755 native/xlsx-engine/target/x86_64-unknown-linux-gnu/release/xlsx-sidecar \
             native/xlsx-engine/target/release/xlsx-sidecar
 
+      - name: Rebuild the parse sidecar for the glibc floor
+        working-directory: packages/file-parse
+        run: |
+          set -euo pipefail
+          CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
+          RUSTUP_HOME_DIR="${RUSTUP_HOME:-$HOME/.rustup}"
+          REPO_ROOT="$(git rev-parse --show-toplevel)"
+          CRATE_DIR="$PWD/native/parse-sidecar"
+          RUSTFLAGS="--remap-path-prefix=$HOME=/home --remap-path-prefix=$REPO_ROOT=/repo --remap-path-prefix=$CARGO_HOME_DIR=/cargo --remap-path-prefix=$RUSTUP_HOME_DIR=/rustup --remap-path-prefix=$CRATE_DIR=/parse-sidecar" \
+            cargo zigbuild --release --target "x86_64-unknown-linux-gnu.$LINUX_GLIBC_FLOOR" \
+              --manifest-path native/parse-sidecar/Cargo.toml --config native/parse-sidecar/.cargo/config.toml
+          install -m 755 native/parse-sidecar/target/x86_64-unknown-linux-gnu/release/ieum-parse-sidecar \
+            native/parse-sidecar/target/release/ieum-parse-sidecar
+
       - name: Package
         run: npm run dist:linux -w @genoffice/shell -- --publish never
         env:
@@ -149,10 +165,13 @@ jobs:
           for bin in \
             "$dir/ieumoffice" \
             "$dir/resources/native/xlsx-sidecar" \
+            "$dir/resources/native/ieum-parse-sidecar" \
             "$dir/resources/cli/ieumoffice" \
             "$dir/resources/ieumoffice-launch"; do
             test -x "$bin" || { echo "missing or not executable: $bin"; exit 1; }
           done
+          test -f "$dir/resources/wasm/hwp5_bg.wasm" || { echo "missing: hwp5_bg.wasm"; exit 1; }
+          test -f "$dir/resources/wasm/print_layout_bg.wasm" || { echo "missing: print_layout_bg.wasm"; exit 1; }
           compgen -G "apps/shell/release/IeumOffice-*.AppImage" >/dev/null
           compgen -G "apps/shell/release/ieumoffice_*_amd64.deb" >/dev/null
           compgen -G "apps/shell/release/ieumoffice-*.x86_64.rpm" >/dev/null
@@ -264,6 +283,7 @@ jobs:
           above() { [ -n "$2" ] && [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -n 1)" != "$1" ]; }
           failed=0
           sidecar_seen=0
+          parse_sidecar_seen=0
           while IFS= read -r -d '' file; do
             [ "$(head -c 4 "$file" | od -An -tx1 | tr -d ' \n')" = "7f454c46" ] || continue
             glibc="$(highest GLIBC "$file")"
@@ -273,6 +293,7 @@ jobs:
             name="${file#"$dir"/}"
             echo "$name: GLIBC_${glibc:--} GLIBCXX_${glibcxx:--} CXXABI_${cxxabi:--}"
             [ "$name" != "resources/native/xlsx-sidecar" ] || sidecar_seen=1
+            [ "$name" != "resources/native/ieum-parse-sidecar" ] || parse_sidecar_seen=1
             for check in "GLIBC $LINUX_GLIBC_FLOOR $glibc" "GLIBCXX $LINUX_GLIBCXX_FLOOR $glibcxx" "CXXABI $LINUX_CXXABI_FLOOR $cxxabi"; do
               read -r kind floor need <<<"$check"
               if above "$floor" "${need:-}"; then
@@ -282,6 +303,7 @@ jobs:
             done
           done < <(find "$dir" -type f -print0)
           [ "$sidecar_seen" -eq 1 ] || { echo "::error::the xlsx sidecar was not among the checked programs"; exit 1; }
+          [ "$parse_sidecar_seen" -eq 1 ] || { echo "::error::the parse sidecar was not among the checked programs"; exit 1; }
           [ "$failed" -eq 0 ]
 
       # Ubuntu 20.04 (glibc 2.31) is the oldest desktop the floor is meant for.
@@ -303,6 +325,7 @@ jobs:
                 libgbm1 libasound2 xvfb xauth > /dev/null
               ldd --version | sed -n 1p
               /opt/IeumOffice/resources/native/xlsx-sidecar < /dev/null
+              /opt/IeumOffice/resources/native/ieum-parse-sidecar < /dev/null
               # the post-install step pointed the desktop entry at the launcher (#488)
               test -x /opt/IeumOffice/resources/ieumoffice-launch
               grep -q "^Exec=/opt/IeumOffice/resources/ieumoffice-launch " /usr/share/applications/ieumoffice.desktop

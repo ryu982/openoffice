@@ -42,6 +42,18 @@ On failure the JSON envelope is
 | `.html` `.htm`                               | html     |
 | `.hwp` `.hwpx`                               | hwp      |
 | `.drawio` `.dio` `.drawio.svg` `.drawio.png` | diagram  |
+| `.whiteboard`                                | whiteboard |
+
+## Whiteboards
+
+Whiteboards support `pdf`, `png`, and `svg`, with optional `--page <n>`:
+
+```
+<app binary> --headless-export <board.whiteboard> --to pdf|png|svg --out <path> [--page <n>] [--json]
+```
+
+- Renders always use the light paper palette regardless of the app theme and make zero external network requests.
+- `pdf` writes one multi-page PDF (or one page when `--page` is set); `png` and `svg` write `<name>-p<n>.<ext>` per page unless `--page` selects one page.
 
 ## Diagrams
 

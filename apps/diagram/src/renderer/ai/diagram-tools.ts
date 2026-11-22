@@ -35,6 +35,8 @@ export interface DiagramAiHost {
   undo(tokens: string[]): Promise<boolean>
   /** marks these cells on screen as the last run's changes (an empty list takes the marks off) */
   mark?(cells: readonly DiagramCellRef[]): Promise<void>
+  /** selects and scrolls a cell into view on its page */
+  focus?(cell: DiagramCellRef): Promise<boolean>
 }
 
 const READ_OP = DIAGRAM_OPS.find((op) => op.name === 'read')!

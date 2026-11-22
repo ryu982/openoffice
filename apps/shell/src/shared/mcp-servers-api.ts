@@ -17,10 +17,26 @@ export function permissionOf(value: unknown): McpPermission {
   return value === 'always' || value === 'off' ? value : 'ask'
 }
 
-/** `remote`: reached by address; `local`: a program the app starts on this PC */
-export type McpServerKind = 'remote' | 'local'
+/** `remote`: reached by address; `local`: a program the app starts on this PC; `vault`: built-in Obsidian vault connector */
+export type McpServerKind = 'remote' | 'local' | 'vault'
 /** `auto`: Streamable HTTP, then SSE; `sse`: SSE only (a pasted `type: sse`) */
 export type McpTransport = 'auto' | 'sse'
+
+/** Curated connector presets shown in Settings → Integrations */
+export const MCP_PRESET_IDS = ['notion', 'canva', 'korean-law', 'kordoc'] as const
+export type McpPresetId = (typeof MCP_PRESET_IDS)[number]
+
+/** One Obsidian vault registered under the built-in `kind: 'vault'` connector */
+export interface McpVaultEntry {
+  id: string
+  name: string
+  path: string
+  enabled: boolean
+}
+
+export type McpPickVaultResult =
+  | { ok: true; path: string; suggestedName: string; hasObsidianDir: boolean }
+  | { ok: false; reason: 'cancelled' | 'forbidden'; message?: string }
 
 /** The hints a server puts on a tool; display only, never trusted for safety */
 export interface McpToolAnnotations {
@@ -151,6 +167,8 @@ export interface McpServerRecordView {
   id: string
   name: string
   kind: McpServerKind
+  /** matched curated preset id (or null for manually registered custom servers / vaults) */
+  presetId: McpPresetId | null
   enabled: boolean
   keepResultsInside: boolean
   url: string
@@ -160,6 +178,8 @@ export interface McpServerRecordView {
   command: string
   args: string[]
   env: Record<string, McpSecretView>
+  /** registered vaults for `kind === 'vault'`; empty array for remote/local servers */
+  vaults: McpVaultEntry[]
   /** the command, arguments or env names differ from what the person approved */
   launchReviewNeeded: boolean
   instructions: McpInstructions | null
@@ -211,6 +231,12 @@ export const MCP_SERVERS_CHANNELS = {
   plannedLaunch: 'mcp-servers:planned-launch',
   answerRuntimeDownload: 'mcp-servers:answer-runtime-download',
   retry: 'mcp-servers:retry',
+  connectPreset: 'mcp-servers:connect-preset',
+  pickVaultFolder: 'mcp-servers:pick-vault-folder',
+  addVault: 'mcp-servers:add-vault',
+  removeVault: 'mcp-servers:remove-vault',
+  renameVault: 'mcp-servers:rename-vault',
+  setVaultEnabled: 'mcp-servers:set-vault-enabled',
 } as const
 
 /** What changed and waits for the person's review */
@@ -308,6 +334,8 @@ export type McpSettingsProblem =
   | 'not-local'
   | 'failed'
   | 'launch-changed'
+  | 'duplicate-vault'
+  | 'forbidden-folder'
 
 export type McpSettingsResult<T extends object = object> =
   ({ ok: true } & T) | { ok: false; problem: McpSettingsProblem; detail?: string }
@@ -447,6 +475,21 @@ export interface McpServersApi {
   answerRuntimeDownload(id: string, download: boolean): Promise<McpPlannedLaunchAnswer>
   /** clear a failure (and the three-failure lock) so the next use tries again */
   retry(id: string): Promise<McpSettingsResult>
+  /** register a curated connector preset (Notion, Canva, Korean Law MCP, kordoc MCP) */
+  connectPreset(input: {
+    presetId: McpPresetId
+    lawOc?: string
+  }): Promise<McpSettingsResult<{ id: string }>>
+  /** open the native folder picker and validate a candidate Obsidian vault folder */
+  pickVaultFolder(): Promise<McpPickVaultResult>
+  /** add a validated Obsidian vault to the built-in vault connector */
+  addVault(input: {
+    path: string
+    name: string
+  }): Promise<McpSettingsResult<{ serverId: string; vaultId: string }>>
+  removeVault(vaultId: string): Promise<McpSettingsResult>
+  renameVault(vaultId: string, name: string): Promise<McpSettingsResult>
+  setVaultEnabled(vaultId: string, enabled: boolean): Promise<McpSettingsResult>
 }
 
 /**

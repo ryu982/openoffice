@@ -6,6 +6,7 @@ export const zhTW = {
   kindSlides: '簡報（PPT）',
   kindHtml: '網頁（HTML）',
   kindMindmap: '心智圖',
+  kindWhiteboard: "白板",
   materialsLabel: '資料',
   addMaterials: '新增檔案…',
   removeMaterial: '移除',

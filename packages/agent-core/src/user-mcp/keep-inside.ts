@@ -25,6 +25,12 @@ export interface ReceivedContentGuardDeps {
    * the safe side: the setting is on by default.
    */
   keepsInside(server: string): boolean
+  /**
+   * Whether the server is an app-built-in local-only connector (e.g. Obsidian
+   * vaults): reading another keep-inside server never blocks local-only tools,
+   * while a local-only server with keep-inside on still blocks outbound tools.
+   */
+  isLocalOnly?: (server: string) => boolean
   /** the conversation so far (the loop's history, restored transcripts included) */
   messages(): readonly AgentMessage[]
 }
@@ -75,11 +81,22 @@ export function keepInsideRefusalText(servers: readonly string[]): string {
 
 /**
  * Why a call is refused while `held` servers' content is in the conversation,
- * or null when it may run: calls that stay on the PC always may, and a call
- * to a held server is refused only for the other held servers' content.
+ * or null when it may run: calls that stay on the PC (including local-only
+ * built-in connectors without fetched web addresses) always may, and a call
+ * to a held outbound server is refused only for the other held servers' content.
  */
-export function keepInsideRefusal(call: AgentToolCall, held: ReadonlySet<string>): string | null {
-  if (held.size === 0 || !isOutboundCall(call)) return null
+export function keepInsideRefusal(
+  call: AgentToolCall,
+  held: ReadonlySet<string>,
+  isLocalOnly?: (server: string) => boolean,
+): string | null {
+  const isLocalTool = isLocalOnly
+    ? (name: string) => {
+        const server = parseMcpToolName(name)?.server
+        return server !== undefined && isLocalOnly(server)
+      }
+    : undefined
+  if (held.size === 0 || !isOutboundCall(call, isLocalTool)) return null
   const target = parseMcpToolName(call.name)?.server
   const blockers = [...held].filter((s) => s !== target)
   return blockers.length === 0 ? null : keepInsideRefusalText(blockers)
@@ -122,7 +139,7 @@ export function guardReceivedContent(
       return skill.buildContext?.() ?? ''
     },
     executeTool: (call, signal) => {
-      const refusal = keepInsideRefusal(call, held)
+      const refusal = keepInsideRefusal(call, held, deps.isLocalOnly)
       if (refusal !== null) return { output: refusal, isError: true, summary: call.name }
       const result = skill.executeTool(call, signal)
       if (!isMcpToolName(call.name)) return result

@@ -128,6 +128,11 @@ export interface BridgeOps {
     request: { cells: DiagramCellRef[]; fill: string; line: string }
     reply: Record<string, never>
   }
+  /** Select and scroll a specific cell on its page into view (used by AiChangesCard jump links). */
+  focusCell: {
+    request: { page: string; id: string }
+    reply: { focused: boolean }
+  }
   /**
    * Convert a Visio drawing (`.vsdx` bytes) with draw.io's own importer.
    * Changes nothing on screen. `xml` is a draw.io file with uncompressed
@@ -234,6 +239,7 @@ const BRIDGE_OPS: ReadonlySet<string> = new Set<BridgeOp>([
   'importVisio',
   'undoBatches',
   'markCells',
+  'focusCell',
   'setDark',
   'setCompressed',
   'markSaved',

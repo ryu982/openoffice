@@ -30,6 +30,7 @@ import {
   openDiagramInput,
   planDiagramConvert,
 } from '../formats/diagram'
+import { convertWhiteboard, isWhiteboardPath } from '../formats/whiteboard'
 import {
   decodeText,
   extension,
@@ -161,6 +162,7 @@ export const convertCommand: CommandDef = {
     assertOptionValues(args, convertCommand.options)
     const input = resolveInput(args.positionals[0], ctx)
     if (isDiagramPath(input)) return convertDiagramFile(input, args, ctx)
+    if (isWhiteboardPath(input)) return convertWhiteboard(input, args, ctx, writeOutput)
     const from = extension(input)
     assertNotEmptyPackage(input, from)
     const to = flagString(args, 'to')?.toLowerCase()

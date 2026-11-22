@@ -21,6 +21,8 @@ export const en = {
   saveVerifyFailed:
     'Nothing was saved: the copy about to be written did not read back the same as the document on screen. Try Save As to write a new file.',
   saveVerifyHint: 'The original is unchanged. In Save As, choose HWPX, or use Export as PDF.',
+  saveVerifyPages: 'On screen: {before} pages → read back: {after} pages',
+  saveAsHwpx: 'Save as HWPX…',
   saveProtected:
     'Not saved: this document is password-protected, and saving it here would write it without the password.',
   backupKept: 'Saved. The previous version was kept as {name}.',

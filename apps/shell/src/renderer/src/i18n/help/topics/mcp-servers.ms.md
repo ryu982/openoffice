@@ -2,6 +2,16 @@
 
 Pelayan MCP ialah perkhidmatan yang menyediakan alat yang boleh digunakan oleh AI dari luar aplikasi, seperti mencari undang-undang atau mencari bahan yang diuruskan oleh pasukan anda. Setelah anda menyambungkan pelayan, tetingkap AI dalam GenOffice boleh memanggil alatnya semasa sembang. Anda sendiri yang menentukan, alat demi alat, apa yang boleh digunakan oleh AI dan bagaimana.
 
+## Perkhidmatan bersambung yang disyorkan
+
+Di bahagian atas **Tetapan ▸ Integrasi**, GenOffice menghimpunkan Google Drive bersama lima perkhidmatan sedia guna di atas pelayan MCP tersuai:
+
+- **Notion** dan **Canva**: sambung melalui satu aliran log masuk pelayar. Anda juga boleh melampirkan sehingga 20 halaman Notion terus dari menu **+** dalam editor (salinan sementara dibersihkan selepas 7 hari).
+- **Peti Obsidian**: terbina dalam GenOffice tanpa aplikasi atau proses tambahan. Tambah folder tempatan untuk mencari, membaca dan menyunting nota `.md` secara terus (pemadaman hanya ke tong sampah OS, tiada fail tambahan dicipta dalam peti, kekal tersedia walaupun alat internet dimatikan) serta lampirkannya dari menu **+**.
+- **Korean Law MCP**: mencari undang-undang Korea selepas memasukkan `LAW_OC` dan membenarkan arahan tempatan.
+- **kordoc MCP**: membaca dan menukar fail HWP/HWPX tempatan selepas membenarkan arahan. Penyembunyian editor tidak terpakai pada fail yang dibaca terus oleh kordoc.
+- **Butang Perkhidmatan bersambung**: sentiasa dipaparkan di sebelah medan AI untuk menogol Google Drive (dalam editor), setiap peti Obsidian atau pelayan MCP bagi sembang semasa, atau membuka **Tetapan ▸ Integrasi**.
+
 ## Menambah pelayan
 
 1. Buka **Tetapan ▸ Integrasi** dan tekan **Tambah pelayan** pada kad **Pelayan MCP**.

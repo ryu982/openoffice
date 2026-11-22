@@ -1535,6 +1535,24 @@ export function App() {
     [editQueue, slides, current],
   )
 
+  const focusSlideChange = useCallback(
+    (slideIndex: number, nodeKeyId?: string) => {
+      const slide = slides[slideIndex]
+      if (!slide) return
+      if (slideIndex !== current) setCurrent(slideIndex)
+      setEditing(null)
+      if (nodeKeyId) {
+        const target = slide.nodes.find(
+          (n) => !n.decoration && (n.durableId ?? n.sourceId) === nodeKeyId,
+        )
+        setSelectedIds(target ? [target.sourceId] : [])
+      } else {
+        setSelectedIds([])
+      }
+    },
+    [slides, current],
+  )
+
   const applySlide = useCallback((slideIndex: number, updated: RenderSlide) => {
     setSlides((s) => s.map((sl, i) => (i === slideIndex ? updated : sl)))
     setDirty(true)
@@ -3815,6 +3833,7 @@ export function App() {
                 onQueueRemove={(key) => setEditQueue((prev) => prev.filter((it) => it.key !== key))}
                 onQueueClear={() => setEditQueue([])}
                 onQueueFocus={focusQueueItem}
+                onFocusChange={focusSlideChange}
                 onQueueConsume={(keys) =>
                   setEditQueue((prev) => prev.filter((it) => !keys.includes(it.key)))
                 }

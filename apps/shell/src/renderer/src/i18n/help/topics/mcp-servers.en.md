@@ -2,6 +2,16 @@
 
 An MCP server is a service that offers tools the AI can use from outside the app, such as looking up laws or searching material your team runs. Once you connect a server, the AI windows in GenOffice can call its tools during a chat. You decide, tool by tool, what the AI may use and how.
 
+## Recommended connected services
+
+At the top of **Settings ▸ Integrations**, GenOffice groups Google Drive together with five ready-to-connect services above custom MCP servers:
+
+- **Notion** and **Canva**: connect with one browser sign-in flow. You can also attach up to 20 Notion pages directly from the **+** attach menu in editors (temporary snapshots are kept in the OS temp folder and cleaned up after 7 days).
+- **Obsidian Vault**: built into GenOffice with no extra app or server process. Add one or more local folders to search, read, and edit `.md` notes directly (deletions move files to the OS trash, never permanent delete; no extra files are created in the vault; stays available even when internet tools are off). Attach notes directly from the **+** menu.
+- **Korean Law MCP**: searches Korean statutes and case law locally after you enter your `LAW_OC` ID and allow the command.
+- **kordoc MCP**: reads and converts local HWP/HWPX files on disk after you allow the command. Editor hiding marks do not apply to files kordoc reads directly.
+- **Connected services button**: always shown next to the AI input. Use it to toggle Google Drive (in editors), individual Obsidian vaults, or MCP servers for the current chat, or jump straight to **Settings ▸ Integrations**.
+
 ## Adding a server
 
 1. Open **Settings ▸ Integrations** and press **Add a server** on the **MCP servers** card.

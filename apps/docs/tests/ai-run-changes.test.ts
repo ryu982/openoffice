@@ -21,7 +21,9 @@ import { buildStandaloneHtml } from '../src/renderer/html-export'
 import {
   afterRollback,
   clearAiMarksTransaction,
+  collectAiMarkedChangeLines,
   countAiMarkedBlocks,
+  docChangeLineFromTool,
   docWithoutAiMarks,
   hasLaterAppliedRun,
   isAiMarksClear,
@@ -60,6 +62,23 @@ describe('the marks of the last AI run', () => {
   it('counts the blocks a run marked', () => {
     const editor = editorOf([para('one', true), para('two'), para('three', true)])
     expect(countAiMarkedBlocks(editor.state.doc)).toBe(2)
+    const lines = collectAiMarkedChangeLines(editor.state.doc)
+    expect(lines).toEqual([
+      { kind: 'named', from: '#1', to: 'one', showable: true, blockIndex: 0 },
+      { kind: 'named', from: '#3', to: 'three', showable: true, blockIndex: 2 },
+    ])
+    expect(docChangeLineFromTool('insert_content', { afterBlockIndex: 1 }, 'Inserted')).toEqual({
+      kind: 'insert',
+      to: '#3 Inserted',
+      showable: true,
+      blockIndex: 2,
+    })
+    expect(docChangeLineFromTool('set_watermark', {}, 'Watermark set')).toEqual({
+      kind: 'named',
+      from: 'set_watermark',
+      to: 'Watermark set',
+      showable: false,
+    })
     editor.destroy()
   })
 

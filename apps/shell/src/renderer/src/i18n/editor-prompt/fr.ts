@@ -10,6 +10,7 @@ export const fr = {
   item_html: 'Éditeur HTML',
   item_mindmap: 'Éditeur de cartes mentales',
   item_diagram: 'Éditeur de diagrammes',
+  item_whiteboard: "Éditeur de tableau blanc",
   item_hwp: 'Éditeur Hangul (HWP)',
   item_epub: 'Éditeur EPUB',
   offMessage: '{item} est désactivé. L’activer et ouvrir ?',

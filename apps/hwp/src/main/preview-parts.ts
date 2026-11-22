@@ -1,5 +1,5 @@
 import { crc32, deflateSync } from 'node:zlib'
-import { openHwp, rewriteStreams } from './hwp5-file'
+import { hasStream, openHwp, rewriteStreams } from './hwp5-file'
 import { rewriteZip, zipEntries } from './tab-widths'
 import type { HwpFormat, SavePreview } from '../shared/ipc'
 
@@ -77,12 +77,8 @@ export function writePreview(
   const opened = openHwp(file)
   if (!opened) return null
   const changed = new Map<string, Buffer>()
-  const has = (path: string) =>
-    opened.cfb.FullPaths.some(
-      (full, index) => full.endsWith(path) && opened.cfb.FileIndex[index]?.type === 2,
-    )
-  if (has(HWP_TEXT)) changed.set(HWP_TEXT, Buffer.from(text, 'utf16le'))
-  if (has(HWP_IMAGE)) changed.set(HWP_IMAGE, image)
+  if (hasStream(opened, HWP_TEXT)) changed.set(HWP_TEXT, Buffer.from(text, 'utf16le'))
+  if (hasStream(opened, HWP_IMAGE)) changed.set(HWP_IMAGE, image)
   if (changed.size === 0) return null
   return rewriteStreams(opened, changed, new Set(changed.keys()))
 }

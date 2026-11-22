@@ -27,6 +27,10 @@ import { htmlIsDirty, requestHtmlClose } from '../../../html/src/main/html-main'
 import { mindmapIsDirty, requestMindmapClose } from '../../../mindmap/src/main/mindmap-main'
 import { epubIsDirty, requestEpubClose } from '../../../epub/src/main/epub-main'
 import { diagramIsDirty, requestDiagramClose } from '../../../diagram/src/main/diagram-main'
+import {
+  requestWhiteboardClose,
+  whiteboardIsDirty,
+} from '../../../whiteboard/src/main/whiteboard-main'
 import { canonicalPath } from './tab-manager'
 import { releaseClosedRenderer } from './renderer-disposal'
 import { cancelUpdateRestart } from './update-restart'
@@ -130,6 +134,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   hwp: { width: 1280, height: 900 },
   epub: { width: 1200, height: 900 },
   diagram: { width: 1280, height: 880 },
+  whiteboard: { width: 1280, height: 880 },
 }
 
 /** where the pointer sits inside a freshly torn-off window's title bar */
@@ -268,6 +273,8 @@ async function detachedIsDirty(rec: DetachedRecord): Promise<boolean> {
       return epubIsDirty(wc.id)
     case 'diagram':
       return diagramIsDirty(wc.id)
+    case 'whiteboard':
+      return whiteboardIsDirty(wc.id)
     default:
       return false
   }
@@ -302,6 +309,8 @@ async function confirmDetachedClose(rec: DetachedRecord): Promise<boolean> {
       return requestEpubClose(wc, win)
     case 'diagram':
       return requestDiagramClose(wc, win)
+    case 'whiteboard':
+      return requestWhiteboardClose(wc, win)
     default:
       return true
   }

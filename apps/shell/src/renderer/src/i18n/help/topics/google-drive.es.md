@@ -41,6 +41,8 @@ El inicio de sesión se guarda en este PC con el cifrado que tu sistema operativ
 - La IA no puede modificar, eliminar ni compartir archivos de Drive.
 - Cuando un chat contiene algo leído de Drive, ese chat deja de usar la búsqueda web, la búsqueda de imágenes, la lectura de páginas por dirección web y la inserción de imágenes por dirección web. Empieza un chat nuevo para volver a usarlas.
 
+También puedes activar o desactivar la lectura de Google Drive para el chat actual desde el botón **Servicios conectados**. Si desactivas las funciones de IA, Google Drive sigue visible en **Ajustes ▸ Integraciones** para abrir y guardar archivos, ocultando solo el interruptor de IA.
+
 ## Desconectar
 
 Haz clic en **Desconectar** en **Configuración ▸ Integraciones**. GenOffice quita el inicio de sesión de este PC y pide a Google que retire su acceso. Las copias de archivos que ya están en este PC se conservan. También puedes quitar el acceso en cualquier momento en **Conexiones de terceros** de tu cuenta de Google.

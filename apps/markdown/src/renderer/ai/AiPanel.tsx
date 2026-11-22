@@ -1,5 +1,6 @@
 import {
   aiPanelWidthAtPointer,
+  AiPanelHeader,
   AiPanelSideButton,
   AiModelPicker,
   type AiModelPickerBridge,
@@ -8,12 +9,20 @@ import {
   AiFirstConnectionNotice,
   AiInputTruncatedNotice,
   AiChangesCard,
+  type AiChangeLine,
   type AiChangesState,
   AiMark,
+  AiReplyFooter,
+  AiScrollToBottom,
   AiToolsUnsupportedNotice,
   AiSubscriptionUsageLine,
+  AiWorkSteps,
+  IconArrowUp,
+  IconStop,
+  AiEmptyHints,
   aiSubscriptionText,
   useAiSendGate,
+  useScrollToBottom,
   useSubscriptionUsageUpdates,
 } from '@genoffice/ui'
 import { useEffect, useRef, useState } from 'react'
@@ -70,9 +79,6 @@ import {
 } from '@genoffice/ui'
 import type { Editor } from '@tiptap/core'
 import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
-import sendEnterOn from '../assets/send-enter-on.png'
-import sendEnterOff from '../assets/send-enter-off.png'
-import sendStop from '../assets/send-stop.png'
 import { aiMarks, clearAiHighlights } from '../editor/aiHighlight'
 import { setInactiveSelectionShown } from '../editor/inactiveSelection'
 import { uiOp } from '../editor/ops'
@@ -175,6 +181,77 @@ interface ChatEntry {
   changes?: RunChanges
 }
 
+interface MarkdownChangeLine extends AiChangeLine {
+  block?: number
+}
+
+const MAX_MD_CHANGE_LINES = 24
+
+function clipLineText(text: unknown, max = 56): string {
+  if (typeof text !== 'string') return ''
+  const compact = text.replace(/\s+/g, ' ').trim()
+  return compact.length > max ? `${compact.slice(0, max - 1)}…` : compact
+}
+
+function mdChangeLinesFromTool(
+  name: string,
+  input: Record<string, unknown>,
+  summary: string,
+): MarkdownChangeLine[] {
+  if (name === 'apply_ops' && Array.isArray(input.ops)) {
+    const out: MarkdownChangeLine[] = []
+    for (const raw of input.ops) {
+      if (!raw || typeof raw !== 'object') continue
+      const op = raw as Record<string, unknown>
+      const kind = typeof op.op === 'string' ? op.op : ''
+      const target =
+        op.target && typeof op.target === 'object' ? (op.target as Record<string, unknown>) : null
+      const block =
+        typeof target?.start === 'number'
+          ? target.start
+          : typeof op.after === 'number'
+            ? op.after + 1
+            : typeof op.index === 'number'
+              ? op.index
+              : undefined
+      if (kind === 'setFrontmatter') {
+        out.push({ kind: 'named', to: 'Frontmatter', showable: false })
+      } else if (kind === 'replaceText') {
+        out.push({
+          kind: 'replace',
+          from: clipLineText(op.find),
+          to: clipLineText(op.replace),
+          showable: block !== undefined,
+          block,
+        })
+      } else if (kind === 'insertContent' || kind === 'insertBlocks') {
+        out.push({
+          kind: 'insert',
+          to: clipLineText(op.markdown ?? op.text ?? kind),
+          showable: block !== undefined,
+          block,
+        })
+      } else if (kind === 'deleteBlocks' || kind === 'deleteRange') {
+        out.push({
+          kind: 'delete',
+          from: block !== undefined ? `Block ${block + 1}` : kind,
+          showable: false,
+        })
+      } else if (kind) {
+        out.push({
+          kind: 'named',
+          from: block !== undefined ? `Block ${block + 1}` : undefined,
+          to: clipLineText(op.markdown ?? op.text ?? kind),
+          showable: block !== undefined,
+          block,
+        })
+      }
+    }
+    return out
+  }
+  return [{ kind: 'named', to: clipLineText(summary || name), showable: true, block: 0 }]
+}
+
 /**
  * What one run changed, on its last reply. The run is taken back by restoring
  * the snapshot taken before its first change, which also takes back every
@@ -186,6 +263,8 @@ interface RunChanges {
   state: AiChangesState
   /** top-level blocks the run marked, when that is every place it changed */
   count?: number
+  /** per-edit change summary lines for the diff card */
+  lines?: MarkdownChangeLine[]
 }
 
 /** A project chat message as this panel shows it */
@@ -358,7 +437,6 @@ export function AiPanel({
   skillTemplatesRef.current = skillTemplates
   /** the skills of the last send: a retry sends the same skill text */
   const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   /** the snapshots the change cards restore, oldest first; a card whose snapshot was pushed out is 'expired' */
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const nextSnapshotIdRef = useRef(1)
@@ -366,6 +444,8 @@ export function AiPanel({
   const runSnapshotRef = useRef<DocSnapshot | null>(null)
   /** the in-flight run changed something its marks cannot show (the properties block) */
   const runUnmarkedRef = useRef(false)
+  /** detailed change lines accumulated during the active run */
+  const runChangeLinesRef = useRef<MarkdownChangeLine[]>([])
   // bumped on selection/doc changes so the scope chip & queue rows stay fresh
   const [, setScopeTick] = useState(0)
   /** the scope chip's expandable preview of the selected text */
@@ -373,6 +453,11 @@ export function AiPanel({
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottomRef = useRef(true)
+  const {
+    showButton: showScrollBottom,
+    onScroll: onScrollBottom,
+    scrollToBottom,
+  } = useScrollToBottom(chatRef)
   // preferred = the user's chosen width (the only value persisted); panelWidth =
   // what fits the current window. Deriving the display width from the preference
   // means a transiently small window never permanently shrinks the panel.
@@ -703,8 +788,10 @@ export function AiPanel({
   const takeRunChanges = (): { changes: RunChanges } | Record<string, never> => {
     const doc = runSnapshotRef.current
     const unmarked = runUnmarkedRef.current
+    const lines = runChangeLinesRef.current
     runSnapshotRef.current = null
     runUnmarkedRef.current = false
+    runChangeLinesRef.current = []
     if (!doc) return {}
     const id = nextSnapshotIdRef.current++
     setSnapshots((prev) => [...prev, { id, doc }].slice(-MAX_SNAPSHOTS))
@@ -712,7 +799,14 @@ export function AiPanel({
     const marks = editor ? aiMarks(editor.state) : null
     const count =
       marks && !unmarked && !marks.unmarked && marks.blocks > 0 ? marks.blocks : undefined
-    return { changes: { id, state: 'applied', ...(count !== undefined ? { count } : {}) } }
+    return {
+      changes: {
+        id,
+        state: 'applied',
+        ...(count !== undefined ? { count } : {}),
+        ...(lines.length > 0 ? { lines } : {}),
+      },
+    }
   }
 
   // The loop is built once; every mutable value goes through a ref getter
@@ -769,7 +863,16 @@ export function AiPanel({
           }))
         },
         onToolExecuted: ({ call, execution, snapshotBefore }) => {
-          if (execution.mutated) runMutatedRef.current = true
+          if (execution.mutated) {
+            runMutatedRef.current = true
+            if (runChangeLinesRef.current.length < MAX_MD_CHANGE_LINES) {
+              const nextLines = mdChangeLinesFromTool(call.name, call.input, execution.summary)
+              runChangeLinesRef.current = [...runChangeLinesRef.current, ...nextLines].slice(
+                0,
+                MAX_MD_CHANGE_LINES,
+              )
+            }
+          }
           if (snapshotBefore !== undefined) runSnapshotRef.current = snapshotBefore
           if (execution.mutated && setsFrontmatter(call.input)) runUnmarkedRef.current = true
           // mind maps ride the UI-only display side channel onto the message
@@ -1017,6 +1120,7 @@ export function AiPanel({
     const el = chatRef.current
     if (!el) return
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    onScrollBottom()
   }
 
   /**
@@ -1057,6 +1161,7 @@ export function AiPanel({
     runMutatedRef.current = false
     runSnapshotRef.current = null
     runUnmarkedRef.current = false
+    runChangeLinesRef.current = []
     // the marks show what the last run changed: a new run starts with none
     clearMarks()
     runToolsRef.current = []
@@ -1266,12 +1371,6 @@ export function AiPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset])
 
-  const copyMessage = (text: string, idx: number): void => {
-    void navigator.clipboard.writeText(text)
-    setCopiedIdx(idx)
-    window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
-  }
-
   /** takes the marks of the last run's changes off the document */
   const clearMarks = (): void => {
     const current = depsRef.current.getEditor()
@@ -1376,41 +1475,45 @@ export function AiPanel({
         aria-orientation="vertical"
         aria-label={aiSubscriptionText(lang, 'aiAssistant')}
       />
-      <header className="ai-panel-header">
-        <span className="ai-panel-title">
-          <AiMark size={22} />
-          {aiSubscriptionText(lang, 'aiAssistant')}
-        </span>
-        <div className="ai-panel-header-actions">
-          <AiPanelSideButton
-            lang={lang}
-            onMove={(side) => window.markdownApi.setAiPanelPrefs({ side })}
-          />
-          {projectPanel.chatMenu}
-          {chat.length > 0 && (
+      <AiPanelHeader
+        lang={lang}
+        chatMenu={projectPanel.chatMenu}
+        actions={
+          <>
+            <AiPanelSideButton
+              lang={lang}
+              onMove={(side) => window.markdownApi.setAiPanelPrefs({ side })}
+            />
+            {chat.length > 0 && (
+              <button
+                type="button"
+                className="ai-header-btn"
+                onClick={startNewChat}
+                data-tip={t('aiNewChat')}
+                aria-label={t('aiNewChat')}
+              >
+                <IconNewChat />
+              </button>
+            )}
             <button
-              className="ai-header-btn"
-              onClick={startNewChat}
-              data-tip={t('aiNewChat')}
-              aria-label={t('aiNewChat')}
+              type="button"
+              className="ai-header-btn ai-panel-collapse"
+              onClick={onCollapse}
+              data-tip={t('aiCollapsePanel')}
+              aria-label={t('aiCollapsePanel')}
             >
-              <IconNewChat />
+              <IconCollapse />
             </button>
-          )}
-          <button
-            className="ai-header-btn ai-panel-collapse"
-            onClick={onCollapse}
-            data-tip={t('aiCollapsePanel')}
-            aria-label={t('aiCollapsePanel')}
-          >
-            <IconCollapse />
-          </button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="ai-chat" ref={chatRef} onScroll={onChatScroll}>
         {chat.length === 0 && (
           <div className="ai-chat-empty">
+            <div className="ai-chat-empty-badge">
+              <AiMark size={24} />
+            </div>
             <div className="ai-chat-empty-title">{t('aiEmptyTitle')}</div>
             <div className="ai-chat-empty-body">{t('aiEmptyBody')}</div>
             <div className="ai-starter-list">
@@ -1442,6 +1545,7 @@ export function AiPanel({
                 {t('aiQuickMindMap')}
               </button>
             </div>
+            <AiEmptyHints lang={lang} showSkill={Boolean(skills.composer)} />
           </div>
         )}
         {chat.map((entry, i) => {
@@ -1490,6 +1594,7 @@ export function AiPanel({
               key={i}
               className={`ai-msg ai-msg-assistant${entry.isError && !blocked ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
+              {hasTools && <AiWorkSteps lang={lang} steps={entry.tools!} />}
               {blocked ? (
                 <AiBlockedNotice
                   kind={blocked.kind}
@@ -1509,7 +1614,6 @@ export function AiPanel({
                   </div>
                 )
               )}
-              {hasTools && <ToolChipList tools={entry.tools!} />}
               {entry.mindmap && (
                 <MindMapCard
                   tree={entry.mindmap}
@@ -1540,6 +1644,12 @@ export function AiPanel({
                   lang={lang}
                   state={cardState(entry.changes)}
                   count={entry.changes.count}
+                  lines={entry.changes.lines}
+                  onShowLine={(idx) => {
+                    const line = entry.changes?.lines?.[idx]
+                    const current = depsRef.current.getEditor()
+                    if (line?.block !== undefined && current) navigateToBlock(current, line.block)
+                  }}
                   canRevert={!busy}
                   revertsLater={chat.some(
                     (later) =>
@@ -1552,66 +1662,17 @@ export function AiPanel({
                   onClearMarks={i === latestChangesIdx && marksShown ? clearMarks : null}
                 />
               )}
-              {entry.usage && (
-                <div className="ai-message-usage">
-                  <AiUsageChip usage={entry.usage} lang={lang} />
-                </div>
-              )}
               <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
-              {showToolbar && (
-                <div className="ai-msg-toolbar">
-                  <button
-                    className="ai-msg-tool-btn"
-                    onClick={() => copyMessage(entry.text, i)}
-                    aria-label={t('aiCopyReplyTitle')}
-                    data-tip={t('aiCopyReplyTitle')}
-                  >
-                    {copiedIdx === i ? (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path
-                          d="M14.6113 5.34253C16.0608 5.3428 17.2363 6.518 17.2363 7.96753V15.5066C17.2361 16.956 16.0607 18.1313 14.6113 18.1316H7.07227C5.62267 18.1316 4.44751 16.9561 4.44727 15.5066V7.96753C4.44732 6.51783 5.62255 5.34253 7.07227 5.34253H14.6113ZM7.07227 6.59253C6.31291 6.59253 5.69732 7.20819 5.69727 7.96753V15.5066C5.69751 16.2658 6.31302 16.8816 7.07227 16.8816H14.6113C15.3703 16.8813 15.9861 16.2656 15.9863 15.5066V7.96753C15.9863 7.20835 15.3705 6.5928 14.6113 6.59253H7.07227ZM10.0176 2.8689C10.3626 2.86905 10.6426 3.14882 10.6426 3.4939C10.6425 3.83888 10.3626 4.11874 10.0176 4.1189H4.59961C3.84022 4.1189 3.22461 4.73451 3.22461 5.4939V11.324C3.22433 11.6689 2.94461 11.949 2.59961 11.949C2.25461 11.949 1.97489 11.6689 1.97461 11.324V5.4939C1.97461 4.04415 3.14987 2.8689 4.59961 2.8689H10.0176Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                  {isLast && !busy && runInstructionRef.current && (
-                    <button
-                      className="ai-msg-tool-btn"
-                      onClick={retry}
-                      aria-label={t('aiRegenerateTitle')}
-                      data-tip={t('aiRegenerateTitle')}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                      >
-                        <path d="M 12.68 6.65 a 4.86 4.86 0 0 0 -9 -1.08 M 3.32 9.35 a 4.86 4.86 0 0 0 9 1.08" />
-                        <path d="M 12.95 3.05 v 2.7 h -2.7 M 3.05 12.95 v -2.7 h 2.7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+              {(showToolbar || entry.usage) && (
+                <AiReplyFooter
+                  lang={lang}
+                  isLast={isLast}
+                  copyText={showToolbar ? entry.text : undefined}
+                  onRetry={
+                    showToolbar && isLast && !busy && runInstructionRef.current ? retry : undefined
+                  }
+                  usage={entry.usage}
+                />
               )}
             </div>
           )
@@ -1652,6 +1713,15 @@ export function AiPanel({
         )}
         {projectPanel.notices}
       </div>
+
+      <AiScrollToBottom
+        visible={showScrollBottom && chat.length > 0}
+        lang={lang}
+        onClick={() => {
+          stickToBottomRef.current = true
+          scrollToBottom()
+        }}
+      />
 
       <div className="ai-composer">
         {activePartial && (
@@ -1752,163 +1822,30 @@ export function AiPanel({
           sendLabel={t('aiSend')}
           stopLabel={t('aiStop')}
           iconOnly
-          footerStart={
-            <>
-              <AiModelPicker
-                bridge={MODEL_BRIDGE}
-                lang={lang}
-                subscriptionStatuses={statuses ?? {}}
-                onRefreshSubscriptions={subscription.refresh}
-              />
-              {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <McpServerButton lang={lang} />
-            </>
+          lang={lang}
+          showSkillButton
+          footerStart={<McpServerButton lang={lang} />}
+          footerEnd={
+            <AiModelPicker
+              bridge={MODEL_BRIDGE}
+              lang={lang}
+              subscriptionStatuses={statuses ?? {}}
+              onRefreshSubscriptions={subscription.refresh}
+            />
           }
-          sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}
-          sendIconDisabled={<img src={sendEnterOff} alt="" aria-hidden />}
-          stopIcon={<img src={sendStop} alt="" aria-hidden />}
+          sendIconEnabled={<IconArrowUp size={15} />}
+          sendIconDisabled={<IconArrowUp size={15} />}
+          stopIcon={<IconStop size={12} />}
           textareaRef={inputRef}
           onChange={setPrompt}
           onSend={sendTyped}
           onStop={stop}
           skills={skills.composer}
           footerBelow={projectPanel.picker}
+          footerBelowEnd={sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
         />
       </div>
     </aside>
-  )
-}
-
-/** Step-row status icons (timeline glyphs, unified with the other apps) */
-function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
-  if (status === 'running') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M6.5 3.5h11M6.5 20.5h11M8 3.5v3.2c0 2.6 4 4.2 4 5.3 0 1.1 4 2.7 4 5.3v3.2M16 3.5v3.2c0 2.6-4 4.2-4 5.3 0 1.1-4 2.7-4 5.3v3.2" />
-      </svg>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
-      </svg>
-    )
-  }
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.4 2.4 2.4 4.6-5" />
-    </svg>
-  )
-}
-
-/** Tool activity group (docs parity): auto-opens while tools run, auto-collapses into
- *  "Worked · N steps" when they finish; a manual toggle always wins */
-function ToolChipList({ tools }: { tools: ToolActivity[] }) {
-  const { t: tr } = useI18n()
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [userOpen, setUserOpen] = useState<boolean | null>(null)
-
-  const toggle = (j: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(j)) next.delete(j)
-      else next.add(j)
-      return next
-    })
-  }
-
-  const anyRunning = tools.some((tool) => tool.running)
-  const open = userOpen ?? anyRunning
-  const label = anyRunning ? tr('aiGroupWorking') : tr('aiWorkedSteps', { n: tools.length })
-
-  return (
-    <div className="ai-work-group">
-      <button
-        type="button"
-        className={`ai-work-group-summary${anyRunning ? ' running' : ''}`}
-        aria-expanded={open}
-        onClick={() => setUserOpen(!open)}
-      >
-        {anyRunning && !open && <span className="ai-tool-chip-spinner" aria-hidden />}
-        <span className="ai-work-group-label">{label}</span>
-        <span className={`ai-tool-chip-caret${open ? ' open' : ''}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      <div className={`ai-work-group-body${open ? ' open' : ''}`}>
-        <div className="ai-work-group-body-inner">
-          {tools.map((tool, j) => {
-            const hasOutput = !tool.running && !!tool.output
-            const isOpen = expanded.has(j)
-            const stepStatus = tool.running ? 'running' : tool.isError ? 'error' : 'done'
-            return (
-              <div key={j} className="ai-step-row">
-                <span className={`ai-step-icon ${stepStatus}`} aria-hidden>
-                  <StepIcon status={stepStatus} />
-                </span>
-                <div className="ai-step-content">
-                  {hasOutput ? (
-                    <button
-                      type="button"
-                      className="ai-step-title clickable"
-                      data-tip={tool.name}
-                      aria-expanded={isOpen}
-                      onClick={() => toggle(j)}
-                    >
-                      {tool.summary}
-                    </button>
-                  ) : (
-                    <span className="ai-step-title" data-tip={tool.name}>
-                      {tool.summary}
-                    </span>
-                  )}
-                  {hasOutput && isOpen && (
-                    <div className="ai-step-detail">
-                      <div className="ai-tool-output">
-                        <div className="ai-tool-output-pre">{tool.output}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 }
 

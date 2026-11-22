@@ -40,6 +40,11 @@
 ## 쪽 그림과 회색조(뒷단 전용)
 
 - 쪽 그림은 `@embedpdf/pdfium`(WebAssembly)으로 한 쪽씩 만들고, 문서 전체의 그림을 메모리에 모으지 않는다. `pdfium.wasm`은 개발·시험에서는 `node_modules`에서, 설치본에서는 `process.resourcesPath/wasm/pdfium.wasm`(`apps/shell/electron-builder.cjs`의 extraResources)에서 찾는다.
+- 무거운 뒷단 경로(`readJobPageSizes`, `arrangePrintJob`, `rotateLandscapeFaces`, `grayscalePdf`, 픽셀 변환, `encodePng`, `raster-job`의 융합 `encodeBgrxToPng`)는 미리 빌드해 커밋한 Rust WebAssembly 코어(`packages/print-layout/wasm/pkg/`, 결정 0158)를 기본으로 쓴다.
+  - `GENOFFICE_PRINT_LAYOUT_RUST=0|off`이거나 WASM 파일 부재·초기화 실패·WASM 런타임 트랩 같은 인프라 장애 때만 기존 JS(`pdf-lib`·`node:zlib`) 경로로 폴백한다.
+  - `PrintLayoutErrorCode`(`no-faces`, `poster-overlap-too-large` 등)와 잘못된/암호화된 PDF, 잘못된 PNG 크기 같은 의미적 거절은 절대 폴백하지 않는다.
+  - `packages/print-layout/wasm/src/**/*.rs`, `Cargo.toml`, `Cargo.lock`을 고쳤으면 반드시 `node tools/build-print-layout-wasm.mjs`로 `wasm/pkg/`와 `wasm/pkg/manifest.json`을 다시 만든다(`tests/wasm-freshness.test.ts`가 해시와 로컬 경로 누출 0건을 지킨다).
+  - `./plan`(`src/plan.ts` 이하)은 `src/wasm.ts`를 절대 가져오지 않는다(`tests/plan-imports.test.ts`).
 - dpi `auto`는 PDF 편집기의 지금 인쇄 규칙(200dpi, 전체 화소 예산을 넘으면 150dpi까지)을 따른다. 사용자가 고른 숫자는 낮추지 않고 막지도 않는다.
 - 인쇄용 그림에서만 가로 면(너비가 높이보다 큰 면)을 시계 방향 90°로 돌린다. 미리 보기 그림과 저장 PDF는 돌리지 않는다.
 - 회색 그림 PDF는 면마다 DeviceGray 그림 하나만 든 쪽이다(글자 객체가 남지 않는다). 회색조로 인쇄할 때는 이 그림을 다시 그리지 않고 그대로 쓴다.
@@ -47,7 +52,11 @@
 
 ## 테스트
 
+- Rust 단위 테스트: `cargo test --manifest-path packages/print-layout/wasm/Cargo.toml`
+- WASM 재빌드: `node tools/build-print-layout-wasm.mjs`
 - 패키지 폴더에서 `npx vitest run`, 또는 `npm run test -w @genoffice/print-layout`. 픽스처 파일은 없다.
+- `tests/wasm-freshness.test.ts`는 `wasm/pkg/manifest.json`의 소스·WASM SHA-256 일치와 로컬 경로 누출 0건을 확인한다.
+- `tests/rust-equivalence.test.ts`는 Rust WASM과 JS 폴백 경로의 동등성, 공유 리소스 비폭증, 환경변수·인프라 폴백 및 의미적 비폴백을 확인한다.
 - `tests/arrange.test.ts`는 시험 안에서 pdf-lib로 인쇄 작업 PDF를 만든다. 쪽마다 가운데에 표식(`P1`…), 회전 전 왼쪽 아래 구석에 작은 표식(`Q1`…)을 글자 원점이 그 자리에 오게 쓴다. 결과는 PDF.js(`pdfjs-dist/legacy/build/pdf.mjs`)의 글자 위치로 면 수, 면 크기, 어느 칸에 어느 쪽이 있는지 판정한다. 구석 표식으로 배율과 회전을 본다.
 - PDF.js는 쪽 밖에 놓인 글자를 글자 목록에서 뺀다. 포스터 조각처럼 표식이 면 밖에 오는 경우는 "없음"을 확인한다(`expectAtOrOff`).
 - 재단선은 결과 쪽의 내용 스트림을 풀어 `m … l` 선을 읽어 확인한다(`readLines`).

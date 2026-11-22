@@ -714,6 +714,19 @@ export interface TextEditValidation {
   /** Base fill color of the matched run (its first object in reading order), for
       display while editing — a uniformly colored run has no colorRuns to seed from */
   baseColor?: [number, number, number]
+  /** Present when oldText is only part of the matched text objects (the edit rect
+      covers a fragment of a larger run). The engine then rewrites the whole run from
+      its own origin: oldText → newText below, so everything after the fragment moves.
+      [start, oldEnd) is the fragment in oldText, [start, newEnd) its replacement in
+      newText; bounds are the run's ink bounds. Absent for whole-run matches. */
+  run?: {
+    bounds: [number, number, number, number]
+    oldText: string
+    newText: string
+    start: number
+    oldEnd: number
+    newEnd: number
+  }
 }
 
 /** Curated fonts selectable for rebuilt text runs. Single-face .ttf on every platform we

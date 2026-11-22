@@ -26,6 +26,7 @@ export const ja = {
   itemHtml: 'HTML',
   itemMindmap: 'マインドマップ',
   itemDiagram: 'ダイアグラム',
+  itemWhiteboard: "ホワイトボード",
   itemHwp: 'HWP（ハングル）',
   itemEpub: '電子書籍（EPUB）',
 } satisfies Record<keyof typeof zh, string>

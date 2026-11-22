@@ -16,6 +16,7 @@ import {
   hancomHooks,
   missingHancomCommands,
   missingPluginHooks,
+  noteTextHooks,
   patchTargets,
   pluginHooks,
 } from '../scripts/rhwp-patches.mjs'
@@ -104,7 +105,7 @@ describe('a patch whose text is gone', () => {
 
 describe('what the plugin reaches into the studio for', () => {
   const complete = (file: string) => {
-    const needles = [...pluginHooks, ...hancomHooks]
+    const needles = [...pluginHooks, ...hancomHooks, ...noteTextHooks]
       .filter((hook) => hook.file === file)
       .flatMap((hook) => hook.needles)
     return needles.length > 0 ? needles.join('\n') : null
@@ -524,6 +525,55 @@ describe('rhwp PC fonts patch', () => {
   })
 })
 
+describe('rhwp font file reads patch', () => {
+  // the studio's text around the patch, as the pinned release has it
+  const localFonts = [
+    "import { setRawCanvasFont } from './canvas-font-raw.ts';",
+    '',
+    'async function collectLocalFontRecords(fontDataList: readonly FontData[]): Promise<LocalFontRecord[]> {',
+    '  const records: Array<LocalFontRecord | null> = new Array(fontDataList.length).fill(null);',
+    '  let nextIndex = 0;',
+    '  const worker = async (): Promise<void> => {',
+    '    while (nextIndex < fontDataList.length) {',
+    '      const index = nextIndex;',
+    '      nextIndex += 1;',
+    '      const fontData = fontDataList[index];',
+    "      records[index] = makeLocalFontRecord(fontData, await readSfntFontNames(fontData), 'local-font-access');",
+    '    }',
+    '  };',
+    '',
+  ].join('\n')
+  const patched = applyPatch('studio-font-file-reads', localFonts)
+
+  it('asks the host main process for SFNT metadata before falling back to blob reads', () => {
+    expect(patched).toContain(
+      `import { fontFilesToRead, readHostFontNames } from '${PC_FONTS_MODULE}';`,
+    )
+    expect(patched).toContain('const hostNames = await readHostFontNames(fontDataList);')
+    expect(patched).toContain('if (hostNames) {')
+    expect(patched).toContain(
+      '  let nextIndex = 0;\n  const readsFile = fontFilesToRead(fontDataList);\n  const worker = ',
+    )
+  })
+
+  it('lists a font it does not read by the names the PC gave', () => {
+    expect(patched).toContain(
+      "makeLocalFontRecord(fontData, readsFile(index) ? await readSfntFontNames(fontData) : emptySfntFontNames(), 'local-font-access');",
+    )
+    expect(patched).not.toContain('fontData, await readSfntFontNames(fontData),')
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    expect(applyPatch('studio-font-file-reads', localFonts.replaceAll('\n', '\r\n'))).toContain(
+      'const readsFile = fontFilesToRead(fontDataList);\r\n',
+    )
+    expect(() =>
+      applyPatch('studio-font-file-reads', localFonts.replace('let nextIndex', 'x')),
+    ).toThrow(/studio-font-file-reads/)
+    expect(STUDIO_PATCHES).toContain('studio-font-file-reads')
+  })
+})
+
 describe('rhwp missing font marks patch', () => {
   // the studio's text around the patch, as the pinned release has it
   const toolbar = [
@@ -749,16 +799,24 @@ describe('the studio source the build fetched', () => {
     'src/main.ts',
     'src/embed/protocol.ts',
     'src/core/wasm-bridge.ts',
+    'src/core/local-fonts.ts',
+    'src/engine/cursor.ts',
     'src/engine/input-handler.ts',
+    'src/engine/input-handler-hyperlink.ts',
     'src/engine/input-handler-keyboard.ts',
+    'src/engine/input-handler-mouse.ts',
+    'src/engine/input-handler-picture.ts',
     'src/engine/input-handler-text.ts',
     'src/engine/input-handler-table.ts',
+    'src/command/dispatcher.ts',
     'src/command/commands/edit.ts',
     'src/command/commands/format.ts',
     'src/command/commands/insert.ts',
     'src/command/commands/table.ts',
     'src/command/shortcut-map.ts',
+    'src/ui/hyperlink-dialog.ts',
     'src/ui/table-cell-props-dialog.ts',
+    'src/ui/symbols-dialog.ts',
     'src/ui/toolbar.ts',
     'src/command/registry.ts',
     'src/i18n/locales/ko.ts',
@@ -1051,16 +1109,18 @@ describe('rhwp Hangul-key patches', () => {
     ].join('\n')
     const patched = applyPatch('studio-hancom-chords', source)
     expect(patched).toContain(
-      `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
+      `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomPictureObjectKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
     )
     // the second key is looked at before anything else the handler does
     expect(patched).toContain(
       '  this._cellBlockLetterImeGuard?.reset();\n  if (hancomChordKey(this, e)) return;\n  if (this._pendingChordK)',
     )
-    // a table-object key and a cell block's keys come before the selection is dropped; the
-    // block's keys are told what the studio's shortcut table makes of the key
+    // a table-object key, a picture-object key and a cell block's keys come before the
+    // selection is dropped; the block's keys are told what the studio's shortcut table makes
+    // of the key
     expect(patched).toContain(
       '  if (hancomTableObjectKey(this, e)) return;\n' +
+        '  if (hancomPictureObjectKey(this, e)) return;\n' +
         '  if (hancomCellBlockKey(this, e, (ev: KeyboardEvent) => matchShortcut(ev, defaultShortcuts))) return;\n' +
         '  if (hancomCellKey(this, e)) return;\n' +
         '  if (this.connectorDrawingMode) {',
@@ -1194,5 +1254,276 @@ describe("Hangul's plain drag of a horizontal table border", () => {
     )
     expect(patched).toContain("  } else if (state.edge.type === 'col' && inCellSel && range) {")
     expect(STUDIO_PATCHES).toContain('studio-hancom-row-drag')
+  })
+})
+
+describe("Hangul's mouse rules for a selected object (help: 개체 크기 조절, 개체 이동하기)", () => {
+  const studioSource = join(
+    __dirname,
+    '..',
+    'node_modules',
+    '.cache',
+    'rhwp-studio',
+    JSON.parse(
+      readFileSync(
+        join(__dirname, '..', '..', '..', 'vendor', 'rhwp-core', 'package.json'),
+        'utf8',
+      ),
+    ).rhwp.tag,
+    'rhwp-studio',
+    'src',
+    'engine',
+  )
+  const pictureFile = join(studioSource, 'input-handler-picture.ts')
+
+  it('ask the module whether to keep the ratio, for one object and for several', () => {
+    const source = [
+      "import { computeArrowResize, MIN_SIZE_HWP, type ArrowKey } from './picture-resize';",
+      '  if (isRotatedImageCornerResize(state, angleDeg)) {',
+      '  const newBbox = state.multiRefs',
+      '    ? this.calcResizedBbox(e, zoom)',
+      '    : calcResizedBboxRotated(state, e, zoom);',
+      '        vertOffset: beforeVertOffset + (newVertOffset - origVertOffset),',
+      '      });',
+      '  // 단일 선택 리사이즈 (회전 반영: pivot 고정, 위치도 갱신)',
+      '  const newBbox = calcResizedBboxRotated(state, e, zoom);',
+      '    if (Object.keys(updated).length > 0) {',
+      '  return { x, y, width: w, height: h };',
+      '  const cx = e.clientX - cr.left;',
+      '  const cy = e.clientY - cr.top;',
+      '  // 이동량은 끌기를 시작한 쪽의 좌표로 잰다.',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-object-drag', source)
+    expect(patched).toContain(
+      `import { axisLockedPoint, cropChange, cropDragBox, dragKeepsRatio, ratioResizedBox } from '${HANCOM_KEYS_MODULE}';`,
+    )
+    expect(patched).toContain('|| dragKeepsRatio(state, e.shiftKey)) {')
+    // a picture's Shift+corner crops it, live and at the end of the drag
+    expect(patched).toContain(
+      '    : (cropDragBox(this, state, e, zoom) ?? calcResizedBboxRotated(state, e, zoom));',
+    )
+    expect(patched).toContain(
+      '  const newBbox = cropDragBox(this, state, e, zoom) ?? calcResizedBboxRotated(state, e, zoom);',
+    )
+    expect(patched).toContain('        ...cropChange(state),\n      });')
+    expect(patched).toContain(
+      '    Object.assign(updated, cropChange(state));\n    if (Object.keys(updated).length > 0) {',
+    )
+    expect(patched).toContain(
+      '  if (dragKeepsRatio(s, e.shiftKey)) return ratioResizedBox(s.bbox, dir, dx, dy);',
+    )
+    expect(patched).toContain('  if (e.shiftKey && this.pictureMoveState) {')
+    expect(patched).toContain('  let cx = e.clientX - cr.left;')
+    // CRLF checkouts keep their line ends
+    expect(applyPatch('studio-hancom-object-drag', source.replaceAll('\n', '\r\n'))).toBe(
+      patched.replaceAll('\n', '\r\n'),
+    )
+    expect(STUDIO_PATCHES).toContain('studio-hancom-object-drag')
+  })
+
+  it('hand Esc to the module before anything else takes the key', () => {
+    const source = [
+      "import { scrollByPageStep, type PageScrollDirection } from '@/view/page-scroll';",
+      'export function onKeyDown(this: any, e: KeyboardEvent): void {',
+      '  if (!this.active) return;',
+      "  if (['Delete', 'Backspace', 'Enter', 'Tab'].includes(e.key)",
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-object-drag-cancel', source)
+    expect(patched).toContain(`import { cancelObjectDrag } from '${HANCOM_KEYS_MODULE}';`)
+    const lines = patched.split('\n')
+    const active = lines.indexOf('  if (!this.active) return;')
+    expect(lines[active + 1]).toBe("  if (e.key === 'Escape' && cancelObjectDrag(this)) {")
+    expect(STUDIO_PATCHES).toContain('studio-hancom-object-drag-cancel')
+  })
+
+  it("hand an Alt+click and a Ctrl+drop to the module before the studio's picture handling", () => {
+    const source = [
+      "import { shouldStartPersistentTableResize } from './table-resize-updates';",
+      '  // 그림/글상자 객체 선택 중 클릭 처리',
+      '  if (this.cursor.isInPictureObjectSelection()) {',
+      '  // 그림 이동 드래그 종료',
+      '  if (this.isPictureMoveDragging) {',
+      '',
+    ].join('\n')
+    const patched = applyPatch('studio-hancom-object-mouse', source)
+    expect(patched).toContain(
+      `import { copyObjectDrag, hancomAltClickObject } from '${HANCOM_KEYS_MODULE}';`,
+    )
+    expect(patched).toContain(
+      '  if (hancomAltClickObject(this, e)) return;\n  // 그림/글상자 객체 선택 중 클릭 처리',
+    )
+    expect(patched).toContain(
+      '  // 그림 이동 드래그 종료\n  if (copyObjectDrag(this, _e)) return;\n  if (this.isPictureMoveDragging) {',
+    )
+    expect(STUDIO_PATCHES).toContain('studio-hancom-object-mouse')
+  })
+
+  it("give the bridge the engine's copy of a floating object (vendor/rhwp-core patch 0054)", () => {
+    const source = ['  changeShapeZOrder(', '    sec: number,', ''].join('\n')
+    const patched = applyPatch('studio-object-duplicate', source)
+    expect(patched).toContain('  duplicateFloatingControl(\n    sec: number,')
+    expect(patched).toContain(
+      '    return JSON.parse((this.doc as any).duplicateFloatingControl(sec, para, ci, dx, dy));',
+    )
+    expect(patched.indexOf('duplicateFloatingControl(')).toBeLessThan(
+      patched.indexOf('  changeShapeZOrder('),
+    )
+    expect(STUDIO_PATCHES).toContain('studio-object-duplicate')
+  })
+
+  it('mark a move step the user set in 격자 설정, which the object keys then keep', () => {
+    const source = '  setGridStep(mm: number): void { this.gridStepMm = mm; }\n'
+    expect(applyPatch('studio-hancom-object-step', source)).toBe(
+      '  setGridStep(mm: number): void { this.gridStepMm = mm; (this as any).ieumGridStepSet = true; }\n',
+    )
+    expect(STUDIO_PATCHES).toContain('studio-hancom-object-step')
+  })
+
+  // The single-object path is the studio's own sizing of a turned picture; run that code as
+  // the build patches it, on an object that is not turned.
+  it.skipIf(!existsSync(pictureFile))(
+    "keep the ratio through the studio's own sizing code, at no angle",
+    async () => {
+      const code = applyPatch('studio-hancom-object-drag', readFileSync(pictureFile, 'utf8'))
+      const body = (name: string) => {
+        const lines = code.split(/\r?\n/)
+        const from = lines.findIndex(
+          (line) =>
+            line.startsWith(`function ${name}(`) || line.startsWith(`export function ${name}(`),
+        )
+        const to = lines.indexOf('}', from)
+        expect(from, name).toBeGreaterThan(-1)
+        return lines
+          .slice(from, to + 1)
+          .join('\n')
+          .replace(/^export /, '')
+      }
+      const js = ts.transpileModule(
+        [
+          'isCornerResizeDir',
+          'isRotatedImageCornerResize',
+          'calcResizedBboxRotated',
+          'calcResizedBbox',
+        ]
+          .map(body)
+          .join('\n'),
+        { compilerOptions: { target: ts.ScriptTarget.ES2022 } },
+      ).outputText
+      const drag = await import('../studio-plugin/object-drag.mjs')
+      const studio = new Function(
+        'dragKeepsRatio',
+        'ratioResizedBox',
+        `${js}\nreturn { calcResizedBboxRotated, calcResizedBbox };`,
+      )(drag.dragKeepsRatio, drag.ratioResizedBox)
+
+      const bbox = { x: 100, y: 50, w: 200, h: 100 }
+      const state = (type: string, dir = 'se') => ({
+        dir,
+        ref: { type },
+        rotationAngle: 0,
+        startClientX: 0,
+        startClientY: 0,
+        bbox,
+      })
+      const pointer = (x: number, y: number, shiftKey = false) => ({
+        clientX: x,
+        clientY: y,
+        shiftKey,
+      })
+
+      // a picture's corner keeps 2:1 and the top-left corner stays put
+      const picture = studio.calcResizedBboxRotated(state('image'), pointer(80, 0), 1)
+      expect(picture.width / picture.height).toBeCloseTo(2)
+      expect(picture.x).toBeCloseTo(100)
+      expect(picture.y).toBeCloseTo(50)
+      // a drawing object sizes freely, and keeps 2:1 with Shift
+      const free = studio.calcResizedBboxRotated(state('shape'), pointer(80, 0), 1)
+      expect([free.width, free.height]).toEqual([280, 100])
+      const held = studio.calcResizedBboxRotated(state('shape'), pointer(80, 0, true), 1)
+      expect(held.width / held.height).toBeCloseTo(2)
+      // a side handle sizes one direction, picture or not
+      const side = studio.calcResizedBboxRotated(state('image', 'e'), pointer(80, 30), 1)
+      expect([side.width, side.height]).toEqual([280, 100])
+      // the nw corner holds the bottom-right one
+      const nw = studio.calcResizedBboxRotated(state('image', 'nw'), pointer(-40, -20), 1)
+      expect(nw.x + nw.width).toBeCloseTo(300)
+      expect(nw.y + nw.height).toBeCloseTo(150)
+
+      // several objects: their common box
+      const several = (refs: { type: string }[], shiftKey: boolean) =>
+        studio.calcResizedBbox.call(
+          { pictureResizeState: { ...state(refs[0].type), multiRefs: refs } },
+          pointer(80, 0, shiftKey),
+          1,
+        )
+      const pictures = several([{ type: 'image' }, { type: 'image' }], false)
+      expect(pictures.width / pictures.height).toBeCloseTo(2)
+      expect([several([{ type: 'image' }, { type: 'shape' }], false).height]).toEqual([100])
+      const mixed = several([{ type: 'image' }, { type: 'shape' }], true)
+      expect(mixed.width / mixed.height).toBeCloseTo(2)
+    },
+  )
+})
+
+describe('rhwp hyperlink open patches', () => {
+  const clickSource = [
+    '      web: uri => {',
+    '        const url = new URL(uri);',
+    "        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;",
+    "        const opened = window.open('about:blank', '_blank');",
+    "        if (!opened) { showToast({ message: '팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요.' }); return false; }",
+    '        opened.opener = null; opened.location.replace(url.href); return true;',
+    '      },',
+    '      mail: uri => { window.location.assign(uri); return true; },',
+  ].join('\n')
+
+  const dialogSource = [
+    '        const url = webHyperlinkUrl(this.uriInput.value);',
+    "        if (!url) throw new Error('http:// 또는 https://로 시작하는 웹 주소를 입력해 주세요.');",
+    "        const opened = window.open('about:blank', '_blank');",
+    "        if (!opened) throw new Error('팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요.');",
+    '        opened.opener = null;',
+    '        opened.location.replace(url);',
+    "        this.error.textContent = '';",
+  ].join('\n')
+
+  it('opens web and mailto hyperlinks directly through window.open without about:blank popup checks', () => {
+    const patched = applyPatch('studio-hyperlink-open', clickSource)
+    expect(patched).not.toContain('about:blank')
+    expect(patched).not.toContain('window.location.assign')
+    expect(patched).toContain("window.open(url.href, '_blank', 'noopener,noreferrer');")
+    expect(patched).toContain(
+      "mail: uri => { window.open(uri, '_blank', 'noopener,noreferrer'); return true; },",
+    )
+    expect(patched).toContain(
+      "if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;",
+    )
+  })
+
+  it('opens hyperlink dialog previews directly through window.open without about:blank popup checks', () => {
+    const patched = applyPatch('studio-hyperlink-preview', dialogSource)
+    expect(patched).not.toContain('about:blank')
+    expect(patched).toContain("window.open(url, '_blank', 'noopener,noreferrer');")
+    expect(patched).toContain("this.error.textContent = '';")
+  })
+
+  it('keeps CRLF sources working, fails when the text is gone, and is in the studio build', () => {
+    const crlfClick = applyPatch('studio-hyperlink-open', clickSource.replaceAll('\n', '\r\n'))
+    expect(crlfClick).toContain("window.open(url.href, '_blank', 'noopener,noreferrer');\r\n")
+    expect(crlfClick).not.toMatch(/[^\r]\n/)
+    const crlfDialog = applyPatch('studio-hyperlink-preview', dialogSource.replaceAll('\n', '\r\n'))
+    expect(crlfDialog).toContain("window.open(url, '_blank', 'noopener,noreferrer');\r\n")
+    expect(crlfDialog).not.toMatch(/[^\r]\n/)
+
+    expect(() => applyPatch('studio-hyperlink-open', 'web: () => false')).toThrow(
+      /studio-hyperlink-open/,
+    )
+    expect(() => applyPatch('studio-hyperlink-preview', 'window.open()')).toThrow(
+      /studio-hyperlink-preview/,
+    )
+    expect(STUDIO_PATCHES).toContain('studio-hyperlink-open')
+    expect(STUDIO_PATCHES).toContain('studio-hyperlink-preview')
   })
 })

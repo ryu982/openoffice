@@ -54,6 +54,7 @@ export type RendererHost =
   | 'hwp'
   | 'epub'
   | 'diagram'
+  | 'whiteboard'
   | 'help'
 
 export const MAX_RENDERER_QUERY_ENTRIES = 20

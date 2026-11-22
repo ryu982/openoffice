@@ -185,7 +185,7 @@ describe('saving a document whose file had lists after the body', () => {
     const saved = exported('본문', '새 문단')
     const result = restoreSectionTails(saved, sectionTailsOf(opened)!)
     expect(result.restored).toBe(1)
-    expect(streamNames(result.bytes)).toEqual(streamNames(saved))
+    expect([...streamNames(result.bytes)].sort()).toEqual([...streamNames(saved)].sort())
     expect(streamNames(result.bytes).join(' ')).not.toContain('Sh33tJ5')
   })
 

@@ -16,6 +16,7 @@ import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
 import iconEpub from './assets/file-epub.svg'
 import iconDiagram from './assets/file-diagram.svg'
+import iconWhiteboard from './assets/file-whiteboard.svg'
 import { placeFolderMenu } from './folder-menu-position'
 import type {
   FolderEntry,
@@ -124,13 +125,17 @@ const FILE_ICONS: Record<string, string> = {
   'drawio.svg': iconDiagram,
   'drawio.png': iconDiagram,
   vsdx: iconDiagram,
+  whiteboard: iconWhiteboard,
+  excalidraw: iconWhiteboard,
+  'excalidraw.png': iconWhiteboard,
+  'excalidraw.svg': iconWhiteboard,
 }
 
 /* Formats the open-local card advertises. Too long for the card at any window
    width, so it ellipsizes and a hover ScreenTip carries the full list. Keep in
    sync with the main-process open-dialog filter (OPEN_DIALOG_EXTENSIONS). */
 const OPEN_LOCAL_EXTENSIONS =
-  '.docx / .doc / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .ods / .pptx / .ppt / .pdf / .md / .html / .xmind / .mm / .hwp / .hwpx / .epub / .drawio / .dio / .drawio.svg / .drawio.png / .vsdx'
+  '.docx / .doc / .odt / .xlsx / .xlsm / .xls / .csv / .tsv / .ods / .pptx / .ppt / .pdf / .md / .html / .xmind / .mm / .hwp / .hwpx / .epub / .drawio / .dio / .drawio.svg / .drawio.png / .vsdx / .whiteboard / .excalidraw'
 
 /** drag payload of home file/folder rows (JSON array of absolute paths) */
 const DRAG_PATHS_MIME = 'application/x-genoffice-paths'
@@ -326,6 +331,7 @@ const FILTERS: { key: string; label: StringKey }[] = [
   { key: 'hwp', label: 'filterHwp' },
   { key: 'epub', label: 'filterEpub' },
   { key: 'drawio', label: 'filterDiagram' },
+  { key: 'whiteboard', label: 'filterWhiteboard' },
 ]
 
 /** sidebar filter keys that stand for a family of extensions (mirrors recent-files.ts) */
@@ -338,6 +344,7 @@ const FILTER_FAMILY: Record<string, readonly string[]> = {
   hwp: ['hwp', 'hwpx'],
   xmind: ['xmind', 'mm'],
   drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+  whiteboard: ['whiteboard', 'excalidraw', 'excalidraw.png', 'excalidraw.svg'],
 }
 
 function matchesFilter(entry: RecentEntry, filter: string): boolean {
@@ -1972,6 +1979,7 @@ export function Home({
     html: () => window.aiOffice.newHtml(newFileOpts),
     xmind: () => window.aiOffice.newMindmap(newFileOpts),
     drawio: () => window.aiOffice.newDiagram(newFileOpts),
+    whiteboard: () => window.aiOffice.newWhiteboard(newFileOpts),
     hwp: () => window.aiOffice.newHwp(newFileOpts),
     pdf: () => window.aiOffice.newPdf(newFileOpts),
   }
@@ -1986,6 +1994,7 @@ export function Home({
             <button
               key={kind}
               className="quick-card"
+              data-kind={kind}
               onClick={() => void window.aiOfficePdfToolsHome.open()}
             >
               <FileBadge ext="pdf" size={30} />
@@ -1997,7 +2006,12 @@ export function Home({
               </span>
             </button>
           ) : (
-            <button key={kind} className="quick-card" onClick={() => void NEW_ITEM_ACTION[kind]()}>
+            <button
+              key={kind}
+              className="quick-card"
+              data-kind={kind}
+              onClick={() => void NEW_ITEM_ACTION[kind]()}
+            >
               <FileBadge ext={kind} size={30} />
               <span className="quick-text">
                 <span className="quick-title-row">

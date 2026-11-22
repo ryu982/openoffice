@@ -8,7 +8,7 @@
  * file, an export or what the model is sent.
  */
 import type { RenderNode, RenderSlide } from '@genoffice/pptx-render'
-import type { AiChangesState } from '@genoffice/ui'
+import type { AiChangeLine, AiChangesState } from '@genoffice/ui'
 
 /** A slide as the diff knows it: its part path, which survives insert/delete/reorder */
 export function slideKey(slide: RenderSlide, index: number): string {
@@ -36,10 +36,31 @@ function fingerprint(value: unknown): string {
   })
 }
 
+interface NodePrint {
+  print: string
+  /** what tells the same element apart when its durable id was reissued */
+  type: string
+  sourceId: string
+}
+
 interface SlidePrint {
   /** the slide without its elements: background, hidden, size */
   own: string
-  nodes: Map<string, string>
+  nodes: Map<string, NodePrint>
+}
+
+function nodePrint(node: RenderNode): NodePrint {
+  return { print: fingerprint(node), type: node.type, sourceId: node.sourceId }
+}
+
+/**
+ * An element's first edit gives it a creation id, and with it a new durable id
+ * (`e_3` becomes `e_5ef01f3a`) while its parse id stays, so the diff sees one
+ * element leave and another arrive. A removed and an added element of one kind
+ * under one parse id are the same element, counted once.
+ */
+function sameElement(a: NodePrint, b: NodePrint): boolean {
+  return a.type === b.type && a.sourceId === b.sourceId
 }
 
 /** The deck at one moment, small enough to keep for the length of a run */
@@ -49,11 +70,11 @@ export function deckFingerprint(slides: readonly RenderSlide[]): DeckFingerprint
   const out = new Map<string, SlidePrint>()
   slides.forEach((slide, index) => {
     const { nodes, ...own } = slide
-    const prints = new Map<string, string>()
+    const prints = new Map<string, NodePrint>()
     for (const node of nodes) {
       // master/layout decoration is not the slide's own content
       if (node.decoration) continue
-      prints.set(nodeKey(node), fingerprint(node))
+      prints.set(nodeKey(node), nodePrint(node))
     }
     out.set(slideKey(slide, index), { own: fingerprint(own), nodes: prints })
   })
@@ -68,14 +89,45 @@ export function deckFingerprint(slides: readonly RenderSlide[]): DeckFingerprint
  */
 export type DeckMarks = ReadonlyMap<string, ReadonlySet<string>>
 
+/** One detailed change line in the Slides changes card, pointing at a slide/element when jumpable. */
+export interface SlideChangeLine extends AiChangeLine {
+  slideIndex?: number
+  nodeKeyId?: string
+}
+
 export interface DeckChanges {
   marks: DeckMarks
   /** changed, added and removed elements, plus removed slides; 0 when only the order moved */
   count: number
+  /** detailed rows rendered in AiChangesCard */
+  lines: SlideChangeLine[]
+}
+
+const MAX_SLIDE_CHANGE_LINES = 50
+const SLIDE_TEXT_MAX = 56
+
+function nodeSummary(node: RenderNode): string {
+  const n = node as unknown as {
+    paragraphs?: Array<{ runs?: Array<{ text?: string }> }>
+    text?: string
+    type?: string
+  }
+  const paraText = n.paragraphs
+    ?.flatMap((p) => p.runs?.map((r) => r.text ?? '') ?? [])
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const raw = paraText || (typeof n.text === 'string' ? n.text.replace(/\s+/g, ' ').trim() : '')
+  if (raw) return raw.length > SLIDE_TEXT_MAX ? `${raw.slice(0, SLIDE_TEXT_MAX - 1)}…` : raw
+  return n.type ?? 'element'
 }
 
 export function deckChanges(before: DeckFingerprint, after: readonly RenderSlide[]): DeckChanges {
   const marks = new Map<string, Set<string>>()
+  const lines: SlideChangeLine[] = []
+  const pushLine = (line: SlideChangeLine) => {
+    if (lines.length < MAX_SLIDE_CHANGE_LINES) lines.push(line)
+  }
   let count = 0
   const seen = new Set<string>()
   after.forEach((slide, index) => {
@@ -85,17 +137,88 @@ export function deckChanges(before: DeckFingerprint, after: readonly RenderSlide
     const was = before.get(key)
     const changed = new Set<string>()
     let slideChanged = !was || was.own !== now.own
+    const added: Array<{ id: string; print: NodePrint; node: RenderNode | undefined }> = []
+    const edited: Array<{ id: string; node: RenderNode | undefined }> = []
+    const nodeByKey = new Map<string, RenderNode>()
+    for (const n of slide.nodes) {
+      if (!n.decoration) nodeByKey.set(nodeKey(n), n)
+    }
     for (const [id, print] of now.nodes) {
-      if (was?.nodes.get(id) !== print) changed.add(id)
+      const old = was?.nodes.get(id)
+      if (old?.print === print.print) continue
+      changed.add(id)
+      if (!old) added.push({ id, print, node: nodeByKey.get(id) })
+      else edited.push({ id, node: nodeByKey.get(id) })
     }
     let removed = 0
-    if (was) for (const id of was.nodes.keys()) if (!now.nodes.has(id)) removed++
+    const removedTypes: string[] = []
+    if (was) {
+      for (const [id, print] of was.nodes) {
+        if (now.nodes.has(id)) continue
+        // the same element under a reissued id is already counted as changed
+        const same = added.findIndex((a) => sameElement(a.print, print))
+        if (same >= 0) {
+          const matched = added.splice(same, 1)[0]!
+          edited.push({ id: matched.id, node: matched.node })
+        } else {
+          removed++
+          removedTypes.push(print.type)
+        }
+      }
+    }
     count += changed.size + removed
     if (changed.size > 0 || removed > 0) slideChanged = true
-    if (slideChanged) marks.set(key, changed)
+    if (slideChanged) {
+      marks.set(key, changed)
+      const slideTag = `#${index + 1}`
+      for (const item of added) {
+        pushLine({
+          kind: 'insert',
+          to: `${slideTag} ${item.node ? nodeSummary(item.node) : item.print.type}`,
+          showable: true,
+          slideIndex: index,
+          nodeKeyId: item.id,
+        })
+      }
+      for (const item of edited) {
+        pushLine({
+          kind: 'named',
+          from: slideTag,
+          to: item.node ? nodeSummary(item.node) : 'element',
+          showable: true,
+          slideIndex: index,
+          nodeKeyId: item.id,
+        })
+      }
+      for (const rType of removedTypes) {
+        pushLine({
+          kind: 'delete',
+          from: `${slideTag} ${rType}`,
+          showable: false,
+        })
+      }
+      if (added.length === 0 && edited.length === 0 && removedTypes.length === 0) {
+        pushLine({
+          kind: !was ? 'insert' : 'named',
+          ...(was ? { from: slideTag } : {}),
+          to: slideTag,
+          showable: true,
+          slideIndex: index,
+        })
+      }
+    }
   })
-  for (const key of before.keys()) if (!seen.has(key)) count++
-  return { marks, count }
+  for (const key of before.keys()) {
+    if (!seen.has(key)) {
+      count++
+      pushLine({
+        kind: 'delete',
+        from: key,
+        showable: false,
+      })
+    }
+  }
+  return { marks, count, lines }
 }
 
 /** The ids of the canvas nodes to mark on this slide (none when the slide is not marked) */
@@ -116,6 +239,7 @@ export interface RunChanges {
   snapshotId: number
   state: AiChangesState
   count?: number
+  lines?: SlideChangeLine[]
 }
 
 /**

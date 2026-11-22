@@ -15,11 +15,17 @@
  * edits and the saved file never hold them, and print, export, page copies and
  * what the AI reads come from the document, not from the screen.
  */
+import type { AiChangeLine } from '@genoffice/ui'
 import type { EditSnapshot } from '../edit-state'
-import { quadToRect } from '../annotations'
+import { pdfToView, quadToRect, viewToPdf, type PageGeom } from '../annotations'
 import { shiftRect, unionCover, type LocalTextInsert } from '../text-edit-preview'
 
 export type PdfRect = [number, number, number, number]
+
+/** one detailed row inside the PDF changes card, pointing at a 1-based page when jumpable */
+export interface PdfChangeLine extends AiChangeLine {
+  readonly page?: number
+}
 
 /** one run as its card knows it */
 export interface PdfAiRun {
@@ -28,6 +34,8 @@ export interface PdfAiRun {
   readonly snaps: readonly EditSnapshot[]
   /** edit ops the run applied */
   readonly ops: number
+  /** detailed per-edit lines for AiChangesCard */
+  readonly lines?: readonly PdfChangeLine[]
 }
 
 /** one box over a place the run changed (original page index, PDF user space) */
@@ -106,25 +114,31 @@ function drawingRect(input: Record<string, unknown>): PdfRect | null {
 }
 
 /**
- * The box a pending text insert covers on the page, from its origin, size and
- * measured lines. Null on a rotated page, where the text runs across the box
- * this would give.
+ * The box a pending text insert covers on the page, laid out like its preview
+ * (textInsertPreviewStyle): the text runs left to right on the screen however
+ * the page is turned, its top sits one font size above the first baseline,
+ * each line is the preview's line height (the insert's own leading, else 1.2
+ * of the 0.92 preview size), and center/right lines hang left of the origin
+ * by the widest line. The box is found in display space and mapped back to
+ * user space, so the mark lands on the preview on a rotated page too.
+ * `measure` gives a line's width as the preview draws it.
  */
 export function textInsertRect(
   insert: LocalTextInsert,
+  geom: PageGeom,
   measure: (line: string, fontSize: number, insert: LocalTextInsert) => number,
 ): PdfRect | null {
-  const { origin, fontSize, text, lineLeading, align, rotate } = insert.input
-  if (rotate) return null
+  const { origin, fontSize, text, lineLeading, align } = insert.input
   const lines = text.split('\n')
   const width = Math.max(0, ...lines.map((line) => measure(line, fontSize, insert)))
   if (!(width > 0)) return null
-  const leading = lineLeading ?? fontSize * 1.2
-  const left =
-    align === 'center' ? origin[0] - width / 2 : align === 'right' ? origin[0] - width : origin[0]
-  const top = origin[1] + fontSize
-  const bottom = origin[1] - (lines.length - 1) * leading - fontSize * 0.25
-  return [left, bottom, left + width, top]
+  const lineHeight = lineLeading ?? fontSize * 0.92 * 1.2
+  const [vx, vy] = pdfToView(geom, origin[0], origin[1])
+  const left = align === 'center' ? vx - width / 2 : align === 'right' ? vx - width : vx
+  const top = vy - fontSize
+  const [ax, ay] = viewToPdf(geom, left, top)
+  const [bx, by] = viewToPdf(geom, left + width, top + lines.length * lineHeight)
+  return [Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)]
 }
 
 /**
@@ -137,6 +151,7 @@ export function runMarks(
   before: EditSnapshot,
   after: EditSnapshot,
   measure: (line: string, fontSize: number, insert: LocalTextInsert) => number,
+  geomOf: (pageIndex: number) => PageGeom | null,
 ): PdfAiMark[] {
   const fresh = <T>(list: readonly T[], old: readonly T[]): T[] => {
     const known = new Set(old)
@@ -159,7 +174,8 @@ export function runMarks(
     )
   }
   for (const insert of fresh(after.textInserts, before.textInserts)) {
-    if (!insert.input.invisible) add(insert.input.pageIndex, textInsertRect(insert, measure))
+    const geom = insert.input.invisible ? null : geomOf(insert.input.pageIndex)
+    if (geom) add(insert.input.pageIndex, textInsertRect(insert, geom, measure))
   }
   for (const image of fresh(after.imageEdits, before.imageEdits)) {
     if (image.input.kind !== 'deleteImage') add(image.input.pageIndex, image.input.rect)
@@ -171,6 +187,100 @@ export function runMarks(
     add(field.input.pageIndex, field.input.rect)
   }
   return marks
+}
+
+const MAX_PDF_CHANGE_LINES = 50
+const PDF_TEXT_MAX = 56
+
+function clipPdfText(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  return clean.length > PDF_TEXT_MAX ? `${clean.slice(0, PDF_TEXT_MAX - 1)}…` : clean
+}
+
+/**
+ * Collect detailed per-edit lines for AiChangesCard by diffing the pending-edit
+ * buckets before and after the run. Each page-scoped edit jumps to its page.
+ */
+export function runChangeLines(before: EditSnapshot, after: EditSnapshot): PdfChangeLine[] {
+  const fresh = <T>(list: readonly T[], old: readonly T[]): T[] => {
+    const known = new Set(old)
+    return list.filter((item) => !known.has(item))
+  }
+  const lines: PdfChangeLine[] = []
+  const push = (line: PdfChangeLine): void => {
+    if (lines.length < MAX_PDF_CHANGE_LINES) lines.push(line)
+  }
+  for (const markup of fresh(after.markups, before.markups)) {
+    const page = markup.pageIndex + 1
+    push({
+      kind: 'insert',
+      to: `p.${page} ${markup.type}`,
+      showable: true,
+      page,
+    })
+  }
+  for (const edit of fresh(after.textEdits, before.textEdits)) {
+    const page = edit.input.pageIndex + 1
+    const text = clipPdfText(edit.input.newText)
+    push({
+      kind: 'named',
+      from: `p.${page}`,
+      to: text || '—',
+      showable: true,
+      page,
+    })
+  }
+  for (const insert of fresh(after.textInserts, before.textInserts)) {
+    const page = insert.input.pageIndex + 1
+    const text = clipPdfText(insert.input.text)
+    push({
+      kind: 'insert',
+      to: text ? `p.${page} ${text}` : `p.${page}`,
+      showable: true,
+      page,
+    })
+  }
+  for (const image of fresh(after.imageEdits, before.imageEdits)) {
+    const page = image.input.pageIndex + 1
+    if (image.input.kind === 'deleteImage') {
+      push({ kind: 'delete', from: `p.${page} image`, showable: true, page })
+    } else {
+      push({ kind: 'named', from: `p.${page}`, to: image.input.kind, showable: true, page })
+    }
+  }
+  for (const drawing of fresh(after.drawings, before.drawings)) {
+    const page = drawing.input.pageIndex + 1
+    push({ kind: 'insert', to: `p.${page} ${drawing.input.kind}`, showable: true, page })
+  }
+  for (const field of fresh(after.formFields, before.formFields)) {
+    const page = field.input.pageIndex + 1
+    push({
+      kind: 'insert',
+      to: `p.${page} ${field.input.name || field.input.kind}`,
+      showable: true,
+      page,
+    })
+  }
+  for (const pageIndex of after.deleted) {
+    if (!before.deleted.has(pageIndex)) {
+      push({ kind: 'delete', from: `p.${pageIndex + 1}`, showable: false })
+    }
+  }
+  for (const [pageIndex, deg] of after.rotations) {
+    if (before.rotations.get(pageIndex) !== deg) {
+      push({
+        kind: 'named',
+        from: `p.${pageIndex + 1}`,
+        to: `${deg}°`,
+        showable: true,
+        page: pageIndex + 1,
+      })
+    }
+  }
+  if (after.metadata && after.metadata !== before.metadata) {
+    push({ kind: 'named', to: 'Metadata', showable: false })
+  }
+  return lines
 }
 
 /** The marks after a save: pages the save moved keep theirs, pages it removed lose them. */

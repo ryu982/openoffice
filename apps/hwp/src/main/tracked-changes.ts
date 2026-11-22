@@ -1,5 +1,13 @@
+import { stripTrackedChanges as wasmStripTrackedChanges } from '@genoffice/hwp5-wasm'
 import * as CFB from 'cfb'
-import { SECTION, openHwp, sectionCount, writeContainer } from './hwp5-file'
+import {
+  SECTION,
+  ensureHwp5Wasm,
+  inspectHwp5WithWasm,
+  openHwp,
+  sectionCount,
+  writeContainer,
+} from './hwp5-file'
 
 const SIGNATURE = 'HWP Document File'
 /** FileHeader property: the document keeps a record of changes */
@@ -9,7 +17,7 @@ const VIEW_TEXT = /\/ViewText\//i
 /** A directory entry with its links to its siblings and first child, which cfb's types leave out. */
 type LinkedEntry = CFB.CFB$Entry & { L: number; R: number; C: number }
 
-/** The file's header and container when it is an HWP file with tracked changes, else null. */
+/** The file's header and container when it is an HWP file with tracked changes, else null (JS cfb fallback). */
 function trackedContainer(file: Uint8Array): { cfb: CFB.CFB$Container; header: Buffer } | null {
   const cfb = CFB.read(Buffer.from(file.buffer, file.byteOffset, file.byteLength), {
     type: 'buffer',
@@ -29,6 +37,14 @@ function trackedContainer(file: Uint8Array): { cfb: CFB.CFB$Container; header: B
  * read here is taken to have none.
  */
 export function hasTrackedChanges(file: Uint8Array): boolean {
+  if (ensureHwp5Wasm()) {
+    try {
+      const { info } = inspectHwp5WithWasm(file)
+      return info.valid && info.tracked && info.hasViewText
+    } catch {
+      return false
+    }
+  }
   try {
     return trackedContainer(file) !== null
   } catch {
@@ -51,6 +67,23 @@ export function hasTrackedChanges(file: Uint8Array): boolean {
  * throws.
  */
 export function withoutTrackedChanges(file: Uint8Array): Uint8Array | null {
+  if (ensureHwp5Wasm()) {
+    try {
+      const { bytes, info } = inspectHwp5WithWasm(file)
+      if (
+        !info.valid ||
+        !info.tracked ||
+        !info.hasViewText ||
+        info.encrypted ||
+        info.distribution
+      ) {
+        return null
+      }
+      return wasmStripTrackedChanges(bytes)
+    } catch {
+      return null
+    }
+  }
   try {
     const tracked = trackedContainer(file)
     if (!tracked) return null
@@ -79,7 +112,7 @@ export function withoutTrackedChanges(file: Uint8Array): Uint8Array | null {
     const written = writeContainer(cfb)
     // read back: a plain HWP file (no second copy, not encrypted), the body as it was
     const check = openHwp(written)
-    if (!check || sectionCount(check) !== bodies.size) return null
+    if (!check || check.backend !== 'cfb' || sectionCount(check) !== bodies.size) return null
     for (const [path, body] of bodies) {
       const entry = CFB.find(check.cfb, path)
       if (!entry?.content || !Buffer.from(entry.content as Uint8Array).equals(body)) return null

@@ -6,6 +6,7 @@ export const ru = {
   kindSlides: 'Презентация (PPT)',
   kindHtml: 'Веб-страница (HTML)',
   kindMindmap: 'Интеллект-карта',
+  kindWhiteboard: "Доска",
   materialsLabel: 'Материалы',
   addMaterials: 'Добавить файлы…',
   removeMaterial: 'Убрать',

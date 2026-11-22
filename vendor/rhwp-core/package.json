@@ -1,6 +1,6 @@
 {
   "name": "@rhwp/core",
-  "version": "0.9.0-ieum.30",
+  "version": "0.9.0-ieum.34",
   "description": "rhwp v0.9.0 HWP/HWPX engine (WebAssembly) rebuilt with the patches in ./patches",
   "private": true,
   "type": "module",
@@ -54,9 +54,14 @@
       "0047-stale-table-width-rows-outvote.patch",
       "0049-cmap-range-comments.patch",
       "0050-export-keeps-canvas-metrics.patch",
-      "0051-column-separator-setter.patch"
+      "0051-column-separator-setter.patch",
+      "0052-picture-crop-image-extent.patch",
+      "0053-picture-z-order-with-shapes.patch",
+      "0054-duplicate-floating-control.patch",
+      "0055-nested-table-path-calls.patch",
+      "0056-atomic-table-save-verify.patch"
     ],
     "wasmPack": "0.15.0",
-    "wasmSha256": "420926ad83610550c919ef9bc0531082bd2b830aa6cc3dff43c96a1960d7304d"
+    "wasmSha256": "9e47aaf112cffe116bdf8a05e053094eb53e501fb25955a04025496023680d3c"
   }
 }

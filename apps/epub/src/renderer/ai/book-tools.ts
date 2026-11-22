@@ -93,6 +93,8 @@ export interface BookAiHost {
   startBookTranslation?: StartBookTranslation | null
   /** marks the blocks the last AI run changed in the reader (null takes the marks off); screen only */
   showChangeMarks?: ((marks: BookMarks | null) => void) | null
+  /** navigates the reader to a specific chapter and block (used by AiChangesCard jump links) */
+  focusBlock?: ((spineIndex: number, blockId: string) => void) | null
 }
 
 /** How much one call reads or finds; both can be tuned. */

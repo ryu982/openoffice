@@ -42,6 +42,14 @@ export interface HwpAiDockProps {
   prefill?: AiPrefill | null
   /** the panel took an `autoRun` request: clear it so it is not sent again */
   onPrefillTaken?: (taken: AiPrefill) => void
+  /** the pages carry marks of the AI's changes now (the plugin's MARKS_EVENT) */
+  marksOnPage?: boolean
+  /** load an externally generated .hwpx/.hwp (e.g. from kordoc MCP) into this blank tab or a new tab */
+  loadGeneratedHwpx?: (
+    path: string,
+  ) => Promise<
+    { ok: true; mode: 'current' | 'new-tab'; title: string } | { ok: false; error: string }
+  >
 }
 
 /** The panel at the right end, or its rail while collapsed; the panel stays mounted either way. */
@@ -53,6 +61,8 @@ export function HwpAiDock({
   templateDocument,
   prefill,
   onPrefillTaken,
+  marksOnPage,
+  loadGeneratedHwpx,
 }: HwpAiDockProps): ReactElement {
   const { lang, t } = useI18n()
   const { role, requestFocus } = useSplitPaneRole()
@@ -77,6 +87,8 @@ export function HwpAiDock({
         templateDocument={templateDocument}
         prefill={prefill ?? null}
         onPrefillTaken={onPrefillTaken}
+        marksOnPage={marksOnPage}
+        loadGeneratedHwpx={loadGeneratedHwpx}
         onSkillHandoff={() => setOpen(true)}
       />
     </div>

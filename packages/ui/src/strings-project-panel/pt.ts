@@ -45,6 +45,7 @@ export const pt = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Mapa mental',
+  editorWhiteboard: 'Quadro branco',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Início',

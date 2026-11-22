@@ -38,6 +38,7 @@ const DEFAULT_NAMES = [
   'apply_ops',
   'apply_sheet_ops',
   'apply_slide_ops',
+  'apply_whiteboard_ops',
   'create_session',
   'get_app_info',
   'insert_content',
@@ -52,6 +53,7 @@ const DEFAULT_NAMES = [
   'read_hwp',
   'read_pdf',
   'read_sheet',
+  'read_whiteboard',
   'replace_blocks',
   'save_session',
 ].sort()
@@ -279,6 +281,7 @@ describe('MCP surface over Streamable HTTP (/mcp)', () => {
         'hwp',
         'epub',
         'drawio',
+        'whiteboard',
       ])
       // the diagram entry: editor formats only, no session, generator or file reader
       expect(infoJson.families.find((f) => f.family === 'drawio')).toEqual({

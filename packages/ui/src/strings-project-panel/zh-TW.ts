@@ -45,6 +45,7 @@ export const zhTW = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: '心智圖',
+  editorWhiteboard: '白板',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: '首頁',

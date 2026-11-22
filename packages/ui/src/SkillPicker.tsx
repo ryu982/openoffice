@@ -9,6 +9,7 @@ import {
   type SkillPickerItem,
 } from './skill-picker-model'
 import { skillPickerText } from './strings-skill-picker'
+import { aiPanelText } from './strings-ai-panel'
 import './skill-picker.css'
 
 /** First characters of a description shown on a list row */
@@ -36,6 +37,7 @@ export function SkillPicker({
   listId,
   items,
   active,
+  emptyMessage,
   onPick,
   onHover,
 }: {
@@ -44,6 +46,8 @@ export function SkillPicker({
   items: readonly SkillPickerItem[]
   /** highlighted row; `items.length` is the manage row */
   active: number
+  /** optional empty-state message shown when opened manually with 0 enabled skills */
+  emptyMessage?: string | undefined
   /** a row index; `items.length` is the manage row */
   onPick: (index: number) => void
   onHover: (index: number) => void
@@ -59,6 +63,11 @@ export function SkillPicker({
       onMouseDown={(e) => e.preventDefault()}
     >
       <div className="ai-skill-picker-rows">
+        {items.length === 0 && (
+          <div className="ai-skill-picker-empty" role="note">
+            {emptyMessage ?? aiPanelText(lang, 'noEnabledSkills')}
+          </div>
+        )}
         {items.map((item, index) => (
           <div
             key={item.id}

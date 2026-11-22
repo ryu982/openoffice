@@ -22,6 +22,8 @@ export const ms = {
     'Tiada apa-apa disimpan: salinan yang akan ditulis, apabila dibaca semula, tidak sama dengan dokumen pada skrin. Cuba "Simpan Sebagai" untuk menulis fail baharu.',
   saveVerifyHint:
     'Fail asal tidak berubah. Dalam Simpan sebagai, pilih HWPX atau gunakan Eksport sebagai PDF.',
+  saveVerifyPages: 'Pada skrin: {before} halaman → dibaca semula: {after} halaman',
+  saveAsHwpx: 'Simpan sebagai HWPX…',
   saveProtected:
     'Tidak disimpan: dokumen ini dilindungi kata laluan, dan menyimpannya di sini akan menulisnya tanpa kata laluan.',
   backupKept: 'Disimpan. Versi sebelumnya disimpan sebagai {name}.',

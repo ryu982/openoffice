@@ -12,7 +12,8 @@ cd ieumoffice
 export PATH="$HOME/.cargo/bin:$PATH"   # cargo가 PATH에 없을 때(Git Bash). 엑셀 처리 프로그램 빌드에 필요
 npm ci                                  # 잠금 파일 그대로 설치. 용량이 크다
 npm run fixtures                        # 테스트용 문서 만들기. 테스트보다 먼저
-npm run native:build -w @genoffice/sheets   # 엑셀 처리 프로그램(Rust) 빌드
+npm run native:build -w @genoffice/sheets      # 엑셀 처리 프로그램(Rust) 빌드
+npm run native:build -w @genoffice/file-parse  # 문서 텍스트 추출 사이드카(`ieum-parse-sidecar`, Rust) 빌드
 ```
 
 - `npm ci` 대신 `npm install`을 쓰면 잠금 파일이 바뀔 수 있다. 의존성을 실제로 바꿀 때만 쓴다.
@@ -73,6 +74,15 @@ cd apps/shell && npx vitest run tests/<파일>.test.ts   # 파일 하나만
 | `GENOFFICE_MCP_COMPACT_SCHEMAS`                                 | MCP 도구 설명을 짧게 낸다                                                                                          | MCP                                                                                                               |
 | `GENOFFICE_GOOGLE_CLIENT_ID` / `GENOFFICE_GOOGLE_CLIENT_SECRET` | 껍데기 앱을 빌드할 때 넣는 Google OAuth 클라이언트(결정 0033). 없으면 드라이브 기능이 빠진다. 저장소에 적지 않는다 | 빌드(`npm run build -w @genoffice/shell`, `build:all`, 설치 파일 만들기)                                          |
 | `XLSX_SIDECAR_PATH`                                             | 엑셀 처리 프로그램의 위치를 바꾼다. 설치본과 엑셀 편집기 테스트에는 듣지 않는다                                    | 혼자 띄운 엑셀 편집기, 명령어                                                                                     |
+| `GENOFFICE_PARSE_SIDECAR`                                       | `0` 또는 `off`면 `ieum-parse-sidecar`(Rust)를 끄고 TypeScript 추출·탐색·토큰화로 내린다                            | `packages/file-parse`, `apps/shell` 파일 색인                                                                     |
+| `GENOFFICE_PARSE_SIDECAR_PATH`                                  | `ieum-parse-sidecar` 실행 파일의 경로를 직접 지정한다(시험·개발용)                                                 | `packages/file-parse`                                                                                             |
+| `GENOFFICE_PDF_PDFIUM`                                          | `0` 또는 `off`면 PDF 텍스트 추출의 PDFium WASM 기본 경로를 끄고 `pdfjs-dist`로 내린다                              | `packages/file-parse`                                                                                             |
+| `GENOFFICE_PDFIUM_WASM_PATH`                                    | PDF 텍스트 추출에 쓸 `pdfium.wasm` 파일의 경로를 직접 지정한다(시험·개발용)                                        | `packages/file-parse`                                                                                             |
+| `GENOFFICE_HWP5_WASM`                                           | `0` 또는 `off`면 `@genoffice/hwp5-wasm`을 끄고 JS `cfb` 경로로 내린다                                              | `apps/hwp` 메인, `packages/cli`(`hwp apply`)                                                                      |
+| `GENOFFICE_HWP5_WASM_PATH`                                      | `hwp5_bg.wasm` 파일의 경로를 직접 지정한다                                                                         | `apps/hwp` 메인, `packages/cli`                                                                                   |
+| `GENOFFICE_PRINT_LAYOUT_RUST`                                   | `0` 또는 `off`면 고급 인쇄 배치의 Rust WASM을 끄고 기존 JS(`pdf-lib`·`node:zlib`) 경로로 내린다                    | `packages/print-layout`                                                                                           |
+| `GENOFFICE_PRINT_LAYOUT_WASM_PATH`                              | `print_layout_bg.wasm` 파일의 경로를 직접 지정한다(시험·개발용)                                                    | `packages/print-layout`                                                                                           |
+| `GENOFFICE_WHITEBOARD_WASM_PATH`                                | `whiteboard_engine_bg.wasm` 파일의 경로를 직접 지정한다(시험·개발용)                                               | `packages/whiteboard-engine`                                                                                      |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY`                      | 프록시                                                                                                             | 앱이 직접 보내는 요청, 명령어. 구독 프로그램에는 이 변수가 그대로 전달된다(프로그램이 따르는지는 확인하지 않았다) |
 
 이름에 `GENOFFICE_`가 남아 있는 것은 일부러다. 내부 이름은 원본과 같게 둔다.
@@ -118,8 +128,10 @@ OpenRouter 무료 연결에서 고를 수 있는 모델은 `packages/ai-provider
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
 npm run native:build -w @genoffice/sheets
+npm run native:build -w @genoffice/file-parse
 # 만들어진 apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar.exe 를
 #   apps/sheets/native/xlsx-engine/target/x86_64-pc-windows-gnu/release/ 로 복사한다
+# ieum-parse-sidecar.exe 는 target/release/ 경로를 그대로 읽으므로 복사하지 않아도 된다
 npm run dist:win -- -- --publish never
 ```
 
@@ -162,9 +174,9 @@ npm run growth:report    # 전일 대비 증감과 7일 추이 보기
 1. GitHub 저장소의 Actions 탭 → **macOS build** → **Run workflow**. 가지는 릴리스 태그가 가리킬 커밋이 있는 가지를 고른다.
 2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac`을 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-x64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `IeumOffice-<버전>-mac.zip`(Intel), `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
 
-- 빌드는 `GENOFFICE_MAC_X64=1`로 두 앱을 묶는다. 두 앱이 한 자리를 나눠 쓰는 엑셀 처리 프로그램과 글자 인식 도우미는 두 CPU를 담은 파일(`native:build:universal`, lipo)이어야 한다. 빌드는 두 앱 모두 ad hoc 서명이 되었는지, 들어 있는 프로그램이 그 앱의 CPU를 담는지 검사하고, 두 앱을 창 없이 띄워(Intel판은 Rosetta로) Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
+- 빌드는 `GENOFFICE_MAC_X64=1`로 두 앱을 묶는다. 두 앱이 한 자리를 나눠 쓰는 엑셀 처리 프로그램, 문서 추출 사이드카(`ieum-parse-sidecar`), 글자 인식 도우미는 두 CPU를 담은 파일(`native:build:universal`, lipo)이어야 한다. 빌드는 두 앱 모두 ad hoc 서명이 되었는지, 들어 있는 프로그램이 그 앱의 CPU를 담는지 검사하고, 두 앱을 창 없이 띄워(Intel판은 Rosetta로) Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 dmg, zip, `latest-mac.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Mac 설치 파일"이다.
-- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`(Apple Silicon만). Intel용까지 묶으려면 그 전에 `npm run native:build:universal -w @genoffice/sheets`를 하고 `GENOFFICE_MAC_X64=1`을 켠다. 루트의 `npm run dist:mac`은 원본의 경로라 쓰지 않는다.
+- Mac에서 직접 만들 때: `npm ci`, `npm run build:all`, `npm run dist:mac -w @genoffice/shell -- --publish never`(Apple Silicon만). Intel용까지 묶으려면 그 전에 `npm run native:build:universal -w @genoffice/sheets`와 `npm run native:build:universal -w @genoffice/file-parse`를 하고 `GENOFFICE_MAC_X64=1`을 켠다. 루트의 `npm run dist:mac`은 원본의 경로라 쓰지 않는다.
 
 ## Linux 설치 파일 만들기
 
@@ -174,7 +186,7 @@ GitHub Actions에서 만든다.
 2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-linux-x64`를 내려받는다. 안에 `IeumOffice-<버전>.AppImage`, `ieumoffice_<버전>_amd64.deb`, `ieumoffice-<버전>.x86_64.rpm`, `latest-linux.yml`(베타 버전 번호면 `beta-linux.yml`)이 있다.
 
 - 빌드는 앱 실행 파일, 엑셀 처리 프로그램, 터미널 명령어가 실행 가능하게 들어갔는지 검사하고, deb의 의존성이 Ubuntu 24.04(64비트 time_t 전환으로 `t64` 이름이 쓰이는 곳)에서도 풀리는지 확인한 뒤, 만든 앱을 Xvfb 아래에서 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
-- 엑셀 처리 프로그램은 빌드 기계의 glibc가 아니라 glibc 2.28 기준으로 링크한다(`cargo zigbuild`, 기준 값은 워크플로의 `LINUX_GLIBC_FLOOR`). 빌드는 묶음 안의 실행 파일과 라이브러리가 모두 이 기준 안의 glibc만 요구하는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다.
+- 엑셀 처리 프로그램과 문서 추출 사이드카(`ieum-parse-sidecar`)는 빌드 기계의 glibc가 아니라 glibc 2.28 기준으로 링크한다(`cargo zigbuild`, 기준 값은 워크플로의 `LINUX_GLIBC_FLOOR`). 빌드는 묶음 안의 실행 파일과 라이브러리가 모두 이 기준 안의 glibc만 요구하는지 보고, Ubuntu 20.04 컨테이너에 deb를 깔아 CSV를 내보내 본다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 AppImage, deb, rpm, `latest-linux.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Linux 설치 파일"이다.
 - Linux(x64)에서 직접 만들 때(`rpm` 패키지가 설치되어 있어야 한다): `npm ci`, `npm run build:all`, `npm run dist:linux -w @genoffice/shell -- --publish never`.
 
@@ -225,6 +237,45 @@ npm run test -w @genoffice/hwp                      # 엔진 시험(engine-layou
 - 패치는 `vendor/rhwp-core/patches/`에 번호 순으로 두고 `package.json`의 `rhwp.patches`에 적는다. 만드는 방법은 같은 태그를 받은 rhwp 사본에서 커밋한 뒤 `git format-patch`로 뽑는 것이다.
 - 패치 묶음이 바뀌면 `package.json`의 버전(`0.8.7-ieum.N`)을 올리고 `package-lock.json`의 같은 항목도 고친다.
 - 빌드에는 10분 남짓 걸린다. 빌드 뒤 `rhwp.js`·`rhwp.d.ts`가 npm의 같은 버전과 같은지, WASM에 이 PC의 사용자 폴더 경로가 없는지 본다(스크립트가 경로를 검사한다).
+
+## HWP 5 컨테이너 WASM(`hwp5-wasm`) 다시 빌드하기
+
+HWP 5 OLE2 컨테이너 읽기·다시 쓰기·변경 추적 스트림 제거를 맡는 `packages/hwp5-wasm`은 미리 빌드해 `packages/hwp5-wasm/pkg/`에 커밋해 둔다(결정 0156). 일반 앱 빌드(`npm run build:all`)와 CI는 `wasm-pack`을 돌리지 않는다. `packages/hwp5-wasm/src/**/*.rs`, `Cargo.toml`, `Cargo.lock`을 고쳤을 때만 다시 빌드한다.
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo install wasm-pack --version 0.15.0 --locked   # 처음 한 번
+node tools/build-hwp5-wasm.mjs                      # wasm-pack --target web --release → 경로 치환·누출 검사 → pkg/manifest.json 갱신
+npm run test -w @genoffice/hwp5-wasm                # freshness(소스·WASM SHA-256)와 경로 누출·기능 시험
+```
+
+- `pkg/manifest.json`의 `sourceSha256`과 `wasmSha256`이 맞지 않으면 `packages/hwp5-wasm/tests/freshness.test.ts`가 실패한다. 소스를 고친 뒤 재빌드 없이 커밋하지 않는다.
+
+## 고급 인쇄 배치 WASM(`print-layout-wasm`) 다시 빌드하기
+
+고급 인쇄 배치의 PDF 쪽 재배치·가로 면 회전·회색조 PDF 생성·픽셀 변환·PNG 인코딩을 맡는 `packages/print-layout/wasm`은 미리 빌드해 `packages/print-layout/wasm/pkg/`에 커밋해 둔다(결정 0158). 일반 앱 빌드(`npm run build:all`)와 CI는 `wasm-pack`을 돌리지 않는다. `packages/print-layout/wasm/src/**/*.rs`, `Cargo.toml`, `Cargo.lock`을 고쳤을 때만 다시 빌드한다.
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo install wasm-pack --version 0.15.0 --locked   # 처음 한 번
+node tools/build-print-layout-wasm.mjs              # wasm-pack --target web --release → 경로 치환·누출 검사 → pkg/manifest.json 갱신
+npm run test -w @genoffice/print-layout             # freshness(소스·WASM SHA-256), 경로 누출, JS 차분·폴백 시험
+```
+
+- `wasm/pkg/manifest.json`의 `sourceSha256`과 `wasmSha256`이 맞지 않으면 `packages/print-layout/tests/wasm-freshness.test.ts`가 실패한다. 소스를 고친 뒤 재빌드 없이 커밋하지 않는다.
+
+## 화이트보드 엔진 WASM(`whiteboard-engine`) 다시 빌드하기
+
+`.whiteboard` ZIP 입출력·안전 관문·편집 계획·선언형 템플릿 배치·Excalidraw 가져오기를 맡는 `packages/whiteboard-engine/rust`는 미리 빌드해 `packages/whiteboard-engine/pkg/`에 커밋해 둔다. 일반 앱 빌드(`npm run build:all`)와 CI는 `wasm-pack`을 돌리지 않는다. `packages/whiteboard-engine/rust/src/**/*.rs`, `Cargo.toml`, `Cargo.lock`을 고쳤을 때만 다시 빌드한다.
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo install wasm-pack --version 0.15.0 --locked   # 처음 한 번
+node tools/build-whiteboard-engine.mjs              # wasm-pack --target web --release → 경로 치환·누출 검사 → pkg/manifest.json 갱신
+npm run test -w @genoffice/whiteboard-engine        # freshness(소스·WASM SHA-256), 경로 누출, 엔진 기능 시험
+```
+
+- `pkg/manifest.json`의 `sourceSha256`과 `wasmSha256`이 맞지 않으면 `packages/whiteboard-engine/tests/freshness.test.ts`가 실패한다. 소스를 고친 뒤 재빌드 없이 커밋하지 않는다.
 
 ## draw.io 판 올리기
 

@@ -783,6 +783,10 @@ interface PlannedMatch {
   /** True when the matched objects ARE the edited text (not a fragment of a larger
       run); only then may position overrides (origin/lineLeading) be honored */
   whole: boolean
+  /** Fragment matches only: the matched objects' raw text (what the rebuild replaces)
+      and where the spliced replacement sits — [start, oldEnd) in runText became
+      [start, newEnd) in newText */
+  fragment?: { runText: string; start: number; oldEnd: number; newEnd: number }
 }
 
 /** Split same-baseline objects into z-stacked layers: an earlier multi-line edit that
@@ -927,6 +931,12 @@ function matchByText(objects: PageTextObj[], edit: TextEditInput): PlannedMatch 
     matches: set,
     newText: joined.slice(setStart, rawStart) + fragment + joined.slice(rawEnd, setEnd),
     whole: false,
+    fragment: {
+      runText: setRaw,
+      start: rawStart - setStart,
+      oldEnd: rawEnd - setStart,
+      newEnd: rawStart - setStart + fragment.length,
+    },
   }
 }
 
@@ -992,6 +1002,12 @@ function matchEdit(objects: PageTextObj[], edit: TextEditInput): PlannedMatch | 
         matches: [container],
         newText: raw.slice(0, rawStart) + fragment + raw.slice(rawEnd),
         whole: false,
+        fragment: {
+          runText: raw,
+          start: rawStart,
+          oldEnd: rawEnd,
+          newEnd: rawStart + fragment.length,
+        },
       }
     }
   }
@@ -2791,6 +2807,21 @@ async function validateTextEditsInner(
           results[indexOf.get(e)!] = {
             reason: null,
             bounds: whole ? b : [e.rect[0], b[1], e.rect[2], b[3]],
+            // The save rewrites the whole container run from its own origin, so the
+            // text after the fragment reflows; callers that preview the edit need the
+            // run's full before/after text to model that
+            ...(res.fragment
+              ? {
+                  run: {
+                    bounds: b,
+                    oldText: res.fragment.runText,
+                    newText: res.newText,
+                    start: res.fragment.start,
+                    oldEnd: res.fragment.oldEnd,
+                    newEnd: res.fragment.newEnd,
+                  },
+                }
+              : {}),
             colorRuns:
               runs.length > 0
                 ? runs.map((r) => ({

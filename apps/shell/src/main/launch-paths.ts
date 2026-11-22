@@ -27,15 +27,22 @@ export const LAUNCHABLE_EXTS = [
   'drawio',
   'dio',
   'vsdx',
+  'whiteboard',
+  'excalidraw',
 ] as const
 
 /**
- * draw.io pictures the suite opens as diagrams, known by their double
+ * draw.io and Excalidraw pictures the suite opens, known by their double
  * extension. Their last extension is a picture's, so no file association
  * claims them; they reach the app from a drop, the open dialog or a command
  * line that names them.
  */
-export const LAUNCHABLE_DOUBLE_EXTS = ['drawio.svg', 'drawio.png'] as const
+export const LAUNCHABLE_DOUBLE_EXTS = [
+  'drawio.svg',
+  'drawio.png',
+  'excalidraw.svg',
+  'excalidraw.png',
+] as const
 
 /**
  * Files the suite imports but never claims: a `.mm` mind map belongs to the

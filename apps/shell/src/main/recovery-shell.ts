@@ -39,6 +39,11 @@ import {
   discardDiagramRecovery,
   setDiagramRecoveryTitleHook,
 } from '../../../diagram/src/main/diagram-main'
+import {
+  setWhiteboardRecoveryTitleHook,
+  whiteboardMarkDontSave,
+  whiteboardViewIdentity,
+} from '../../../whiteboard/src/main/whiteboard-main'
 import type { DocumentTabKind, TabKind } from '../shared/tabs-api'
 import {
   planLaunch,
@@ -106,6 +111,8 @@ export function editorRecoveryIdentity(
         return slidesRecoveryIdentity(contents.id)
       case 'diagram':
         return diagramRecoveryIdentity(contents.id)
+      case 'whiteboard':
+        return whiteboardViewIdentity(contents.id)
       default:
         return null
     }
@@ -273,6 +280,7 @@ export function discardEditorRecovery(kind: TabKind, contents: WebContents): voi
   else if (kind === 'mindmap') discardMindmapRecovery(contents)
   else if (kind === 'hwp') hwpDiscardRecoveryCopy(contents)
   else if (kind === 'diagram') discardDiagramRecovery(contents)
+  else if (kind === 'whiteboard') whiteboardMarkDontSave(contents)
 }
 
 /** the untitled documents' copies are listed under their real tab titles */
@@ -283,6 +291,7 @@ export function installRecoveryTitleSources(
   setHtmlRecoveryTitleSource(titleOf)
   setMindmapRecoveryTitleHook(titleOf)
   setDiagramRecoveryTitleHook(titleOf)
+  setWhiteboardRecoveryTitleHook(titleOf)
 }
 
 /** hwp is told its untitled tabs' titles (it does not ask) */

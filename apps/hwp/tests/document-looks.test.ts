@@ -7,7 +7,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   NUMBERED_MARKS,
+  NUMBERED_WITHOUT_SPACE,
   numberedMarkOf,
+  markLengthOf,
+  markSkipOf,
+  startsWithMark,
+  DATE_START,
   BORDER_WIDTHS_MM,
   DOCUMENT_FONTS,
   PAGE_NUMBER_PLACES,
@@ -306,6 +311,110 @@ describe('numbered levels', () => {
     ]) {
       expect(numberedMarkOf(text), text).toBeNull()
     }
+  })
+})
+
+describe('the lines a style rule names', () => {
+  it('skips a placeholder and a cut line for a mark of one character, as written', () => {
+    const cases: [string, string, boolean][] = [
+      ['○', '○○ 사업 담당자: 홍길동', false],
+      ['○', '○ ○○초등학교 강당에서 진행', true],
+      ['○', '○ 일시: 11. 12.(목)', true],
+      ['-', '- - - 절취선 - - -', false],
+      ['-', '- - - - - - - 절 취 선 - - - - - - -', false],
+      ['-', '-------- 절취선 --------', false],
+      ['-', '- - - - - - - - - - - - 자르는 선 - - - - - - - - - - - -', false],
+      ['-', '- -5℃ 이하에서는 야외 활동 금지', true],
+      ['-', '- 준비물: 필기도구', true],
+      ['-', '- 끝 -', true],
+      ['□', '□ □ 표시한 곳에 서명', true],
+      ['□', '□□ 초등학교', false],
+    ]
+    for (const [mark, line, wanted] of cases) {
+      expect(startsWithMark(line, mark), `${mark} on ${line}`).toBe(wanted)
+    }
+  })
+
+  it('matches a mark of two or more characters as given, a cut line too', () => {
+    expect(startsWithMark('- - - 절취선 - - -', '- - -')).toBe(true)
+    expect(startsWithMark('○○ 사업 담당자', '○○')).toBe(true)
+    expect(startsWithMark('가나다', '나')).toBe(false)
+  })
+
+  it('does not take a date at the start of a line for a number of the 1. level', () => {
+    const cases: [string, boolean][] = [
+      ['11. 12.(목) 09:00 개회', false],
+      ['11. 12. (목) 09:00 개회', false],
+      ['11. 12.~11. 14. 수학여행', false],
+      ['11. 12. 09:00 개회', false],
+      ['3. 2.(월요일) 입학식', false],
+      ['3. 1.(금) 삼일절 행사', false],
+      ['12. 25.', false],
+      ['11. 12.-11. 14. 체험학습', false],
+      ['11. 12.～11. 14. 수련회', false],
+      ['11. 12.∼11. 14. 연수', false],
+      ['11. 12. ~ 14.', false],
+      ['11. 12.~14.(토) 수학여행', false],
+      ['11. 12.-14. 09:00 출발', false],
+      ['3. 0.5의 역수를 구하시오. [4점]', true],
+      ['7. 1.5 km는 몇 m인가?', true],
+      ['2. 2026. 4. 28.(화) 2교시에 실시한다.', true],
+      ['5. 3. 1. 운동의 의의를 서술하시오.', true],
+      ['13. 5.(월)에 있었던 일을 쓰시오.', true],
+      ['1. 운영 방향', true],
+      ['10. 다음 중 옳은 것은?', true],
+      ['11. 12. 개회식', true],
+      ['10. 1.~3.의 내용을 정리하시오.', true],
+      ['2. 3.-5.의 표를 보고 답하시오.', true],
+      ['4. 1.～3.에서 고르시오.', true],
+      ['6. 1.~3. 문항을 보고 답하시오.', true],
+      ['7. 2.-3. 단계를 설명하시오.', true],
+      ['11. 12.~14. 현장학습', true],
+      ['1. 2.(가)를 읽고 답하시오.', true],
+      ['4. 5.(1)의 결과를 쓰시오.', true],
+      ['5. 12.(가)에 들어갈 말을 쓰시오', true],
+    ]
+    for (const [line, wanted] of cases) {
+      expect(NUMBERED_MARKS['1.'].test(line), line).toBe(wanted)
+    }
+  })
+
+  it('says why a line is left out: a placeholder, a cut line, a date', () => {
+    expect(markSkipOf('○○ 사업 담당자', '○')).toBe('placeholder')
+    expect(markSkipOf('- - - 절취선 - - -', '-')).toBe('cutLine')
+    expect(markSkipOf('○ 일시', '○')).toBeNull()
+    expect(markSkipOf('- - - 절취선 - - -', '- - -')).toBeNull()
+    expect(DATE_START.test('11. 12.(목) 09:00 개회')).toBe(true)
+    expect(DATE_START.test('1. 2.(가)를 읽고 답하시오.')).toBe(false)
+  })
+
+  it('tells a 가. line that lacks only the space after its mark', () => {
+    expect(NUMBERED_MARKS['가.'].test('가.접수 기간')).toBe(false)
+    expect(NUMBERED_WITHOUT_SPACE['가.'].test('가.접수 기간')).toBe(true)
+    expect(NUMBERED_WITHOUT_SPACE['가.'].test('가. 접수 기간')).toBe(false)
+  })
+})
+
+describe('the mark a line hangs under', () => {
+  it('counts the leading spaces, the mark and the spaces after it', () => {
+    const cases: [string, Parameters<typeof markLengthOf>[1], number][] = [
+      ['1. 운영 방향', { numbered: '1.' }, 3],
+      ['10. 다음 중', { numbered: '1.' }, 4],
+      ['가. 대상', { numbered: '가.' }, 3],
+      ['Ⅰ. 목적', { numbered: 'Ⅰ' }, 3],
+      ['(가) 항목', { numbered: '(가)' }, 4],
+      ['  ○ 항목', { startsWith: '○' }, 4],
+      ['[서술형 1] 다음', { startsWith: '[서술형 1]' }, 8],
+      ['□ 추진 배경', null, 2],
+      ['※ 참고', null, 2],
+      ['① 선택지', null, 2],
+      ['ㄱ. 보기', null, 3],
+      ['1. 운영', null, 3],
+      ['본문 한 줄', null, 0],
+      ['「법」에 따라', null, 0],
+      ['', null, 0],
+    ]
+    for (const [line, rule, wanted] of cases) expect(markLengthOf(line, rule), line).toBe(wanted)
   })
 })
 

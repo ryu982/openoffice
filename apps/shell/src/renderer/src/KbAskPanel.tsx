@@ -1294,7 +1294,7 @@ export function KbAskPanel({
         footerStart={
           <>
             {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-            <McpServerButton lang={lang} />
+            <McpServerButton lang={lang} showDrive={false} />
           </>
         }
         footerBelow={

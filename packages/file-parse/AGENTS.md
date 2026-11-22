@@ -2,7 +2,7 @@
 
 ## 맡은 범위
 
-첨부 파일을 모델에 보낼 평문으로 바꾼다. `parseFileToText(경로)`가 확장자와 매직 바이트를 보고 PDF, docx, doc, odt, pptx, ppt, xlsx/xlsm, 마인드맵(`.xmind`), 한글(hwp, hwpx), EPUB 책(`.epub`), draw.io 다이어그램(`.drawio`·`.dio`·`.drawio.svg`·`.drawio.png`), 텍스트 계열 파일을 글자로 풀고, 이미지는 내용을 읽지 않고 `kind: 'image'`와 MIME만 돌려준다. Docs·Sheets·Slides·HTML·Mindmap·EPUB 메인 프로세스의 첨부 처리, 셸의 파일 색인·지식 베이스, 만들기 창의 자료 확인과 AI 없이 바꾸기가 쓴다. 앱 안에서 파일이 "다른 파일로" 읽히는 길은 모두 여기를 지난다.
+첨부 파일을 모델에 보낼 평문으로 바꾼다. `parseFileToText(경로)`가 확장자와 매직 바이트를 보고 PDF, docx, doc, odt, pptx, ppt, xlsx/xlsm, 마인드맵(`.xmind`), 한글(hwp, hwpx), EPUB 책(`.epub`), draw.io 다이어그램(`.drawio`·`.dio`·`.drawio.svg`·`.drawio.png`), 화이트보드(`.whiteboard`), 텍스트 계열 파일을 글자로 풀고, 이미지는 내용을 읽지 않고 `kind: 'image'`와 MIME만 돌려준다. Docs·Sheets·Slides·HTML·Mindmap·EPUB·Whiteboard 메인 프로세스의 첨부 처리, 셸의 파일 색인·지식 베이스, 만들기 창의 자료 확인과 AI 없이 바꾸기가 쓴다. 앱 안에서 파일이 "다른 파일로" 읽히는 길은 모두 여기를 지난다.
 
 다른 파일로 읽힐 때의 가리기도 맡는다. 자기 편집기가 AI에게 가리는 자리를 여기서도 똑같이 `{{이름}}`으로 바꿔 내준다.
 
@@ -28,7 +28,9 @@
 - 파일을 읽기 전에 "저장하지 않은 변경이 있는 파일인가"를 묻는 일은 호출자가 한다(`packages/electron-utils`의 `assertFileSaved`·`withoutUnsavedFiles`).
 - 터미널 명령어(`packages/cli`)의 읽기는 이 패키지를 지나지 않고, 가리기를 적용하지 않는다.
 - 한글 문서를 고치거나 저장하지 않는다. 그것은 `apps/hwp`의 편집기가 한다. 여기서는 같은 엔진(`@rhwp/core`)으로 열어 글자만 꺼낸다.
-- 읽기에 시간 제한을 두지 않는다. 칸이 수만 개인 표가 든 한글 문서는 엔진이 여는 데만 10초 넘게 걸린다. 파일 색인은 작업자 스레드와 120초 제한 안에서 부르지만, 첨부·MCP·열린 탭 읽기는 메인 프로세스에서 바로 부른다.
+- 읽기에 시간 제한을 두지 않는다. 칸이 수만 개인 표가 든 한글 문서는 엔진이 여는 데만 10초 넘게 걸린다. 파일 색인은 전용 저우선순위 사이드카 인스턴스(또는 작업자 스레드)와 120초 제한 안에서 부르지만, 첨부·MCP·열린 탭 읽기는 대화형 사이드카 싱글턴(시간 제한 없음, 2분 유휴 시 종료)이나 메인 프로세스에서 바로 부른다.
+- 독립 Rust 추출 사이드카(`ieum-parse-sidecar`, `native/parse-sidecar/`)는 원본 `xlsx-sidecar`와 완전히 분리돼 있으며 네트워크 크레이트를 싣지 않는다. 7개 ZIP 형식(`.docx`, `.xlsx`, `.xlsm`, `.pptx`, `.odt`, `.epub`, `.xmind` 및 ZIP 기반 `.doc`), 옛 바이너리 OLE2 형식(`.doc`·`.ppt`, 결정 0159), 가리기 없는 평문/표(`.csv`, `.tsv`, `.xml`, `.log`, `.py`), 폴더 재귀 탐색(`scan_dir`), 색인 본문 CJK 토큰화(`tokenize: true`, 100만 자 상한), 그리고 빠른 미리보기용 ZIP 내장 썸네일 스트리밍 추출(`extract_thumbnail`, `.hwpx`·ZIP `.hwp`·OOXML·ODT·XMind, 최대 5 MiB)을 담당한다. PDF, HWP/HWPX 본문, draw.io, 이미지, 가리기 표시가 있는 텍스트·마크업(`.md`, `.markdown`, `.txt`, `.json`, `.html`, `.htm`)은 TypeScript 경로가 맡는다.
+- 부모 프로세스가 정상 `shutdown` 없이 갑자기 끊겨 표준 입력이 닫히면(bare stdin EOF) 사이드카는 유휴 상태뿐 아니라 진행 중·대기 중인 모든 작업까지 즉시 취소하고(`pool.shutdown(true)`) 종료한다.
 
 ## 항상 지켜야 하는 것
 
@@ -39,12 +41,14 @@
 - 관계(rels) 대상은 `resolveTarget`으로만 푼다. `..`은 zip 루트에서 멈추고, 스킴이 붙은 대상과 디코딩할 수 없는 대상은 빈 문자열이 된다. Windows 계열 생성기가 쓰는 역슬래시 구분자도 여기서 처리한다.
 - 글자를 바꾸지 않는다. XML 파서 설정은 `trimValues: false`, `parseTagValue: false`로 둔다. `02139` 같은 값이 숫자로 바뀌거나 런 사이의 공백이 사라지면 안 된다.
 - 적대적인 xlsx에 메모리를 내주지 않는다. 열 번호가 16,384(`MAX_XLSX_COLS`) 이상이거나 참조가 잘못된 셀은 그 자리를 채우지 않고 뒤에 붙이고, 빈 칸이 8개 넘게 이어지면 `(N empty)`로 줄인다.
-- 입력 바이트를 바꾸지 않는다. pdfjs는 받은 버퍼의 소유권을 가져가므로 복사본을 넘긴다.
+- 입력 바이트를 바꾸지 않는다. PDF 기본 경로(`pdf-pdfium.ts`)는 WASM 선형 메모리에 복사해 읽고(`try/finally`로 `_FPDFText_ClosePage`·`_FPDF_ClosePage`·`_FPDF_CloseDocument`·`_free` 해제), 폴백 경로(`pdfjs-dist`)는 받은 버퍼의 소유권을 가져가므로 복사본을 넘긴다.
 - **가리기는 닫힌 쪽으로 실패한다.** 표시가 있는데 무엇을 감추는지 확실히 정할 수 없으면 원문을 내주지 않고 `RedactionMarkError`를 던진다. `parseFileToText`는 이것을 `{ ok: false, error }`로 바꾼다. 실패하면 원문으로 돌아가는 대체 경로를 만들지 않는다. 덜 가리느니 읽지 않는다.
 - **가리는 자리는 그 형식의 편집기가 가리는 자리와 같아야 한다.** 이 패키지는 앱이나 문서 엔진을 가져올 수 없어서 표시의 모양을 다시 적었다. 편집기나 엔진의 표시를 바꾸면 여기도 같이 바꾼다. PPT의 확장 식별자는 테스트가 엔진의 상수와 견준다. 결과는 편집기보다 더 가릴 수는 있어도 덜 가리면 안 된다.
 - **마크다운 구간의 끝을 짐작하지 않는다.** 이 패키지에는 편집기의 마크다운 파서가 없다. 처음 나오는 `</span>`가 확실히 그 구간의 끝일 때만 거기서 닫고(코드·강조·링크 같은 구조가 걸쳐 있지 않을 때), 그 밖에는 읽기를 실패시킨다(`markdown-redaction.ts` 머리 주석의 세 조건). 표시 이름을 글로 언급만 한 파일은 그대로 읽는다.
 - **HTML은 파서가 본 표시를 모두 확인한다.** 편집기의 검사가 놓치는 꼴(값 없는 `data-gx-redact`, 대문자 이름)을 파서(parse5)가 보면 읽기를 실패시킨다.
-- **PPT는 표시의 흔적이 모두 실행이나 그림으로 설명돼야 한다.** 이름이 없거나, 부모가 틀렸거나, 닫히지 않는 표시는 덱 전체를 읽지 않는다. 가린 실행은 글 걷기가 읽기 전에 이름표만 든 실행으로 바뀐다.
+- **PPT는 표시의 흔적이 모두 실행이나 그림으로 설명돼야 한다.** 이름이 없거나, 부모가 틀렸거나, 닫히지 않는 표시는 덱 전체를 읽지 않는다. 가린 실행은 글 걷기가 읽기 전에 이름표만 든 실행으로 바뀐다. `ieum-parse-sidecar`로 PPTX를 읽을 때는 호출 시 `REDACT_NS`를 넘기고, 사이드카가 가리기 표식을 감지하면 원문을 돌려주지 않고 `fallbackReason: 'redaction_present'`로 닫힌 쪽 위임을 반환한다. 클라이언트는 그때만 TypeScript `pptx-redaction.ts` 경로로 넘긴다.
+- **사이드카 폴백은 인프라 실패에만 허용한다.** `GENOFFICE_PARSE_SIDECAR=0|off`, 바이너리 부재, 기동 실패, 프로세스 비정상 종료, 프로토콜 오류 때만 TypeScript 구현으로 내려간다. 암호 걸림, 매직 바이트 불일치, ZIP 폭탄·ZIP64·경로 탈출, DRM, 인코딩 오류 같은 의미적·보안 거절은 절대 폴백하지 않고 `{ ok: false, error }`로 그대로 거절한다. 경로는 `GENOFFICE_PARSE_SIDECAR_PATH`로 덮어쓸 수 있다.
+- **대화형 사이드카 싱글턴은 종료 시 정리한다.** `stopParseSidecar()`로 앱 종료(`will-quit`·`process.on('exit')`) 시 실행 중인 사이드카를 내려 고아 프로세스를 남기지 않는다.
 - `.epub`은 zip이 아니면 `Content mismatch`로 거부한다. 열리지 않는 책(zip 관문의 거절, EPUB이 아님, DRM)은 `epubToText`가 이유를 담아 던지고 `parseFileToText`에서는 `ok: false`다. 글자 인코딩이 맞지 않는 장은 표시 한 줄을 남기고 빼며, 읽히는 장이 하나도 없는 책은 거절한다. 깨진 글자가 색인이나 모델에 들어가지 않게 한다.
 - **다이어그램은 이름을 먼저 본다.** `parseFileToText`는 마지막 확장자보다 먼저 `detectDiagramFormat`으로 이름을 보고, `.drawio.svg`·`.drawio.png`를 그림이 아니라 다이어그램 글로 읽는다. 열리지 않는 다이어그램(XML이 아님, 쪽을 풀 수 없음, 다이어그램이 없음, 읽을 수 없는 PNG)은 `ok: false`(`Cannot read diagram (까닭): …`)다. 원본이 들지 않은 그림(`no_original`)은 다이어그램이 아니므로 마지막 확장자대로 읽는다(`.png`는 그림, `.svg`는 지원하지 않는 형식). `diagramPictureExtOf`도 같은 기준이다.
 - `.xmind`는 zip이 아니면 `Content mismatch`로 거부한다. `ok`로 열리지 않는 지도(예전 형식, 암호, 읽을 수 없음, zip 안전 검사 거절)는 던지고, `parseFileToText`에서는 `ok: false`다.
@@ -59,8 +63,9 @@
 - pptx의 슬라이드 순서는 파일 이름이 아니라 `presentation.xml`의 슬라이드 목록을 따른다. 목록에 없는 슬라이드 파트는 빼고, 목록 파일이 없을 때만 파일 번호순으로 읽는다.
 - 글자가 없고 그림만 있는 슬라이드·시트·워드 문서는 제목만 남기지 않고 그림 수와 함께 추출할 글자가 없다는 표시를 넣는다. 표시가 없으면 모델과 사용자가 내용이 전달되지 않은 슬라이드를 읽힌 것으로 여긴다. 워드는 그림의 대체 텍스트(`wp:docPr`의 `descr`, 없으면 `title`)가 있으면 그 글자를 `[image: …]` 괄호로 묶어 둘레 글과 섞이지 않게 적고, 숨긴 그림(`hidden="1"`/`"true"`)은 `w:vanish` 실행과 같이 대체 텍스트를 넣지 않는다.
 - 텍스트 파일은 BOM을 보고 UTF-8과 UTF-16을 풀고, UTF-8로 읽히지 않으면 windows-1252로 읽는다. BOM이 UTF-32라고 알리는 파일만 거부한다.
-- 설치본에서만 깨지는 문제를 막는 우회가 두 군데 있고, 개발 실행에서는 드러나지 않으므로 지우지 않는다. pdfjs는 `DOMMatrix`가 없으면 import 단계에서 죽어서 순수 JS 대체 구현을 먼저 설치하고, 워커 모듈을 글자 그대로의 경로로 import해 번들에 넣는다. `ppt-to-text`는 의존성을 번들러가 따라가지 못하는 require 뒤에 숨기므로 `globalThis.CFB`와 `cptable`을 먼저 채운 뒤 지연 import한다.
-- 옛 PPT의 글자 디코딩은 코드페이지 1200(UTF-16LE)만 지원한다.
+- PDF 텍스트 추출은 앱에 이미 실린 `@embedpdf/pdfium`(`pdfium.wasm`)을 기본 경로로 쓴다(`pdf-pdfium.ts`, 결정 0160). WASM 경로는 `GENOFFICE_PDFIUM_WASM_PATH` → `GENOFFICE_PDFIUM_WASM` → `node_modules`의 `@embedpdf/pdfium` → 설치본 `Resources/wasm/pdfium.wasm` → CLI 번들 옆 `../wasm/pdfium.wasm` 순으로 찾는다. `GENOFFICE_PDF_PDFIUM=0|off`이거나 WASM 부재·초기화·트랩 같은 **인프라 실패 때만** 기존 `pdfjs-dist`로 폴백한다. 암호가 걸린 PDF(`FPDF_ERR_PASSWORD`), 지원하지 않는 보안 핸들러(`FPDF_ERR_SECURITY`), 손상된 PDF(`FPDF_ERR_FORMAT` 등)는 절대 `pdfjs-dist`로 폴백하지 않고 `PdfDocumentError`로 거절한다.
+- 설치본에서만 깨지는 문제를 막는 우회가 두 군데 있고, 개발 실행에서는 드러나지 않으므로 지우지 않는다. 폴백 경로의 pdfjs는 `DOMMatrix`가 없으면 import 단계에서 죽어서 순수 JS 대체 구현을 먼저 설치하고, 워커 모듈을 글자 그대로의 경로로 import해 번들에 넣는다. `ppt-to-text`는 의존성을 번들러가 따라가지 못하는 require 뒤에 숨기므로 `globalThis.CFB`와 `cptable`을 먼저 채운 뒤 지연 import한다.
+- 옛 PPT의 글자 디코딩은 Rust 사이드카 경로가 UTF-16LE(코드페이지 1200)와 ASCII/CP1252 레코드(`TextBytesAtom`)를 모두 처리하고, TypeScript 폴백 경로(`ppt-to-text`)는 코드페이지 1200(UTF-16LE)만 지원한다.
 - zip으로 된 문서가 `WHOLE_ZIP_READ_MAX_BYTES`(50MB)를 넘으면 `readZipTextParts`로 글이 든 파트(XML·관계·JSON·HTML·평문, 확장자 없는 파트)만 디스크에서 압축된 채 옮겨 작은 zip을 만들고, 나머지 파트는 이름만 남겨 내용을 비운다. 형식별 읽기와 zip 관문은 그 작은 zip에 그대로 돈다. 그 이하는 통째로 읽는다. 읽은 글은 통째로 읽을 때와 같아야 한다(`tests/large-documents.test.ts`). zip64는 거절한다(결정 0091).
 - 한글 문서는 문단을 한 줄로, 표를 행마다 칸을 `|`로 이어 적는다. 병합된 칸은 첫 자리에 적고 걸친 자리는 비우되, 줄 끝에 이어지는 빈 자리는 적지 않는다. 한 칸에 문단이 셋을 넘는 표(글을 배치하려고 쓴 표)는 행으로 적지 않고 칸의 문단을 줄로 푼다. 메모가 있으면 본문·표 뒤에 `### Comments` 블록을 붙인다. 첫 줄은 `- 작성자 (p.N): 첫 줄`이고 이어지는 줄은 두 칸 들여쓰며, 작성자가 없으면 `unknown`, 쪽을 모르면 `(p.N)`을 뺀다. 메모가 없으면 블록을 붙이지 않아 본문 출력이 그대로다.
 - 문단과 표를 따라가는 읽기가 닿지 못한 글자(글상자, 머리말, 표 안의 표 등)는 엔진의 평문 내보내기에서 찾아 제자리에 끼워 넣는다(`withMissingText`). 엔진 평문만 쓰지 않는 이유는 그쪽이 빈 누름틀에 안내 문구를 적고 표를 줄 구분 없이 풀기 때문이다.
@@ -71,6 +76,7 @@
 ## 테스트
 
 - `npm run test -w @genoffice/file-parse`, 또는 패키지 폴더에서 `npx vitest run`. 타임아웃은 20초다.
+- Rust 사이드카 빌드·시험: `npm run native:build -w @genoffice/file-parse`(`scripts/build-sidecar.mjs`, 경로 치환·MSVC 정적 CRT·로컬 경로 누출 검사 포함), `npm run native:test -w @genoffice/file-parse`(`cargo test`), macOS universal 빌드 `npm run native:build:universal -w @genoffice/file-parse`. Rust 소스를 고쳤으면 release 바이너리를 다시 빌드한 뒤 통합·차분 시험(`tests/sidecar-client.test.ts`, `tests/rust-risk-*.test.ts`)을 돌린다.
 - OOXML 픽스처는 `tests/helpers/fixtures.ts`가 JSZip으로 그때그때 만들어 임시 폴더에 쓴다. ODT 픽스처는 `tests/odt.test.ts`가 손으로 묶거나(글상자 안 표, 각주, 암호 manifest) docx 픽스처를 `docxToOdt`로 바꿔 만든다. 파일로 들어 있는 것은 옛 형식 두 개(`tests/fixtures/legacy-sample.doc`, `legacy-sample.ppt`)뿐이다. `npm run fixtures`는 필요 없다. 한글 문서는 `tests/hwp.test.ts`가 엔진으로 직접 만든다(문단을 모두 만든 뒤 표를 붙인다. 표가 놓인 문단을 나누면 엔진이 표를 옮긴다).
 - 형식 처리를 바꾸면 정상 추출, 깨진 파일이 던지지 않고 `ok: false`가 되는 경우, 글자 원형 보존(앞자리 0, 런 사이 공백)을 덮는다. zip을 여는 경로를 건드리면 `tests/zip-bomb-gate.test.ts`도 함께 본다.
 - 가리기를 바꾸면 형식마다, 표시 종류마다 "가린 글이 결과에 남지 않는다"와 "표시를 처리하지 못하면 원문이 아니라 실패가 나온다"를 덮는다(`tests/redaction.test.ts`). 마크다운은 "끝을 짐작하지 않는다"와 "표시가 될 수 있는 것만 실패한다"를 함께 본다. 지도 읽기는 `tests/xmind.test.ts`, EPUB 읽기와 DRM·손상·인코딩 거절은 `tests/epub.test.ts`. 다이어그램 네 형식·압축 쪽·깨진 파일·원본 없는 그림·`.vsdx`는 `tests/diagram.test.ts`이고, 시험 파일 `tests/fixtures/out.drawio*`는 `packages/drawio-model/tests/fixtures`에서 복사했다.

@@ -208,6 +208,7 @@ import type { PdfNavTarget } from './ai/pdf-nav'
 import {
   remapMarks,
   revertedStacks,
+  runChangeLines,
   runMarks,
   runRevertVerdict,
   withAiEditScope,
@@ -405,7 +406,8 @@ import {
   editCarriesBlock,
   isBlockEditOf,
   patchPendingEdits,
-  resolveTextEdit,
+  planAiTextEdit,
+  visibleInk,
   shiftPendingEdit,
   shiftRect,
   unionCover,
@@ -4205,9 +4207,6 @@ export default function App() {
     }
   }
 
-  /** Seed the draft with the document's own face: the font id covering the most
-      characters inside the draft rect names it. Async like the ink probe; rect
-      identity pins the draft. */
   /** Page color behind a run, read off its rendered canvas (see LocalTextEdit.paper) */
   const samplePaper = (origIdx: number, rect: readonly [number, number, number, number]) =>
     samplePaperColor(
@@ -4215,29 +4214,38 @@ export default function App() {
       pdfRectToCss(pageGeom(origIdx), rect, scale),
     ) ?? undefined
 
-  const seedDraftFont = (origIdx: number, rect: [number, number, number, number]) => {
+  /** The document's own face inside a rect: the font id covering the most characters
+      there names it (null when the index or the font is not available) */
+  const docFontIn = async (
+    origIdx: number,
+    rect: readonly [number, number, number, number],
+  ): Promise<DocFontStyle | null> => {
     const index = getSearchIndex()
-    if (!index) return
-    void index.then(async (entries) => {
-      const items = entries[origIdx]?.items
-      if (!items) return
-      const weight = new Map<string, number>()
-      for (const it of items) {
-        if (!it.font) continue
-        const cx = it.x + it.w / 2
-        const cy = it.y + it.h / 2
-        if (cx < rect[0] || cx > rect[2] || cy < rect[1] || cy > rect[3]) continue
-        weight.set(it.font, (weight.get(it.font) ?? 0) + (it.end - it.start))
+    if (!index) return null
+    const items = (await index)[origIdx]?.items
+    if (!items) return null
+    const weight = new Map<string, number>()
+    for (const it of items) {
+      if (!it.font) continue
+      const cx = it.x + it.w / 2
+      const cy = it.y + it.h / 2
+      if (cx < rect[0] || cx > rect[2] || cy < rect[1] || cy > rect[3]) continue
+      weight.set(it.font, (weight.get(it.font) ?? 0) + (it.end - it.start))
+    }
+    let best: string | undefined
+    let bestN = 0
+    for (const [f, n] of weight)
+      if (n > bestN) {
+        bestN = n
+        best = f
       }
-      let best: string | undefined
-      let bestN = 0
-      for (const [f, n] of weight)
-        if (n > bestN) {
-          bestN = n
-          best = f
-        }
-      if (!best) return
-      const style = await resolveDocFont(origIdx, best)
+    return best ? resolveDocFont(origIdx, best) : null
+  }
+
+  /** Seed the draft with the document's own face. Async like the ink probe; rect
+      identity pins the draft. */
+  const seedDraftFont = (origIdx: number, rect: [number, number, number, number]) => {
+    void docFontIn(origIdx, rect).then((style) => {
       if (!style) return
       setTextDraft((d) =>
         d && d.origIdx === origIdx && d.rect === rect && !d.seedFont
@@ -8541,23 +8549,34 @@ export default function App() {
       ])
     },
     editText: async (raw) => {
-      const resolved = resolveTextEdit(textEditsRef.current, raw)
-      if ('reason' in resolved) return resolved.reason
-      const { input, replaces, moveBy } = resolved
-      let cover: [number, number, number, number] | undefined
-      if (filePath) {
-        try {
-          const [v] = await window.pdfApi.validateTextEdits({ path: filePath, edits: [input] })
-          if (v?.reason) return v.reason
-          cover = v?.bounds
-        } catch {
-          /* best-effort: the save path skips-and-reports unmatched edits anyway */
-        }
-      }
-      const te: LocalTextEdit = { id: newId(), input, cover, moveBy }
-      const gone = new Set(replaces.map((e) => e.id))
+      const planned = await planAiTextEdit(
+        () => textEditsRef.current,
+        raw,
+        filePath
+          ? async (e) => (await window.pdfApi.validateTextEdits({ path: filePath, edits: [e] }))[0]
+          : null,
+      )
+      if ('reason' in planned) return planned.reason
+      const { input, cover, baseColor, owner, gone, moveBy } = planned
+      // Display-only look of the run (what the user's own editor seeds): the page
+      // color behind it, its ink and a look-alike of its face
+      const paper = owner?.paper ?? samplePaper(input.pageIndex, input.rect)
+      const baseInk = owner?.baseInk ?? (baseColor ? visibleInk(baseColor, paper) : undefined)
+      const baseFont =
+        owner?.baseFont ??
+        (planned.lineEdit
+          ? ((await docFontIn(input.pageIndex, input.rect)) ?? undefined)
+          : undefined)
+      const te: LocalTextEdit = owner
+        ? { ...owner, input, cover: cover ?? owner.cover }
+        : { id: newId(), input, cover, moveBy, paper, baseInk, baseFont }
       const prev = textEditsRef.current
-      const plan = applyEditOpsRef.current(textEditListOps(prev, patchPendingEdits(prev, te, gone)))
+      if (owner && !prev.some((e) => e.id === owner.id)) {
+        return 'the pending edits changed while the edit was validated; retry'
+      }
+      const plan = applyEditOpsRef.current(
+        textEditListOps(prev, patchPendingEdits(prev, te, gone, owner ? 'replace' : 'upsert')),
+      )
       return plan.failures[0]?.error ?? null
     },
     moveTextBlock: async (origIdx, block, d) => {
@@ -8697,10 +8716,15 @@ export default function App() {
     const family =
       (insert.input.font ? EDIT_FONT_BY_ID.get(insert.input.font)?.css : undefined) ??
       getComputedStyle(document.body).fontFamily
-    const style = `${insert.input.italic ? 'italic ' : ''}${insert.input.bold ? 'bold ' : ''}`
+    // synthetic bold (no explicit face) is a stroke that keeps the regular advances
+    const weight = boldToken(insert.input.bold, !!insert.input.font)
+    const style = `${insert.input.italic ? 'italic ' : ''}${weight ? `${weight} ` : ''}`
     // the preview draws at 0.92 of the size (textInsertPreviewStyle)
     return measureTextWidth(line, `${style}${fontSize * 0.92}px ${family}`)
   }
+  /** a page's current geometry for the marks, or null before its size is known */
+  const markGeom = (origIdx: number): PageGeom | null =>
+    (allSizes[origIdx] ?? blankSizeNow(origIdx)) ? pageGeom(origIdx) : null
 
   /** The changes card of an AI run: what it applied, taking it back, its marks. */
   const aiChanges: PdfAiChanges = {
@@ -8712,9 +8736,11 @@ export default function App() {
       const run = aiRunRef.current
       aiRunRef.current = null
       if (!run || run.snaps.length === 0) return null
-      const marks = runMarks(run.snaps[0]!, snapshot(), measureInsertLine)
+      const current = snapshot()
+      const marks = runMarks(run.snaps[0]!, current, measureInsertLine, markGeom)
+      const lines = runChangeLines(run.snaps[0]!, current)
       setAiMarks(marks.length > 0 ? { run: run.id, marks } : null)
-      return { id: run.id, snaps: run.snaps, ops: run.ops }
+      return { id: run.id, snaps: run.snaps, ops: run.ops, ...(lines.length > 0 ? { lines } : {}) }
     },
     revert: (run: PdfAiRun) => {
       const verdict = runRevertVerdict(run.snaps, undoStack)

@@ -10,6 +10,7 @@ export const he = {
   item_html: 'עורך HTML',
   item_mindmap: 'עורך מפות חשיבה',
   item_diagram: 'עורך תרשימים',
+  item_whiteboard: "עורך לוח לבן",
   item_hwp: 'עורך האנגול (HWP)',
   item_epub: 'עורך EPUB',
   offMessage: '{item} כבוי. להפעיל ולפתוח?',

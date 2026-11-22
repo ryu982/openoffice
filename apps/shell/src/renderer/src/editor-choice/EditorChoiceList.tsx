@@ -20,6 +20,7 @@ const ITEM_FORMATS: Readonly<Record<EditorItemId, string | null>> = {
   html: '.html · .htm',
   mindmap: '.xmind',
   diagram: '.drawio · .vsdx',
+  whiteboard: '.whiteboard · .excalidraw',
   hwp: '.hwp · .hwpx',
   epub: '.epub',
 }

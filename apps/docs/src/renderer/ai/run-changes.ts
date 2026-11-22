@@ -1,6 +1,6 @@
 import { Fragment, Slice, type Node as ProseMirrorNode } from '@tiptap/pm/model'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
-import type { AiChangesState } from '@genoffice/ui'
+import type { AiChangeLine, AiChangesState } from '@genoffice/ui'
 import { TRACK_IGNORE } from '../editor/revisions'
 
 /**
@@ -86,11 +86,107 @@ export function sliceWithoutAiMarks(slice: Slice): Slice {
   return content === slice.content ? slice : new Slice(content, slice.openStart, slice.openEnd)
 }
 
+/** One detailed line inside the Word AI changes card, carrying a target block index when jumpable. */
+export interface DocsChangeLine extends AiChangeLine {
+  readonly blockIndex?: number
+}
+
 /** What one run's card says: the run's changes and where they stand. */
 export interface DocsRunChanges {
   state: 'applied' | 'reverted'
   /** blocks the run marked; absent where the marks do not count them (tracked changes) */
   count?: number
+  /** per-block or per-edit rows shown in the card */
+  lines?: DocsChangeLine[]
+}
+
+const MAX_CHANGE_LINES = 50
+const SUMMARY_MAX_CHARS = 64
+
+function clipLineSummary(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (!clean) return '—'
+  return clean.length > SUMMARY_MAX_CHARS ? `${clean.slice(0, SUMMARY_MAX_CHARS - 1)}…` : clean
+}
+
+/** Collect jumpable change lines for every top-level block carrying an `aiChanged` mark. */
+export function collectAiMarkedChangeLines(doc: ProseMirrorNode): DocsChangeLine[] {
+  const lines: DocsChangeLine[] = []
+  let idx = 0
+  doc.forEach((block) => {
+    const blockIndex = idx++
+    if (lines.length >= MAX_CHANGE_LINES) return
+    let marked = block.attrs.aiChanged === true
+    if (!marked) {
+      block.descendants((node) => {
+        if (marked) return false
+        if (node.attrs.aiChanged === true) marked = true
+        return !marked
+      })
+    }
+    if (!marked) return
+    lines.push({
+      kind: 'named',
+      from: `#${blockIndex + 1}`,
+      to: clipLineSummary(block.textContent),
+      showable: true,
+      blockIndex,
+    })
+  })
+  return lines
+}
+
+/** Build a fallback change line from a mutating Docs tool call (used under tracked changes or non-block edits). */
+export function docChangeLineFromTool(
+  name: string,
+  input: Record<string, unknown>,
+  summary: string,
+): DocsChangeLine {
+  let blockIndex: number | undefined
+  if (
+    typeof input.blockIndex === 'number' &&
+    Number.isInteger(input.blockIndex) &&
+    input.blockIndex >= 0
+  ) {
+    blockIndex = input.blockIndex
+  } else if (
+    typeof input.startBlockIndex === 'number' &&
+    Number.isInteger(input.startBlockIndex) &&
+    input.startBlockIndex >= 0
+  ) {
+    blockIndex = input.startBlockIndex
+  } else if (
+    typeof input.afterBlockIndex === 'number' &&
+    Number.isInteger(input.afterBlockIndex)
+  ) {
+    blockIndex = Math.max(0, input.afterBlockIndex + 1)
+  }
+  const clipped = clipLineSummary(summary)
+  const isInsert = name.startsWith('insert_') || name.startsWith('add_') || name === 'write_document'
+  const isDelete = name.startsWith('delete_')
+  if (isInsert) {
+    return {
+      kind: 'insert',
+      to: blockIndex !== undefined ? `#${blockIndex + 1} ${clipped}` : clipped,
+      showable: blockIndex !== undefined,
+      ...(blockIndex !== undefined ? { blockIndex } : {}),
+    }
+  }
+  if (isDelete) {
+    return {
+      kind: 'delete',
+      from: blockIndex !== undefined ? `#${blockIndex + 1} ${clipped}` : clipped,
+      showable: blockIndex !== undefined,
+      ...(blockIndex !== undefined ? { blockIndex } : {}),
+    }
+  }
+  return {
+    kind: 'named',
+    from: blockIndex !== undefined ? `#${blockIndex + 1}` : name,
+    to: clipped,
+    showable: blockIndex !== undefined,
+    ...(blockIndex !== undefined ? { blockIndex } : {}),
+  }
 }
 
 /** The card's state: an applied run whose roll-back point was released can no longer be taken back. */

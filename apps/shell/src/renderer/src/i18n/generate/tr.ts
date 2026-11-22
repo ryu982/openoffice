@@ -6,6 +6,7 @@ export const tr = {
   kindSlides: 'Sunum (PPT)',
   kindHtml: 'Web sayfası (HTML)',
   kindMindmap: 'Zihin haritası',
+  kindWhiteboard: "Beyaz Tahta",
   materialsLabel: 'Kaynaklar',
   addMaterials: 'Dosya ekle…',
   removeMaterial: 'Kaldır',

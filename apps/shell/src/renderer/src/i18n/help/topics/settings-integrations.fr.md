@@ -69,6 +69,8 @@ Les paramètres peuvent enregistrer GenOffice comme gestionnaire de .docx / .xls
 
 Sous **Serveur HTTP local**, l’application peut aussi lancer le serveur elle-même — un interrupteur d’activation et un port —, et **Avancé** ajoute l’URL du test de santé et le fichier journal, au lieu de le laisser à l’assistant. Elle n’écoute que sur localhost.
 
+En haut de **Paramètres ▸ Intégrations**, la section **Services connectés** regroupe Google Drive, Notion, Canva, Coffre Obsidian, Korean Law MCP, kordoc MCP et vos serveurs MCP personnalisés au-dessus de la connexion aux agents de code.
+
 ## Aide-mémoire de la ligne de commande
 
 | Commande            | Ce qu’elle fait                 |

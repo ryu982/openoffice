@@ -21,7 +21,7 @@ import {
 
 afterEach(() => setAppChoiceSource(null))
 
-const TEN_EDITORS = [
+const ELEVEN_EDITORS = [
   'docs',
   'sheets',
   'slides',
@@ -30,12 +30,13 @@ const TEN_EDITORS = [
   'html',
   'mindmap',
   'diagram',
+  'whiteboard',
   'hwp',
   'epub',
 ]
 
 describe('editor items', () => {
-  it('lists eleven items in a fixed order, ten editors and one tool', () => {
+  it('lists twelve items in a fixed order, eleven editors and one tool', () => {
     expect(EDITOR_ITEM_IDS).toEqual([
       'docs',
       'sheets',
@@ -46,10 +47,11 @@ describe('editor items', () => {
       'html',
       'mindmap',
       'diagram',
+      'whiteboard',
       'hwp',
       'epub',
     ])
-    expect(EDITOR_ONLY_ITEM_IDS).toEqual(TEN_EDITORS)
+    expect(EDITOR_ONLY_ITEM_IDS).toEqual(ELEVEN_EDITORS)
     expect(EDITOR_ITEM_IDS.filter(isToolItem)).toEqual(['pdfTools'])
   })
 
@@ -76,12 +78,12 @@ describe('reading the stored choice', () => {
     ])
   })
 
-  it('reads all ten editors off as everything on, with or without the tool', () => {
-    expect(normalizeEditorOff({ off: TEN_EDITORS })).toEqual([])
+  it('reads all eleven editors off as everything on, with or without the tool', () => {
+    expect(normalizeEditorOff({ off: ELEVEN_EDITORS })).toEqual([])
     expect(normalizeEditorOff({ off: [...EDITOR_ITEM_IDS] })).toEqual([])
     // only the PDF tools on still means no editor is on
-    expect(allEditorsOff(editorOffList({ off: TEN_EDITORS }))).toBe(true)
-    expect(allEditorsOff(editorOffList({ off: TEN_EDITORS.slice(1) }))).toBe(false)
+    expect(allEditorsOff(editorOffList({ off: ELEVEN_EDITORS }))).toBe(true)
+    expect(allEditorsOff(editorOffList({ off: ELEVEN_EDITORS.slice(1) }))).toBe(false)
   })
 
   it('keeps the tool alone off', () => {

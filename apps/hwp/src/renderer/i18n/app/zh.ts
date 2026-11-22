@@ -20,6 +20,8 @@ export const zh = {
   saveVerifyFailed:
     '未保存：即将写入的内容读回后与屏幕上的文档不一致。请尝试“另存为”保存到新文件。',
   saveVerifyHint: '原文件未改动。请在“另存为”中选择 HWPX，或使用“导出为 PDF”。',
+  saveVerifyPages: '屏幕 {before} 页 → 读回 {after} 页',
+  saveAsHwpx: '另存为 HWPX…',
   saveProtected: '未保存：此文档有密码保护，在这里保存会写出不带密码的文件。',
   backupKept: '已保存。之前的版本保留为 {name}。',
   openedTracked:

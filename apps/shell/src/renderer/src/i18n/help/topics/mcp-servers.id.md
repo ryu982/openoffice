@@ -2,6 +2,16 @@
 
 Server MCP adalah layanan yang menyediakan alat yang bisa dipakai AI dari luar aplikasi, misalnya mencari undang-undang atau mencari bahan yang dikelola tim Anda. Setelah Anda menghubungkan server, jendela AI di GenOffice bisa memanggil alatnya selama obrolan. Anda sendiri yang menentukan, alat demi alat, apa yang boleh dipakai AI dan bagaimana caranya.
 
+## Layanan terhubung yang direkomendasikan
+
+Di bagian atas **Pengaturan ▸ Integrasi**, GenOffice mengelompokkan Google Drive bersama lima layanan siap pakai di atas server MCP khusus:
+
+- **Notion** dan **Canva**: terhubung lewat satu alur masuk browser. Anda juga dapat melampirkan hingga 20 halaman Notion langsung dari menu **+** di editor (salinan sementara dibersihkan setelah 7 hari).
+- **Brankas Obsidian**: bawaan di GenOffice tanpa aplikasi atau proses tambahan. Tambahkan folder lokal untuk mencari, membaca, dan mengedit catatan `.md` langsung (penghapusan hanya ke tempat sampah OS, tidak membuat file tambahan di brankas, tetap aktif saat alat internet mati) serta melampirkannya dari menu **+**.
+- **Korean Law MCP**: mencari peraturan dan putusan Korea setelah Anda mengisi `LAW_OC` dan mengizinkan perintahnya.
+- **kordoc MCP**: membaca dan mengonversi file HWP/HWPX lokal setelah Anda mengizinkan perintahnya. Penyembunyian editor tidak berlaku untuk file yang dibaca langsung oleh kordoc.
+- **Tombol Layanan terhubung**: selalu tampil di samping kolom AI untuk menyalakan/mematikan Google Drive (di editor), tiap brankas Obsidian, atau server MCP pada obrolan ini, atau membuka **Pengaturan ▸ Integrasi**.
+
 ## Menambahkan server
 
 1. Buka **Pengaturan ▸ Integrasi** lalu tekan **Tambah server** pada kartu **Server MCP**.

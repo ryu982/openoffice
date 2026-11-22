@@ -98,6 +98,104 @@ export function sameFaces(listed, kept) {
   return true
 }
 
+/**
+ * How many of the PC's fonts one detection reads the file of, on Linux, when the app did
+ * not say. There the page keeps each font file it read open until its next garbage
+ * collection, and a detection does not pause: on a PC with thousands of fonts the page ran
+ * into the open-file limit a desktop session starts programs with (1024) and stopped for
+ * good (#488). The app reads the page's own limit and passes half of it in the editor's
+ * address (`fontReads`, src/main/font-file-reads.ts); this is half of that common limit,
+ * for an editor started without it.
+ */
+export const LINUX_FONT_FILE_READS = 512
+
+/** The share the app passed in the editor's address, else LINUX_FONT_FILE_READS. */
+export function linuxFontFileReads(search = globalThis.location?.search ?? '') {
+  const given = Number(new URLSearchParams(search).get('fontReads') ?? '')
+  return Number.isSafeInteger(given) && given > 0 ? given : LINUX_FONT_FILE_READS
+}
+
+/**
+ * Whether this editor runs inside a hidden `--headless-export` window (`&headless=1`).
+ * Electron keeps `document.visibilityState === 'visible'` on hidden windows with
+ * `backgroundThrottling: false`, so headless runs carry an explicit marker instead of
+ * relying on visibility alone.
+ */
+export function isHeadlessStudio(search = globalThis.location?.search ?? '') {
+  return new URLSearchParams(search).get('headless') === '1'
+}
+
+/** The host window's IPC reader for per-face SFNT metadata, when hosted inside the app. */
+function defaultHostFontNamesReader() {
+  try {
+    const fn = globalThis.parent?.hwpApi?.readFontNames
+    return typeof fn === 'function' ? (faces) => fn(faces) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Reads per-face SFNT name and style metadata from the host main process when running inside
+ * the app, so the renderer never calls `FontData.blob()` across every installed font (#488,
+ * #591). Returns null only when no host reader exists (standalone browser), letting the
+ * caller fall back to blob reads there; inside the app a failed lookup returns empty slots
+ * and never falls back to renderer blob reads.
+ * @param {ReadonlyArray<{ family?: string; fullName?: string; postscriptName?: string; style?: string }>} fontDataList
+ * @param {null | ((faces: ReadonlyArray<{ family: string; fullName: string; postscriptName: string; style: string }>) => Promise<ReadonlyArray<unknown>>)} [reader]
+ */
+export async function readHostFontNames(fontDataList, reader = defaultHostFontNamesReader()) {
+  if (!reader) return null
+  if (fontDataList.length === 0) return []
+  try {
+    const queries = fontDataList.map((face) => ({
+      family: typeof face?.family === 'string' ? face.family : '',
+      fullName: typeof face?.fullName === 'string' ? face.fullName : '',
+      postscriptName: typeof face?.postscriptName === 'string' ? face.postscriptName : '',
+      style: typeof face?.style === 'string' ? face.style : '',
+    }))
+    const resolved = await reader(queries)
+    if (!Array.isArray(resolved)) return new Array(fontDataList.length).fill(null)
+    return Array.from({ length: fontDataList.length }, (_, index) => {
+      const entry = resolved[index]
+      return entry && typeof entry === 'object' ? entry : null
+    })
+  } catch (error) {
+    console.warn('[pc-fonts] Host font metadata lookup failed; using enumerated names only:', error)
+    return new Array(fontDataList.length).fill(null)
+  }
+}
+
+/** A name with a letter beyond ASCII: the PC's list gives a font's name in the PC's language first. */
+const LOCAL_NAME = /[\u0080-\uffff]/
+
+/**
+ * Which fonts of the PC's list the studio's detection reads the file of, by their place in
+ * the list (the studio-font-file-reads patch asks): every one, except on Linux past
+ * `reads` (linuxFontFileReads). There the fonts the list names in the PC's language go first (on
+ * a Korean PC the Korean fonts, whose other name a document may use), then the rest in
+ * the list's order. A font that is not read keeps the names the list gives, without those
+ * in its file. The choice follows from the list alone: a detection run again reads the same
+ * files, and a file read again is not opened again.
+ * @param {ReadonlyArray<{ family?: string; fullName?: string }>} listed
+ * @returns {(index: number) => boolean}
+ */
+export function fontFilesToRead(
+  listed,
+  platform = globalThis.navigator?.platform ?? '',
+  reads = linuxFontFileReads(),
+) {
+  if (!/Linux/.test(platform) || listed.length <= reads) return () => true
+  const local = (face) => LOCAL_NAME.test(`${face.family ?? ''}${face.fullName ?? ''}`)
+  const read = new Set()
+  for (const first of [true, false]) {
+    for (let index = 0; index < listed.length && read.size < reads; index += 1) {
+      if (local(listed[index]) === first) read.add(index)
+    }
+  }
+  return (index) => read.has(index)
+}
+
 /** Resolves once the page is visible: the enumeration refuses a hidden page (a tab opened behind another). */
 function whenVisible(doc) {
   if (!doc || doc.visibilityState === 'visible') return Promise.resolve()
@@ -129,6 +227,15 @@ export function refreshPcFonts(studio) {
 }
 
 async function refresh(studio) {
+  const headless = studio.headless ?? isHeadlessStudio()
+  if (headless) {
+    try {
+      await studio.loadStored()
+    } catch (error) {
+      console.warn('[pc-fonts] Stored font list not loaded in headless mode:', error)
+    }
+    return false
+  }
   if (!studio.queryLocalFonts) return false
   try {
     await whenVisible(studio.document)
@@ -180,8 +287,9 @@ export const PRINT_FONTS_WAIT_MS = 30_000
 export async function printFontsReady({
   wait = PRINT_FONTS_WAIT_MS,
   doc = globalThis.document,
+  headless = isHeadlessStudio(),
 } = {}) {
-  if (doc?.visibilityState && doc.visibilityState !== 'visible') return pcFontsKnown()
+  if (headless || (doc?.visibilityState && doc.visibilityState !== 'visible')) return pcFontsKnown()
   let timer
   try {
     await Promise.race([

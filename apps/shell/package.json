@@ -1,7 +1,7 @@
 {
   "name": "@genoffice/shell",
   "productName": "IeumOffice",
-  "version": "0.12.12",
+  "version": "0.13.1",
   "license": "Apache-2.0",
   "homepage": "https://github.com/pblsketch/ieumoffice",
   "private": true,
@@ -36,6 +36,8 @@
     "@genoffice/sheets": "*",
     "@genoffice/slides": "*",
     "@genoffice/ui": "*",
+    "@genoffice/whiteboard": "*",
+    "@genoffice/whiteboard-engine": "*",
     "@genoffice/xlsx-gateway": "*",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@types/react": "^19.2.14",

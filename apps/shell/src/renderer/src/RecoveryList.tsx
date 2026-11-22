@@ -9,6 +9,7 @@ import iconHtml from './assets/file-html.svg'
 import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
 import iconDiagram from './assets/file-diagram.svg'
+import iconWhiteboard from './assets/file-whiteboard.svg'
 import { defaultRecoveryChoice } from '../../shared/recovery-list-api'
 import type {
   RecoveryChoice,
@@ -48,6 +49,7 @@ const KIND_ICONS: Record<RecoveryListEditorKind, string> = {
   mindmap: iconMindmap,
   hwp: iconHwp,
   diagram: iconDiagram,
+  whiteboard: iconWhiteboard,
 }
 
 /** the editor kind's name, shared with the home list's type filter */
@@ -61,6 +63,7 @@ const KIND_LABELS: Record<RecoveryListEditorKind, StringKey> = {
   mindmap: 'filterMindmap',
   hwp: 'filterHwp',
   diagram: 'filterDiagram',
+  whiteboard: 'filterWhiteboard',
 }
 
 /** every row at its starting choice: restore, except a file that changed afterwards */

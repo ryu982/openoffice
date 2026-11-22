@@ -11,6 +11,8 @@ import { USER_SKILLS_BRIDGE_KEY } from '@genoffice/electron-utils/user-skills-ch
 import { docAttachBridge } from '@genoffice/electron-utils/doc-attach-bridge'
 import { createPrintLayoutBridge } from '@genoffice/electron-utils/print-layout-bridge'
 import { DOC_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/doc-attach-channels'
+import { connectorAttachBridge } from '@genoffice/electron-utils/connector-attach-bridge'
+import { CONNECTOR_ATTACH_BRIDGE_KEY } from '@genoffice/electron-utils/connector-attach-channels'
 import { SPLIT_PANE_BRIDGE_KEY, splitPaneBridge } from '@genoffice/electron-utils/split-pane-bridge'
 import { APP_CHOICE_BRIDGE_KEY, appChoiceBridge } from '@genoffice/electron-utils/app-choice-bridge'
 import type { AiStreamChunk } from '@genoffice/ai-provider'
@@ -103,6 +105,9 @@ const aiSubscription: SubscriptionApi = {
 
 const api: HwpApi = {
   consumePending: () => ipcRenderer.invoke(HWP_CHANNELS.consumePending),
+  fontFileReads: () => ipcRenderer.invoke(HWP_CHANNELS.fontFileReads),
+  readFontNames: (faces) => ipcRenderer.invoke(HWP_CHANNELS.fontNames, faces),
+  isHeadlessExport: () => ipcRenderer.invoke(HWP_CHANNELS.isHeadlessExport),
   untitledCopy: () => ipcRenderer.invoke(HWP_CHANNELS.untitledCopy),
   readFile: (path) => ipcRenderer.invoke(HWP_CHANNELS.readFile, path),
   trackingDropped: () => ipcRenderer.invoke(HWP_CHANNELS.trackingDropped),
@@ -191,6 +196,8 @@ const api: HwpApi = {
   readAttachmentDocument: (path) => ipcRenderer.invoke(HWP_CHANNELS.filesReadDocument, path),
   importAttachmentAsDocument: (path, request) =>
     ipcRenderer.invoke(HWP_CHANNELS.filesImportDocument, path, request),
+  loadGeneratedHwpx: (path, intoCurrentBlank) =>
+    ipcRenderer.invoke(HWP_CHANNELS.loadGeneratedHwpx, path, intoCurrentBlank),
   noteAiRunStop: (stop) => ipcRenderer.send(HWP_CHANNELS.aiRunStop, stop),
   analyzeMedia: (op) => ipcRenderer.invoke(HWP_CHANNELS.analyzeMedia, op),
   getPathForFile: (file) => webUtils.getPathForFile(file),
@@ -278,6 +285,7 @@ contextBridge.exposeInMainWorld('aiOfficeMcpTools', mcpToolsBridge())
 contextBridge.exposeInMainWorld(USER_SKILLS_BRIDGE_KEY, userSkillsBridge())
 // The shell's document picker, for this editor's AI attach button
 contextBridge.exposeInMainWorld(DOC_ATTACH_BRIDGE_KEY, docAttachBridge())
+contextBridge.exposeInMainWorld(CONNECTOR_ATTACH_BRIDGE_KEY, connectorAttachBridge())
 // The shell's split panes: this view's pane role, and its way to ask for focus
 contextBridge.exposeInMainWorld(SPLIT_PANE_BRIDGE_KEY, splitPaneBridge(ipcRenderer))
 

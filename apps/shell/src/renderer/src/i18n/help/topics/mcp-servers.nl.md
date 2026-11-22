@@ -2,6 +2,16 @@
 
 Een MCP-server is een dienst die de AI hulpmiddelen van buiten de app aanbiedt, zoals wetten opzoeken of zoeken in materiaal dat jouw team beheert. Zodra je een server hebt gekoppeld, kunnen de AI-vensters in GenOffice de hulpmiddelen ervan tijdens een gesprek aanroepen. Per hulpmiddel bepaal je zelf wat de AI mag gebruiken en hoe.
 
+## Aanbevolen verbonden services
+
+Bovenaan **Instellingen ▸ Integraties** bundelt GenOffice Google Drive en vijf vooraf ingestelde services boven eigen MCP-servers:
+
+- **Notion** en **Canva**: verbinden met één browser-login. Via het **+**-menu in editors kun je ook tot 20 Notion-pagina's direct bijvoegen (tijdelijke kopieën worden na 7 dagen opgeruimd).
+- **Obsidian-kluis**: ingebouwd in GenOffice zonder aparte app of serverproces. Voeg lokale mappen toe om `.md`-notities direct te zoeken, lezen en bewerken (verwijderen gaat alleen naar de prullenbak, geen extra bestanden in de kluis, werkt ook zonder internettools) en voeg ze via **+** bij.
+- **Korean Law MCP**: doorzoekt Koreaanse wetten nadat je `LAW_OC` hebt ingevoerd en de opdracht hebt toegestaan.
+- **kordoc MCP**: leest en converteert lokale HWP-/HWPX-bestanden nadat je de opdracht hebt toegestaan. Redactie in de editor geldt niet voor bestanden die kordoc rechtstreeks leest.
+- **Knop Verbonden services**: altijd zichtbaar naast het AI-invoerveld om Google Drive (in editors), afzonderlijke Obsidian-kluizen of MCP-servers voor dit gesprek te schakelen of **Instellingen ▸ Integraties** te openen.
+
 ## Een server toevoegen
 
 1. Open **Instellingen ▸ Integraties** en klik op de kaart **MCP-servers** op **Server toevoegen**.

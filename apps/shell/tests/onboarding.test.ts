@@ -210,12 +210,13 @@ describe('Onboarding', () => {
       'html',
       'mindmap',
       'diagram',
+      'whiteboard',
       'hwp',
       'epub',
       'ai',
     ])
     const switches = Array.from(step.querySelectorAll<HTMLButtonElement>('[role="switch"]'))
-    expect(switches).toHaveLength(12)
+    expect(switches).toHaveLength(13)
     expect(switches.every((el) => el.getAttribute('aria-checked') === 'true')).toBe(true)
     expect(switches.some((el) => el.disabled)).toBe(false)
     expect(step.querySelector('[data-item="docs"]')!.textContent).toContain(
@@ -323,6 +324,7 @@ describe('Onboarding', () => {
       'html',
       'mindmap',
       'diagram',
+      'whiteboard',
       'hwp',
     ]) {
       await click(pickSelector(item))

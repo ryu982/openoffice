@@ -9,6 +9,7 @@ export type QuickLookFamily =
   | 'pdf'
   | 'hwp'
   | 'xmind'
+  | 'whiteboard'
   | 'md'
   | 'html'
   | 'image'
@@ -30,6 +31,7 @@ const FAMILY_BY_EXT: Readonly<Record<string, QuickLookFamily>> = {
   hwp: 'hwp',
   hwpx: 'hwp',
   xmind: 'xmind',
+  whiteboard: 'whiteboard',
   md: 'md',
   markdown: 'md',
   html: 'html',

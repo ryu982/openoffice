@@ -2637,6 +2637,149 @@ html.markdown-graph-open .ribbon-tabs {
   white-space: pre-wrap;
 }
 
+/* ---- selection formatting ---- */
+
+.md-format-bar {
+  position: fixed;
+  z-index: 36;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-menu);
+}
+
+.md-format-row,
+.md-format-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.md-format-row {
+  flex-wrap: wrap;
+}
+
+.md-format-actions {
+  padding-inline-start: 4px;
+  margin-inline-start: 2px;
+  border-inline-start: 1px solid var(--border);
+}
+
+.md-format-style {
+  width: 112px;
+}
+
+.md-format-style .gs-dd-btn,
+.md-format-btn {
+  height: 30px;
+}
+
+.md-format-style .gs-dd-value kbd {
+  display: none;
+}
+
+.md-format-style .gs-dd-value > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.md-format-style .gs-dd-pop {
+  min-width: 216px;
+}
+
+.md-format-style .gs-dd-item {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.md-format-style kbd {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+.md-format-btn {
+  display: grid;
+  width: 30px;
+  place-items: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.md-format-btn span {
+  display: grid;
+  place-items: center;
+}
+
+.md-format-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.md-format-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.md-format-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.md-format-btn mark {
+  padding-inline: 2px;
+  border-radius: 2px;
+  background: var(--accent-soft);
+  color: inherit;
+  font-size: 12px;
+}
+
+.md-format-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 2px 2px;
+  margin-block-start: 4px;
+  border-block-start: 1px solid var(--border);
+}
+
+.md-format-link input,
+.md-format-link button {
+  min-height: 29px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.md-format-link input {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 6px;
+}
+
+.md-format-link button {
+  padding-inline: 8px;
+  cursor: pointer;
+}
+
+.md-format-link button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.md-format-link button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
 /* ---- floating table menu ---- */
 
 .table-menu {

@@ -210,7 +210,7 @@ export function IntegrationsPane({
     <>
       <h3 className="set-pane-title">{t('setSecIntegrations')}</h3>
 
-      <DriveSettingsCard />
+      <DriveSettingsCard aiOn={mcpServers} />
 
       {mcpServers && <McpServersCard />}
 

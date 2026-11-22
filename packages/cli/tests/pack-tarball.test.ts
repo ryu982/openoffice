@@ -18,8 +18,10 @@ function resources(): string {
     'cli/skills/ieumoffice/SKILL.md',
     'wasm/pdfium.wasm',
     'wasm/rhwp_bg.wasm',
+    'wasm/hwp5_bg.wasm',
     'wasm/hb-subset.wasm',
     'native/xlsx-sidecar',
+    'native/ieum-parse-sidecar',
   ]
   for (const file of files) {
     mkdirSync(dirname(join(dir, file)), { recursive: true })
@@ -74,6 +76,7 @@ describe('pack-tarball', () => {
       'ieumoffice-cli/cli/skills/ieumoffice/SKILL.md',
       'ieumoffice-cli/wasm/pdfium.wasm',
       'ieumoffice-cli/wasm/rhwp_bg.wasm',
+      'ieumoffice-cli/wasm/hwp5_bg.wasm',
       'ieumoffice-cli/wasm/hb-subset.wasm',
       'ieumoffice-cli/native/xlsx-sidecar',
       'ieumoffice-cli/LICENSE',
@@ -82,6 +85,7 @@ describe('pack-tarball', () => {
     ]) {
       expect(entries).toContain(entry)
     }
+    expect(entries).not.toContain('ieumoffice-cli/native/ieum-parse-sidecar')
   })
 
   it('writes the checksum beside the archive', () => {
@@ -105,5 +109,18 @@ describe('pack-tarball', () => {
     )
     expect(run.status).not.toBe(0)
     expect(run.stderr).toContain('resources are missing: wasm/hb-subset.wasm')
+  })
+
+  it('refuses to pack when hwp5_bg.wasm is missing', () => {
+    const from = resources()
+    rmSync(join(from, 'wasm/hwp5_bg.wasm'))
+    const out = mkdtempSync(join(tmpdir(), 'ieumoffice-dist-'))
+    const run = spawnSync(
+      process.execPath,
+      [SCRIPT, '--from', from, '--out', out, '--notices', notices()],
+      { env: { ...process.env, GENOFFICE_APP_VERSION: '9.9.9' }, encoding: 'utf8' },
+    )
+    expect(run.status).not.toBe(0)
+    expect(run.stderr).toContain('resources are missing: wasm/hwp5_bg.wasm')
   })
 })

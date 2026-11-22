@@ -69,6 +69,8 @@ La configuración puede registrar GenOffice como programa predeterminado para .d
 
 En **Servidor HTTP local**, la aplicación también puede ejecutar el servidor por su cuenta —un interruptor de activación y un puerto— y **Avanzado** añade la URL de comprobación de estado y el archivo de registro, en lugar de dejarlo en manos del asistente. Solo escucha en localhost.
 
+En la parte superior de **Ajustes ▸ Integraciones**, **Servicios conectados** agrupa Google Drive, Notion, Canva, Bóveda de Obsidian, Korean Law MCP, kordoc MCP y tus servidores MCP personalizados encima de la conexión de agentes de código.
+
 ## Chuleta de la línea de comandos
 
 | Comando             | Qué hace                      |

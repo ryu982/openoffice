@@ -17,6 +17,7 @@ export const MCP_TOOLS_CHANNELS = {
   cancel: 'mcp-tools:cancel',
   retry: 'mcp-tools:retry',
   openSettings: 'mcp-tools:open-settings',
+  openIntegrations: 'mcp-tools:open-integrations',
   /** main → every window: the list changed (no payload; ask `list` again) */
   changed: 'mcp-tools:changed',
 } as const
@@ -35,10 +36,13 @@ export interface McpToolCallRequest {
   input: Record<string, unknown>
   /** the window's id of this call, for `cancel` */
   callId: string
+  /** vault IDs turned off for this conversation */
+  disabledVaults?: string[]
 }
 
 const NAME_MAX = 256
 const CALL_ID_MAX = 200
+const DISABLED_VAULTS_MAX = 100
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -59,5 +63,18 @@ export function mcpToolCallRequestOf(raw: unknown): McpToolCallRequest | undefin
   const callId = mcpCallIdOf(raw.callId)
   const input = raw.input === undefined ? {} : raw.input
   if (!server || !tool || !callId || !isRecord(input)) return undefined
-  return { server, tool, input, callId }
+  let disabledVaults: string[] | undefined
+  if (raw.disabledVaults !== undefined) {
+    if (!Array.isArray(raw.disabledVaults) || raw.disabledVaults.length > DISABLED_VAULTS_MAX) {
+      return undefined
+    }
+    const seen = new Set<string>()
+    for (const item of raw.disabledVaults) {
+      const id = shortText(item, CALL_ID_MAX)
+      if (!id) return undefined
+      seen.add(id)
+    }
+    if (seen.size > 0) disabledVaults = [...seen]
+  }
+  return { server, tool, input, callId, ...(disabledVaults ? { disabledVaults } : {}) }
 }

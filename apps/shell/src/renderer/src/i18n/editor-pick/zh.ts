@@ -23,6 +23,7 @@ export const zh = {
   itemHtml: 'HTML',
   itemMindmap: '思维导图',
   itemDiagram: '图表',
+  itemWhiteboard: "白板",
   itemHwp: 'HWP',
   itemEpub: '电子书（EPUB）',
 }

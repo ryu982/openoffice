@@ -81,7 +81,9 @@ import {
 import {
   adapterRevertVerdict,
   joinUndoGuards,
+  planChangeLines,
   receiptState,
+  statusAfterRevert,
   univerApplyGuard,
   univerRevertOutcome,
   univerRevertVerdict,
@@ -119,6 +121,7 @@ import {
   useProjectPanel,
   type ProjectPanel,
   useSubscriptionUsageUpdates,
+  aiChangesLabels,
 } from '@genoffice/ui'
 
 import {
@@ -4119,6 +4122,10 @@ export function App({
       plan.sheetRenames.length +
       plan.structuralChanges.length
     const marks = planMarkRanges(plan)
+    const resolveSheetName = (sheetId: string): string | undefined =>
+      univerRef.current?.univerAPI.getActiveWorkbook()?.getSheetBySheetId(sheetId)?.getSheetName() ??
+      adapterRef.current.getSnapshot().sheets.find((s) => s.id === sheetId)?.name
+    const planLines = planChangeLines(plan, resolveSheetName)
     const state = lazyWorkbookRef.current
     if (state) {
       // the stack as this apply finds it: read when its turn in the apply queue comes
@@ -4141,6 +4148,7 @@ export function App({
               undoSteps: (entry.autoApplied?.undoSteps ?? 0) + guard.steps,
               guard: joinUndoGuards(entry.autoApplied?.guard, guard),
               marked: true,
+              lines: [...(entry.autoApplied?.lines ?? []), ...planLines].slice(0, 50),
             },
           }))
           showRunMarks(marks)
@@ -4226,6 +4234,7 @@ export function App({
           undoSteps: (entry.autoApplied?.undoSteps ?? 0) + steps,
           guard: joinUndoGuards(entry.autoApplied?.guard, { kind: 'adapter', revision, steps }),
           marked: true,
+          lines: [...(entry.autoApplied?.lines ?? []), ...planLines].slice(0, 50),
         },
       }))
       showRunMarks(marks)
@@ -4430,6 +4439,12 @@ export function App({
       // taken back: nothing left to mark (a refused or expired run still stands)
       if (receipt.marked && (state === 'reverted' || state === 'partial')) {
         aiMarksRef.current?.clear()
+      }
+      // the status line still offered undo for these changes: it now says they went back
+      if (state === 'reverted' || state === 'partial') {
+        const applied = t('appAiChangesNotSaved')
+        const reverted = aiChangesLabels(getLang()).reverted
+        setMessage((current) => statusAfterRevert(current, applied, reverted))
       }
       patchReceiptAt(index, (current) => ({ ...current, state }))
     }

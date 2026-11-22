@@ -31,6 +31,7 @@ describe('item mapping', () => {
       html: 'html',
       mindmap: 'mindmap',
       diagram: 'diagram',
+      whiteboard: 'whiteboard',
       hwp: 'hwp',
       epub: 'epub',
     })
@@ -48,6 +49,7 @@ describe('item mapping', () => {
       'hwp',
       'epub',
       'diagram',
+      'whiteboard',
     ]
     for (const kind of kinds) expect(editorItemOfTabKind(kind)).toBe(kind)
     expect(editorItemOfTabKind('home')).toBeNull()

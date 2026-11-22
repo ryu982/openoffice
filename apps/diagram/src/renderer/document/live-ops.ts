@@ -233,6 +233,12 @@ export async function markLiveCells(
   })
 }
 
+/** Selects and scrolls a diagram cell into view on its page. */
+export async function focusLiveCell(frame: DrawioFrame, cell: DiagramCellRef): Promise<boolean> {
+  const reply = await frame.request('focusCell', { page: cell.page, id: cell.id })
+  return reply.focused === true
+}
+
 /**
  * What a call did, as the text a model reads: the outcome first, then one
  * line per op (`index op: ok …` or `FAILED code: reason`), and the table of

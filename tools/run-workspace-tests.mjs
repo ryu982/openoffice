@@ -33,11 +33,15 @@ function testWorkspaces() {
 const WORKSPACES = testWorkspaces()
 
 /**
- * Workspaces that must wait for another one to finish. The sheets test script
- * rebuilds the xlsx sidecar, which the cli tests execute: started together,
- * the cli could run a binary that cargo is still writing.
+ * Workspaces that must wait for another one to finish. The sheets and
+ * file-parse test scripts rebuild their native Rust sidecars, which downstream
+ * workspaces execute: started together, a consumer could run a binary that
+ * cargo is still writing.
  */
-const AFTER = { '@genoffice/cli': ['@genoffice/sheets'] }
+const AFTER = {
+  '@genoffice/cli': ['@genoffice/sheets', '@genoffice/file-parse'],
+  '@genoffice/shell': ['@genoffice/file-parse'],
+}
 
 /** Started first: the longest workspaces, so none of them is left to run alone at the end */
 const FIRST = [

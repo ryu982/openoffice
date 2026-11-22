@@ -20,6 +20,7 @@ const requestMindmapClose = vi.fn(() => Promise.resolve(true))
 const requestHwpClose = vi.fn(() => Promise.resolve(true))
 const requestEpubClose = vi.fn(() => Promise.resolve(true))
 const requestDiagramClose = vi.fn(() => Promise.resolve(true))
+const requestWhiteboardClose = vi.fn(() => Promise.resolve(true))
 
 vi.mock('../../docs/src/main/docs-main', () => ({
   docsQueryDirty: (...args: unknown[]) => docsQueryDirty(...(args as [])),
@@ -61,6 +62,10 @@ vi.mock('../../epub/src/main/epub-main', () => ({
 
 vi.mock('../../diagram/src/main/diagram-main', () => ({
   requestDiagramClose: (...args: unknown[]) => requestDiagramClose(...(args as [])),
+}))
+
+vi.mock('../../whiteboard/src/main/whiteboard-main', () => ({
+  requestWhiteboardClose: (...args: unknown[]) => requestWhiteboardClose(...(args as [])),
 }))
 
 interface TabStub {
@@ -116,6 +121,7 @@ type DirtyKinds =
   | 'hwp'
   | 'epub'
   | 'diagram'
+  | 'whiteboard'
   | 'slides'
   | 'docs'
 
@@ -133,6 +139,7 @@ function fakeManager(dirty: Partial<Record<DirtyKinds, TabStub[]>> = {}) {
     dirtyOrMemoHwpTabs: () => dirty.hwp ?? [],
     dirtyEpubTabs: () => dirty.epub ?? [],
     dirtyDiagramTabs: () => dirty.diagram ?? [],
+    dirtyWhiteboardTabs: () => dirty.whiteboard ?? [],
     dirtySlidesTabs: () => dirty.slides ?? [],
     docsTabs: () => dirty.docs ?? [],
   }
@@ -159,6 +166,7 @@ beforeEach(async () => {
     requestHwpClose,
     requestEpubClose,
     requestDiagramClose,
+    requestWhiteboardClose,
   ]) {
     ask.mockImplementation(() => Promise.resolve(true))
   }

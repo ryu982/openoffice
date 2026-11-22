@@ -15,6 +15,7 @@ import {
 } from './tools/session-tools'
 import { createOpenDocumentTools, type OpenDocumentsControl } from './tools/open-documents-tools'
 import { createDiagramTools, type DiagramControl } from './tools/diagram-tools'
+import { createWhiteboardTools, type WhiteboardControl } from './tools/whiteboard-tools'
 
 /**
  * Main-process wiring for the MCP server.
@@ -57,6 +58,10 @@ export interface McpRuntimeDeps {
    * runs, where the two tools answer that the app is not running
    */
   diagramControl?: DiagramControl
+  /**
+   * open whiteboard tabs for read_whiteboard / apply_whiteboard_ops
+   */
+  whiteboardControl?: WhiteboardControl
   /** where the MCP log file lives (userData); logging is unavailable without it */
   logFilePath?: string
 }
@@ -200,6 +205,10 @@ function buildTools(): McpToolDefinition[] {
     // open diagrams: read a page, apply ops as one undo step (no session family)
     ...createDiagramTools({
       ...(deps.diagramControl ? { control: deps.diagramControl } : {}),
+    }),
+    // open whiteboards: read a page, apply ops or template as one undo step
+    ...createWhiteboardTools({
+      ...(deps.whiteboardControl ? { control: deps.whiteboardControl } : {}),
     }),
   ]
 }

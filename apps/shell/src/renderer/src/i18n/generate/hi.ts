@@ -6,6 +6,7 @@ export const hi = {
   kindSlides: 'प्रस्तुति (PPT)',
   kindHtml: 'वेब पेज (HTML)',
   kindMindmap: 'माइंड मैप',
+  kindWhiteboard: "व्हाइटबोर्ड",
   materialsLabel: 'सामग्री',
   addMaterials: 'फ़ाइलें जोड़ें…',
   removeMaterial: 'हटाएँ',

@@ -45,6 +45,7 @@ function stubExporters(): { exporters: HeadlessExporters; calls: string[] } {
       html: make('html'),
       hwp: make('hwp'),
       diagram: make('diagram'),
+      whiteboard: make('whiteboard'),
     },
   }
 }

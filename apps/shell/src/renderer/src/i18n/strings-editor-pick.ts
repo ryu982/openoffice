@@ -72,6 +72,7 @@ export const EDITOR_ITEM_NAME_KEYS: Readonly<Record<EditorItemId, EditorPickStri
   html: 'itemHtml',
   mindmap: 'itemMindmap',
   diagram: 'itemDiagram',
+  whiteboard: 'itemWhiteboard',
   hwp: 'itemHwp',
   epub: 'itemEpub',
 }

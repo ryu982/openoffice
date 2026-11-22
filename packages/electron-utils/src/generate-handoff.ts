@@ -54,6 +54,7 @@ const EDITOR_BY_EXTENSION: Readonly<Record<string, HandoffEditor>> = {
   html: 'html',
   htm: 'html',
   xmind: 'mindmap',
+  whiteboard: 'whiteboard',
   hwp: 'hwp',
   hwpx: 'hwp',
 }
@@ -67,7 +68,7 @@ export function handoffEditorForFile(fileName: string): HandoffEditor | undefine
 }
 
 /** the editors the generate window's "make" opens */
-export type GenerateHandoffTarget = 'slides' | 'html' | 'mindmap'
+export type GenerateHandoffTarget = 'slides' | 'html' | 'mindmap' | 'whiteboard'
 
 /**
  * What a new tab takes, once (8.5). The receiving editor attaches the
@@ -109,7 +110,10 @@ export interface GenerateRunStarted {
 
 /** the conversions without AI (8.6): one source of a fixed type to one new document */
 export type GenerateConvertKind =
-  'mindmap-to-markdown' | 'mindmap-to-slides' | 'markdown-to-mindmap'
+  | 'mindmap-to-markdown'
+  | 'mindmap-to-slides'
+  | 'markdown-to-mindmap'
+  | 'whiteboard-to-markdown'
 
 /** the editor a conversion's result opens in, as a new unsaved tab */
 export type GenerateConvertTarget = 'markdown' | 'slides' | 'mindmap'

@@ -78,6 +78,24 @@ export async function fileHasUnsavedChanges(filePath: string): Promise<boolean> 
   return keys === 'unknown' || keys.has(pathKey(filePath))
 }
 
+/**
+ * Whether `filePath` is currently open in any editor tab (saved or unsaved).
+ * Returns true if the host source throws, so disk writes fail safe.
+ */
+export async function isFileOpen(filePath: string): Promise<boolean> {
+  const source = holder()[SOURCE]
+  if (!source) return false
+  try {
+    const wanted = pathKey(filePath)
+    for (const doc of await source()) {
+      if (doc.filePath && pathKey(doc.filePath) === wanted) return true
+    }
+    return false
+  } catch {
+    return true
+  }
+}
+
 /** throws `UNSAVED_CHANGES_MESSAGE` for a file that must be saved before it is read */
 export async function assertFileSaved(filePath: string): Promise<void> {
   if (await fileHasUnsavedChanges(filePath)) throw new Error(UNSAVED_CHANGES_MESSAGE)

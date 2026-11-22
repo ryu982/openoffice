@@ -214,6 +214,11 @@ export type AgentStartResponse =
        * cannot keep it, and the start warning names them (user MCP spec 9)
        */
       mcpKeepInside?: string[] | undefined
+      /**
+       * built-in Obsidian vault names relayed into this session (outside the project folder):
+       * writes and trash moves can target these vaults
+       */
+      mcpExternalVaults?: string[] | undefined
       /** project notes the instructions carry only the start of, by file name; absent when none */
       instructionsTruncated?: string[] | undefined
     }

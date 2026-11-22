@@ -45,6 +45,7 @@ export const ar = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'الخريطة الذهنية',
+  editorWhiteboard: 'السبورة',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'الرئيسية',

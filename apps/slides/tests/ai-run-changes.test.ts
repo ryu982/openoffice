@@ -53,10 +53,12 @@ describe('deckChanges', () => {
       slide('s1.xml', [node('e_1', '1', { fill: 'b' }), node('e_2', '2'), node('e_5', '5')]),
       slide('s2.xml', [node('e_4', '4')]),
     ]
-    const { marks, count } = deckChanges(deckFingerprint(before), after)
+    const { marks, count, lines } = deckChanges(deckFingerprint(before), after)
     expect(count).toBe(3)
     expect([...marks.keys()]).toEqual(['s1.xml'])
     expect([...marks.get('s1.xml')!].sort()).toEqual(['e_1', 'e_5'])
+    expect(lines.filter((l) => l.showable)).toHaveLength(2)
+    expect(lines.some((l) => l.kind === 'delete' && !l.showable)).toBe(true)
     expect(markedNodeIds(after[0], 0, marks).sort()).toEqual(['1', '5'])
     expect(markedNodeIds(after[1], 1, marks)).toEqual([])
   })
@@ -67,6 +69,17 @@ describe('deckChanges', () => {
     const { marks, count } = deckChanges(deckFingerprint(before), after)
     expect(count).toBe(0)
     expect(marks.size).toBe(0)
+  })
+
+  it('counts an element once when its first edit reissued its durable id', () => {
+    // the engine gives an edited element a creation id: e_3 becomes e_5ef01f3a, parse id kept
+    const before = [slide('s1.xml', [node('e_2', 'sp_0'), node('e_3', 'sp_1', { text: 'old' })])]
+    const after = [
+      slide('s1.xml', [node('e_2', 'sp_0'), node('e_5ef01f3a', 'sp_1', { text: 'new' })]),
+    ]
+    const { marks, count } = deckChanges(deckFingerprint(before), after)
+    expect(count).toBe(1)
+    expect([...marks.get('s1.xml')!]).toEqual(['e_5ef01f3a'])
   })
 
   it('a new slide is marked with all its elements; a removed slide counts once', () => {

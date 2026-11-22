@@ -36,6 +36,7 @@
     "@genoffice/pptx-engine": "*",
     "@genoffice/pptx-ops": "*",
     "@genoffice/pptx-render": "*",
+    "@genoffice/whiteboard-engine": "*",
     "@genoffice/xlsx-gateway": "*",
     "@genoffice/xmind-engine": "*",
     "@modelcontextprotocol/sdk": "^1.32.1",

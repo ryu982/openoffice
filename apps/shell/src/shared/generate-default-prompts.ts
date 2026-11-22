@@ -3,19 +3,14 @@ import type { AiTargetKind } from './generate-api'
 
 /**
  * The request a generate run starts with when the user leaves the box empty.
- *
- * Localized, not English: the receiving editor puts this text in its composer
- * as the user's own message (it is what the user sees in the conversation, and
- * what stays in the box when the run is blocked), so it is written in the UI
- * language like anything else the user would have typed. The window shows the
- * same text as the box's placeholder, so what is sent is what was shown.
- * None of them names the product, so no brand substitution applies.
+ * Localized, not English: written in the UI language like anything else the user typed.
  */
 export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>> = {
   zh: {
     slides: '请根据附件资料制作一份演示文稿。整理出要点，做成标题清晰的幻灯片。',
     html: '请根据附件资料制作一个网页（HTML）。把要点排得清楚易读。',
     mindmap: '请根据附件资料制作一张思维导图。把主题放在中心，用分支整理要点。',
+    whiteboard: '请根据附件资料制作一张白板。把要点按主题分组，用便签和连线清晰呈现。',
   },
   en: {
     slides:
@@ -23,6 +18,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Make a web page (HTML) from the attached material. Lay out the main points so they are easy to read.',
     mindmap:
       'Make a mind map from the attached material. Put the main topic in the center and organize the key points as branches.',
+    whiteboard:
+      'Make a whiteboard from the attached material. Group the main ideas with sticky notes, shapes, and connectors so they are easy to scan.',
   },
   ja: {
     slides:
@@ -30,6 +27,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: '添付した資料からウェブページ（HTML）を作成してください。要点を読みやすく配置してください。',
     mindmap:
       '添付した資料からマインドマップを作成してください。中心にテーマを置き、要点を枝として整理してください。',
+    whiteboard:
+      '添付した資料からホワイトボードを作成してください。要点をテーマごとに付箋とコネクタで分かりやすく整理してください。',
   },
   ko: {
     slides:
@@ -37,6 +36,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: '첨부한 자료로 웹 페이지(HTML)를 만들어 주세요. 핵심 내용을 읽기 쉽게 배치해 주세요.',
     mindmap:
       '첨부한 자료로 마인드맵을 만들어 주세요. 중심 주제를 가운데에 두고 핵심 내용을 가지로 정리해 주세요.',
+    whiteboard:
+      '첨부한 자료로 화이트보드를 만들어 주세요. 핵심 내용을 주제별로 묶어 포스트잇과 도형으로 한눈에 보이게 배치해 주세요.',
   },
   fr: {
     slides:
@@ -44,6 +45,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Crée une page web (HTML) à partir des documents joints. Dispose les points principaux pour qu’ils soient faciles à lire.',
     mindmap:
       'Crée une carte mentale à partir des documents joints. Place le sujet principal au centre et organise les points clés en branches.',
+    whiteboard:
+      'Crée un tableau blanc à partir des documents joints. Regroupe les idées principales avec des pense-bêtes et des connecteurs.',
   },
   de: {
     slides:
@@ -51,6 +54,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Erstelle aus dem angehängten Material eine Webseite (HTML). Ordne die wichtigsten Punkte gut lesbar an.',
     mindmap:
       'Erstelle aus dem angehängten Material eine Mindmap. Setze das Hauptthema in die Mitte und ordne die wichtigsten Punkte als Zweige an.',
+    whiteboard:
+      'Erstelle aus dem angehängten Material ein Whiteboard. Gruppiere die wichtigsten Punkte übersichtlich mit Haftnotizen und Verbindern.',
   },
   es: {
     slides:
@@ -58,12 +63,16 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Crea una página web (HTML) a partir del material adjunto. Distribuye los puntos principales para que sean fáciles de leer.',
     mindmap:
       'Crea un mapa mental a partir del material adjunto. Pon el tema principal en el centro y organiza los puntos clave como ramas.',
+    whiteboard:
+      'Crea una pizarra a partir del material adjunto. Agrupa las ideas principales con notas adhesivas y conectores.',
   },
   th: {
     slides: 'ช่วยสร้างงานนำเสนอจากเอกสารที่แนบมา จัดประเด็นสำคัญเป็นสไลด์ที่มีหัวข้อชัดเจน',
     html: 'ช่วยสร้างหน้าเว็บ (HTML) จากเอกสารที่แนบมา จัดวางประเด็นสำคัญให้อ่านง่าย',
     mindmap:
       'ช่วยสร้างแผนผังความคิดจากเอกสารที่แนบมา วางหัวข้อหลักไว้ตรงกลางและจัดประเด็นสำคัญเป็นกิ่ง',
+    whiteboard:
+      'ช่วยสร้างไวท์บอร์ดจากเอกสารที่แนบมา จัดกลุ่มประเด็นสำคัญด้วยโน้ตแปะและเส้นเชื่อมให้ดูง่าย',
   },
   id: {
     slides:
@@ -71,6 +80,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Buat halaman web (HTML) dari materi terlampir. Tata poin-poin utama agar mudah dibaca.',
     mindmap:
       'Buat peta pikiran dari materi terlampir. Letakkan topik utama di tengah dan susun poin-poin penting sebagai cabang.',
+    whiteboard:
+      'Buat papan tulis dari materi terlampir. Kelompokkan ide utama dengan catatan tempel dan penghubung agar mudah dipahami.',
   },
   ru: {
     slides:
@@ -78,6 +89,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Сделай веб-страницу (HTML) по приложенным материалам. Расположи главные мысли так, чтобы их было легко читать.',
     mindmap:
       'Сделай интеллект-карту по приложенным материалам. Помести главную тему в центр, а ключевые мысли оформи ветвями.',
+    whiteboard:
+      'Сделай доску по приложенным материалам. Сгруппируй главные идеи на стикерах и свяжи их соединителями.',
   },
   ar: {
     slides:
@@ -85,6 +98,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'أنشئ صفحة ويب (HTML) من المواد المرفقة. رتّب النقاط الرئيسية بحيث تسهل قراءتها.',
     mindmap:
       'أنشئ خريطة ذهنية من المواد المرفقة. ضع الموضوع الرئيسي في المركز ونظّم النقاط الأساسية في فروع.',
+    whiteboard:
+      'أنشئ لوحًا أبيض من المواد المرفقة. جمّع الأفكار الرئيسية باستخدام الملاحظات اللاصقة والموصلات.',
   },
   pt: {
     slides:
@@ -92,6 +107,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Crie uma página web (HTML) a partir do material anexado. Distribua os pontos principais para que fiquem fáceis de ler.',
     mindmap:
       'Crie um mapa mental a partir do material anexado. Coloque o tema principal no centro e organize os pontos-chave como ramos.',
+    whiteboard:
+      'Crie um quadro branco a partir do material anexado. Agrupe as ideias principais com notas adesivas e conectores.',
   },
   it: {
     slides:
@@ -99,6 +116,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Crea una pagina web (HTML) dal materiale allegato. Disponi i punti principali in modo che siano facili da leggere.',
     mindmap:
       'Crea una mappa mentale dal materiale allegato. Metti l’argomento principale al centro e organizza i punti chiave come rami.',
+    whiteboard:
+      'Crea una lavagna dal materiale allegato. Raggruppa le idee principali con post-it e connettori.',
   },
   pl: {
     slides:
@@ -106,6 +125,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Przygotuj stronę internetową (HTML) na podstawie załączonych materiałów. Rozmieść najważniejsze punkty tak, by łatwo się je czytało.',
     mindmap:
       'Przygotuj mapę myśli na podstawie załączonych materiałów. Umieść główny temat w środku, a kluczowe punkty ułóż w gałęzie.',
+    whiteboard:
+      'Przygotuj tablicę na podstawie załączonych materiałów. Pogrupuj główne pomysły na karteczkach i połącz je łącznikami.',
   },
   cs: {
     slides:
@@ -113,6 +134,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Vytvoř webovou stránku (HTML) z přiložených materiálů. Rozvrhni hlavní body tak, aby se dobře četly.',
     mindmap:
       'Vytvoř myšlenkovou mapu z přiložených materiálů. Hlavní téma dej doprostřed a klíčové body uspořádej do větví.',
+    whiteboard:
+      'Vytvoř tabuli z přiložených materiálů. Seskup hlavní myšlenky pomocí lepicích lístků a spojnic.',
   },
   nl: {
     slides:
@@ -120,6 +143,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Maak een webpagina (HTML) van het bijgevoegde materiaal. Zet de belangrijkste punten overzichtelijk neer.',
     mindmap:
       'Maak een mindmap van het bijgevoegde materiaal. Zet het hoofdonderwerp in het midden en orden de kernpunten als takken.',
+    whiteboard:
+      'Maak een whiteboard van het bijgevoegde materiaal. Groepeer de hoofdpunten overzichtelijk met plaknotities en verbindingslijnen.',
   },
   ms: {
     slides:
@@ -127,11 +152,14 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Buat halaman web (HTML) daripada bahan yang dilampirkan. Susun isi utama supaya mudah dibaca.',
     mindmap:
       'Buat peta minda daripada bahan yang dilampirkan. Letakkan topik utama di tengah dan susun isi penting sebagai cabang.',
+    whiteboard:
+      'Buat papan putih daripada bahan yang dilampirkan. Kumpulkan idea utama menggunakan nota lekat dan penyambung.',
   },
   he: {
     slides: 'צור מצגת מהחומר המצורף. ארגן את הנקודות העיקריות בשקופיות עם כותרות ברורות.',
     html: 'צור דף אינטרנט (HTML) מהחומר המצורף. סדר את הנקודות העיקריות כך שיהיה קל לקרוא אותן.',
     mindmap: 'צור מפת חשיבה מהחומר המצורף. שים את הנושא המרכזי במרכז וארגן את נקודות המפתח כענפים.',
+    whiteboard: 'צור לוח לבן מהחומר המצורף. קבץ את הרעיונות המרכזיים באמצעות פתקיות דביקות ומחברים.',
   },
   hi: {
     slides:
@@ -139,11 +167,14 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'संलग्न सामग्री से एक वेब पेज (HTML) बनाइए। मुख्य बातों को इस तरह रखिए कि उन्हें पढ़ना आसान हो।',
     mindmap:
       'संलग्न सामग्री से एक माइंड मैप बनाइए। मुख्य विषय को बीच में रखिए और प्रमुख बातों को शाखाओं के रूप में व्यवस्थित कीजिए।',
+    whiteboard:
+      'संलग्न सामग्री से एक व्हाइटबोर्ड बनाइए। मुख्य विचारों को स्टिकी नोट्स और कनेक्टर के साथ समूहों में व्यवस्थित कीजिए।',
   },
   'zh-TW': {
     slides: '請根據附件資料製作一份簡報。整理出重點，做成標題清楚的投影片。',
     html: '請根據附件資料製作一個網頁（HTML）。把重點排得清楚易讀。',
     mindmap: '請根據附件資料製作一張心智圖。把主題放在中心，用分支整理重點。',
+    whiteboard: '請根據附件資料製作一張白板。將重點按主題分組，用便利貼與連接線清楚呈現。',
   },
   vi: {
     slides:
@@ -151,6 +182,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Hãy tạo một trang web (HTML) từ tài liệu đính kèm. Bố trí các ý chính sao cho dễ đọc.',
     mindmap:
       'Hãy tạo một sơ đồ tư duy từ tài liệu đính kèm. Đặt chủ đề chính ở giữa và sắp xếp các ý quan trọng thành các nhánh.',
+    whiteboard:
+      'Hãy tạo một bảng trắng từ tài liệu đính kèm. Nhóm các ý chính bằng giấy ghi chú và đường nối cho dễ theo dõi.',
   },
   tr: {
     slides:
@@ -158,6 +191,8 @@ export const DEFAULT_GENERATE_PROMPTS: Record<Lang, Record<AiTargetKind, string>
     html: 'Ekli dosyalardan bir web sayfası (HTML) hazırla. Ana noktaları kolay okunacak biçimde yerleştir.',
     mindmap:
       'Ekli dosyalardan bir zihin haritası hazırla. Ana konuyu merkeze koy ve kilit noktaları dallar hâlinde düzenle.',
+    whiteboard:
+      'Ekli dosyalardan bir beyaz tahta hazırla. Ana fikirleri yapışkan notlar ve bağlayıcılarla gruplayıp düzenle.',
   },
 }
 

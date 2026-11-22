@@ -14,7 +14,15 @@ import { branded } from '../names'
 import { CliError, EXIT, type CommandResult } from '../result'
 import { didYouMean } from '../suggest'
 
-const DOMAINS: readonly GuideDomain[] = ['slides', 'docs', 'sheets', 'hwp', 'diagram', 'map']
+const DOMAINS: readonly GuideDomain[] = [
+  'slides',
+  'docs',
+  'sheets',
+  'hwp',
+  'diagram',
+  'map',
+  'whiteboard',
+]
 
 /**
  * Every op reference is generated from the definition the executor validates against (the pptx-ops
@@ -26,13 +34,13 @@ export const guideCommand: CommandDef = {
   summary:
     'Print the op reference, design guides and deck templates an agent needs before writing ops or specs.',
   usage:
-    'guide <slides|docs|sheets|hwp|diagram|map> [group|op|design|spec] [--index] [--fingerprint] | guide slides templates [<id>]',
+    'guide <slides|docs|sheets|hwp|diagram|map|whiteboard> [group|op|design|spec] [--index] [--fingerprint] | guide slides templates [<id>]',
   options: [
     { name: 'index', description: 'one-line signature of every op instead of a group guide' },
     {
       name: 'fingerprint',
       description:
-        'only the catalog fingerprint (changes with any op or field); no domain = all three',
+        'only the catalog fingerprint (changes with any op or field); no domain = all domains',
     },
   ],
   async run(args) {
@@ -44,14 +52,14 @@ export const guideCommand: CommandDef = {
     if (!isDomain(domain)) {
       throw new CliError(
         EXIT.usage,
-        'guides available for: slides, docs, sheets, hwp, diagram, map',
+        'guides available for: slides, docs, sheets, hwp, diagram, map, whiteboard',
         {
           usage:
-            'ieumoffice guide slides | ieumoffice guide docs | ieumoffice guide sheets | ieumoffice guide hwp | ieumoffice guide diagram | ieumoffice guide map',
+            'ieumoffice guide slides | ieumoffice guide docs | ieumoffice guide sheets | ieumoffice guide hwp | ieumoffice guide diagram | ieumoffice guide map | ieumoffice guide whiteboard',
         },
         {
           reason: domain === undefined ? 'missing_argument' : 'invalid_argument',
-          suggestion: 'run `ieumoffice guide slides|docs|sheets|hwp|diagram|map`',
+          suggestion: 'run `ieumoffice guide slides|docs|sheets|hwp|diagram|map|whiteboard`',
         },
       )
     }
@@ -123,6 +131,11 @@ async function load(
     const { mapCatalog, mapGuideText } = await import('../formats/map')
     const catalog = mapCatalog()
     return { catalog, text: (group) => mapGuideText(catalog, group) }
+  }
+  if (domain === 'whiteboard') {
+    const { whiteboardCatalog, whiteboardGuideText } = await import('../formats/whiteboard')
+    const catalog = whiteboardCatalog()
+    return { catalog, text: (group) => whiteboardGuideText(catalog, group) }
   }
   if (domain === 'hwp') {
     const { hwpCatalog } = await import('../formats/hwp-edit')

@@ -7,14 +7,30 @@
  * The spreadsheet engine, the dialogs and the encryption layer are stubs; the
  * files on disk are real.
  */
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import {
+  constants,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { setUiLang } from '@genoffice/i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../src/shared/ipc-channels'
 import { workbookSaveResultSchema } from '../src/shared/desktop-api'
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, copyFile: vi.fn(actual.copyFile) }
+})
+const actualCopyFile = (
+  await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+).copyFile
 
 type Handler = (event: { sender: FakeContents }, ...args: unknown[]) => unknown
 
@@ -251,6 +267,23 @@ import {
 
 let dir: string
 
+/**
+ * The platform copy into `folder` as libuv runs it on a mount that refuses
+ * fchmod (gvfs SMB, WebDAV): the destination is created or truncated, then
+ * removed, then the error is thrown. Copies elsewhere work as usual.
+ */
+function failPlatformCopyIn(folder: string, code: string): void {
+  vi.mocked(copyFile).mockImplementation(async (source, target, mode) => {
+    const path = String(target)
+    if (dirname(path) !== folder) return actualCopyFile(source, target, mode)
+    if (((mode ?? 0) & constants.COPYFILE_EXCL) !== 0 && existsSync(path))
+      throw Object.assign(new Error('EEXIST: injected'), { code: 'EEXIST' })
+    writeFileSync(path, '')
+    rmSync(path)
+    throw Object.assign(new Error(`${code}: injected`), { code })
+  })
+}
+
 function newTab(): FakeContents {
   return createSheetsView({ includeAiHandlers: false }).webContents as unknown as FakeContents
 }
@@ -329,13 +362,25 @@ beforeEach(() => {
   verify.fails = false
   setUiLang('en')
   resetSheetsShuttingDown()
+  vi.mocked(copyFile).mockReset()
 })
 
 afterEach(() => {
   resetSheetsShuttingDown()
   rmSync(dir, { recursive: true, force: true })
   rmSync(userDataDirRef.value, { recursive: true, force: true })
+  Object.defineProperty(process, 'platform', hostPlatform)
 })
+
+/**
+ * The mount these tests describe (gvfs SMB, WebDAV) is a POSIX one: on Windows
+ * the copy helpers keep to CopyFileW and never reach the fallback under test.
+ * `node:path` and the rest settled at import, so only the platform checks made
+ * at call time see the change.
+ */
+const hostPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
+const usePosixMount = () =>
+  Object.defineProperty(process, 'platform', { ...hostPlatform, value: 'linux' })
 
 describe('ODS export', () => {
   it('Save As picks ODS as a copy and the workbook keeps its path', async () => {
@@ -656,6 +701,22 @@ describe('ODS export', () => {
 
     expect(result).toMatchObject({ canceled: false, path: target })
     expect(existsSync(target)).toBe(true)
+  })
+
+  it('still replaces an earlier export in a folder where the platform copy fails', async () => {
+    usePosixMount()
+    const path = writeWorkbook('Budget.xlsx')
+    const target = writeWorkbook('Budget.ods', 'an earlier export')
+    const tab = newTab()
+    const opened = await openWorkbook(tab, path)
+    saveDialogAnswers.push(target)
+    failPlatformCopyIn(dir, 'ENOTSUP')
+
+    const result = await call(tab, IPC_CHANNELS.exportOds, exportOdsRequest(opened.sessionId))
+
+    expect(result).toMatchObject({ canceled: false, path: target })
+    expect(readFileSync(target, 'utf8')).toBe(ODS_BYTES)
+    expect(readdirSync(dir).sort()).toEqual(['Budget.ods', 'Budget.xlsx'])
   })
 
   it('round-trips the ODS save pick through the save result schema', () => {

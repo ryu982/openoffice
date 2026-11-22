@@ -41,6 +41,8 @@ Thông tin đăng nhập được lưu trên máy tính này bằng cơ chế m�
 - AI không thể sửa, xóa hay chia sẻ tệp trên Drive.
 - Khi một cuộc trò chuyện có nội dung đọc từ Drive, cuộc trò chuyện đó ngừng dùng tìm kiếm web, tìm kiếm hình ảnh, đọc trang qua địa chỉ web và chèn hình qua địa chỉ web. Hãy bắt đầu cuộc trò chuyện mới để dùng lại.
 
+Bạn cũng có thể bật hoặc tắt quyền đọc Google Drive cho riêng cuộc trò chuyện hiện tại từ nút **Dịch vụ đã kết nối**. Khi tắt tính năng AI, Google Drive vẫn hiện trong **Cài đặt ▸ Tích hợp** để mở và lưu tệp, chỉ ẩn công tắc AI.
+
 ## Ngắt kết nối
 
 Nhấp **Ngắt kết nối** trong **Cài đặt ▸ Tích hợp**. GenOffice xóa thông tin đăng nhập khỏi máy tính này và yêu cầu Google thu hồi quyền truy cập. Các bản sao tệp đã có trên máy tính này vẫn được giữ lại. Bạn cũng có thể xóa quyền truy cập bất cứ lúc nào trong **Kết nối với bên thứ ba** của Tài khoản Google.

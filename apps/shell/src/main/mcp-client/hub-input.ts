@@ -1,6 +1,8 @@
 import {
   MCP_PERMISSIONS,
+  MCP_PRESET_IDS,
   type McpPermission,
+  type McpPresetId,
   type McpServerInput,
   type McpServerPatch,
 } from '../../shared/mcp-servers-api'
@@ -142,4 +144,34 @@ export function mcpServerInputOf(raw: unknown): McpServerInput | undefined {
 export function mcpServerPatchOf(raw: unknown): McpServerPatch | undefined {
   if (!isRecord(raw)) return undefined
   return fieldsOf(raw) ?? undefined
+}
+
+export function connectPresetInputOf(
+  raw: unknown,
+): { presetId: McpPresetId; lawOc?: string } | undefined {
+  if (!isRecord(raw)) return undefined
+  if (
+    typeof raw.presetId !== 'string' ||
+    !(MCP_PRESET_IDS as readonly string[]).includes(raw.presetId)
+  ) {
+    return undefined
+  }
+  if (raw.lawOc !== undefined && shortText(raw.lawOc, TEXT_MAX) === undefined) return undefined
+  return {
+    presetId: raw.presetId as McpPresetId,
+    ...(typeof raw.lawOc === 'string' ? { lawOc: raw.lawOc } : {}),
+  }
+}
+
+export function addVaultInputOf(raw: unknown): { path: string; name: string } | undefined {
+  if (!isRecord(raw)) return undefined
+  const path = shortText(raw.path, TEXT_MAX)?.trim()
+  const name = shortText(raw.name, NAME_MAX)?.trim()
+  if (!path || !name) return undefined
+  return { path, name }
+}
+
+export function vaultNameOf(raw: unknown): string | undefined {
+  const name = shortText(raw, NAME_MAX)?.trim()
+  return name || undefined
 }

@@ -1,0 +1,314 @@
+/*
+ * AI panel styles for the whiteboard editor.
+ * Uses @genoffice/ui tokens and --wbai-* variables for light/dark themes.
+ */
+
+:root {
+  --wbai-focus-ring: rgb(35 36 37 / 20%);
+  --wbai-focus-ring-blue: rgb(74 141 246 / 30%);
+  --wbai-error: #c62828;
+  --wbai-error-border: rgb(198 40 40 / 45%);
+  --wbai-error-bg: rgb(198 40 40 / 8%);
+  --wbai-shadow-soft: rgb(0 0 0 / 9%);
+}
+
+[data-theme='dark'] {
+  --wbai-focus-ring: rgb(255 255 255 / 22%);
+  --wbai-focus-ring-blue: rgb(96 148 240 / 35%);
+  --wbai-error: #ef5350;
+  --wbai-error-border: rgb(239 83 80 / 45%);
+  --wbai-error-bg: rgb(239 83 80 / 10%);
+  --wbai-shadow-soft: rgb(0 0 0 / 35%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --wbai-focus-ring: rgb(255 255 255 / 22%);
+    --wbai-focus-ring-blue: rgb(96 148 240 / 35%);
+    --wbai-error: #ef5350;
+    --wbai-error-border: rgb(239 83 80 / 45%);
+    --wbai-error-bg: rgb(239 83 80 / 10%);
+    --wbai-shadow-soft: rgb(0 0 0 / 35%);
+  }
+}
+
+.ai-dock {
+  display: flex;
+  flex-shrink: 0;
+  min-height: 0;
+  width: var(--ai-panel-width, 360px);
+  overflow: hidden;
+  transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ai-dock.collapsed {
+  width: 34px;
+}
+
+.ai-dock.collapsed .copilot {
+  display: none;
+}
+
+.ai-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 12px 2px;
+  border: none;
+  border-left: var(--ai-panel-border-left, 0px) solid var(--border);
+  border-right: var(--ai-panel-border-right, 1px) solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ai-rail:hover {
+  background: var(--hover);
+}
+
+.copilot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border-left: var(--ai-panel-border-left, 0px) solid var(--border);
+  border-right: var(--ai-panel-border-right, 1px) solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.wbai-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wbai-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wbai-msg-user {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.wbai-msg-assistant {
+  align-self: stretch;
+}
+
+.wbai-error {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--wbai-error-border);
+  background: var(--wbai-error-bg);
+  color: var(--wbai-error);
+  font-size: 12px;
+}
+
+.wbai-composer-wrap {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wbai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.wbai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--text);
+}
+
+.wbai-chip button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.wbai-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.wbai-textarea {
+  flex: 1;
+  min-height: 36px;
+  max-height: 140px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+}
+
+.wbai-textarea:focus {
+  box-shadow: 0 0 0 2px var(--wbai-focus-ring-blue);
+}
+
+.wbai-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.wbai-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.wbai-icon-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.wbai-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.wbai-starter {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wbai-starter:hover {
+  background: var(--hover);
+}
+
+.ai-attach-notice {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--wbai-error);
+}
+
+.ai-composer {
+  font-family: var(--gs-font-sans, inherit);
+}
+
+.ai-input-box {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 1px 3px var(--wbai-shadow-soft);
+}
+
+.ai-input-box textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  resize: none;
+  border: none;
+  background: none;
+  border-radius: 14px 14px 0 0;
+  padding: 10px 12px 4px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 22px;
+  outline: none;
+  color: var(--text);
+  min-height: 52px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.ai-input-box textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.ai-input-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 8px 10px;
+}
+
+.ai-input-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.ai-send-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ai-send-btn.ai-stop-btn {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}

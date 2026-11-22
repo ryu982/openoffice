@@ -61,8 +61,8 @@
 
   /* AI panel (canonical names from the former per-app copies) */
   --gs-font-sans:
-    'Arial', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-    sans-serif;
+    'Segoe UI Variable', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Malgun Gothic',
+    'Apple SD Gothic Neo', 'Inter', Roboto, 'Helvetica Neue', sans-serif;
   --color-btn-primary: #232425;
   --color-btn-primary-hover: #393a3b;
   --color-btn-primary-text: #ffffff;
@@ -83,6 +83,19 @@
   --color-border-brand: #0f7fff;
   --color-error: #ef4444;
   --color-error-hover: #dc2626;
+  /* Shared AI panel surface & chrome tokens */
+  --ai-user-bubble-bg: #f4f5f7;
+  --ai-user-bubble-border: #e6e8ec;
+  --ai-card-bg: #f8f9fb;
+  --ai-card-inset-bg: #ffffff;
+  --ai-composer-bg: #ffffff;
+  --ai-composer-shadow: 0 2px 10px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 4%);
+  --ai-composer-focus-ring: rgb(24 90 189 / 14%);
+  --ai-scroll-btn-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+  --ai-shimmer-base: #606366;
+  --ai-shimmer-hi: #c8ccd2;
+  --ai-btn-disabled-bg: #e5e7eb;
+  --ai-btn-disabled-ink: #9ca3af;
 
   /* non-color */
   --radius-6: 6px;
@@ -154,6 +167,18 @@
   --color-border-default: #3a3a3a;
   --color-border-strong: #555;
   --color-border-brand: #4a9eff;
+  --ai-user-bubble-bg: #2a2a2d;
+  --ai-user-bubble-border: #3a3a3f;
+  --ai-card-bg: #252528;
+  --ai-card-inset-bg: #1e1e20;
+  --ai-composer-bg: #252528;
+  --ai-composer-shadow: 0 2px 12px rgb(0 0 0 / 32%);
+  --ai-composer-focus-ring: rgb(74 158 255 / 22%);
+  --ai-scroll-btn-shadow: 0 4px 14px rgb(0 0 0 / 45%);
+  --ai-shimmer-base: #9a9aa2;
+  --ai-shimmer-hi: #4a4a52;
+  --ai-btn-disabled-bg: #36363a;
+  --ai-btn-disabled-ink: #6e6e76;
 
   color-scheme: dark;
 }
@@ -215,6 +240,18 @@
     --color-border-default: #3a3a3a;
     --color-border-strong: #555;
     --color-border-brand: #4a9eff;
+    --ai-user-bubble-bg: #2a2a2d;
+    --ai-user-bubble-border: #3a3a3f;
+    --ai-card-bg: #252528;
+    --ai-card-inset-bg: #1e1e20;
+    --ai-composer-bg: #252528;
+    --ai-composer-shadow: 0 2px 12px rgb(0 0 0 / 32%);
+    --ai-composer-focus-ring: rgb(74 158 255 / 22%);
+    --ai-scroll-btn-shadow: 0 4px 14px rgb(0 0 0 / 45%);
+    --ai-shimmer-base: #9a9aa2;
+    --ai-shimmer-hi: #4a4a52;
+    --ai-btn-disabled-bg: #36363a;
+    --ai-btn-disabled-ink: #6e6e76;
 
     color-scheme: dark;
   }

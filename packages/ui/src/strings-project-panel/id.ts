@@ -45,6 +45,7 @@ export const id = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Peta pikiran',
+  editorWhiteboard: 'Papan tulis',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Beranda',

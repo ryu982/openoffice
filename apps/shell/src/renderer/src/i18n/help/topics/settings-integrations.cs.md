@@ -69,6 +69,8 @@ Nastavení může zaregistrovat GenOffice jako aplikaci pro soubory .docx / .xls
 
 Pod **Místní HTTP server** umí aplikace server spustit sama — přepínač zapnutí a port — a část **Pokročilé** přidá adresu pro kontrolu stavu a soubor protokolu, místo aby ho nechala na pomocníkovi. Naslouchá pouze na localhostu.
 
+V horní části **Nastavení ▸ Integrace** sdružuje sekce **Připojené služby** Disk Google, Notion, Canva, Trezor Obsidian, Korean Law MCP, kordoc MCP a vlastní servery MCP nad částí pro kódovací agenty.
+
 ## Přehled příkazů
 
 | Příkaz                | Co dělá                     |

@@ -351,6 +351,12 @@ export interface SkillPickerInput {
   /** the chips, placed where the attachments sit */
   chipRow: React.ReactNode
   open: boolean
+  /** true when opened manually via the `/` toolbar button (without mutating draft text) */
+  manualOpen?: boolean | undefined
+  /** toggle the standalone `/` skill picker popover without inserting `/` into the draft */
+  toggleSkillMenu?: (() => void) | undefined
+  /** close the standalone `/` skill picker popover */
+  closeSkillMenu?: (() => void) | undefined
 }
 
 /**
@@ -374,6 +380,7 @@ export function useSkillPickerInput({
   const [caret, setCaret] = useState<number | null>(null)
   const [composing, setComposing] = useState(false)
   const [dismissed, setDismissed] = useState<number | null>(null)
+  const [manualOpen, setManualOpen] = useState(false)
   const [selection, setSelection] = useState({ key: '', index: 0 })
   const pendingCaretRef = useRef<number | null>(null)
 
@@ -385,15 +392,46 @@ export function useSkillPickerInput({
   const frozenRef = useRef<SkillTrigger | null>(null)
   if (!composing) frozenRef.current = live
   const trigger = composing ? frozenRef.current : live
-  const matches = trigger && skills ? filterPickerSkills(skills.items, trigger.query) : []
-  const open = !!trigger && matches.length > 0 && dismissed !== trigger.start
-  const key = trigger ? `${trigger.start}:${trigger.query}` : ''
+  const typedMatches = trigger && skills ? filterPickerSkills(skills.items, trigger.query) : []
+  const typedOpen = !!trigger && typedMatches.length > 0 && dismissed !== trigger.start
+  const standaloneOpen = manualOpen && !!skills && !typedOpen
+  const matches = typedOpen ? typedMatches : standaloneOpen && skills ? [...skills.items] : []
+  const open = typedOpen || standaloneOpen
+  const key = typedOpen && trigger ? `${trigger.start}:${trigger.query}` : standaloneOpen ? 'manual' : ''
   const active = selection.key === key ? Math.min(selection.index, matches.length) : 0
 
   // a closed trigger forgets that Esc dismissed it
   useEffect(() => {
     if (!trigger && dismissed !== null) setDismissed(null)
   }, [trigger, dismissed])
+
+  // close manual menu if skills bridge disappears
+  useEffect(() => {
+    if (!skills && manualOpen) setManualOpen(false)
+  }, [skills, manualOpen])
+
+  // outside press / capture Escape closes standalone manual menu without stopping an active AI run
+  useEffect(() => {
+    if (!standaloneOpen) return
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null
+      if (target?.closest('.ai-skill-picker, .ai-skill-trigger-btn')) return
+      setManualOpen(false)
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setManualOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('keydown', onKeyDown, true)
+    }
+  }, [standaloneOpen])
 
   const onOpen = skills?.onOpen
   useEffect(() => {
@@ -413,17 +451,21 @@ export function useSkillPickerInput({
   }, [value, textareaRef])
 
   const pick = (index: number) => {
-    if (!skills || !trigger) return
+    if (!skills) return
     if (index >= matches.length) {
-      setDismissed(trigger.start)
+      if (trigger && typedOpen) setDismissed(trigger.start)
+      setManualOpen(false)
       skills.onManage()
       return
     }
     const item = matches[index]
     if (!item) return
-    const next = removeSkillTrigger(value, trigger)
-    pendingCaretRef.current = next.caret
-    onChange(next.value)
+    if (typedOpen && trigger) {
+      const next = removeSkillTrigger(value, trigger)
+      pendingCaretRef.current = next.caret
+      onChange(next.value)
+    }
+    setManualOpen(false)
     skills.onPick(item)
   }
 
@@ -434,17 +476,28 @@ export function useSkillPickerInput({
       isComposing: e.nativeEvent.isComposing || composing,
       open,
     })
-    if (!action || !trigger) return false
+    if (!action || !open) return false
     e.preventDefault()
     // an Esc that closes the list must not reach a handler that stops the run
     e.stopPropagation()
     const count = matches.length + 1
     if (action === 'next') setSelection({ key, index: (active + 1) % count })
     else if (action === 'prev') setSelection({ key, index: (active - 1 + count) % count })
-    else if (action === 'close') setDismissed(trigger.start)
-    else pick(active)
+    else if (action === 'close') {
+      if (typedOpen && trigger) setDismissed(trigger.start)
+      setManualOpen(false)
+    } else pick(active)
     return true
   }
+
+  const toggleSkillMenu = useCallback(() => {
+    if (!skills) return
+    setManualOpen((prev) => !prev)
+  }, [skills])
+
+  const closeSkillMenu = useCallback(() => {
+    setManualOpen(false)
+  }, [])
 
   const track = (el: HTMLTextAreaElement) => {
     if (!skills) return
@@ -497,5 +550,8 @@ export function useSkillPickerInput({
     popup,
     chipRow,
     open,
+    manualOpen: standaloneOpen,
+    toggleSkillMenu,
+    closeSkillMenu,
   }
 }

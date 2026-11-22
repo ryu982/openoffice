@@ -163,6 +163,8 @@ export function AgentWindow() {
   const [projectSkills, setProjectSkills] = useState<AgentProjectSkillsView | null>(null)
   /** the session's MCP servers that keep received content inside, which this window cannot keep */
   const [mcpKeepInside, setMcpKeepInside] = useState<string[]>([])
+  /** registered Obsidian vaults outside the project folder that this agent session can access */
+  const [mcpExternalVaults, setMcpExternalVaults] = useState<string[]>([])
   /** the session's instructions carry only the start of a long CLAUDE.md / AGENTS.md */
   const [instructionsTruncated, setInstructionsTruncated] = useState(false)
   const folderRef = useRef('')
@@ -349,6 +351,7 @@ export function AgentWindow() {
     setSessionId(result.sessionId)
     setSessionSkills(result.skills ?? [])
     setMcpKeepInside(result.mcpKeepInside ?? [])
+    setMcpExternalVaults(result.mcpExternalVaults ?? [])
     setInstructionsTruncated((result.instructionsTruncated ?? []).length > 0)
     setChips([])
     setChipNotice(null)
@@ -417,6 +420,7 @@ export function AgentWindow() {
     setSessionId(null)
     setSessionSkills([])
     setMcpKeepInside([])
+    setMcpExternalVaults([])
     setInstructionsTruncated(false)
     setChips([])
     setChipNotice(null)
@@ -555,6 +559,13 @@ export function AgentWindow() {
               {agentMcpText(lang, 'mcpKeepInsideWarning', { server })}
             </div>
           ))}
+          {mcpExternalVaults.length > 0 && (
+            <div className="agent-notice" role="alert" data-testid="agent-external-vault-warning">
+              {agentMcpText(lang, 'mcpExternalVaultWarning', {
+                vaults: mcpExternalVaults.join(', '),
+              })}
+            </div>
+          )}
           <div className="agent-log">{log.entries.map(renderEntry)}</div>
           {log.pending.map((request) => (
             <div key={request.id} className="agent-perm" role="alertdialog">

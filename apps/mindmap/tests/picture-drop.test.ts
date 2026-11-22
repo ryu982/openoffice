@@ -16,6 +16,7 @@ import {
   dragCarriesPicture,
   dropPicture,
   isPictureFile,
+  pastePicture,
   PICTURE_ACCEPT,
   readDroppedPicture,
   topicAt,
@@ -187,6 +188,64 @@ describe('dropping a picture on a topic', () => {
     expect(r.session.document.entryNames).toEqual(entries)
     expect(r.session.document.changed).toBe(changed)
     expect(r.topicOf(IDS.a1)!.image).toBeUndefined()
+  })
+})
+
+describe('pasting a picture on a topic', () => {
+  it('puts the picture on a new topic under it, with no title, as one undo step', async () => {
+    const r = await rig()
+    const before = new Set(r.session.document.entryNames)
+    const childrenBefore = r.topicOf(IDS.a1)!.children?.attached?.length ?? 0
+    expect(await pastePicture(r.host, IDS.a1, [fileOf(PNG, 'image.png', 'image/png')])).toBe('done')
+    const entry = r.session.document.entryNames.find((name) => !before.has(name))
+    expect(entry).toMatch(/^resources\/[0-9a-f-]+\.png$/)
+    expect(await r.session.document.readEntry(entry!)).toEqual(PNG)
+
+    const parent = r.topicOf(IDS.a1)!
+    expect(parent.image).toBeUndefined()
+    const children = parent.children!.attached!
+    expect(children).toHaveLength(childrenBefore + 1)
+    const added = children.at(-1)!
+    expect(added.title ?? '').toBe('')
+    expect(added.image).toEqual({ src: `xap:${entry}` })
+
+    expect(r.controller.undo()).toBe(true)
+    expect(r.topicOf(added.id)).toBeNull()
+    expect(r.topicOf(IDS.a1)!.children?.attached?.length ?? 0).toBe(childrenBefore)
+  })
+
+  it('takes the first of several pictures and says so', async () => {
+    const r = await rig()
+    const files = [fileOf(JPG, 'a.jpg'), fileOf(PNG, 'b.png')]
+    expect(await pastePicture(r.host, IDS.a1, files)).toBe('done-first-only')
+    const added = r.topicOf(IDS.a1)!.children!.attached!.at(-1)!
+    expect((added.image as { src: string }).src).toMatch(/\.jpg$/)
+  })
+
+  it('leaves the map and the file as they were when the paste cannot land', async () => {
+    const r = await rig()
+    const entries = [...r.session.document.entryNames]
+    const changed = r.session.document.changed
+    expect(await pastePicture(r.host, IDS.a1, [fileOf(WEBP, 'a.webp')])).toBe('unsupported')
+    expect(await pastePicture(r.host, IDS.a1, [fileOf(PNG, 'notes.txt', 'text/plain')])).toBe(
+      'unsupported',
+    )
+    expect(
+      await pastePicture(r.host, '00000000-0000-4000-8000-000000000000', [fileOf(PNG, 'a.png')]),
+    ).toBe('failed')
+    expect(r.session.document.entryNames).toEqual(entries)
+    expect(r.session.document.changed).toBe(changed)
+  })
+
+  it('takes the new topic back out when its picture did not land', async () => {
+    const r = await rig()
+    const childrenBefore = r.topicOf(IDS.a1)!.children?.attached?.length ?? 0
+    const couldUndo = r.controller.canUndo
+    // the reference names an entry the file does not hold, so reconciling drops the picture
+    vi.spyOn(r.session, 'addPicture').mockReturnValue('resources/not-in-the-file.png')
+    expect(await pastePicture(r.host, IDS.a1, [fileOf(PNG, 'a.png')])).toBe('failed')
+    expect(r.topicOf(IDS.a1)!.children?.attached?.length ?? 0).toBe(childrenBefore)
+    expect(r.controller.canUndo).toBe(couldUndo)
   })
 })
 

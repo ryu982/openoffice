@@ -146,7 +146,19 @@ describe('turning AI off', () => {
 
 describe('the home-kinds rows in Settings → General', () => {
   const custom: HomeKindsSettings = {
-    order: ['pdf', 'docx', 'xlsx', 'pptx', 'md', 'html', 'xmind', 'drawio', 'hwp', 'pdfTools'],
+    order: [
+      'pdf',
+      'docx',
+      'xlsx',
+      'pptx',
+      'md',
+      'html',
+      'xmind',
+      'drawio',
+      'whiteboard',
+      'hwp',
+      'pdfTools',
+    ],
     hidden: ['xlsx', 'pptx'],
   }
 
@@ -160,6 +172,7 @@ describe('the home-kinds rows in Settings → General', () => {
       'html',
       'xmind',
       'drawio',
+      'whiteboard',
       'hwp',
     ])
   })
@@ -177,6 +190,7 @@ describe('the home-kinds rows in Settings → General', () => {
       'html',
       'xmind',
       'drawio',
+      'whiteboard',
       'hwp',
       'pdfTools',
     ])

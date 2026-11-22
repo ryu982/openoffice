@@ -4,10 +4,15 @@
  * can still take it back; reverting a run takes every later applied run back
  * with it, newest first, and only the newest `KEPT_RUNS` points are kept.
  */
-import type { AiChangesState } from '@genoffice/ui'
+import type { AiChangeLine, AiChangesState } from '@genoffice/ui'
 
 /** How many runs keep their undo point: an older one's card says it expired. */
 export const KEPT_RUNS = 20
+
+export interface DiagramChangeLine extends AiChangeLine {
+  readonly page?: string
+  readonly cellId?: string
+}
 
 export interface RunChange<P> {
   /** grows with every run, so a later run has a larger id */
@@ -17,6 +22,8 @@ export interface RunChange<P> {
   readonly state: AiChangesState
   /** how many places the run changed (0: not known) */
   readonly count: number
+  /** detailed per-cell lines shown inside AiChangesCard */
+  readonly lines?: readonly DiagramChangeLine[]
 }
 
 /** The list with a new run; runs past the kept ones lose their point. */

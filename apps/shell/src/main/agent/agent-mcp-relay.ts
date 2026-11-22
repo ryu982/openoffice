@@ -77,6 +77,8 @@ export interface AgentRelayToolPlan {
 export interface AgentRelayPlan {
   server: string
   keepResultsInside: boolean
+  /** enabled external Obsidian vault names when this relay is a built-in vault connector */
+  externalVaults: string[]
   /** the approved server instructions, if any */
   instructions: string | null
   tools: AgentRelayToolPlan[]
@@ -88,7 +90,7 @@ const offered = (permission: string) => permission === 'always' || permission ==
  * The relays of a session, from the hub's list at its start: each server that
  * is on and has a usable name, with its tools that are `always` or `ask`, not
  * waiting for review and with a name the program can call. A server left with
- * no such tool gets no relay.
+ * no such tool (or a vault connector with 0 enabled vaults) gets no relay.
  */
 export function agentRelayPlans(list: readonly McpServerView[]): AgentRelayPlan[] {
   const plans: AgentRelayPlan[] = []
@@ -96,6 +98,11 @@ export function agentRelayPlans(list: readonly McpServerView[]): AgentRelayPlan[
   for (const server of list) {
     const key = server.name.toLowerCase()
     if (server.status === 'disabled' || !isValidServerName(server.name) || seen.has(key)) continue
+    const externalVaults =
+      server.localOnly && server.vaults
+        ? server.vaults.filter((v) => v.enabled).map((v) => v.name)
+        : []
+    if (server.localOnly && server.vaults && externalVaults.length === 0) continue
     const prefix = `mcp__${server.name}__`
     const tools: AgentRelayToolPlan[] = []
     for (const tool of server.tools) {
@@ -115,6 +122,7 @@ export function agentRelayPlans(list: readonly McpServerView[]): AgentRelayPlan[
     plans.push({
       server: server.name,
       keepResultsInside: server.keepResultsInside,
+      externalVaults,
       instructions: server.instructions,
       tools,
     })
@@ -247,6 +255,8 @@ export interface AgentMcpRelays {
   relays: AgentMcpRelay[]
   /** the attached servers that keep received content inside (the start warning names them) */
   keepResultsInside: string[]
+  /** enabled external Obsidian vault names relayed into this session */
+  externalVaults: string[]
   /** close every relay and stop the calls under way */
   stop(): Promise<void>
 }
@@ -306,6 +316,7 @@ export async function startAgentMcpRelays(deps: AgentMcpRelaysDeps): Promise<Age
   return {
     relays,
     keepResultsInside: plans.filter((plan) => plan.keepResultsInside).map((plan) => plan.server),
+    externalVaults: plans.flatMap((plan) => plan.externalVaults),
     stop,
   }
 }

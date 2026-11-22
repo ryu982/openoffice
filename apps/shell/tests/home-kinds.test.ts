@@ -32,10 +32,14 @@ describe('reading the homeKinds setting', () => {
   })
 
   it('puts a kind missing from a saved order beside the kind before it', () => {
-    // a saved order from a version without `hwp`: it lands right after `drawio`
+    // a saved order from a version without `hwp`: it lands right after `whiteboard`
     const saved = HOME_KINDS.filter((kind) => kind !== 'hwp').reverse()
     const { order } = normalizeHomeKinds({ order: saved })
-    expect(order[order.indexOf('drawio') + 1]).toBe('hwp')
+    expect(order[order.indexOf('whiteboard') + 1]).toBe('hwp')
+    // a saved order from before the whiteboard editor: `whiteboard` lands right after `drawio`
+    const beforeWhiteboard = HOME_KINDS.filter((kind) => kind !== 'whiteboard').reverse()
+    const { order: withWhiteboard } = normalizeHomeKinds({ order: beforeWhiteboard })
+    expect(withWhiteboard[withWhiteboard.indexOf('drawio') + 1]).toBe('whiteboard')
     // a saved order from before the diagram editor: `drawio` lands right after `xmind`
     const beforeDiagram = HOME_KINDS.filter((kind) => kind !== 'drawio').reverse()
     const { order: withDiagram } = normalizeHomeKinds({ order: beforeDiagram })

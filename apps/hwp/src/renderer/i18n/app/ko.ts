@@ -22,6 +22,8 @@ export const ko = {
     '저장하지 않았습니다. 저장될 내용을 다시 읽어 보니 화면의 문서와 달랐습니다. "다른 이름으로 저장"으로 새 파일에 저장해 보세요.',
   saveVerifyHint:
     '원본은 그대로입니다. 다른 이름으로 저장에서 HWPX를 고르거나, PDF로 내보내기를 써 보세요.',
+  saveVerifyPages: '편집 화면 {before}쪽 → 다시 읽은 결과 {after}쪽',
+  saveAsHwpx: 'HWPX로 저장…',
   saveProtected: '저장하지 않았습니다. 암호가 걸린 문서인데, 여기서 저장하면 암호 없이 저장됩니다.',
   backupKept: '저장했습니다. 이전 내용은 {name} 파일로 남겨 두었습니다.',
   openedTracked:

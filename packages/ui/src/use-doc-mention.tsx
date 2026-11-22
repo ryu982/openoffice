@@ -394,5 +394,8 @@ export function useComposerPickers({
     popup: skill.popup ?? doc.popup,
     chipRow: skill.chipRow,
     open: skill.open || doc.open,
+    manualOpen: skill.manualOpen,
+    toggleSkillMenu: skill.toggleSkillMenu,
+    closeSkillMenu: skill.closeSkillMenu,
   }
 }

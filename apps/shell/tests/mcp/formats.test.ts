@@ -46,8 +46,8 @@ describe('format registry', () => {
     expect(appForPath('/x/budget.ods')).toBe('sheets')
   })
 
-  it('keeps the editor-only families (md/html/xmind/epub/drawio) without an mcp block', () => {
-    for (const family of ['md', 'html', 'xmind', 'epub', 'drawio'] as const) {
+  it('keeps the editor-only families (md/html/xmind/epub/drawio/whiteboard) without an mcp block', () => {
+    for (const family of ['md', 'html', 'xmind', 'epub', 'drawio', 'whiteboard'] as const) {
       expect(formatFamily(family).mcp).toBeUndefined()
     }
     // the three edit-in-place families carry full mcp blocks; pdf and hwp are read-only
@@ -166,6 +166,7 @@ describe('capabilityReport', () => {
       'hwp',
       'epub',
       'drawio',
+      'whiteboard',
     ])
     const docx = report.find((r) => r.family === 'docx')!
     expect(docx.editor.open).toEqual(['docx', 'odt'])

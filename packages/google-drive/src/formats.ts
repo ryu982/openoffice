@@ -41,6 +41,7 @@ export const OPENABLE_EXTENSIONS: readonly string[] = [
   '.epub',
   '.drawio',
   '.dio',
+  '.whiteboard',
 ]
 
 /** The upload type for an extension the app saves; octet-stream lets Drive keep its own guess */

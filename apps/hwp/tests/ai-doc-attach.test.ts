@@ -89,7 +89,14 @@ describe('hwp AI panel: attach from a document', () => {
     })
     await settle()
 
-    const button = container.querySelector<HTMLButtonElement>('.ai-doc-attach-btn')
+    const menuBtn = container.querySelector<HTMLButtonElement>('.ai-attach-menu-btn')
+    expect(menuBtn).not.toBeNull()
+    act(() => {
+      menuBtn!.click()
+    })
+    const button = container.querySelector<HTMLButtonElement>(
+      '.ai-attach-menu-item[data-source="docs"]',
+    )
     expect(button).not.toBeNull()
     await act(async () => {
       button!.click()

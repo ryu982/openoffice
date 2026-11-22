@@ -99,8 +99,15 @@ describe('AiPanel new chat attachments', () => {
       try {
         await flush()
         await flush()
-        // Stage a file through the attach button.
-        const attach = container.querySelector<HTMLButtonElement>('.ai-attach-btn')
+        // Stage a file through the attach menu.
+        const menuBtn = container.querySelector<HTMLButtonElement>('.ai-attach-menu-btn')
+        expect(menuBtn).not.toBeNull()
+        act(() => {
+          menuBtn!.click()
+        })
+        const attach = container.querySelector<HTMLButtonElement>(
+          '.ai-attach-menu-item[data-source="pc"]',
+        )
         expect(attach).not.toBeNull()
         await act(async () => {
           attach!.click()

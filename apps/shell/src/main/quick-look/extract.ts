@@ -1,10 +1,24 @@
-import { readFile, stat } from 'node:fs/promises'
+import { open, readFile, stat } from 'node:fs/promises'
 import { basename, extname, isAbsolute, resolve } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import * as CFB from 'cfb'
 import JSZip from 'jszip'
 import { assertZipInflatesWithinLimits } from '@genoffice/docx-engine'
-import { parseFileToText, type ParsedFile } from '@genoffice/file-parse'
+import {
+  getInteractiveParseSidecar,
+  isParseSidecarEnabled,
+  parseFileToText,
+  SidecarInfraError,
+  type ParsedFile,
+} from '@genoffice/file-parse'
+import { readStream as wasmReadStream } from '@genoffice/hwp5-wasm'
+import {
+  ENCRYPTED as HWP5_ENCRYPTED_FLAG,
+  FILE_HEADER as HWP5_FILE_HEADER,
+  SIGNATURE as HWP5_SIGNATURE,
+  ensureHwp5Wasm,
+  inspectHwp5WithWasm,
+} from '../../../../hwp/src/main/hwp5-file'
 import {
   QUICK_LOOK_SUPPORTED_EXTS,
   isQuickLookSupportedPath,
@@ -75,29 +89,76 @@ function toDataUrl(bytes: Uint8Array, mime: string): string | undefined {
   return `data:${mime};base64,${buf.toString('base64')}`
 }
 
-/**
- * Extract the preview image from an HWP 5 OLE2 container (`/PrvImage` stream).
- * HWP 5 stores a BMP or GIF of the first page in `/PrvImage`.
- */
-function extractHwp5Thumbnail(bytes: Buffer): string | undefined {
+const ALLOWED_THUMBNAIL_MIMES: ReadonlySet<string> = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/bmp',
+  'image/webp',
+])
+
+function decodePrvImage(raw: Uint8Array): string | undefined {
+  if (raw.byteLength < 8) return undefined
+  const directMime = sniffImageMime(raw)
+  if (directMime) return toDataUrl(raw, directMime)
+  try {
+    // Some writers deflate PrvImage when the header compressed bit is set
+    const inflated = inflateRawSync(raw, { maxOutputLength: MAX_THUMBNAIL_BYTES + 1 })
+    const inflatedMime = sniffImageMime(inflated)
+    if (inflatedMime) return toDataUrl(inflated, inflatedMime)
+  } catch {
+    // Malformed deflate payload or exceeds MAX_THUMBNAIL_BYTES
+  }
+  return undefined
+}
+
+function extractHwp5ThumbnailCfb(bytes: Buffer): string | undefined {
   try {
     const cfb = CFB.read(bytes, { type: 'buffer' })
+    const header = CFB.find(cfb, HWP5_FILE_HEADER)
+    if (header?.content && header.content.length >= 40) {
+      const headerBuf = Buffer.from(header.content as Uint8Array)
+      if (
+        headerBuf.toString('latin1', 0, HWP5_SIGNATURE.length) === HWP5_SIGNATURE &&
+        (headerBuf.readUInt32LE(36) & HWP5_ENCRYPTED_FLAG) !== 0
+      ) {
+        return undefined
+      }
+    }
     const entry = CFB.find(cfb, '/PrvImage') ?? CFB.find(cfb, 'PrvImage')
     if (!entry?.content || entry.content.length < 8) return undefined
     const raw = Buffer.from(entry.content as Uint8Array)
-    const directMime = sniffImageMime(raw)
-    if (directMime) return toDataUrl(raw, directMime)
-    // Some writers deflate PrvImage when the header compressed bit is set
-    const inflated = inflateRawSync(raw)
-    const inflatedMime = sniffImageMime(inflated)
-    if (inflatedMime) return toDataUrl(inflated, inflatedMime)
+    return decodePrvImage(raw)
   } catch {
     // Thumbnail is optional; ignore malformed containers here
   }
   return undefined
 }
 
+/**
+ * Extract the preview image from an HWP 5 OLE2 container (`/PrvImage` stream).
+ * HWP 5 stores a BMP or GIF of the first page in `/PrvImage`.
+ * Uses `@genoffice/hwp5-wasm` as primary backend; falls back to JS `cfb` ONLY
+ * when WASM is disabled (`GENOFFICE_HWP5_WASM=0|off`) or fails infrastructure load.
+ */
+function extractHwp5Thumbnail(bytes: Buffer): string | undefined {
+  if (ensureHwp5Wasm()) {
+    try {
+      const { bytes: normalized, info } = inspectHwp5WithWasm(bytes)
+      if (info.valid && info.encrypted) return undefined
+      const raw = wasmReadStream(normalized, '/PrvImage', false)
+      if (!raw) return undefined
+      return decodePrvImage(raw)
+    } catch {
+      // Semantic failure inside WASM; never fall back to JS cfb
+      return undefined
+    }
+  }
+  return extractHwp5ThumbnailCfb(bytes)
+}
+
 const ZIP_THUMBNAIL_CANDIDATES = [
+  'thumbnail.png',
   'Preview/PrvImage.png',
   'Preview/PrvImage.bmp',
   'Preview/PrvImage.gif',
@@ -112,9 +173,58 @@ const ZIP_THUMBNAIL_CANDIDATES = [
   'docProps/thumbnail.gif',
 ]
 
+const ZIP_THUMBNAIL_EXTS: ReadonlySet<string> = new Set([
+  'hwpx',
+  'hwp',
+  'docx',
+  'doc',
+  'pptx',
+  'xlsx',
+  'xlsm',
+  'odt',
+  'xmind',
+  'whiteboard',
+])
+
+const ALWAYS_ZIP_EXTS: ReadonlySet<string> = new Set([
+  'hwpx',
+  'docx',
+  'pptx',
+  'xlsx',
+  'xlsm',
+  'odt',
+  'xmind',
+  'whiteboard',
+])
+
+async function peekMagic4(filePath: string): Promise<Buffer> {
+  const fh = await open(filePath, 'r')
+  try {
+    const buf = Buffer.alloc(4)
+    const { bytesRead } = await fh.read(buf, 0, 4, 0)
+    return buf.subarray(0, bytesRead)
+  } finally {
+    await fh.close()
+  }
+}
+
+function isZipMagic(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b
+}
+
+function isOleMagic(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0xd0 &&
+    bytes[1] === 0xcf &&
+    bytes[2] === 0x11 &&
+    bytes[3] === 0xe0
+  )
+}
+
 /**
  * Extract an embedded thumbnail image from a ZIP-based office/HWPX/ODT/XMind file
- * after running the zip-bomb inflation gate.
+ * after running the zip-bomb inflation gate (JSZip fallback / buffer API).
  */
 async function extractZipThumbnail(bytes: Buffer): Promise<string | undefined> {
   try {
@@ -140,28 +250,99 @@ async function extractZipThumbnail(bytes: Buffer): Promise<string | undefined> {
   return undefined
 }
 
+async function extractZipThumbnailViaSidecar(
+  filePath: string,
+  ext: string,
+): Promise<{ handled: boolean; dataUrl?: string }> {
+  if (!isParseSidecarEnabled()) return { handled: false }
+  try {
+    const res = await getInteractiveParseSidecar().extractThumbnail({
+      path: filePath,
+      ext,
+      maxBytes: MAX_THUMBNAIL_BYTES,
+    })
+    switch (res.status) {
+      case 'ok': {
+        if (!ALLOWED_THUMBNAIL_MIMES.has(res.mime) || !res.dataBase64) {
+          return { handled: true }
+        }
+        const decodedBytes = Buffer.byteLength(res.dataBase64, 'base64')
+        if (decodedBytes === 0 || decodedBytes > MAX_THUMBNAIL_BYTES) {
+          return { handled: true }
+        }
+        return { handled: true, dataUrl: `data:${res.mime};base64,${res.dataBase64}` }
+      }
+      case 'not_found':
+      case 'rejected':
+      case 'fallback':
+        // Strict gate: never fall back to JSZip on zip_rejected, corrupt,
+        // password_protected, content_mismatch, or not_found.
+        return { handled: true }
+    }
+  } catch (err) {
+    if (err instanceof SidecarInfraError) {
+      // Allowed fallback on infrastructure failure (missing binary, crash, IPC error).
+      return { handled: false }
+    }
+    return { handled: true }
+  }
+}
+
+/**
+ * Streaming file-path thumbnail extraction for Quick Look.
+ * - HWP 5 (OLE2 `.hwp`): reads the file and extracts `/PrvImage` via `@genoffice/hwp5-wasm`
+ *   (falling back to JS `cfb` only on WASM disabled / infra failure).
+ * - ZIP-based documents: delegates directly to `ieum-parse-sidecar`'s streaming
+ *   `extract_thumbnail` without loading the archive into Node memory (falling back to
+ *   JSZip only on `GENOFFICE_PARSE_SIDECAR=0|off` or `SidecarInfraError`).
+ */
+export async function extractEmbeddedThumbnailFromFile(
+  filePath: string,
+  ext: string,
+): Promise<string | undefined> {
+  const cleanExt = ext.trim().replace(/^\./, '').toLowerCase()
+  if (!ZIP_THUMBNAIL_EXTS.has(cleanExt)) return undefined
+
+  let magic: Buffer
+  try {
+    magic = await peekMagic4(filePath)
+  } catch {
+    return undefined
+  }
+  if (magic.length < 4) return undefined
+
+  if (cleanExt === 'hwp' && isOleMagic(magic)) {
+    try {
+      const bytes = await readFile(filePath)
+      return extractHwp5Thumbnail(bytes)
+    } catch {
+      return undefined
+    }
+  }
+
+  if (isZipMagic(magic)) {
+    const sidecar = await extractZipThumbnailViaSidecar(filePath, cleanExt)
+    if (sidecar.handled) return sidecar.dataUrl
+    try {
+      const bytes = await readFile(filePath)
+      return await extractZipThumbnail(bytes)
+    } catch {
+      return undefined
+    }
+  }
+
+  return undefined
+}
+
 export async function extractEmbeddedThumbnail(
   ext: string,
   bytes: Buffer,
 ): Promise<string | undefined> {
   if (bytes.length < 4) return undefined
-  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b
-  const isOle = bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0
-  if (ext === 'hwp' && isOle) {
+  if (ext === 'hwp' && isOleMagic(bytes)) {
     return extractHwp5Thumbnail(bytes)
   }
-  if (
-    isZip &&
-    (ext === 'hwpx' ||
-      ext === 'hwp' ||
-      ext === 'docx' ||
-      ext === 'doc' ||
-      ext === 'pptx' ||
-      ext === 'xlsx' ||
-      ext === 'xlsm' ||
-      ext === 'odt' ||
-      ext === 'xmind')
-  ) {
+  if (isZipMagic(bytes) && ZIP_THUMBNAIL_EXTS.has(ext)) {
     return extractZipThumbnail(bytes)
   }
   return undefined
@@ -558,10 +739,24 @@ export async function extractQuickLook(
   const sized: QuickLookPayload = { ...base, sizeBytes, mtimeMs }
   const maxBytes = family === 'image' ? MAX_IMAGE_BYTES : MAX_DOCUMENT_BYTES
   if (sizeBytes > maxBytes) {
-    return {
-      ...sized,
-      error: 'unreadable',
-      errorMessage: 'File is too large for Quick Look preview',
+    let allowStreamingZip = false
+    if (!deps.readFile && isParseSidecarEnabled() && ZIP_THUMBNAIL_EXTS.has(ext)) {
+      if (ALWAYS_ZIP_EXTS.has(ext)) {
+        allowStreamingZip = true
+      } else {
+        try {
+          allowStreamingZip = isZipMagic(await peekMagic4(filePath))
+        } catch {
+          allowStreamingZip = false
+        }
+      }
+    }
+    if (!allowStreamingZip) {
+      return {
+        ...sized,
+        error: 'unreadable',
+        errorMessage: 'File is too large for Quick Look preview',
+      }
     }
   }
 
@@ -599,13 +794,17 @@ export async function extractQuickLook(
       family !== 'docx' &&
       family !== 'pptx' &&
       family !== 'xlsx' &&
-      family !== 'xmind'
+      family !== 'xmind' &&
+      family !== 'whiteboard'
     ) {
       return undefined
     }
     try {
-      const bytes = await readBytes(filePath)
-      return await extractEmbeddedThumbnail(ext, bytes)
+      if (deps.readFile) {
+        const bytes = await deps.readFile(filePath)
+        return await extractEmbeddedThumbnail(ext, bytes)
+      }
+      return await extractEmbeddedThumbnailFromFile(filePath, ext)
     } catch {
       return undefined
     }
@@ -658,7 +857,13 @@ export async function extractQuickLook(
   } else if (family === 'xmind') {
     const { mindmap, truncated } = parseMindmapFromText(rawText)
     result = { ...result, mindmap, truncated: truncated || plainTruncated }
-  } else if (family === 'docx' || family === 'hwp' || family === 'md' || family === 'pdf') {
+  } else if (
+    family === 'docx' ||
+    family === 'hwp' ||
+    family === 'md' ||
+    family === 'pdf' ||
+    family === 'whiteboard'
+  ) {
     const { docBlocks, truncated } = parseDocBlocksFromText(plainText)
     result = {
       ...result,

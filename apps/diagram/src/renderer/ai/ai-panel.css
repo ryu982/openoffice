@@ -1115,25 +1115,18 @@
   background: var(--dgai-error-bg);
 }
 
-/* ---- the diagram's own placement: the panel sits at the right end, beside draw.io ---- */
+/* ---- the diagram's own placement: on the side chosen in Settings ---- */
 
 .dg-body > .ai-dock {
-  --ai-panel-border-left: 1px;
-  --ai-panel-border-right: 0px;
   border-radius: 10px;
+}
+
+html:not([data-ai-panel-side='right']) .dg-body > .ai-dock {
+  order: -1;
 }
 
 .dg-body > .ai-dock .copilot,
 .dg-body > .ai-dock .ai-rail {
   border: 1px solid var(--border);
   border-radius: 10px;
-}
-
-.dg-body .ai-panel-resizer {
-  left: 0;
-  right: auto;
-}
-
-.dg-body .ai-panel-collapse svg {
-  transform: scaleX(-1);
 }

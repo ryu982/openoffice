@@ -1,7 +1,18 @@
 import { join } from 'node:path'
-import { app, ipcMain, net, safeStorage, shell, webContents, type BrowserWindow } from 'electron'
+import {
+  app,
+  dialog,
+  ipcMain,
+  net,
+  safeStorage,
+  shell,
+  webContents,
+  type BrowserWindow,
+} from 'electron'
 import { PRODUCT_NAME, type Lang } from '@genoffice/i18n'
 import { safeExternalUrl } from '@genoffice/electron-utils'
+import { fileHasUnsavedChanges, isFileOpen } from '@genoffice/electron-utils/unsaved-files'
+import { parseFileToText } from '@genoffice/file-parse'
 import { MCP_SERVERS_CHANNELS } from '../../shared/mcp-servers-api'
 import { createMcpHub, redirectSafeFetch, type McpHub } from './hub'
 import { registerMcpHubIpc } from './hub-ipc'
@@ -96,6 +107,25 @@ export function startMcpHub(deps: McpHubAppDeps): McpHub {
     openSettings: (serverId) => {
       deps.openIntegrations()
       shellContents()?.send(MCP_SERVERS_CHANNELS.openServer, serverId)
+    },
+    openIntegrations: () => {
+      deps.openIntegrations()
+    },
+    pickVaultFolder: async () => {
+      const parent = deps.shellWindow()
+      const result =
+        parent && !parent.isDestroyed()
+          ? await dialog.showOpenDialog(parent, { properties: ['openDirectory'] })
+          : await dialog.showOpenDialog({ properties: ['openDirectory'] })
+      return result.canceled || result.filePaths.length === 0 ? null : (result.filePaths[0] ?? null)
+    },
+    obsidian: {
+      homeDir: app.getPath('home'),
+      userData,
+      isFileOpen,
+      hasUnsavedChanges: fileHasUnsavedChanges,
+      parseFileToText,
+      trashItem: (absPath) => shell.trashItem(absPath),
     },
   })
 

@@ -225,6 +225,14 @@
 
 **에이전트 창.** 아래 "에이전트 모드"의 "사용자 MCP 서버 중계"에 있다.
 
+**통합 커넥터와 내장 Obsidian 볼트 (결정 0161).** 설정 → 연동 상단에서 Google 드라이브와 함께 추천 서비스 5종(Notion, Canva, Obsidian 볼트, Korean Law MCP, kordoc MCP)을 같은 방식으로 관리한다.
+
+- **내장 Obsidian 볼트 (`kind: 'vault'`, `localOnly: true`).** 외부 프로세스나 Obsidian 앱을 띄우지 않고 껍데기 앱 뒷단(`apps/shell/src/main/mcp-client/obsidian-vault.ts`)이 로컬 `.md` 파일만 직접 읽고 쓴다. 볼트 폴더 안에 `.ieumoffice/` 등 관리·색인 파일을 만들지 않는다. 시스템 폴더·홈·앱 데이터 폴더 등록을 거부하고, `.obsidian`·숨김 항목·`..`·심볼릭 링크·하드링크(`nlink > 1`)·볼트 바깥 경로를 모두 막는다. 열린 탭의 파일 쓰기·삭제와 저장되지 않은 열린 탭 읽기를 거부하며, 읽기는 `parseFileToText`(결정 0016)를 거친다. `delete_note`는 운영체제 휴지통(`shell.trashItem`)만 쓰며 실패 시 `unlink`로 내려가지 않는다. 로컬 전용(`localOnly: true`)이므로 "AI가 인터넷 도구 쓰기"가 꺼져 있거나 드라이브·다른 `keepResultsInside` 서버 결과를 읽은 뒤에도 쓸 수 있지만, `keepResultsInside: true`가 기본이므로 볼트 노트를 읽은 뒤에는 바깥 도구가 막히고 볼트 결과 안의 URL은 확인된 주소로 치지 않는다. 에이전트 창에서 프로젝트 폴더 바깥의 볼트가 켜져 있으면 세션 시작 때 이를 경고한다(`mcpExternalVaults`).
+- **kordoc MCP (`npx -y kordoc mcp`).** 제3자 로컬 패키지가 디스크의 HWP·HWPX 파일을 직접 읽고 쓰므로 **편집기의 가리기(민감 정보 숨김)가 적용되지 않는다**. 연결 화면에서 이를 명시하고, `keepResultsInside: true`를 기본으로 두며, 내 PC 서버의 실행 명령 확인(`LaunchReview`)과 Node.js 내려받기 동의를 그대로 거친다.
+- **Korean Law MCP (`npx -y korean-law-mcp`).** `LAW_OC` 값은 운영체제 암호화로 봉인해 환경 변수로만 넘기고, 공개 법령 API이므로 `keepResultsInside: false`를 기본으로 둔다. 역시 실행 명령 확인과 Node.js 내려받기 동의를 거친다.
+- **Notion · Canva.** 공식 원격 MCP 주소(`mcp.notion.com/mcp`, `mcp.canva.com/mcp`)를 OAuth 2.1 동적 등록으로 연결하며 `keepResultsInside: true`가 기본이다.
+- **Obsidian · Notion 직접 첨부.** AI 창 `+` 첨부 메뉴에서 사람이 직접 고른 첨부(최대 20개)는 `keepResultsInside`나 드라이브 아웃바운드 차단을 유발하지 않는다. Obsidian 첨부 창은 저장되지 않은 열린 탭을 비활성화한다. Notion 첨부 창은 데이터베이스를 제외한 페이지만 검색해 본문을 `<temp>/ieumoffice-notion-attach/`에 안전한 `.md` 사본으로 저장(7일 지난 사본 정리)해 첨부하며, Notion 원문에는 편집기 가리기가 적용되지 않는다.
+
 ## 실행해 둔 프로그램은 앱보다 오래 살지 않는다
 
 | 때               | 처리                                                                                         |

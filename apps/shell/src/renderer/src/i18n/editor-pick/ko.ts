@@ -26,6 +26,7 @@ export const ko = {
   itemHtml: 'HTML',
   itemMindmap: '마인드맵',
   itemDiagram: '다이어그램',
+  itemWhiteboard: "화이트보드",
   itemHwp: '한글',
   itemEpub: '전자책(EPUB)',
 } satisfies Record<keyof typeof zh, string>

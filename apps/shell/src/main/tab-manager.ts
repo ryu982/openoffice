@@ -49,6 +49,12 @@ import {
   requestDiagramClose,
 } from '../../../diagram/src/main/diagram-main'
 import {
+  createWhiteboardView,
+  requestWhiteboardClose,
+  whiteboardIsDirty,
+  whiteboardTabIdentity,
+} from '../../../whiteboard/src/main/whiteboard-main'
+import {
   createPdfView,
   clearPdfDirty,
   markPdfUntitledCopy,
@@ -524,6 +530,8 @@ export class TabManager {
         return epubIsDirty(wc.id)
       case 'diagram':
         return diagramIsDirty(wc.id)
+      case 'whiteboard':
+        return whiteboardIsDirty(wc.id)
       default:
         return false
     }
@@ -756,6 +764,45 @@ export class TabManager {
   }
 
   /**
+   * Opens a whiteboard (`.whiteboard`) or imports an Excalidraw scene
+   * (`.excalidraw`, `.excalidraw.png`, `.excalidraw.svg`) as an untitled board.
+   */
+  openWhiteboardTab(
+    openPath?: string,
+    options?: {
+      restoredCopy?: { bytes: Uint8Array; originalPath?: string | null }
+      title?: string
+    },
+  ): string {
+    const view = createWhiteboardView({
+      filePath: openPath,
+      restoredCopy: options?.restoredCopy,
+    })
+    const id = `t${this.nextId++}`
+    this.shellWindow.contentView.addChildView(view)
+    view.setVisible(false)
+    this.trackHtmlFullScreen(view)
+    this.trackPaneFocus(view)
+    const identity = openPath ? whiteboardTabIdentity(view.webContents.id) : null
+    const imported = identity?.imported !== undefined
+    this.tabs.push({
+      id,
+      kind: 'whiteboard',
+      view,
+      title: options?.title
+        ? options.title
+        : imported
+          ? identity!.title
+          : openPath
+            ? basename(openPath)
+            : this.untitled('whiteboard', 'Whiteboard'),
+      filePath: imported ? undefined : openPath,
+    })
+    this.activateTab(id)
+    return id
+  }
+
+  /**
    * The generate window's "make": a new untitled tab of the target kind, with
    * the request queued for that tab's webContents to take once. The view is
    * created and the request queued in the same tick, before its renderer can
@@ -767,7 +814,9 @@ export class TabManager {
         ? this.openSlidesTab()
         : handoff.target === 'html'
           ? this.openHtmlTab()
-          : this.openMindmapTab()
+          : handoff.target === 'whiteboard'
+            ? this.openWhiteboardTab()
+            : this.openMindmapTab()
     const contents = this.webContentsForTab(id)
     if (!contents) throw new Error('the new tab could not be opened')
     queueGenerateHandoffFor(contents, handoff)
@@ -829,7 +878,17 @@ export class TabManager {
    * has no untitled document, so an EPUB copy is not opened either.
    */
   openTemplateCopy(copy: {
-    editor: 'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub'
+    editor:
+      | 'docs'
+      | 'sheets'
+      | 'slides'
+      | 'pdf'
+      | 'markdown'
+      | 'html'
+      | 'mindmap'
+      | 'hwp'
+      | 'epub'
+      | 'whiteboard'
     path: string
     bytes: Uint8Array
     fileName: string
@@ -862,6 +921,12 @@ export class TabManager {
       case 'pdf':
         markPdfUntitledCopy(copy.path)
         id = this.openPdfTab(copy.path)
+        break
+      case 'whiteboard':
+        id = this.openWhiteboardTab(undefined, {
+          restoredCopy: { bytes: copy.bytes, originalPath: copy.saveAsDefaultPath ?? null },
+          title: copy.title,
+        })
         break
       default:
         return null
@@ -1449,6 +1514,8 @@ export class TabManager {
         return path ? this.openEpubTab(path) : null
       case 'diagram':
         return this.openDiagramTab(path)
+      case 'whiteboard':
+        return this.openWhiteboardTab(path)
       default:
         return null
     }
@@ -1635,6 +1702,13 @@ export class TabManager {
       .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
   }
 
+  /** whiteboard tabs whose renderer reports unsaved edits (shell-close guard) */
+  dirtyWhiteboardTabs(): Array<{ id: string; webContents: WebContents }> {
+    return this.tabs
+      .filter((t) => t.kind === 'whiteboard' && t.view && whiteboardIsDirty(t.view.webContents.id))
+      .map((t) => ({ id: t.id, webContents: t.view!.webContents }))
+  }
+
   /** slides tabs whose main-process session has unsaved edits (shell-close guard) */
   dirtySlidesTabs(): Array<{ id: string; webContents: WebContents }> {
     return this.tabs
@@ -1696,6 +1770,9 @@ export class TabManager {
     }
     if (!closeGuard && tab.kind === 'diagram' && tab.view) {
       if (diagramIsDirty(tab.view.webContents.id)) closeGuard = requestDiagramClose
+    }
+    if (!closeGuard && tab.kind === 'whiteboard' && tab.view) {
+      if (whiteboardIsDirty(tab.view.webContents.id)) closeGuard = requestWhiteboardClose
     }
     // docs dirty state lives in the renderer and needs an async query; skip the guard when clean (avoids a flash activation)
     if (!closeGuard && tab.kind === 'docs' && tab.view) {
@@ -1993,6 +2070,27 @@ export class TabManager {
       : undefined
   }
 
+  findWhiteboardTabByPath(path?: string): string | undefined {
+    const own = this.findTabOfKindByPath('whiteboard', path)
+    if (own) return own
+    const wanted = canonicalPath(path)
+    if (wanted === undefined) return undefined
+    return this.tabs.find((t) => {
+      if (t.kind !== 'whiteboard' || !t.view || t.present) return false
+      const contents = t.view.webContents
+      if (contents.isDestroyed()) return false
+      const source = whiteboardTabIdentity(contents.id)?.sourcePath
+      return !!source && canonicalPath(source) === wanted
+    })?.id
+  }
+
+  activeWhiteboardTab(): { id: string; webContents: WebContents; filePath?: string } | undefined {
+    const tab = this.tabs.find((t) => t.id === this.activeId)
+    return tab?.kind === 'whiteboard' && tab.view
+      ? { id: tab.id, webContents: tab.view.webContents, filePath: tab.filePath }
+      : undefined
+  }
+
   findHwpTabByPath(path?: string): string | undefined {
     return this.findTabOfKindByPath('hwp', path)
   }
@@ -2075,6 +2173,8 @@ export function createPlainEditorView(kind: DocumentTabKind, filePath?: string):
       return createEpubView(filePath)
     case 'diagram':
       return createDiagramView(filePath)
+    case 'whiteboard':
+      return createWhiteboardView({ filePath })
   }
 }
 

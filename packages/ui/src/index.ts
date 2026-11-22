@@ -1,4 +1,22 @@
 export { AiPanelSideButton } from './AiPanelSideButton'
+export { AiPanelHeader, type AiPanelHeaderProps } from './AiPanelHeader'
+export { AiEmptyHints, type AiEmptyHintsProps } from './AiEmptyHints'
+export {
+  AiAttachMenu,
+  connectorPickedOf,
+  type AiAttachMenuProps,
+  type ConnectorAttachSources,
+  type ConnectorAttachWireResult,
+} from './AiAttachMenu'
+export {
+  CONNECTOR_ATTACH_STRINGS,
+  connectorAttachText,
+  type ConnectorAttachStringKey,
+} from './strings-attach-menu'
+export { AiWorkSteps, type AiWorkStep, type AiWorkStepsProps } from './AiWorkSteps'
+export { AiReplyFooter, type AiReplyFooterProps } from './AiReplyFooter'
+export { AiScrollToBottom, useScrollToBottom, type ScrollToBottomState } from './AiScrollToBottom'
+export { AI_PANEL_STRINGS, aiPanelText, type AiPanelStringKey } from './strings-ai-panel'
 export { DriveAttachButton, drivePickedOf } from './DriveAttachButton'
 export type { DriveAttachPicked } from './DriveAttachButton'
 export { DocAttachButton, docPickedOf } from './DocAttachButton'
@@ -158,8 +176,10 @@ export { McpPermissionCard, McpPermissionPrompt } from './McpPermissionCard'
 export { McpServerButton } from './McpServerButton'
 export {
   resolveMcpWindowState,
+  useDriveWindow,
   useMcpPermissionRequests,
   useMcpWindow,
+  type DriveWindowView,
   type McpWindowView,
 } from './use-mcp-window'
 export {
@@ -293,12 +313,23 @@ export {
   IconArrowDown,
   IconArrowLeft,
   IconArrowUp,
+  IconArrowUpRight,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconClose,
+  IconCloudDrive,
+  IconCopy,
+  IconFileDoc,
+  IconPaperclip,
   IconPicture,
+  IconPlus,
+  IconRetry,
   IconSend,
+  IconSlash,
+  IconStepDone,
+  IconStepError,
+  IconStepRunning,
   IconStop,
   IconTable,
   type IconProps,

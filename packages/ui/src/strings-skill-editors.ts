@@ -26,6 +26,7 @@ const zh = {
   editor_mindmap: '思维导图',
   editor_epub: 'EPUB',
   editor_diagram: '图表',
+  editor_whiteboard: '白板',
 }
 
 export const SKILL_EDITORS_STRINGS = defineStrings({
@@ -52,6 +53,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mind map',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagram',
+    editor_whiteboard: 'Whiteboard',
   },
   vi: {
     label: 'Nơi dùng',
@@ -75,6 +77,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Sơ đồ tư duy',
     editor_epub: 'EPUB',
     editor_diagram: 'Sơ đồ',
+    editor_whiteboard: 'Bảng trắng',
   },
   ja: {
     label: '使う場所',
@@ -97,6 +100,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'マインドマップ',
     editor_epub: 'EPUB',
     editor_diagram: 'ダイアグラム',
+    editor_whiteboard: 'ホワイトボード',
   },
   ko: {
     label: '쓰는 곳',
@@ -119,6 +123,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: '마인드맵',
     editor_epub: 'EPUB',
     editor_diagram: '다이어그램',
+    editor_whiteboard: '화이트보드',
   },
   fr: {
     label: 'Où l’utiliser',
@@ -143,6 +148,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Carte mentale',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagramme',
+    editor_whiteboard: 'Tableau blanc',
   },
   de: {
     label: 'Wo sie genutzt wird',
@@ -167,6 +173,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mindmap',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagramm',
+    editor_whiteboard: 'Whiteboard',
   },
   es: {
     label: 'Dónde se usa',
@@ -191,6 +198,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mapa mental',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagrama',
+    editor_whiteboard: 'Pizarra',
   },
   th: {
     label: 'ใช้ที่ใด',
@@ -213,6 +221,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'แผนผังความคิด',
     editor_epub: 'EPUB',
     editor_diagram: 'ไดอะแกรม',
+    editor_whiteboard: 'ไวท์บอร์ด',
   },
   id: {
     label: 'Tempat dipakai',
@@ -235,6 +244,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Peta pikiran',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagram',
+    editor_whiteboard: 'Papan tulis',
   },
   ru: {
     label: 'Где используется',
@@ -257,6 +267,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Интеллект-карта',
     editor_epub: 'EPUB',
     editor_diagram: 'Диаграмма',
+    editor_whiteboard: 'Доска',
   },
   ar: {
     label: 'مكان الاستخدام',
@@ -280,6 +291,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'الخريطة الذهنية',
     editor_epub: 'EPUB',
     editor_diagram: 'مخطط',
+    editor_whiteboard: 'اللوح الأبيض',
   },
   pt: {
     label: 'Onde é usada',
@@ -303,6 +315,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mapa mental',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagrama',
+    editor_whiteboard: 'Quadro branco',
   },
   it: {
     label: 'Dove si usa',
@@ -325,6 +338,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mappa mentale',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagramma',
+    editor_whiteboard: 'Lavagna',
   },
   pl: {
     label: 'Gdzie używać',
@@ -347,6 +361,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mapa myśli',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagram',
+    editor_whiteboard: 'Tablica',
   },
   cs: {
     label: 'Kde se používá',
@@ -369,6 +384,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Myšlenková mapa',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagram',
+    editor_whiteboard: 'Tabule',
   },
   nl: {
     label: 'Waar gebruikt',
@@ -393,6 +409,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Mindmap',
     editor_epub: 'EPUB',
     editor_diagram: 'Diagram',
+    editor_whiteboard: 'Whiteboard',
   },
   ms: {
     label: 'Tempat digunakan',
@@ -416,6 +433,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Peta minda',
     editor_epub: 'EPUB',
     editor_diagram: 'Rajah',
+    editor_whiteboard: 'Papan putih',
   },
   he: {
     label: 'איפה משתמשים',
@@ -438,6 +456,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'מפת חשיבה',
     editor_epub: 'EPUB',
     editor_diagram: 'תרשים',
+    editor_whiteboard: 'לוח לבן',
   },
   hi: {
     label: 'कहाँ उपयोग हो',
@@ -460,6 +479,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'माइंड मैप',
     editor_epub: 'EPUB',
     editor_diagram: 'आरेख',
+    editor_whiteboard: 'व्हाइटबोर्ड',
   },
   'zh-TW': {
     label: '使用位置',
@@ -482,6 +502,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: '心智圖',
     editor_epub: 'EPUB',
     editor_diagram: '圖表',
+    editor_whiteboard: '白板',
   },
   tr: {
     label: 'Kullanıldığı yer',
@@ -506,6 +527,7 @@ export const SKILL_EDITORS_STRINGS = defineStrings({
     editor_mindmap: 'Zihin haritası',
     editor_epub: 'EPUB',
     editor_diagram: 'Diyagram',
+    editor_whiteboard: 'Beyaz tahta',
   },
 })
 

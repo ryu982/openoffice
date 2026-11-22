@@ -39,6 +39,8 @@ import { MAX_OUTLINE_SLIDES, outlineToOps, parsePptxOutline } from '../mcp/pptx-
 export type ConvertedContent =
   /** markdown text for a new markdown tab */
   | { kind: 'mindmap-to-markdown'; target: 'markdown'; markdown: string }
+  /** markdown text extracted from a whiteboard for a new markdown tab */
+  | { kind: 'whiteboard-to-markdown'; target: 'markdown'; markdown: string }
   /** a whole new deck (blank deck + the outline's ops), for a new slides tab */
   | { kind: 'mindmap-to-slides'; target: 'slides'; deck: Uint8Array; slideCount: number }
   /** outline text the map editor reads into a new map (the engine's reader) */
@@ -101,6 +103,7 @@ export async function convertSource(
   try {
     switch (kind) {
       case 'mindmap-to-markdown':
+      case 'whiteboard-to-markdown':
         return {
           ok: true,
           content: { kind, target: CONVERT_TARGETS[kind], markdown: read.text },

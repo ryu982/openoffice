@@ -25,6 +25,7 @@ const KIND_LABEL: Record<AiTargetKind, GenerateStringKey> = {
   slides: 'kindSlides',
   html: 'kindHtml',
   mindmap: 'kindMindmap',
+  whiteboard: 'kindWhiteboard',
 }
 
 /** 8.6: what each conversion without AI makes */
@@ -32,6 +33,7 @@ const CONVERT_LABEL: Record<ConvertKind, GenerateStringKey> = {
   'mindmap-to-markdown': 'convertToMarkdown',
   'mindmap-to-slides': 'convertToSlides',
   'markdown-to-mindmap': 'convertToMindmap',
+  'whiteboard-to-markdown': 'convertToMarkdown',
 }
 
 /** why a conversion did not happen */

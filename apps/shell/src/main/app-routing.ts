@@ -20,6 +20,9 @@ const EPUB_RE = /\.epub$/i
 // picture is known by its double extension: a plain .svg / .png is no document.
 const DIAGRAM_RE = /\.(drawio|dio|vsdx|drawio\.svg|drawio\.png)$/i
 const DIAGRAM_PICTURE_RE = /\.drawio\.(svg|png)$/i
+// Whiteboards and Excalidraw imports (GUI import-only, never overwritten).
+const WHITEBOARD_RE = /\.(whiteboard|excalidraw|excalidraw\.png|excalidraw\.svg)$/i
+const EXCALIDRAW_PICTURE_RE = /\.excalidraw\.(svg|png)$/i
 
 const TEXT_RE = /\.(md|markdown|txt|json)$/i
 
@@ -35,17 +38,20 @@ export {
   HWP_RE,
   EPUB_RE,
   DIAGRAM_RE,
+  WHITEBOARD_RE,
   TEXT_RE,
 }
 
 /**
  * A file's extension as the app names its format, lower-case without the dot:
- * `drawio.svg` / `drawio.png` for a draw.io picture, else the last extension
- * (`docx`, as `extname` reads it), or '' for a name without one.
+ * `drawio.svg` / `drawio.png` / `excalidraw.svg` / `excalidraw.png` for
+ * double-extension drawings, else the last extension (`docx`), or ''.
  */
 export function documentExtension(name: string): string {
   const picture = DIAGRAM_PICTURE_RE.exec(name)
   if (picture) return `drawio.${picture[1].toLowerCase()}`
+  const excal = EXCALIDRAW_PICTURE_RE.exec(name)
+  if (excal) return `excalidraw.${excal[1].toLowerCase()}`
   return extname(name).slice(1).toLowerCase()
 }
 
@@ -60,6 +66,7 @@ export function appForPath(path: string): DocumentTabKind | undefined {
   if (HWP_RE.test(path)) return 'hwp'
   if (EPUB_RE.test(path)) return 'epub'
   if (DIAGRAM_RE.test(path)) return 'diagram'
+  if (WHITEBOARD_RE.test(path)) return 'whiteboard'
   return undefined
 }
 
@@ -73,11 +80,10 @@ export function renameStaysInApp(from: string, newName: string): boolean {
   // .ods is its own container (an ODF package, opened as a converted .xlsx
   // copy), so renaming it into or out of any other sheet form breaks the file
   if (current === 'sheets' && ODS_RE.test(from) !== ODS_RE.test(newName)) return false
-  // each diagram form keeps its own bytes (XML, a picture holding it, a Visio
-  // drawing), and so does each map form (.xmind, an imported .mm): renaming one
-  // into another leaves a file that no longer opens
+  // each diagram / map / whiteboard form keeps its own bytes: renaming one into
+  // another leaves a file that no longer opens
   if (
-    (current === 'diagram' || current === 'mindmap') &&
+    (current === 'diagram' || current === 'mindmap' || current === 'whiteboard') &&
     documentExtension(from) !== documentExtension(newName)
   ) {
     return false

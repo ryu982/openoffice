@@ -1,20 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import type { McpServerView, McpWindowState } from '@genoffice/agent-core'
+import type { DriveWindowState, McpServerView, McpWindowState } from '@genoffice/agent-core'
 import { aiModelPopoverStyle } from './AiModelPicker'
 import { useDismissablePopover } from './popover-dismiss'
-import {
-  mcpServerAction,
-  mcpServerButtonVisible,
-  mcpServerStatusText,
-  type McpServerAction,
-} from './user-mcp-model'
+import { mcpServerAction, mcpServerStatusText, type McpServerAction } from './user-mcp-model'
 import { userMcpText, type UserMcpStringKey } from './strings-user-mcp'
-import { useMcpWindow } from './use-mcp-window'
+import { useDriveWindow, useMcpWindow } from './use-mcp-window'
 import './user-mcp.css'
 
-const POPOVER_WIDTH = 300
-const POPOVER_MAX_HEIGHT = 380
+const POPOVER_WIDTH = 310
+const POPOVER_MAX_HEIGHT = 400
 
 const ACTION_LABELS: Record<McpServerAction, UserMcpStringKey> = {
   login: 'relogin',
@@ -101,41 +96,57 @@ function ServerRow({
   )
 }
 
+function activeConnectionCount(
+  servers: readonly McpServerView[],
+  offInChat: ReadonlySet<string>,
+  vaultsOffInChat: ReadonlySet<string>,
+  driveActive: boolean,
+): number {
+  let count = driveActive ? 1 : 0
+  for (const server of servers) {
+    if (server.status === 'disabled' || offInChat.has(server.name)) continue
+    if (server.localOnly && server.vaults) {
+      for (const v of server.vaults) {
+        if (v.enabled && !vaultsOffInChat.has(v.id)) count += 1
+      }
+    } else {
+      count += 1
+    }
+  }
+  return count
+}
+
 /**
- * The server button beside the AI input (user MCP spec 7.5). Shown only
- * while at least one registered server is on in Settings. It opens the
- * server list: per server, on/off for this conversation only, its status
- * ("Off in this conversation" once turned off here), "New tools: n" and the
- * action its status needs. Sign in again, review, check (never checked) and
- * turn on (off in Settings) open Settings → Integrations at that server;
- * retry asks the shell to connect again.
- *
- * `state` defaults to this window's MCP state (`windowMcpState()`); pass
- * `null` for none. `className` defaults to the panels' attach-button class.
+ * The Connections button beside the AI input. Always visible whenever an MCP
+ * bridge is present (even with 0 connected services), with a numeric badge when
+ * >= 1 connection is active in this chat. Opens the popover listing:
+ * - Google Drive AI search/read toggle (in editors when enabled; hidden in Home AI)
+ * - Individual Obsidian vault toggles
+ * - Remote/local MCP servers with status, per-chat toggle, and action button
+ * - "+ Manage connections…" button opening Settings → Integrations
  */
 export function McpServerButton({
   lang,
   state,
+  driveState,
+  showDrive = true,
   className = 'ai-attach-btn',
 }: {
   lang: Lang
   state?: McpWindowState | null
+  driveState?: DriveWindowState | null
+  showDrive?: boolean
   className?: string
 }): React.JSX.Element | null {
-  const { state: mcp, servers, offInChat } = useMcpWindow(state)
+  const { state: mcp, servers, offInChat, vaultsOffInChat } = useMcpWindow(state)
+  const drive = useDriveWindow(showDrive ? driveState : null)
   const [open, setOpen] = useState(false)
   const [popStyle, setPopStyle] = useState<React.CSSProperties>({})
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const popRef = useRef<HTMLDivElement | null>(null)
-  const visible = mcp !== null && mcpServerButtonVisible(servers)
 
   const close = useCallback(() => setOpen(false), [])
   useDismissablePopover(open, close, { inside: () => [buttonRef.current, popRef.current] })
-
-  // the last server turned off in Settings takes the button, and its list, away
-  useEffect(() => {
-    if (!visible) setOpen(false)
-  }, [visible])
 
   useEffect(() => {
     if (!open) return
@@ -144,7 +155,11 @@ export function McpServerButton({
       ?.focus({ preventScroll: true })
   }, [open])
 
-  if (!mcp || !visible) return null
+  if (!mcp) return null
+
+  const driveRowVisible = showDrive && drive.state !== null && drive.enabled
+  const driveActive = driveRowVisible && !drive.offInChat
+  const badgeCount = activeConnectionCount(servers, offInChat, vaultsOffInChat, driveActive)
 
   const label = userMcpText(lang, 'buttonLabel')
   const finish = () => {
@@ -174,13 +189,24 @@ export function McpServerButton({
     fire(() => mcp.bridge.openSettings(server))
     setOpen(false)
   }
+  const openManage = () => {
+    if (typeof mcp.bridge.openIntegrations === 'function') {
+      fire(() => mcp.bridge.openIntegrations!())
+    } else {
+      fire(() => mcp.bridge.openSettings(''))
+    }
+    setOpen(false)
+  }
+
+  // Count rendered items to decide whether to show the empty state notice
+  const hasAnyRow = driveRowVisible || servers.length > 0
 
   return (
     <>
       <button
         ref={buttonRef}
         type="button"
-        className={`${className} ai-mcp-server-btn${open ? ' open' : ''}`}
+        className={`${className} ai-mcp-server-btn${open ? ' open' : ''}${badgeCount > 0 ? ' has-active' : ''}`}
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -188,6 +214,11 @@ export function McpServerButton({
         onClick={() => (open ? finish() : openList())}
       >
         <ServerIcon />
+        {badgeCount > 0 && (
+          <span className="ai-mcp-badge" aria-hidden="true">
+            {badgeCount}
+          </span>
+        )}
       </button>
       {open && (
         <div
@@ -205,18 +236,97 @@ export function McpServerButton({
         >
           <div className="ai-mcp-pop-title">{label}</div>
           <p className="ai-mcp-pop-hint">{userMcpText(lang, 'listHint')}</p>
-          <ul className="ai-mcp-list">
-            {servers.map((server) => (
-              <ServerRow
-                key={server.name}
-                lang={lang}
-                server={server}
-                on={server.status !== 'disabled' && !offInChat.has(server.name)}
-                onToggle={(on) => mcp.setServerOffInChat(server.name, !on)}
-                onAction={(action) => act(server.name, action)}
-              />
-            ))}
-          </ul>
+          {!hasAnyRow ? (
+            <p className="ai-mcp-empty">{userMcpText(lang, 'emptyNotice')}</p>
+          ) : (
+            <ul className="ai-mcp-list">
+              {driveRowVisible && drive.state && (
+                <li
+                  key="__google_drive__"
+                  data-connector="google-drive"
+                  className={`ai-mcp-row${driveActive ? '' : ' is-off'}`}
+                >
+                  <label className="ai-mcp-row-main">
+                    <input
+                      type="checkbox"
+                      checked={driveActive}
+                      aria-label={userMcpText(lang, 'useInChat', {
+                        server: userMcpText(lang, 'driveRowName'),
+                      })}
+                      onChange={(e) => drive.state?.setOffInChat(!e.currentTarget.checked)}
+                    />
+                    <span className="ai-mcp-row-name">{userMcpText(lang, 'driveRowName')}</span>
+                  </label>
+                  <div className="ai-mcp-row-meta">
+                    <span
+                      className={`ai-mcp-row-status is-${driveActive ? 'connected' : 'off-in-chat'}`}
+                    >
+                      {driveActive
+                        ? userMcpText(lang, 'driveRowSubtitle')
+                        : userMcpText(lang, 'offInChat')}
+                    </span>
+                  </div>
+                </li>
+              )}
+              {servers.flatMap((server) => {
+                if (server.localOnly && server.vaults && server.status !== 'disabled') {
+                  const enabledVaults = server.vaults.filter((v) => v.enabled)
+                  if (enabledVaults.length === 0) return []
+                  return enabledVaults.map((vault) => {
+                    const vaultOn = !offInChat.has(server.name) && !vaultsOffInChat.has(vault.id)
+                    const rowTitle = `Obsidian · ${vault.name}`
+                    return (
+                      <li
+                        key={`${server.name}:${vault.id}`}
+                        data-vault-id={vault.id}
+                        className={`ai-mcp-row${vaultOn ? '' : ' is-off'}`}
+                      >
+                        <label className="ai-mcp-row-main">
+                          <input
+                            type="checkbox"
+                            checked={vaultOn}
+                            aria-label={userMcpText(lang, 'useVaultInChat', {
+                              vault: vault.name,
+                            })}
+                            onChange={(e) =>
+                              mcp.setVaultOffInChat(vault.id, !e.currentTarget.checked)
+                            }
+                          />
+                          <span className="ai-mcp-row-name" dir="auto">
+                            {rowTitle}
+                          </span>
+                        </label>
+                        <div className="ai-mcp-row-meta">
+                          <span
+                            className={`ai-mcp-row-status is-${vaultOn ? 'connected' : 'off-in-chat'}`}
+                          >
+                            {vaultOn
+                              ? userMcpText(lang, 'statusConnected')
+                              : userMcpText(lang, 'offInChat')}
+                          </span>
+                        </div>
+                      </li>
+                    )
+                  })
+                }
+                return [
+                  <ServerRow
+                    key={server.name}
+                    lang={lang}
+                    server={server}
+                    on={server.status !== 'disabled' && !offInChat.has(server.name)}
+                    onToggle={(on) => mcp.setServerOffInChat(server.name, !on)}
+                    onAction={(action) => act(server.name, action)}
+                  />,
+                ]
+              })}
+            </ul>
+          )}
+          <div className="ai-mcp-pop-footer">
+            <button type="button" className="ai-mcp-manage-btn" onClick={openManage}>
+              {userMcpText(lang, 'manageConnections')}
+            </button>
+          </div>
         </div>
       )}
     </>

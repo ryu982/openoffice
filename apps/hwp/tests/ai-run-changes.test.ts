@@ -73,9 +73,14 @@ describe('the card in the Hangul AI panel', () => {
     expect(panel).not.toContain('RunChangesCard')
   })
 
-  it('drops the marks button once a user edit took the marks off the pages', () => {
-    expect(panel).toContain('if (busy || !marksShown) return')
-    expect(panel).toContain('const result = await bridgeRef.current.hasMarks()')
-    expect(panel).toContain('if (!stopped && !result.shown) setMarksShown(false)')
+  it('drops the marks button once the plugin says the pages carry none, without asking it', () => {
+    expect(panel).toContain('if (!marksOnPage) setMarksShown(false)')
+    // a run that only removed things marked nothing: no button for it
+    expect(panel).toContain('setMarksShown(marksOnPageRef.current)')
+    expect(panel).not.toContain('hasMarks')
+  })
+
+  it('follows a run with the caret, never a selection that would cover the last mark', () => {
+    expect(panel).toContain('void bridgeRef.current.reveal({ ...change.place, length: 0 })')
   })
 })

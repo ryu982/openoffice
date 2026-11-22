@@ -46,6 +46,7 @@ export const nl = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Mindmap',
+  editorWhiteboard: 'Whiteboard',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Start',

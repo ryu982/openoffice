@@ -41,6 +41,8 @@ Logowanie jest przechowywane na tym komputerze z szyfrowaniem, które system ope
 - AI nie może zmieniać, usuwać ani udostępniać plików na Dysku.
 - Gdy rozmowa zawiera treść przeczytaną z Dysku, ta rozmowa przestaje korzystać z wyszukiwania w sieci, wyszukiwania obrazów, czytania stron z adresu internetowego i wstawiania obrazów z adresu internetowego. Zacznij nową rozmowę, aby znów z nich korzystać.
 
+Odczyt Dysku Google dla bieżącej rozmowy można też przełączać przyciskiem **Połączone usługi** obok pola AI. Gdy funkcje AI są wyłączone, Dysk Google pozostaje w **Ustawienia ▸ Integracje** do otwierania i zapisywania plików — ukryty jest tylko przełącznik AI.
+
 ## Rozłączanie
 
 Kliknij **Rozłącz** w **Ustawienia ▸ Integracje**. GenOffice usunie logowanie z tego komputera i poprosi Google o cofnięcie dostępu. Kopie plików na tym komputerze pozostaną. Dostęp możesz też w każdej chwili usunąć w sekcji **Połączenia z aplikacjami innych firm** na koncie Google.

@@ -118,6 +118,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS file_fts USING fts5(
 );
 `
 
+/** Pre-tokenized FTS5 body streams supplied by ieum-parse-sidecar to avoid main-thread CJK tokenization. */
+export interface PretokenizedBody {
+  readonly bi: string
+  readonly uni: string
+}
+
 /**
  * SQLite FTS5 index over file names, folders and extracted text. FTS5 only sees
  * pre-tokenized shadow text (see tokenize.ts); the raw body stays in `files`
@@ -179,6 +185,7 @@ export class FileIndexStore {
     meta: { path: string; mtimeMs: number; sizeBytes: number },
     text: string | null,
     status: IndexStatus,
+    pretokenized?: PretokenizedBody | null,
   ): void {
     const name = basename(meta.path)
     // a draw.io picture is listed as `drawio.svg` / `drawio.png`, like the recents
@@ -186,7 +193,18 @@ export class FileIndexStore {
     const body = text ? text.slice(0, MAX_BODY_CHARS) : null
     const nameTok = tokenize(name)
     const pathTok = tokenize(dirname(meta.path))
-    const bodyTok = body ? tokenize(body) : { bi: [], uni: [] }
+    let bodyBi = ''
+    let bodyUni = ''
+    if (body) {
+      if (pretokenized) {
+        bodyBi = pretokenized.bi
+        bodyUni = pretokenized.uni
+      } else {
+        const bodyTok = tokenize(body)
+        bodyBi = toIndexText(bodyTok.bi)
+        bodyUni = toIndexText(bodyTok.uni)
+      }
+    }
     this.db.exec('BEGIN')
     try {
       const existing = this.db.prepare('SELECT id FROM files WHERE path = ?').get(meta.path) as
@@ -208,10 +226,10 @@ export class FileIndexStore {
           inserted.lastInsertRowid,
           toIndexText(nameTok.bi),
           toIndexText(pathTok.bi),
-          toIndexText(bodyTok.bi),
+          bodyBi,
           toIndexText(nameTok.uni),
           toIndexText(pathTok.uni),
-          toIndexText(bodyTok.uni),
+          bodyUni,
         )
       this.db.exec('COMMIT')
     } catch (e) {

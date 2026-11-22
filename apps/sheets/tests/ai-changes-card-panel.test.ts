@@ -116,7 +116,7 @@ const unmarkButton = () =>
   host.querySelector<HTMLButtonElement>('[data-action="ai-changes-unmark"]')
 
 describe('sheets AI panel: the changes card', () => {
-  it('shows the count, reverts the run of that message, and hides marks while shown', async () => {
+  it('shows the count, reverts the run of that message, hides marks while shown, and renders Copy without Retry', async () => {
     const onRevertChanges = vi.fn(async () => undefined)
     const onClearMarks = vi.fn()
     render(
@@ -129,6 +129,7 @@ describe('sheets AI panel: the changes card', () => {
     expect(card()?.dataset.state).toBe('applied')
     expect(card()?.textContent).toContain('12')
     expect(host.querySelector('.ai-auto-applied')).toBeNull()
+    expect(host.querySelectorAll('.ai-reply-footer-btn')).toHaveLength(1)
     await act(async () => revertButton()!.click())
     expect(onRevertChanges).toHaveBeenCalledWith(1)
     act(() => unmarkButton()!.click())

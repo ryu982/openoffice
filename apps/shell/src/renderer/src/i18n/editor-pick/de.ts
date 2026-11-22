@@ -27,6 +27,7 @@ export const de = {
   itemHtml: 'HTML',
   itemMindmap: 'Mindmap',
   itemDiagram: 'Diagramm',
+  itemWhiteboard: "Whiteboard",
   itemHwp: 'HWP (Hangul)',
   itemEpub: 'E-Book (EPUB)',
 } satisfies Record<keyof typeof zh, string>

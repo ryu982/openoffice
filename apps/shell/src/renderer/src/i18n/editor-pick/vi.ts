@@ -27,6 +27,7 @@ export const vi = {
   itemHtml: 'HTML',
   itemMindmap: 'Sơ đồ tư duy',
   itemDiagram: 'Sơ đồ',
+  itemWhiteboard: "Bảng trắng",
   itemHwp: 'HWP (Hangul)',
   itemEpub: 'Sách điện tử (EPUB)',
 } satisfies Record<keyof typeof zh, string>

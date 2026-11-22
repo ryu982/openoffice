@@ -12,7 +12,19 @@ import { describe, expect, it } from 'vitest'
  */
 
 const APPS = join(__dirname, '..', '..')
-const EDITORS = ['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html', 'mindmap', 'hwp', 'epub']
+const EDITORS = [
+  'docs',
+  'sheets',
+  'slides',
+  'pdf',
+  'markdown',
+  'html',
+  'mindmap',
+  'hwp',
+  'epub',
+  'diagram',
+]
+const ATTACH_EDITORS = ['docs', 'sheets', 'slides', 'html', 'mindmap', 'hwp', 'epub', 'diagram']
 
 const preload = (app: string) => readFileSync(join(APPS, app, 'src', 'preload', 'index.ts'), 'utf8')
 
@@ -39,9 +51,22 @@ describe('MCP tools and outbound bridges in every AI window preload', () => {
     })
   }
 
-  it('the home window gets no Drive tools', () => {
+  for (const app of ATTACH_EDITORS) {
+    it(`${app} exposes the connector attach bridge`, () => {
+      const source = preload(app)
+      expect(source).toContain(
+        "import { connectorAttachBridge } from '@genoffice/electron-utils/connector-attach-bridge'",
+      )
+      expect(source).toContain(
+        'contextBridge.exposeInMainWorld(CONNECTOR_ATTACH_BRIDGE_KEY, connectorAttachBridge())',
+      )
+    })
+  }
+
+  it('the home window gets no Drive tools or connector attach bridge', () => {
     const source = preload('shell')
     expect(source).not.toContain('aiOfficeDriveAi')
     expect(source).not.toContain('drive-ai-bridge')
+    expect(source).not.toContain('connector-attach-bridge')
   })
 })

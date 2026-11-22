@@ -10,6 +10,7 @@ export const cs = {
   item_html: 'Editor HTML',
   item_mindmap: 'Editor myšlenkových map',
   item_diagram: 'Editor diagramů',
+  item_whiteboard: "Editor tabule",
   item_hwp: 'Editor hangul (HWP)',
   item_epub: 'Editor EPUB',
   offMessage: '{item}: vypnuto. Zapnout a otevřít?',

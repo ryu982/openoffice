@@ -69,6 +69,8 @@ Settings can register GenOffice as the handler for .docx / .xlsx / .pptx / .pdf 
 
 Under **Local HTTP server** the app can run the server itself — an enable switch, a port — and **Advanced** adds the health-check URL and the log file. It listens on localhost only.
 
+At the top of **Settings ▸ Integrations**, **Connected services** groups Google Drive, Notion, Canva, Obsidian Vault, Korean Law MCP, kordoc MCP, and any custom MCP servers you add above the coding-agent section.
+
 ## Command-line cheat sheet
 
 | Command             | What it does               |

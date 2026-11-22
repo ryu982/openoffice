@@ -26,6 +26,7 @@ const CREATE_TYPE_ITEM: Readonly<Record<string, EditorItemId>> = {
   html: 'html',
   xmind: 'mindmap',
   drawio: 'diagram',
+  whiteboard: 'whiteboard',
   hwp: 'hwp',
   hwpx: 'hwp',
   epub: 'epub',
@@ -42,6 +43,7 @@ const ITEM_LABEL: Readonly<Record<EditorItemId, string>> = {
   html: 'HTML',
   mindmap: 'mind map (.xmind)',
   diagram: 'diagram (.drawio)',
+  whiteboard: 'whiteboard (.whiteboard)',
   hwp: 'Hangul (.hwp/.hwpx)',
   epub: 'EPUB',
 }
