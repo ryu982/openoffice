@@ -8,7 +8,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import { aiVisible, useAppChoice, useAutoSavePref, useSplitPaneFocusPing } from '@genoffice/ui'
+import {
+  aiVisible,
+  useAppChoice,
+  useAutoSavePref,
+  useSplitPaneFocusPing,
+  type AutoSaveDefaultApi,
+} from '@genoffice/ui'
 import type {
   ExportFormat,
   ExportPageImage,
@@ -25,6 +31,14 @@ import { useI18n } from './i18n/locale'
 const AUTO_SAVE_INTERVAL_MS = 30_000
 const RECOVERY_INTERVAL_MS = 20_000
 const TOAST_MS = 4000
+
+// One object for the page's whole life: useAutoSavePref asks again and re-subscribes whenever
+// this object changes, and each answer re-renders the app, so a fresh object every render
+// would keep the app re-rendering without end.
+const AUTO_SAVE_API: AutoSaveDefaultApi = {
+  getAutoSaveDefault: () => window.whiteboardApi.core.getAutoSaveDefault(),
+  onAutoSaveDefaultChanged: (h) => window.whiteboardApi.core.onAutoSaveDefaultChanged(h),
+}
 
 export default function App(): ReactElement {
   const { t } = useI18n()
@@ -44,10 +58,7 @@ export default function App(): ReactElement {
     cmd: WhiteboardEditorMenuAction
   } | null>(null)
 
-  const [autoSave, setAutoSave] = useAutoSavePref('whiteboardapp.autoSave', {
-    getAutoSaveDefault: () => window.whiteboardApi.core.getAutoSaveDefault(),
-    onAutoSaveDefaultChanged: (h) => window.whiteboardApi.core.onAutoSaveDefaultChanged(h),
-  })
+  const [autoSave, setAutoSave] = useAutoSavePref('whiteboardapp.autoSave', AUTO_SAVE_API)
 
   const sessionRef = useRef<WhiteboardSession | null>(null)
   sessionRef.current = session
