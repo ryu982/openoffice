@@ -10,6 +10,7 @@ export const it = {
   item_html: 'Editor HTML',
   item_mindmap: 'Editor di mappe mentali',
   item_diagram: 'Editor di diagrammi',
+  item_whiteboard: "Editor lavagna",
   item_hwp: 'Editor Hangul (HWP)',
   item_epub: 'Editor EPUB',
   offMessage: '{item} è disattivato. Attivarlo e aprire?',

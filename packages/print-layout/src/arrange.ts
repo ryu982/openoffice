@@ -1,5 +1,7 @@
 // Main-process side: re-places a print job PDF's pages per the sheet plan. Pages
 // are embedded as form XObjects, so text stays text (nothing is rasterized).
+// Uses the Rust WASM core (`lopdf`) with an automatic JS (`pdf-lib`) fallback
+// ONLY on infrastructure failures or `GENOFFICE_PRINT_LAYOUT_RUST=0|off`.
 import {
   clip,
   degrees,
@@ -17,6 +19,7 @@ import { issue, PrintLayoutError } from './errors'
 import type { PageSize, Rect } from './geometry'
 import { changesSheetArrangement, validateOptions, type PrintLayoutOptions } from './options'
 import { planSheets } from './sheet-plan'
+import { wasmArrangePdf, wasmReadJobPageSizes } from './wasm'
 
 /** Cut marks are hairlines; 0.5pt still shows on every printer. */
 const CUT_MARK_WIDTH_PT = 0.5
@@ -62,10 +65,16 @@ function sourceInfo(page: PDFPage): SourceInfo {
   return { page, box, rotate, size, empty: page.node.Contents() === undefined }
 }
 
-/** Page sizes of a job PDF in points, /Rotate applied, as `planSheets` expects. */
-export async function readJobPageSizes(jobPdfBytes: Uint8Array): Promise<PageSize[]> {
+async function readJobPageSizesJs(jobPdfBytes: Uint8Array): Promise<PageSize[]> {
   const doc = await PDFDocument.load(jobPdfBytes, { updateMetadata: false })
   return doc.getPages().map((p) => sourceInfo(p).size)
+}
+
+/** Page sizes of a job PDF in points, /Rotate applied, as `planSheets` expects. */
+export async function readJobPageSizes(jobPdfBytes: Uint8Array): Promise<PageSize[]> {
+  const wasm = wasmReadJobPageSizes(jobPdfBytes)
+  if (wasm.ok) return wasm.value
+  return readJobPageSizesJs(jobPdfBytes)
 }
 
 /**
@@ -98,21 +107,10 @@ function toPdf(r: Rect, sheetHeight: number) {
   return { x: r.x, y: sheetHeight - r.y - r.height, width: r.width, height: r.height }
 }
 
-/**
- * Builds the arranged PDF for a print job. When the options leave the faces as
- * the job's pages (all defaults, or only grayscale/dpi differ) the input bytes
- * are returned as they are. Throws `PrintLayoutError` for invalid options or
- * when the sides filter leaves no face.
- */
-export async function arrangePrintJob(
+async function arrangePrintJobJs(
   jobPdfBytes: Uint8Array,
   options: PrintLayoutOptions,
 ): Promise<Uint8Array> {
-  // Shape check before parsing anything; the page-count check follows below.
-  const shape = validateOptions(options, Number.MAX_SAFE_INTEGER)
-  if (!shape.ok) throw new PrintLayoutError(shape.error)
-  if (!changesSheetArrangement(shape.options)) return jobPdfBytes
-
   const src = await PDFDocument.load(jobPdfBytes, { updateMetadata: false })
   const infos = src.getPages().map(sourceInfo)
   const plan = planSheets(
@@ -162,4 +160,32 @@ export async function arrangePrintJob(
     }
   }
   return out.save()
+}
+
+/**
+ * Builds the arranged PDF for a print job. When the options leave the faces as
+ * the job's pages (all defaults, or only grayscale/dpi differ) the input bytes
+ * are returned as they are. Throws `PrintLayoutError` for invalid options or
+ * when the sides filter leaves no face.
+ */
+export async function arrangePrintJob(
+  jobPdfBytes: Uint8Array,
+  options: PrintLayoutOptions,
+): Promise<Uint8Array> {
+  // Shape check before parsing anything; the page-count check follows below.
+  const shape = validateOptions(options, Number.MAX_SAFE_INTEGER)
+  if (!shape.ok) throw new PrintLayoutError(shape.error)
+  if (!changesSheetArrangement(shape.options)) return jobPdfBytes
+
+  const sizesRes = wasmReadJobPageSizes(jobPdfBytes)
+  if (sizesRes.ok) {
+    const plan = planSheets(sizesRes.value, options)
+    if (plan.output.length === 0) {
+      throw new PrintLayoutError(issue('no-faces', 'the sides filter leaves no face to print'))
+    }
+    const arrangedRes = wasmArrangePdf(jobPdfBytes, plan.output)
+    if (arrangedRes.ok) return arrangedRes.value
+  }
+
+  return arrangePrintJobJs(jobPdfBytes, options)
 }

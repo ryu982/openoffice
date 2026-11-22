@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import { extractPdfTextWithPdfium, isPdfPdfiumDisabled, PdfiumInfraError } from './pdf-pdfium'
 
 // pdfjs needs the standard_fonts data directory for non-embedded standard fonts
 // (Helvetica etc.); under Node a filesystem path works (same usage as the official
@@ -134,8 +135,8 @@ function installDomMatrixPolyfill(): void {
   g.DOMMatrix = DOMMatrixPolyfill
 }
 
-/** extract text from a pdf with pdfjs-dist (pure JS, no native deps), one section per page */
-export async function pdfToText(bytes: Uint8Array): Promise<string> {
+/** extract text from a pdf with pdfjs-dist (pure JS fallback), one section per page */
+async function pdfToTextWithPdfjs(bytes: Uint8Array): Promise<string> {
   installDomMatrixPolyfill()
   // Explicitly import the worker module (its top level registers globalThis.pdfjsWorker,
   // which the fake worker prefers) — otherwise pdfjs looks up pdf.worker.mjs by path at
@@ -187,4 +188,22 @@ export async function pdfToText(bytes: Uint8Array): Promise<string> {
   } finally {
     await loadingTask.destroy()
   }
+}
+
+/**
+ * Extract plain text from a PDF, one section per page separated by `\n\n`.
+ * Uses the bundled PDFium WASM engine by default and falls back to pdfjs-dist
+ * only when disabled (`GENOFFICE_PDF_PDFIUM=0|off`) or on WASM infrastructure
+ * failures. Semantic PDF rejections (password-protected, corrupt, unsupported
+ * security handler) are never retried on pdfjs-dist.
+ */
+export async function pdfToText(bytes: Uint8Array): Promise<string> {
+  if (!isPdfPdfiumDisabled()) {
+    try {
+      return await extractPdfTextWithPdfium(bytes)
+    } catch (err) {
+      if (!(err instanceof PdfiumInfraError)) throw err
+    }
+  }
+  return pdfToTextWithPdfjs(bytes)
 }

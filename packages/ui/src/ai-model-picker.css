@@ -75,12 +75,12 @@
   z-index: 80;
   display: flex;
   flex-direction: column;
-  width: 260px;
+  width: 264px;
   max-height: min(420px, 70vh);
-  padding: 4px;
+  padding: 5px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-8);
+  border-radius: var(--radius-12);
   box-shadow: var(--shadow-menu);
   font-size: 12px;
 }

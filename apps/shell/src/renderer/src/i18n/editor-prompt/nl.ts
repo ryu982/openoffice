@@ -10,6 +10,7 @@ export const nl = {
   item_html: 'HTML-editor',
   item_mindmap: 'Mindmap-editor',
   item_diagram: 'Diagrameditor',
+  item_whiteboard: "Whiteboard-editor",
   item_hwp: 'Hangul-editor (HWP)',
   item_epub: 'EPUB-editor',
   offMessage: '{item} staat uit. Aanzetten en openen?',

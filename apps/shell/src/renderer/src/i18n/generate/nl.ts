@@ -6,6 +6,7 @@ export const nl = {
   kindSlides: 'Presentatie (PPT)',
   kindHtml: 'Webpagina (HTML)',
   kindMindmap: 'Mindmap',
+  kindWhiteboard: "Whiteboard",
   materialsLabel: 'Materiaal',
   addMaterials: 'Bestanden toevoegen…',
   removeMaterial: 'Verwijderen',

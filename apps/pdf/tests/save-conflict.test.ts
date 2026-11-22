@@ -10,6 +10,17 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+/** every whole-file read the main process makes, by path */
+const fileReads = vi.fn()
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = ((...args: Parameters<typeof actual.readFile>) => {
+    fileReads(args[0])
+    return actual.readFile(...args)
+  }) as typeof actual.readFile
+  return { ...actual, default: { ...actual, readFile }, readFile }
+})
 import { PDFDocument } from 'pdf-lib'
 
 type IpcHandler = (event: { sender: { id: number } }, ...args: unknown[]) => unknown
@@ -126,6 +137,74 @@ async function openedView(path: string): Promise<number> {
 }
 
 const isPdf = (path: string): boolean => readFileSync(path).subarray(0, 4).toString() === '%PDF'
+
+/** The renderer's read of a large file: one slice after another, from the start */
+async function readInSlices(wcId: number, path: string, sliceBytes: number): Promise<Buffer> {
+  const slices: Uint8Array[] = []
+  let offset = 0
+  let fileSize = Infinity
+  do {
+    const slice = (await handlers.get(PDF_CHANNELS.readFileChunk)!(
+      { sender: { id: wcId } },
+      path,
+      offset,
+      Math.min(offset + sliceBytes, fileSize),
+    )) as { data: Uint8Array; fileSize: number }
+    if (slice.data.length === 0) break
+    slices.push(slice.data)
+    offset += slice.data.length
+    fileSize = slice.fileSize
+  } while (offset < fileSize)
+  return Buffer.concat(slices)
+}
+
+describe('opening a PDF', () => {
+  /** another pane's write stands an automatic save down; the file as it was read does not */
+  async function expectStateOfTheFileAsRead(wcId: number, path: string, original: Buffer) {
+    setOpenPathProbe((each) => each === path)
+    writeFileSync(path, await pdfBytes('changed elsewhere'))
+    expect(await save(wcId, savedRequest(path, { auto: true }))).toEqual({
+      ok: false,
+      error: 'external-modified',
+    })
+    writeFileSync(path, original)
+    expect(await save(wcId, savedRequest(path, { auto: true }))).toMatchObject({ ok: true })
+    expect(showMessageBox).not.toHaveBeenCalled()
+  }
+
+  it('reads the file once: its content also gives the recorded disk state', async () => {
+    const path = await makePdfFile()
+    const original = readFileSync(path)
+    fileReads.mockClear()
+    const wcId = await openedView(path)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+    await expectStateOfTheFileAsRead(wcId, path, original)
+  })
+
+  it('does not read a file again whole after handing it over in slices', async () => {
+    const path = await makePdfFile()
+    const original = readFileSync(path)
+    const wcId = (createPdfView(path).webContents as unknown as FakeWebContents).id
+    fileReads.mockClear()
+    const read = await readInSlices(wcId, path, Math.ceil(original.length / 3))
+    expect(read.equals(original)).toBe(true)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(0)
+    await expectStateOfTheFileAsRead(wcId, path, original)
+  })
+
+  it('reads the file for the record when a slice comes out of turn', async () => {
+    const path = await makePdfFile()
+    const original = readFileSync(path)
+    const wcId = (createPdfView(path).webContents as unknown as FakeWebContents).id
+    const slice = (start: number, end: number) =>
+      handlers.get(PDF_CHANNELS.readFileChunk)!({ sender: { id: wcId } }, path, start, end)
+    fileReads.mockClear()
+    await slice(0, 10)
+    await slice(20, 30)
+    expect(fileReads.mock.calls.filter(([read]) => read === path)).toHaveLength(1)
+    await expectStateOfTheFileAsRead(wcId, path, original)
+  })
+})
 
 describe('a save with no copy pair is unchanged', () => {
   it('does not ask anything even when another program changed the disk', async () => {

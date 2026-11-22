@@ -13,8 +13,10 @@ import {
   type McpFailReason,
   type McpPasteView,
   type McpPermission,
+  type McpPickVaultResult,
   type McpPlannedLaunchAnswer,
   type McpPlannedLaunchView,
+  type McpPresetId,
   type McpReviewSubject,
   type McpRuntimeId,
   type McpRuntimeQuestion,
@@ -27,9 +29,15 @@ import {
   type McpSignInAnswer,
   type McpTestResult,
   type McpToolNameView,
+  type McpVaultEntry,
 } from '../../shared/mcp-servers-api'
 import { checkServerAddress } from './address'
-import { launchReviewNeeded, planFingerprint, serverLaunchFingerprint } from './fingerprint'
+import {
+  instructionsFingerprint,
+  launchReviewNeeded,
+  planFingerprint,
+  serverLaunchFingerprint,
+} from './fingerprint'
 import { mcpLaunchProblemText, mcpSignInPages, type McpLaunchProblemKey } from './hub-strings'
 import {
   acceptFirstListing,
@@ -45,11 +53,20 @@ import {
 import { LocalMcpError, type LocalMcpConnection, type LocalMcpState } from './local'
 import type { LocalLaunchProblem, PlannedLaunch } from './local-launch'
 import { storeOAuthAccess, type McpFetch, type McpOAuthAccess } from './oauth'
+import { OBSIDIAN_LISTED_TOOLS, obsidianServerInstructions } from './obsidian-tools'
+import {
+  executeObsidianTool,
+  suggestVaultName,
+  validateVaultFolder,
+  type ObsidianVaultDeps,
+} from './obsidian-vault'
 import { parseMcpPaste, type PastedServer } from './paste'
+import { MCP_PRESETS, matchPresetOfServer, presetServerName } from './presets'
 import { RemoteMcpError, type RemoteMcpConnection } from './remote'
 import type { McpRuntimeKit, RuntimeMissing } from './runtimes'
 import { secretView } from './secrets'
 import { newMcpServerConfig, type McpServerConfig, type McpServersStore } from './store'
+import { samePath } from '../projects/paths'
 
 /**
  * The one place the app holds the person's MCP servers (user MCP spec 5.1):
@@ -76,6 +93,11 @@ import { newMcpServerConfig, type McpServerConfig, type McpServersStore } from '
 
 // ---- what the hub needs -------------------------------------------------------
 
+export interface McpHubObsidianDeps extends ObsidianVaultDeps {
+  homeDir: string
+  userData: string
+}
+
 export interface McpHubDeps {
   store: McpServersStore
   /** a connection to a remote server; the app uses `net.fetch` behind it */
@@ -92,6 +114,12 @@ export interface McpHubDeps {
   openExternal(url: string): Promise<unknown>
   /** show Settings → Integrations at this server */
   openSettings(serverId: string): void
+  /** show Settings → Integrations (even when no server is selected) */
+  openIntegrations?(): void
+  /** open the native folder chooser for selecting an Obsidian vault folder */
+  pickVaultFolder?(): Promise<string | null>
+  /** host hooks for the built-in Obsidian vault connector */
+  obsidian?: McpHubObsidianDeps
 }
 
 export interface McpHub {
@@ -104,7 +132,7 @@ export interface McpHub {
   editorList(): McpServerView[]
   /**
    * `caller` keeps call ids of different windows apart. The answer is the
-   * result shaped for the AI (5.5), the same for both kinds of server, or
+   * result shaped for the AI (5.5), the same for every kind of server, or
    * the reason the call could not be made.
    */
   call(
@@ -113,12 +141,14 @@ export interface McpHub {
     tool: string,
     input: Record<string, unknown>,
     callId: string,
+    options?: { disabledVaults?: string[] },
   ): Promise<McpCallAnswer>
   cancel(caller: string, callId: string): void
   /** the caller's window went away: stop every call of it */
   cancelCaller(caller: string): void
   retryByName(server: string): { ok: boolean }
   openSettingsByName(server: string): { ok: boolean }
+  openIntegrations(): { ok: boolean }
 
   // Settings
   settingsView(): McpServersSettingsView
@@ -140,6 +170,39 @@ export interface McpHub {
   plannedLaunch(id: string): Promise<McpPlannedLaunchAnswer>
   answerRuntimeDownload(id: string, download: boolean): Promise<McpPlannedLaunchAnswer>
   retry(id: string): McpSettingsResult
+  connectPreset(input: {
+    presetId: McpPresetId
+    lawOc?: string
+  }): Promise<McpSettingsResult<{ id: string }>>
+  pickVaultFolder(): Promise<McpPickVaultResult>
+  addVault(input: {
+    path: string
+    name: string
+  }): Promise<McpSettingsResult<{ serverId: string; vaultId: string }>>
+  removeVault(vaultId: string): Promise<McpSettingsResult>
+  renameVault(vaultId: string, name: string): Promise<McpSettingsResult>
+  setVaultEnabled(vaultId: string, enabled: boolean): Promise<McpSettingsResult>
+
+  // Main-process internal accessors for user-initiated attach pickers (never exposed via IPC)
+  registeredVaults(): McpVaultEntry[]
+  notionPickerStatus(): { available: boolean; serverId: string | null }
+  canvaPickerStatus(): { available: boolean; serverId: string | null }
+  listToolsForUserPicker(
+    serverId: string,
+    signal?: AbortSignal,
+  ): Promise<
+    | {
+        ok: true
+        tools: { name: string; description?: string; inputSchema?: Record<string, unknown> }[]
+      }
+    | { ok: false; error: string }
+  >
+  callForUserPicker(
+    serverId: string,
+    tool: string,
+    input: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<McpCallAnswer>
 
   /** the app is quitting: stop every call, every server and any download under way */
   stopAll(): Promise<void>
@@ -372,6 +435,9 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
   }
 
   function statusOf(server: McpServerConfig): McpServerStatusInfo {
+    if (server.kind === 'vault') {
+      return server.enabled ? { status: 'connected' } : { status: 'disabled' }
+    }
     const live = lives.get(server.id)
     // approved tools or guide stored from an earlier listing: usable before connecting
     const listedBefore =
@@ -622,6 +688,20 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
         ...(tool.definition.annotations?.destructiveHint === true ? { destructive: true } : {}),
       }
     })
+    const presetId = matchPresetOfServer(server)
+    const presetSpec = presetId ? MCP_PRESETS[presetId] : null
+    const presetGuide =
+      presetSpec && 'presetInstructions' in presetSpec ? presetSpec.presetInstructions : null
+    const vaultInstructions =
+      server.kind === 'vault'
+        ? obsidianServerInstructions(server.vaults.filter((v) => v.enabled)) || null
+        : null
+    const serverInstructions =
+      server.instructions && server.pendingInstructions === null ? server.instructions.text : null
+    const mergedInstructions =
+      server.kind === 'vault'
+        ? vaultInstructions
+        : [serverInstructions, presetGuide].filter(Boolean).join('\n\n') || null
     return {
       name: server.name,
       status: status.status,
@@ -629,10 +709,12 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       ...(review.length > 0 ? { review } : {}),
       newToolCount: server.newTools.length,
       keepResultsInside: server.keepResultsInside,
-      instructions:
-        server.instructions && server.pendingInstructions === null
-          ? server.instructions.text
-          : null,
+      ...(server.kind === 'vault' ? { localOnly: true } : {}),
+      ...(presetId ? { presetId } : {}),
+      ...(server.kind === 'vault'
+        ? { vaults: server.vaults.map(({ id, name, enabled }) => ({ id, name, enabled })) }
+        : {}),
+      instructions: mergedInstructions,
       tools,
     }
   }
@@ -733,11 +815,14 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     toolName: string,
     input: Record<string, unknown>,
     callId: string,
+    options?: { disabledVaults?: string[] },
   ): Promise<McpCallAnswer> {
     const found = findByName(serverName)
     if (!found) return refusal(TEXT.unknownServer(serverName))
     const live = liveOf(found.id)
-    const early = stoppingRefusal(found) ?? refusalFor(found, toolName, live.listed)
+    const early =
+      stoppingRefusal(found) ??
+      refusalFor(found, toolName, found.kind === 'vault' ? true : live.listed)
     if (early) return refusal(early)
 
     const key = `${caller}\u0000${callId}`
@@ -746,6 +831,17 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     calls.set(key, { serverId: found.id, caller, controller })
     const signal = controller.signal
     try {
+      if (found.kind === 'vault') {
+        if (!deps.obsidian) return refusal('Obsidian vault connector is not available.')
+        const disabled = new Set(options?.disabledVaults ?? [])
+        const activeVaults = found.vaults.filter((v) => v.enabled && !disabled.has(v.id))
+        const result = await executeObsidianTool(toolName, input, activeVaults, deps.obsidian)
+        if (signal.aborted) return refusal(troubleText(found.name, troubleOf(null, signal)))
+        return shapedMcpAnswer({
+          output: result.output.slice(0, MCP_RESULT_MAX_CHARS),
+          isError: result.isError,
+        })
+      }
       // the first use after the app started reads the list (5.7) and applies its changes
       const trouble = await ensureListed(found.id, signal)
       if (trouble) return refusal(troubleText(found.name, trouble))
@@ -1278,6 +1374,274 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     }
   }
 
+  async function connectPreset(input: {
+    presetId: McpPresetId
+    lawOc?: string
+  }): Promise<McpSettingsResult<{ id: string }>> {
+    const spec = MCP_PRESETS[input.presetId]
+    if (!spec) return invalid('invalid', 'presetId')
+    const existing = store.get().servers.find((s) => matchPresetOfServer(s) === input.presetId)
+    if (existing) return { ok: true, id: existing.id }
+
+    const taken = store.get().servers.map((s) => s.name)
+    const name = presetServerName(spec.defaultName, taken)
+    if (spec.kind === 'remote') {
+      const server = newMcpServerConfig({
+        name,
+        kind: 'remote',
+        presetId: spec.id,
+        keepResultsInside: spec.keepResultsInside,
+        url: spec.url,
+        transport: 'auto',
+      })
+      await store.update((file) => {
+        file.servers.push(server)
+      })
+      notify()
+      return { ok: true, id: server.id }
+    }
+    const env: Record<string, string> = {
+      ...('defaultEnv' in spec && spec.defaultEnv ? spec.defaultEnv : {}),
+    }
+    if ('requiredEnv' in spec && spec.requiredEnv) {
+      const value = (input.lawOc ?? '').trim()
+      if (!value || value.includes('\0')) return invalid('invalid', spec.requiredEnv)
+      env[spec.requiredEnv] = value
+    }
+    // Local presets never skip launch approval: approvedLaunch and approvedPlan stay null
+    const server = newMcpServerConfig({
+      name,
+      kind: 'local',
+      presetId: spec.id,
+      keepResultsInside: spec.keepResultsInside,
+      command: spec.command,
+      args: [...spec.args],
+      env,
+    })
+    await store.update((file) => {
+      file.servers.push(server)
+    })
+    notify()
+    return { ok: true, id: server.id }
+  }
+
+  function findVaultServer(): McpServerConfig | null {
+    return store.get().servers.find((s) => s.kind === 'vault') ?? null
+  }
+
+  function withVaultInstructions(server: McpServerConfig): McpServerConfig {
+    const text = obsidianServerInstructions(server.vaults.filter((v) => v.enabled))
+    return {
+      ...server,
+      instructions: text ? { approved: instructionsFingerprint(text), text } : null,
+      pendingInstructions: null,
+    }
+  }
+
+  async function pickVaultFolder(): Promise<McpPickVaultResult> {
+    if (!deps.pickVaultFolder || !deps.obsidian) return { ok: false, reason: 'cancelled' }
+    const chosen = await deps.pickVaultFolder().catch(() => null)
+    if (!chosen) return { ok: false, reason: 'cancelled' }
+    const validated = await validateVaultFolder(chosen, {
+      homeDir: deps.obsidian.homeDir,
+      userData: deps.obsidian.userData,
+      platform: deps.obsidian.platform,
+    })
+    if (!validated.ok) {
+      return { ok: false, reason: 'forbidden', message: validated.detail }
+    }
+    const existingNames = (findVaultServer()?.vaults ?? []).map((v) => v.name)
+    return {
+      ok: true,
+      path: validated.path,
+      suggestedName: suggestVaultName(validated.suggestedName, existingNames),
+      hasObsidianDir: validated.hasObsidianDir,
+    }
+  }
+
+  async function addVault(input: {
+    path: string
+    name: string
+  }): Promise<McpSettingsResult<{ serverId: string; vaultId: string }>> {
+    if (!deps.obsidian) return invalid('failed', 'obsidian-unavailable')
+    const validated = await validateVaultFolder(input.path, {
+      homeDir: deps.obsidian.homeDir,
+      userData: deps.obsidian.userData,
+      platform: deps.obsidian.platform,
+    })
+    if (!validated.ok) return invalid('forbidden-folder', validated.detail)
+    const platform = deps.obsidian.platform ?? process.platform
+
+    const existingServer = findVaultServer()
+    if (existingServer?.vaults.some((v) => samePath(v.path, validated.path, platform))) {
+      return invalid('duplicate-vault')
+    }
+    const existingNames = (existingServer?.vaults ?? []).map((v) => v.name)
+    const vaultName = suggestVaultName(input.name || validated.suggestedName, existingNames)
+    const vaultEntry: McpVaultEntry = {
+      id: randomUUID(),
+      name: vaultName,
+      path: validated.path,
+      enabled: true,
+    }
+
+    if (existingServer) {
+      await replaceServer(existingServer.id, (s) =>
+        withVaultInstructions({ ...s, vaults: [...s.vaults, vaultEntry] }),
+      )
+      notify()
+      return { ok: true, serverId: existingServer.id, vaultId: vaultEntry.id }
+    }
+
+    const taken = store.get().servers.map((s) => s.name)
+    const base = newMcpServerConfig({
+      name: presetServerName('obsidian', taken),
+      kind: 'vault',
+      keepResultsInside: true,
+      vaults: [vaultEntry],
+    })
+    const populated = acceptFirstListing(base, {
+      tools: OBSIDIAN_LISTED_TOOLS,
+      instructions: obsidianServerInstructions([vaultEntry]),
+    })
+    await store.update((file) => {
+      file.servers.push(populated)
+    })
+    notify()
+    return { ok: true, serverId: populated.id, vaultId: vaultEntry.id }
+  }
+
+  async function removeVault(vaultId: string): Promise<McpSettingsResult> {
+    const server = findVaultServer()
+    if (!server || !server.vaults.some((v) => v.id === vaultId)) return invalid('not-found')
+    const nextVaults = server.vaults.filter((v) => v.id !== vaultId)
+    if (nextVaults.length === 0) {
+      return remove(server.id)
+    }
+    await replaceServer(server.id, (s) => withVaultInstructions({ ...s, vaults: nextVaults }))
+    notify()
+    return { ok: true }
+  }
+
+  async function renameVault(vaultId: string, name: string): Promise<McpSettingsResult> {
+    const clean = name.trim()
+    if (!clean) return invalid('invalid', 'name')
+    const server = findVaultServer()
+    if (!server || !server.vaults.some((v) => v.id === vaultId)) return invalid('not-found')
+    const conflict = server.vaults.some(
+      (v) => v.id !== vaultId && v.name.toLowerCase() === clean.toLowerCase(),
+    )
+    if (conflict) return invalid('name-taken')
+    await replaceServer(server.id, (s) =>
+      withVaultInstructions({
+        ...s,
+        vaults: s.vaults.map((v) => (v.id === vaultId ? { ...v, name: clean } : v)),
+      }),
+    )
+    notify()
+    return { ok: true }
+  }
+
+  async function setVaultEnabled(vaultId: string, enabled: boolean): Promise<McpSettingsResult> {
+    const server = findVaultServer()
+    if (!server || !server.vaults.some((v) => v.id === vaultId)) return invalid('not-found')
+    await replaceServer(server.id, (s) =>
+      withVaultInstructions({
+        ...s,
+        vaults: s.vaults.map((v) => (v.id === vaultId ? { ...v, enabled } : v)),
+      }),
+    )
+    notify()
+    return { ok: true }
+  }
+
+  function registeredVaults(): McpVaultEntry[] {
+    const server = findVaultServer()
+    return server ? server.vaults.map((v) => ({ ...v })) : []
+  }
+
+  function remotePresetPickerStatus(presetId: 'notion' | 'canva'): {
+    available: boolean
+    serverId: string | null
+  } {
+    const server = store.get().servers.find((s) => matchPresetOfServer(s) === presetId)
+    if (!server) return { available: false, serverId: null }
+    const live = lives.get(server.id)
+    if (live?.loginRequired || live?.remote?.needsSignIn() === true) {
+      return { available: false, serverId: server.id }
+    }
+    const hasOAuthToken = Boolean(server.oauth && server.oauth.tokens !== '')
+    const hasAuthHeader = Object.entries(server.headers).some(
+      ([k, v]) => k.toLowerCase() === 'authorization' && v.trim() !== '',
+    )
+    return { available: hasOAuthToken || hasAuthHeader, serverId: server.id }
+  }
+
+  function notionPickerStatus(): { available: boolean; serverId: string | null } {
+    return remotePresetPickerStatus('notion')
+  }
+
+  function canvaPickerStatus(): { available: boolean; serverId: string | null } {
+    return remotePresetPickerStatus('canva')
+  }
+
+  async function listToolsForUserPicker(
+    serverId: string,
+    signal?: AbortSignal,
+  ): Promise<
+    | {
+        ok: true
+        tools: { name: string; description?: string; inputSchema?: Record<string, unknown> }[]
+      }
+    | { ok: false; error: string }
+  > {
+    const server = store.server(serverId)
+    if (!server || server.kind !== 'remote') return { ok: false, error: 'Server not found.' }
+    const storedTools = Object.entries(server.tools).map(([name, entry]) => ({
+      name,
+      description: entry.definition.description,
+      inputSchema: entry.definition.inputSchema,
+    }))
+    if (storedTools.length > 0) return { ok: true, tools: storedTools }
+    try {
+      const listing = await remoteOf(server).listTools(signal)
+      return {
+        ok: true,
+        tools: listing.tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema,
+        })),
+      }
+    } catch (error) {
+      return { ok: false, error: troubleText(server.name, troubleOf(error, signal)) }
+    }
+  }
+
+  async function callForUserPicker(
+    serverId: string,
+    tool: string,
+    input: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<McpCallAnswer> {
+    const server = store.server(serverId)
+    if (!server || server.kind !== 'remote') return refusal('Notion server is not connected.')
+    const conn = remoteOf(server)
+    remoteUse.set(conn, (remoteUse.get(conn) ?? 0) + 1)
+    try {
+      const result = await conn.callTool(tool, input, signal)
+      return shapedMcpAnswer(shapeMcpResult(result, MCP_RESULT_MAX_CHARS))
+    } catch (error) {
+      const trouble = troubleOf(error, signal)
+      if (trouble.kind === 'login') note(server, trouble)
+      return refusal(troubleText(server.name, trouble))
+    } finally {
+      const left = (remoteUse.get(conn) ?? 1) - 1
+      remoteUse.set(conn, left)
+      if (left <= 0 && retiring.has(conn)) closeWhenUnused(conn)
+    }
+  }
+
   async function stopAll(): Promise<void> {
     app.abort('closing')
     stopCalls(null, 'closing')
@@ -1337,6 +1701,11 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
       deps.openSettings(server.id)
       return { ok: true }
     },
+    openIntegrations: () => {
+      if (deps.openIntegrations) deps.openIntegrations()
+      else deps.openSettings('')
+      return { ok: true }
+    },
 
     settingsView,
     parsePaste: (text) => {
@@ -1390,6 +1759,17 @@ export function createMcpHub(deps: McpHubDeps): McpHub {
     plannedLaunch: plannedLaunchOf,
     answerRuntimeDownload,
     retry,
+    connectPreset,
+    pickVaultFolder,
+    addVault,
+    removeVault,
+    renameVault,
+    setVaultEnabled,
+    registeredVaults,
+    notionPickerStatus,
+    canvaPickerStatus,
+    listToolsForUserPicker,
+    callForUserPicker,
     stopAll,
   }
 }

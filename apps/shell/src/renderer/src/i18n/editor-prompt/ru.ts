@@ -10,6 +10,7 @@ export const ru = {
   item_html: 'Редактор HTML',
   item_mindmap: 'Редактор интеллект-карт',
   item_diagram: 'Редактор диаграмм',
+  item_whiteboard: "Редактор доски",
   item_hwp: 'Редактор хангыль (HWP)',
   item_epub: 'Редактор EPUB',
   offMessage: '{item}: выключено. Включить и открыть?',

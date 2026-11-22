@@ -64,9 +64,20 @@ class FakeContents extends EventEmitter {
 afterEach(() => resetGenerateHandoffsForTest())
 
 describe('the editors a hand-off reaches', () => {
-  it('lists all nine editors', () => {
+  it('lists all ten editors', () => {
     expect([...HANDOFF_EDITORS].sort()).toEqual(
-      ['docs', 'epub', 'html', 'hwp', 'markdown', 'mindmap', 'pdf', 'sheets', 'slides'].sort(),
+      [
+        'docs',
+        'epub',
+        'html',
+        'hwp',
+        'markdown',
+        'mindmap',
+        'pdf',
+        'sheets',
+        'slides',
+        'whiteboard',
+      ].sort(),
     )
     for (const editor of HANDOFF_EDITORS) expect(isHandoffEditor(editor)).toBe(true)
     expect(isHandoffEditor('home')).toBe(false)

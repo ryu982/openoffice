@@ -94,6 +94,9 @@ ieumoffice map read plan.xmind --json                          # every topic of 
 ieumoffice map apply plan.xmind --ops '[{"op":"rename_topic","id":"<id>","title":"New"}]' --json   # the map ops (`guide map`: add_topic, rename_topic, move_topic, delete_topic, set_note, set_link); untouched parts of the file stay byte for byte, a delete that would take preserved elements is refused with the count
 ieumoffice map create --outline plan.md --out plan.xmind       # a new .xmind from a markdown outline (`# ` sheet heading, `- ` topic item); without --out the outline name gets .xmind
 ieumoffice guide map                                           # the map ops, built from the same definitions `map apply` checks against
+ieumoffice whiteboard read board.ieumboard --json              # inspect a whiteboard (.ieumboard) pages and objects
+ieumoffice create --type ieumboard --template blank --out board.ieumboard   # create a new whiteboard from a built-in template
+ieumoffice guide whiteboard                                    # the whiteboard ops (`whiteboard apply`)
 ieumoffice guide docs                                                   # op signatures + restricted-HTML rules (`guide <domain> --json` = the catalog with each op's schema and a fingerprint)
 ieumoffice selection report.docx --json   # what the user has selected in the editor showing the file
 ieumoffice skill list   # coding agents found on this machine and the skill version each has

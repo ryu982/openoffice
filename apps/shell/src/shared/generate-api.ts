@@ -14,7 +14,7 @@ import type { Lang } from '@genoffice/i18n'
 export type GenerateMode = 'ai' | 'convert'
 
 /** what the AI can make; each is a new untitled tab of that editor */
-export const AI_TARGET_KINDS = ['slides', 'html', 'mindmap'] as const
+export const AI_TARGET_KINDS = ['slides', 'html', 'mindmap', 'whiteboard'] as const
 export type AiTargetKind = (typeof AI_TARGET_KINDS)[number]
 
 /**
@@ -26,6 +26,7 @@ export const CONVERT_KINDS = [
   'mindmap-to-markdown',
   'mindmap-to-slides',
   'markdown-to-mindmap',
+  'whiteboard-to-markdown',
 ] as const
 export type ConvertKind = (typeof CONVERT_KINDS)[number]
 
@@ -47,6 +48,7 @@ export const CONVERT_TARGETS = {
   'mindmap-to-markdown': 'markdown',
   'mindmap-to-slides': 'slides',
   'markdown-to-mindmap': 'mindmap',
+  'whiteboard-to-markdown': 'markdown',
 } as const satisfies Record<ConvertKind, 'markdown' | 'slides' | 'mindmap'>
 
 /**

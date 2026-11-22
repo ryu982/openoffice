@@ -69,6 +69,8 @@ Cài đặt có thể đăng ký GenOffice làm ứng dụng xử lý .docx / .x
 
 Dưới **Máy chủ HTTP cục bộ**, ứng dụng cũng có thể tự chạy máy chủ đó — công tắc bật và cổng —, còn **Nâng cao** thêm URL kiểm tra tình trạng và tệp nhật ký, thay vì để dành cho trợ lý. Nó chỉ lắng nghe trên localhost.
 
+Ở đầu **Cài đặt ▸ Tích hợp**, mục **Dịch vụ đã kết nối** gom Google Drive, Notion, Canva, Kho Obsidian, Korean Law MCP, kordoc MCP và các máy chủ MCP tùy chỉnh phía trên phần kết nối tác nhân lập trình.
+
 ## Bảng tra nhanh dòng lệnh
 
 | Lệnh                | Tác dụng                     |

@@ -26,11 +26,13 @@ export {
   composeWithDrive,
   createBridgedDriveSkill,
   createDriveSkill,
+  createDriveWindowState,
   guardDriveContent,
   hasDriveBridge,
   holdsDriveContent,
   isOutboundCall,
   windowDriveBridge,
+  windowDriveState,
 } from './drive-skill'
 export {
   ADDRESS_DECLINED,
@@ -41,7 +43,11 @@ export {
   guardOutbound,
   windowOutboundBridge,
 } from './outbound-guard'
-export type { OutboundBridgeLike } from './outbound-guard'
+export type {
+  AddressConversationOptions,
+  GuardOutboundOptions,
+  OutboundBridgeLike,
+} from './outbound-guard'
 export * from './user-mcp'
 export type {
   DriveBridgeLike,
@@ -50,6 +56,8 @@ export type {
   DriveSearchHit,
   DriveSkill,
   DriveSkillDeps,
+  DriveWindowState,
+  GuardDriveContentOptions,
 } from './drive-skill'
 export {
   createDocumentSkill,
@@ -160,9 +168,11 @@ export type {
   McpReviewSubject,
   McpServerStatus,
   McpServerView,
+  McpToolCallOptions,
   McpToolPermission,
   McpToolView,
   McpToolsBridgeLike,
+  McpVaultView,
   McpWindowState,
   UserMcpSkill,
 } from './user-mcp-skill'

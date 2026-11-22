@@ -45,15 +45,24 @@ describe('pdfToText: item spacing', () => {
     )
   }
 
-  // pdf.js only inserts a fake space when the next run advances to the right;
-  // a run drawn to the left of the previous one on the same baseline was glued.
+  // PDFium orders same-line runs visually left-to-right and separates non-adjacent runs.
+  // The legacy pdfjs fallback keeps content-stream order while inserting a space.
   it('separates same-line runs that are not adjacent horizontally', async () => {
-    const text = await pdfToText(
-      fixtureWithStream(
-        'BT /F1 24 Tf 300 720 Td (World) Tj ET BT /F1 24 Tf 72 720 Td (Hello) Tj ET',
-      ),
+    const pdf = fixtureWithStream(
+      'BT /F1 24 Tf 300 720 Td (World) Tj ET BT /F1 24 Tf 72 720 Td (Hello) Tj ET',
     )
-    expect(text).toBe('World Hello')
+    const text = await pdfToText(pdf)
+    expect(text).toBe('Hello World')
+
+    const prev = process.env.GENOFFICE_PDF_PDFIUM
+    process.env.GENOFFICE_PDF_PDFIUM = '0'
+    try {
+      const fallbackText = await pdfToText(pdf)
+      expect(fallbackText).toBe('World Hello')
+    } finally {
+      if (prev === undefined) delete process.env.GENOFFICE_PDF_PDFIUM
+      else process.env.GENOFFICE_PDF_PDFIUM = prev
+    }
   })
 
   it('keeps adjacent runs glued and does not double existing spaces', async () => {

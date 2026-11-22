@@ -6,6 +6,7 @@ export const pl = {
   kindSlides: 'Prezentacja (PPT)',
   kindHtml: 'Strona internetowa (HTML)',
   kindMindmap: 'Mapa myśli',
+  kindWhiteboard: "Tablica",
   materialsLabel: 'Materiały',
   addMaterials: 'Dodaj pliki…',
   removeMaterial: 'Usuń',

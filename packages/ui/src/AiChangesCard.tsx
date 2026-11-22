@@ -1,5 +1,6 @@
 import React from 'react'
 import type { Lang } from '@genoffice/i18n'
+import { IconArrowUpRight } from './icons'
 import { AI_CHANGES_LABELS, type AiChangesLabels } from './strings-ai-changes'
 import './ai-changes.css'
 
@@ -141,10 +142,17 @@ export function AiChangesCard({
                   title={labels.showChange}
                   onClick={() => onShowLine(index)}
                 >
-                  <AiChangeLineText line={line} />
+                  <span className="ai-run-change-body">
+                    <AiChangeLineText line={line} />
+                  </span>
+                  <span className="ai-run-change-jump" aria-hidden="true">
+                    <IconArrowUpRight size={13} />
+                  </span>
                 </button>
               ) : (
-                <AiChangeLineText line={line} />
+                <span className="ai-run-change-static">
+                  <AiChangeLineText line={line} />
+                </span>
               )}
             </li>
           ))}
@@ -164,7 +172,7 @@ function AiChangeLineText({ line }: { readonly line: AiChangeLine }): React.JSX.
   if (line.kind === 'insert') {
     return (
       <>
-        <span className="ai-run-change-mark" aria-hidden>
+        <span className="ai-run-change-mark ai-run-change-insert-mark" aria-hidden>
           {line.glyph ? `+ ${line.glyph}` : '+'}
         </span>
         <ins className="ai-run-change-to">{line.to}</ins>
@@ -175,7 +183,7 @@ function AiChangeLineText({ line }: { readonly line: AiChangeLine }): React.JSX.
   if (line.kind === 'delete') {
     return (
       <>
-        <span className="ai-run-change-mark" aria-hidden>
+        <span className="ai-run-change-mark ai-run-change-delete-mark" aria-hidden>
           −
         </span>
         <del className="ai-run-change-from">{line.from}</del>

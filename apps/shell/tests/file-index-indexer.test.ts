@@ -33,7 +33,9 @@ afterEach(() => {
 })
 
 const indexerWithShortTimeout = () =>
-  new FileIndexer(store, WORKER, { roots: () => [dir], extraPaths: () => [] }, 400)
+  new FileIndexer(store, WORKER, { roots: () => [dir], extraPaths: () => [] }, 400, 1024, {
+    useSidecar: false,
+  })
 
 const notesPath = () => join(dir, 'good', 'notes.md')
 const poisonPath = () => join(dir, 'hang', 'poison.pdf')

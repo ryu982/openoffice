@@ -1234,7 +1234,7 @@ async function openAndBuild(
   const raw = unlocked?.bytes ?? (await readFile(path))
   // the split-view save guard's baseline: the file's disk state as this copy
   // read it (hashed in parallel; the parse below takes far longer)
-  const diskStatePromise = recordDiskState(path)
+  const diskStatePromise = recordDiskState(path, unlocked ? undefined : raw)
   // a 0-byte .pptx is an empty deck, not a corrupt one: open the blank template
   // under the file's own path so Save writes back to it
   const { bytes, recovered } = await recoveredOpenBytes(

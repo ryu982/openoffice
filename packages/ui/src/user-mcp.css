@@ -8,12 +8,12 @@
 .ai-mcp-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   margin: 8px 0;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-8);
-  background: var(--surface);
+  border-radius: 10px;
+  background: var(--ai-card-bg);
   color: var(--text);
   font-size: 12px;
   line-height: 1.45;
@@ -113,12 +113,31 @@
 /* ---- server button and its list ------------------------------------------ */
 
 .ai-mcp-server-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--text-secondary);
 }
 
 .ai-mcp-server-btn.open,
 .ai-mcp-server-btn:hover {
   color: var(--text-primary);
+}
+
+.ai-mcp-server-btn .ai-mcp-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: var(--radius-12);
+  background: var(--accent, var(--color-brand-secondary));
+  color: var(--color-btn-primary-text);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .ai-mcp-pop {
@@ -250,7 +269,40 @@
 }
 
 .ai-mcp-pop .ai-mcp-row-main input:focus-visible,
-.ai-mcp-pop .ai-mcp-row-action:focus-visible {
+.ai-mcp-pop .ai-mcp-row-action:focus-visible,
+.ai-mcp-pop .ai-mcp-manage-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.ai-mcp-pop .ai-mcp-empty {
+  margin: 4px 0;
+  padding: 8px 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ai-mcp-pop .ai-mcp-pop-footer {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ai-mcp-pop .ai-mcp-manage-btn {
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--radius-6);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ai-mcp-pop .ai-mcp-manage-btn:hover {
+  background: var(--bg-hover);
 }

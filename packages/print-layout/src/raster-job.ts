@@ -7,8 +7,7 @@ import { arrangePrintJob } from './arrange'
 import { PrintLayoutError, type PrintLayoutIssue } from './errors'
 import { grayscalePdf, rotateLandscapeFaces } from './grayscale'
 import type { PrintLayoutOptions } from './options'
-import { encodePng } from './png'
-import { rasterizePdf, type RasterProgress } from './raster'
+import { encodeBgrxToPng, rasterizePdfBgrx, type RasterProgress } from './raster'
 
 /** Long side of a preview image when the caller names none. */
 export const PREVIEW_LONG_SIDE_PX = 800
@@ -100,7 +99,7 @@ export async function runRasterJob(
       ),
     )
     const faces: PreviewImageFace[] = []
-    await rasterizePdf(
+    await rasterizePdfBgrx(
       arranged,
       {
         dpi: options.dpi,
@@ -113,7 +112,14 @@ export async function runRasterJob(
       },
       (face) => {
         faces.push({
-          png: encodePng(face.pixels, face.widthPx, face.heightPx, face.channels),
+          png: encodeBgrxToPng(
+            face.bgrx,
+            face.stride,
+            face.widthPx,
+            face.heightPx,
+            options.grayscale,
+            wasmPath,
+          ),
           widthPt: face.widthPt,
           heightPt: face.heightPt,
         })
@@ -126,7 +132,7 @@ export async function runRasterJob(
   // and rendered again for printing.
   const faces: PrintImageFace[] = []
   const outDir = request.outDir
-  await rasterizePdf(
+  await rasterizePdfBgrx(
     arranged,
     {
       dpi: options.dpi,
@@ -138,10 +144,16 @@ export async function runRasterJob(
     },
     async (face) => {
       const file = faceFileName(face.index)
-      await writeFile(
-        join(outDir, file),
-        encodePng(face.pixels, face.widthPx, face.heightPx, face.channels),
+      // Consume `face.bgrx` synchronously before awaiting the file write.
+      const png = encodeBgrxToPng(
+        face.bgrx,
+        face.stride,
+        face.widthPx,
+        face.heightPx,
+        options.grayscale,
+        wasmPath,
       )
+      await writeFile(join(outDir, file), png)
       faces.push({
         file,
         widthPt: face.rotated ? face.heightPt : face.widthPt,

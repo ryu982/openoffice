@@ -48,8 +48,8 @@ description: 'Write a Korean administrative report from scratch in the Ministry 
 
 1. **문단부터 넣는다.** `insert_paragraphs`에 `where: "end"`를 주고 제목과 Ⅰ~Ⅲ 문단을 한 번에 넣는다(한 호출에 100문단까지). 빈 문서에는 이것부터.
 2. **표는 문단을 넣은 뒤에.** `insert_table`의 `anchor`는 표 바로 위에 놓을 제목 문단의 글, `where: "after"`. 첫 줄이 열 이름이면 `header: true`.
-   - 칸의 글은 한 호출에 다 넣지 말고, 만든 뒤 `fill_cells`로 채운다(표 번호는 `list_tables`).
-3. **서식은 마지막에, 필요한 곳만.** `format_paragraph`로 절 제목을 진하게 하거나 크기를 키운다. 본문은 건드리지 않는다.
+   - 칸의 글은 `rows`로 함께 넣는다(한 표에 400칸까지). 나중에 고칠 칸은 `fill_cells`로 채운다(표 번호는 `list_tables`).
+3. **서식은 마지막에, 한 번에.** `style_paragraphs` 한 번으로 절 제목 스타일을 만들어 `numbered` 규칙(`Ⅰ`, `1.`, `가.`)으로 건다. 문단마다 `format_paragraph`를 걸지 않는다. 본문은 건드리지 않는다.
 4. **다시 읽어 확인한다.** `read_document`로 앞부분을 읽어 번호가 건너뛰지 않았는지, 같은 깊이에 다른 표기가 섞이지 않았는지 본다.
 
 ## 5. 하지 않는 것

@@ -146,6 +146,18 @@ describe('third-party license aggregation', () => {
     }
     expect(text).toContain('Copyright (c) 2021, Kil Hyung-jin')
     expect(text).toContain('3. Rust crates (rhwp HWP engine, compiled into rhwp_bg.wasm)')
+    expect(text).toContain(
+      '4. Rust crates (ieum-parse-sidecar native component, statically linked)',
+    )
+    expect(text).toContain(
+      '5. Rust crates (hwp5-wasm HWP 5 container helper, compiled into hwp5_bg.wasm)',
+    )
+    expect(text).toContain(
+      '6. Rust crates (print-layout-wasm advanced print layout engine, compiled into print_layout_bg.wasm)',
+    )
+    expect(text).toContain(
+      '7. Rust crates (whiteboard-engine, compiled into whiteboard_engine_bg.wasm)',
+    )
   })
 })
 
@@ -189,6 +201,10 @@ const VALID_NOTICE = [
   'Apache License',
   '144 crates, all under permissive terms:',
   '138 crates, all under permissive terms:',
+  '40 crates, all under permissive terms:',
+  '25 crates, all under permissive terms:',
+  '56 crates, all under permissive terms:',
+  '32 crates, all under permissive terms:',
   '',
 ].join('\n')
 
@@ -196,14 +212,24 @@ const VALID_NOTICE = [
  * Drives the real beforePack hook with the notice on disk replaced by `notice`
  * (null: no file). `regenerated` is what the generator run leaves behind.
  */
-function packWithNotice(notice: string | null, regenerated: string | null) {
+function packWithNotice(
+  notice: string | null,
+  regenerated: string | null,
+  options?: {
+    platform?: 'linux' | 'win32' | 'darwin'
+    env?: Record<string, string>
+    missingPaths?: string[]
+  },
+) {
   const generatorRuns: Array<{ script: string; release: string | undefined }> = []
   let current = notice
+  const platform = options?.platform ?? 'linux'
+  const missing = (options?.missingPaths ?? []).map((p) => p.replace(/\\/g, '/'))
   const configModule = { exports: {} as Record<string, unknown> }
   runInNewContext(readFileSync(join(shellRoot, 'electron-builder.cjs'), 'utf8'), {
     module: configModule,
     __dirname: shellRoot,
-    process: { platform: 'linux', arch: 'x64', env: {}, execPath: '/usr/bin/node' },
+    process: { platform, arch: 'x64', env: options?.env ?? {}, execPath: '/usr/bin/node' },
     require: (id: string) => {
       if (id === './package.json') return shellPackage
       if (id === 'node:child_process') {
@@ -221,7 +247,10 @@ function packWithNotice(notice: string | null, regenerated: string | null) {
         const fs = require('node:fs') as typeof import('node:fs')
         return {
           ...fs,
-          existsSync: () => true,
+          existsSync: (p: string) => {
+            const norm = String(p).replace(/\\/g, '/')
+            return !missing.some((m) => norm.endsWith(m))
+          },
           readdirSync: (path: string) =>
             String(path).replace(/\\/g, '/').endsWith('out/main')
               ? ['pdf-structure-process-test.js']
@@ -244,7 +273,7 @@ function packWithNotice(notice: string | null, regenerated: string | null) {
   const config = configModule.exports as {
     beforePack: (context: { electronPlatformName: string }) => Promise<void>
   }
-  return { pack: () => config.beforePack({ electronPlatformName: 'linux' }), generatorRuns }
+  return { pack: () => config.beforePack({ electronPlatformName: platform }), generatorRuns }
 }
 
 describe('packaging gate on the third-party notice', () => {
@@ -271,7 +300,7 @@ describe('packaging gate on the third-party notice', () => {
       'crate list unavailable at generation time',
     )
     const { pack, generatorRuns } = packWithNotice(partial, partial)
-    await expect(pack()).rejects.toThrow(/1 of 2 Rust crate sections are listed/)
+    await expect(pack()).rejects.toThrow(/5 of 6 Rust crate sections are listed/)
     expect(generatorRuns).toHaveLength(1)
   })
 
@@ -284,5 +313,51 @@ describe('packaging gate on the third-party notice', () => {
   it('refuses a missing notice the generator could not write', async () => {
     const { pack } = packWithNotice(null, null)
     await expect(pack()).rejects.toThrow(/the file is missing/)
+  })
+
+  it('ships hwp5_bg.wasm and ieum-parse-sidecar and refuses to pack when missing', async () => {
+    const config = require(join(shellRoot, 'electron-builder.cjs')) as {
+      extraResources: ExtraResource[]
+      win: { extraResources: ExtraResource[] }
+      mac: { extraResources: ExtraResource[] }
+      linux: { extraResources: ExtraResource[] }
+    }
+    const common = new Map(config.extraResources.map((e) => [e.to, e.from]))
+    expect(common.get('wasm/hwp5_bg.wasm')).toBe('../../packages/hwp5-wasm/pkg/hwp5_wasm_bg.wasm')
+    expect(common.get('wasm/print_layout_bg.wasm')).toBe(
+      '../../packages/print-layout/wasm/pkg/print_layout_wasm_bg.wasm',
+    )
+    expect(common.get('wasm/whiteboard_engine_bg.wasm')).toBe(
+      '../../packages/whiteboard-engine/pkg/whiteboard_engine_bg.wasm',
+    )
+    expect(config.win.extraResources.some((e) => e.to === 'native/ieum-parse-sidecar.exe')).toBe(
+      true,
+    )
+    expect(config.mac.extraResources.some((e) => e.to === 'native/ieum-parse-sidecar')).toBe(true)
+    expect(config.linux.extraResources.some((e) => e.to === 'native/ieum-parse-sidecar')).toBe(true)
+
+    const missingWasm = packWithNotice(VALID_NOTICE, VALID_NOTICE, {
+      platform: 'linux',
+      missingPaths: ['hwp5_wasm_bg.wasm'],
+    })
+    await expect(missingWasm.pack()).rejects.toThrow(/hwp5_wasm_bg\.wasm/)
+
+    const missingPrintLayoutWasm = packWithNotice(VALID_NOTICE, VALID_NOTICE, {
+      platform: 'linux',
+      missingPaths: ['print_layout_wasm_bg.wasm'],
+    })
+    await expect(missingPrintLayoutWasm.pack()).rejects.toThrow(/print_layout_wasm_bg\.wasm/)
+
+    const missingLinuxSidecar = packWithNotice(VALID_NOTICE, VALID_NOTICE, {
+      platform: 'linux',
+      missingPaths: ['ieum-parse-sidecar'],
+    })
+    await expect(missingLinuxSidecar.pack()).rejects.toThrow(/ieum-parse-sidecar/)
+
+    const missingWinSidecar = packWithNotice(VALID_NOTICE, VALID_NOTICE, {
+      platform: 'win32',
+      missingPaths: ['ieum-parse-sidecar.exe'],
+    })
+    await expect(missingWinSidecar.pack()).rejects.toThrow(/ieum-parse-sidecar\.exe/)
   })
 })

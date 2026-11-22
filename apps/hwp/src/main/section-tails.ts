@@ -7,6 +7,7 @@ import {
   PARA_TEXT,
   SECTION,
   openHwp,
+  pathsOf,
   recordsOf,
   rewriteStreams,
   sectionCount,
@@ -323,9 +324,9 @@ function idsOf(opened: OpenedHwp): Map<string, string[]> | null {
 }
 
 const binDataOf = (opened: OpenedHwp): string[] =>
-  opened.cfb.FullPaths.filter((path) => /\/BinData\/[^/]+$/.test(path)).map((path) =>
-    path.slice(path.lastIndexOf('/') + 1).toLowerCase(),
-  )
+  pathsOf(opened)
+    .filter((path) => /\/BinData\/[^/]+$/.test(path))
+    .map((path) => path.slice(path.lastIndexOf('/') + 1).toLowerCase())
 
 /**
  * The section tails of a file as it was opened; null when it has none to keep (the common

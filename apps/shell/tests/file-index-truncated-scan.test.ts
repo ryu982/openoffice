@@ -20,7 +20,14 @@ describe('FileIndexer with a budget-capped scan', () => {
     try {
       const unreached = join(storeDir, 'deep', 'notes.md')
       store.upsert({ path: unreached, mtimeMs: 1, sizeBytes: 1 }, 'body', 'ok')
-      indexer = new FileIndexer(store, WORKER, { roots: () => [storeDir], extraPaths: () => [] })
+      indexer = new FileIndexer(
+        store,
+        WORKER,
+        { roots: () => [storeDir], extraPaths: () => [] },
+        undefined,
+        undefined,
+        { useSidecar: false },
+      )
       await indexer.scan()
       expect(store.listAll().has(unreached)).toBe(true)
     } finally {

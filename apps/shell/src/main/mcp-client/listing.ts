@@ -10,6 +10,7 @@ import {
   stableJson,
   toolFingerprint,
 } from './fingerprint'
+import { isPresetToolActiveByDefault, matchPresetOfServer } from './presets'
 import type { McpServerConfig } from './store'
 
 /**
@@ -72,11 +73,14 @@ const byName = (tools: readonly ListedTool[]) => new Map(tools.map((t) => [t.nam
  * are approved too. Nothing counts as new.
  */
 export function acceptFirstListing(server: McpServerConfig, listing: McpListing): McpServerConfig {
+  const presetId = matchPresetOfServer(server)
   const tools = Object.fromEntries(
     [...byName(listing.tools).values()].map((t) => [
       t.name,
       {
-        permission: initialPermission(t.annotations),
+        permission: isPresetToolActiveByDefault(presetId, t.name)
+          ? initialPermission(t.annotations)
+          : 'off',
         approved: fingerprintOfTool(t),
         definition: definitionOf(t),
         pending: null,
@@ -109,6 +113,7 @@ export function applyListing(
   server: McpServerConfig,
   listing: McpListing,
 ): { server: McpServerConfig; changes: ListingChanges } {
+  const presetId = matchPresetOfServer(server)
   const listed = byName(listing.tools)
   const changes: ListingChanges = {
     changedTools: [],
@@ -128,7 +133,9 @@ export function applyListing(
       entries.push([
         tool.name,
         {
-          permission: initialPermission(tool.annotations),
+          permission: isPresetToolActiveByDefault(presetId, tool.name)
+            ? initialPermission(tool.annotations)
+            : 'off',
           approved: fingerprintOfTool(tool),
           definition: def,
           pending: null,

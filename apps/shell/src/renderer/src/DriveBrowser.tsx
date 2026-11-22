@@ -18,6 +18,7 @@ import iconMindmap from './assets/file-mindmap.svg'
 import iconHwp from './assets/file-hwp.svg'
 import iconEpub from './assets/file-epub.svg'
 import iconDiagram from './assets/file-diagram.svg'
+import iconWhiteboard from './assets/file-whiteboard.svg'
 import './drive.css'
 
 const ICONS: Partial<Record<DriveEntryType, string>> = {
@@ -31,6 +32,7 @@ const ICONS: Partial<Record<DriveEntryType, string>> = {
   hwp: iconHwp,
   epub: iconEpub,
   diagram: iconDiagram,
+  whiteboard: iconWhiteboard,
 }
 
 export const DRIVE_ERROR_KEYS: Record<DriveErrorKind | 'unsupported' | 'disk', DriveStringKey> = {

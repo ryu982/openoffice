@@ -2,6 +2,16 @@
 
 MCP sunucusu, AI’ın uygulamanın dışından kullanabileceği araçlar sunan bir hizmettir; örneğin yasaları aramak veya ekibinizin işlettiği malzemede arama yapmak gibi. Bir sunucuyu bağladığınızda GenOffice’teki AI pencereleri sohbet sırasında onun araçlarını çağırabilir. AI’ın neyi ve nasıl kullanabileceğine araç araç siz karar verirsiniz.
 
+## Önerilen bağlı hizmetler
+
+**Ayarlar ▸ Entegrasyonlar** üst kısmında GenOffice, Google Drive ile birlikte beş hazır hizmeti özel MCP sunucularının üzerinde sunar:
+
+- **Notion** ve **Canva**: tek bir tarayıcı girişiyle bağlanır. Düzenleyicilerdeki **+** ekleme menüsünden doğrudan en fazla 20 Notion sayfası ekleyebilirsiniz (geçici kopyalar 7 gün sonra temizlenir).
+- **Obsidian Kasası**: ek uygulama veya sunucu olmadan GenOffice içinde yerleşiktir. Yerel `.md` notlarını aramak, okumak ve düzenlemek için klasör ekleyin (silme yalnızca çöp kutusuna taşır, kasada ek dosya oluşturmaz, internet araçları kapalıyken de çalışır) ve **+** menüsünden not ekleyin.
+- **Korean Law MCP**: `LAW_OC` kimliğinizi girip yerel komuta izin verdikten sonra Kore yasalarını ve kararlarını arar.
+- **kordoc MCP**: komuta izin verdikten sonra yerel HWP/HWPX dosyalarını doğrudan diskte okur ve dönüştürür. Düzenleyici gizleme işaretleri kordoc tarafından doğrudan okunan dosyalara uygulanmaz.
+- **Bağlı hizmetler düğmesi**: AI girişinin yanında her zaman görünür; bu sohbet için Google Drive'ı (düzenleyicilerde), her Obsidian kasasını veya MCP sunucularını açıp kapatabilir ya da **Ayarlar ▸ Entegrasyonlar** ekranını açabilirsiniz.
+
 ## Sunucu ekleme
 
 1. **Ayarlar ▸ Entegrasyonlar**’ı açın ve **MCP sunucuları** kartında **Sunucu ekle**’ye basın.

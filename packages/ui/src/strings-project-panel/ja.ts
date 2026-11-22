@@ -45,6 +45,7 @@ export const ja = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'マインドマップ',
+  editorWhiteboard: 'ホワイトボード',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'ホーム',

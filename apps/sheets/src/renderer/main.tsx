@@ -25,6 +25,7 @@ import { LocaleProvider, setModuleLang } from './i18n/locale'
 import { registerTemplateFonts } from './template-fonts'
 import type { DocTheme, UiTheme } from '../shared/desktop-api'
 import './styles.css'
+import '@genoffice/ui/ai-panel.css'
 
 if (import.meta.hot) {
   import.meta.hot.on('vite:beforeUpdate', ({ updates }) => {

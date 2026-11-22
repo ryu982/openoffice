@@ -1,0 +1,17 @@
+export const zh = {
+  attachMenuLabel: '添加附件',
+  attachFromPc: '从电脑附加文件',
+  attachFromDocs: '从 GenOffice 文档附加 (@)',
+  attachFromDrive: '从 Google 云端硬盘附加',
+  skillButtonLabel: '打开技能 (/)',
+  noEnabledSkills: '此编辑器中没有启用的技能。',
+  scrollToBottom: '滚动到底部',
+  copyReply: '复制回复',
+  copiedReply: '已复制',
+  regenerateReply: '重新生成',
+  workingSteps: '处理中…',
+  workedSteps: '已完成 · {n} 步',
+  workedStepOne: '已完成 · 1 步',
+  hintSkill: '/ 调用技能',
+  hintDocMention: '@ 附加已打开文档',
+} as const

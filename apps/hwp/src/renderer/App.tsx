@@ -22,6 +22,7 @@ import {
   DIRTY_EVENT,
   EASY_WORDS_EVENT,
   FILE_COMMAND_EVENT,
+  MARKS_EVENT,
   MEMO_NOT_COPIED_EVENT,
   MEMO_REMOVED_EVENT,
   MISSING_FONTS_EVENT,
@@ -46,12 +47,12 @@ import { PASSWORD_FLAG } from '../../scripts/rhwp-patches.mjs'
 import { STUDIO_SETTINGS_KEY, seededStudioSettings, studioUrl } from './studio-settings'
 import { hwpFormatOfPath } from '../shared/ipc'
 import type {
+  BeginSaveMode,
   HwpFormat,
   PreviewAction,
   PrintJob,
   PrintMode,
   PrintResult,
-  SaveMode,
   UiTheme,
 } from '../shared/ipc'
 
@@ -70,6 +71,8 @@ interface Notice {
   params?: Params
   /** untranslated cause from the engine or the file system, shown under the message */
   detail?: string
+  /** direct follow-up action shown beside the close button */
+  action?: 'saveAsHwpx'
   /** an information that stays until dismissed, as errors do */
   sticky?: true
 }
@@ -192,6 +195,8 @@ export default function App() {
     (taken: AiPrefill) => setAiPrefill((current) => afterPrefillTaken(current, taken)),
     [],
   )
+  /** the pages carry marks of the AI's changes, as the plugin says (a user edit takes them off) */
+  const [marksOnPage, setMarksOnPage] = useState(false)
   /** counts changes made through the bridge, so the check panel can read the document again */
   const [docRevision, setDocRevision] = useState(0)
   /** the memo column beside the document: out or not, independent of the AI dock */
@@ -247,17 +252,21 @@ export default function App() {
     let stopDrop: (() => void) | null = null
     void (async () => {
       try {
-        const [path, theme, lang] = await Promise.all([
+        const [path, theme, lang, fontReads, headless] = await Promise.all([
           window.hwpApi.consumePending(),
           window.hwpApi.getTheme().catch((): UiTheme => 'system'),
           window.hwpApi.getLanguage(),
+          (window.hwpApi.fontFileReads?.() ?? Promise.resolve(null)).catch(() => null),
+          (window.hwpApi.isHeadlessExport?.() ?? Promise.resolve(false)).catch(() => false),
         ])
         // the studio reads its settings before first paint, so they are seeded before it exists
         localStorage.setItem(
           STUDIO_SETTINGS_KEY,
           seededStudioSettings(localStorage.getItem(STUDIO_SETTINGS_KEY), theme),
         )
-        editor = await createEditor(hostRef.current!, { studioUrl: studioUrl(lang) })
+        editor = await createEditor(hostRef.current!, {
+          studioUrl: studioUrl(lang, fontReads, headless),
+        })
         if (disposed) {
           editor.destroy()
           return
@@ -417,7 +426,7 @@ export default function App() {
   const pdfCopyRef = useRef<(path: string) => Promise<void>>(async () => {})
 
   const save = useCallback(
-    async (mode: SaveMode, automatic = false): Promise<boolean> => {
+    async (mode: BeginSaveMode, automatic = false): Promise<boolean> => {
       const editor = editorRef.current
       if (!editor) return false
       // a memo editor is open: its text is not in the document yet; an autosave waits quietly
@@ -450,6 +459,11 @@ export default function App() {
           restoredRef.current = false
           copierRef.current?.saved()
           setFilePath(outcome.path)
+          const savedFormat = hwpFormatOfPath(outcome.path)
+          if (savedFormat) {
+            formatRef.current = savedFormat
+            setDocFormat(savedFormat)
+          }
           const backup = outcome.backupPath ? { name: fileNameOf(outcome.backupPath) } : null
           if (outcome.memosLost) {
             // stays until dismissed: the file is written, but some memos are not in it
@@ -476,6 +490,15 @@ export default function App() {
           // the manual save explains that once instead of every autosave backoff
           const propertyFailure = outcome.reason === 'protected' || outcome.reason === 'tracked'
           if (!automatic || !propertyFailure) {
+            const verifyDetail =
+              outcome.reason === 'verify'
+                ? outcome.verify && outcome.verify.pageCountBefore !== outcome.verify.pageCountAfter
+                  ? `${t('saveVerifyPages', {
+                      before: outcome.verify.pageCountBefore,
+                      after: outcome.verify.pageCountAfter,
+                    })} · ${t('saveVerifyHint')}`
+                  : t('saveVerifyHint')
+                : undefined
             setNotice({
               tone: 'error',
               key:
@@ -486,8 +509,8 @@ export default function App() {
                     : outcome.reason === 'verify'
                       ? 'saveVerifyFailed'
                       : 'saveFailed',
-              ...(outcome.reason === 'verify'
-                ? { detail: t('saveVerifyHint') }
+              ...(verifyDetail
+                ? { detail: verifyDetail, action: 'saveAsHwpx' as const }
                 : outcome.detail
                   ? { detail: outcome.detail }
                   : {}),
@@ -571,6 +594,19 @@ export default function App() {
     frame.addEventListener(EASY_WORDS_EVENT, onEasyWords)
     return () => frame.removeEventListener(EASY_WORDS_EVENT, onEasyWords)
   }, [phase, pluginBridge, t, aiOn])
+
+  // the plugin tells when the pages come to carry marks of the AI's changes or lose them: the
+  // AI panel's button to clear them is there only while they are
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const frame = editorRef.current?.element.contentWindow
+    if (!frame) return
+    const onMarks = (event: Event) => {
+      setMarksOnPage((event as CustomEvent<{ shown?: unknown }>).detail?.shown === true)
+    }
+    frame.addEventListener(MARKS_EVENT, onMarks)
+    return () => frame.removeEventListener(MARKS_EVENT, onMarks)
+  }, [phase])
 
   // fonts that are not on this PC are drawn with others while the file keeps their names
   // (a document from Hancom Office on a PC without it): the editor's font menu and font box
@@ -1051,6 +1087,41 @@ export default function App() {
     [phase, filePath, lang],
   )
 
+  const loadGeneratedHwpx = useCallback(
+    async (
+      path: string,
+    ): Promise<
+      { ok: true; mode: 'current' | 'new-tab'; title: string } | { ok: false; error: string }
+    > => {
+      const loader = window.hwpApi.loadGeneratedHwpx
+      if (!loader) return { ok: false, error: 'Opening generated HWP files is not available here.' }
+      const editor = editorRef.current
+      let isBlank = false
+      if (editor && !filePath && !openedFileRef.current) {
+        try {
+          const [ctx, text] = await Promise.all([editor.commands.context(), agentBridge.readText()])
+          isBlank = ctx.isDirty !== true && text.trim() === ''
+        } catch {
+          isBlank = false
+        }
+      }
+      const res = await loader(path, isBlank)
+      if (!res.ok) return res
+      if (res.mode === 'current') {
+        if (!editor) return { ok: false, error: 'The editor is not ready.' }
+        await editor.loadFile(res.bytes, res.name, { skipUnsavedGuard: true })
+        formatRef.current = res.format
+        setDocFormat(res.format)
+        copyNameRef.current = res.name
+        restoredRef.current = true
+        window.hwpApi.setDirty(true)
+        setDocTick((tick) => tick + 1)
+      }
+      return { ok: true, mode: res.mode, title: res.name }
+    },
+    [agentBridge, filePath],
+  )
+
   return (
     <div className={`hwp-app${presenting ? ' hwp-presenting' : ''}`} data-phase={phase}>
       {phase === 'ready' && (
@@ -1087,6 +1158,8 @@ export default function App() {
             templateDocument={templateDocument}
             prefill={aiPrefill}
             onPrefillTaken={takeAiPrefill}
+            marksOnPage={marksOnPage}
+            loadGeneratedHwpx={loadGeneratedHwpx}
           />
         )}
         {phase === 'ready' && (
@@ -1128,6 +1201,15 @@ export default function App() {
                 <span>{notice.text ?? (notice.key ? t(notice.key, notice.params) : '')}</span>
                 {notice.detail && <span className="hwp-notice-detail">{notice.detail}</span>}
               </div>
+              {notice.action === 'saveAsHwpx' && (
+                <button
+                  type="button"
+                  className="hwp-notice-action"
+                  onClick={() => void save('saveAsHwpx')}
+                >
+                  {t('saveAsHwpx')}
+                </button>
+              )}
               <button
                 type="button"
                 className="hwp-notice-close"

@@ -199,6 +199,59 @@ describe('PDF AI panel: the changes card', () => {
     const { panel } = await runOnce(fakeChanges(null, 'expired'))
     expect(panel.querySelector('.ai-run-changes')).toBeNull()
   })
+
+  it('shows a copy action without retry in the reply footer', async () => {
+    const bridge = fakeBridge()
+    vi.stubGlobal('pdfApi', bridge.api)
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const changes = fakeChanges(
+      {
+        id: 8,
+        snaps: [],
+        ops: 1,
+        lines: [{ kind: 'named', from: 'p.2', to: 'B', showable: true, page: 2 }],
+      },
+      'reverted',
+    )
+    const gotoPage = vi.fn()
+    const depsWithGo = new Proxy(
+      {
+        ...(APP_DEPS as unknown as Record<string, unknown>),
+        gotoPage,
+      },
+      {
+        get(_target, prop: string) {
+          if (prop === 'gotoPage') return gotoPage
+          return (APP_DEPS as unknown as Record<string, unknown>)[prop]
+        },
+      },
+    ) as unknown as PdfAppDeps
+    await act(async () => {
+      root!.render(
+        createElement(
+          LocaleProvider,
+          { initial: 'en' },
+          createElement(AiPanel, { api: depsWithGo, aiChanges: changes, onCollapse: () => {} }),
+        ),
+      )
+    })
+    await settle()
+    await act(async () => (container!.querySelector('.ai-quick-btn') as HTMLElement).click())
+    await settle()
+    await act(async () => {
+      bridge.push({ type: 'text', text: 'Updated text.' })
+      bridge.push({ type: 'done' })
+    })
+    await settle()
+    const footerBtns = container!.querySelectorAll('.ai-reply-footer-btn')
+    expect(footerBtns).toHaveLength(1)
+    const goBtn = container!.querySelector<HTMLButtonElement>('.ai-run-change-go')
+    expect(goBtn).not.toBeNull()
+    await act(async () => goBtn!.click())
+    expect(gotoPage).toHaveBeenCalledWith(2)
+  })
 })
 
 describe('the marks layer', () => {

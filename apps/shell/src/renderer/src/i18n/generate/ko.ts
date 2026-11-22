@@ -6,6 +6,7 @@ export const ko = {
   kindSlides: 'PPT',
   kindHtml: 'HTML',
   kindMindmap: '마인드맵',
+  kindWhiteboard: "화이트보드",
   materialsLabel: '자료',
   addMaterials: '파일 더하기…',
   removeMaterial: '빼기',

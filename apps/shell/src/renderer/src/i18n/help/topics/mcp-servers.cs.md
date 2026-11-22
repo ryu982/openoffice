@@ -2,6 +2,16 @@
 
 Server MCP je služba, která nabízí AI nástroje mimo aplikaci, například vyhledávání zákonů nebo materiálů, které vede váš tým. Jakmile server připojíte, okna AI v GenOffice mohou jeho nástroje volat během konverzace. U každého nástroje sami rozhodnete, co smí AI použít a jak.
 
+## Doporučené připojené služby
+
+V horní části **Nastavení ▸ Integrace** sdružuje GenOffice Disk Google a pět předpřipravených služeb nad vlastními servery MCP:
+
+- **Notion** a **Canva**: připojení jedním přihlášením v prohlížeči. Z nabídky **+** v editorech lze přímo připojit až 20 stránek Notion (dočasné kopie se mažou po 7 dnech).
+- **Trezor Obsidian**: vestavěný přímo v GenOffice bez samostatné aplikace. Přidejte místní složky pro vyhledávání, čtení a úpravy poznámek `.md` (mazání pouze do koše, žádné pomocné soubory v trezoru, funguje i při vypnutých internetových nástrojích) a připojujte je přes **+**.
+- **Korean Law MCP**: vyhledává korejské zákony po zadání `LAW_OC` a povolení místního příkazu.
+- **kordoc MCP**: čte a převádí místní soubory HWP/HWPX po povolení příkazu. Skrývání údajů v editoru se nevztahuje na soubory čtené přímo nástrojem kordoc.
+- **Tlačítko Připojené služby**: vždy viditelné vedle pole AI k přepínání Disku Google (v editorech), jednotlivých trezorů Obsidian a serverů MCP pro tento chat nebo k otevření **Nastavení ▸ Integrace**.
+
 ## Přidání serveru
 
 1. Otevřete **Nastavení ▸ Integrace** a na kartě **Servery MCP** klikněte na **Přidat server**.

@@ -127,13 +127,17 @@ export function validateHeadlessPaths(
   return { ok: true, input, outPath, module }
 }
 
-/** `--page`, `--ops` and `--batch` belong to diagrams; ops and batch only where a diagram file is written. */
+/** `--page`, `--ops` and `--batch` belong to diagrams (and `--page` to whiteboards). */
 function diagramSwitchProblem(
   request: HeadlessExportRequest,
   module: HeadlessExportModule,
 ): string | null {
   const given = (['page', 'ops', 'batch'] as const).filter((key) => request[key] !== undefined)
   if (given.length === 0) return null
+  if (module === 'whiteboard') {
+    const wrong = given.find((key) => key !== 'page')
+    return wrong ? `--${wrong} is for diagram inputs only` : null
+  }
   if (module !== 'diagram') return `--${given[0]} is for diagram inputs only`
   if (isDiagramFileTarget(request.targetFormat)) {
     if (!request.outPath.toLowerCase().endsWith(`.${request.targetFormat}`)) {

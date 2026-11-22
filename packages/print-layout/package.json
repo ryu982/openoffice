@@ -7,12 +7,14 @@
   "description": "Advanced print layout shared by the editors: option model, sheet planning (renderer-safe ./plan), and re-placing a print job PDF's pages (N-up, booklet, poster, labels, odd/even, reverse, fit)",
   "exports": {
     ".": "./src/index.ts",
-    "./plan": "./src/plan.ts"
+    "./plan": "./src/plan.ts",
+    "./wasm/pkg/print_layout_wasm_bg.wasm": "./wasm/pkg/print_layout_wasm_bg.wasm"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:wasm": "node ../../tools/build-print-layout-wasm.mjs"
   },
   "dependencies": {
     "@embedpdf/pdfium": "^2.15.1",

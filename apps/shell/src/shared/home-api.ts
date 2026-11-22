@@ -283,6 +283,7 @@ export interface HomeApi {
   newMindmap(opts?: NewFileOpts): Promise<void>
   /** open a new, untitled one-page diagram tab; its first save proposes .drawio */
   newDiagram(opts?: NewFileOpts): Promise<void>
+  newWhiteboard(opts?: NewFileOpts): Promise<void>
   /** open a blank HWP editor tab; the file is named at its first save */
   newHwp(opts?: NewFileOpts): Promise<void>
   /** create a blank single-page PDF in the default save folder and open it */
@@ -587,6 +588,7 @@ export const HOME_CHANNELS = {
   newHtml: 'home:new-html',
   newMindmap: 'home:new-mindmap',
   newDiagram: 'home:new-diagram',
+  newWhiteboard: 'home:new-whiteboard',
   newHwp: 'home:new-hwp',
   newPdf: 'home:new-pdf',
   removeRecent: 'home:remove-recent',

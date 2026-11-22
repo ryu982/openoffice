@@ -223,6 +223,18 @@ vi.mock('../../diagram/src/main/diagram-main', () => ({
   diagramTabIdentity: (id: number) => diagramTabIdentity(id),
 }))
 
+const createWhiteboardView = vi.fn(() => makeFakeView())
+const whiteboardIsDirty = vi.fn(() => false)
+const requestWhiteboardClose = vi.fn(() => Promise.resolve(true))
+const whiteboardTabIdentity = vi.fn((_id: number): Record<string, unknown> | null => null)
+
+vi.mock('../../whiteboard/src/main/whiteboard-main', () => ({
+  createWhiteboardView: (...args: unknown[]) => createWhiteboardView(...(args as [])),
+  whiteboardIsDirty: (...args: unknown[]) => whiteboardIsDirty(...(args as [])),
+  requestWhiteboardClose: (...args: unknown[]) => requestWhiteboardClose(...(args as [])),
+  whiteboardTabIdentity: (id: number) => whiteboardTabIdentity(id),
+}))
+
 import { helpTopicParam, helpViewUrl, TabManager } from '../src/main/tab-manager'
 import type { TabKind } from '../src/shared/tabs-api'
 
@@ -1063,6 +1075,15 @@ describe('file path bookkeeping', () => {
       open: () => {
         manager.openDiagramTab('/tmp/one.drawio')
         return lastCreatedView(createDiagramView)
+      },
+    },
+    {
+      kind: 'whiteboard',
+      file: '/tmp/one.whiteboard',
+      renamed: '/tmp/two.whiteboard',
+      open: () => {
+        manager.openWhiteboardTab('/tmp/one.whiteboard')
+        return lastCreatedView(createWhiteboardView)
       },
     },
   ]

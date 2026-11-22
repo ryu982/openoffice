@@ -69,6 +69,8 @@ Ayarlar, GenOffice’i `.docx` / `.xlsx` / `.pptx` / `.pdf` ve benzerleri için 
 
 **Yerel HTTP sunucusu** altında uygulama sunucuyu kendisi çalıştırabilir — bir açma anahtarı, bir bağlantı noktası — ve **Gelişmiş** durum denetimi URL’sini ve günlük dosyasını ekler. Yalnızca localhost üzerinde dinler.
 
+**Ayarlar ▸ Entegrasyonlar** üst kısmındaki **Bağlı hizmetler** bölümü; Google Drive, Notion, Canva, Obsidian Kasası, Korean Law MCP, kordoc MCP ve özel MCP sunucularını kodlama ajanı bölümünün üzerinde bir araya getirir.
+
 ## Komut satırı kısa başvurusu
 
 | Komut               | Ne yapar                      |

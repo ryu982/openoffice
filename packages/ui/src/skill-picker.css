@@ -93,6 +93,12 @@
   color: var(--text-secondary);
 }
 
+.ai-skill-picker .ai-skill-picker-empty {
+  padding: 8px 10px;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+}
+
 /* chips in the composer, where attachments sit */
 .ai-skill-chips {
   display: flex;

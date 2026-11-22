@@ -258,6 +258,7 @@ const EDITOR_KEY: Record<ProjectEditor, ProjectPanelStringKey> = {
   markdown: 'editorMarkdown',
   html: 'editorHtml',
   mindmap: 'editorMindmap',
+  whiteboard: 'editorWhiteboard',
   hwp: 'editorHwp',
   epub: 'editorEpub',
   home: 'editorHome',

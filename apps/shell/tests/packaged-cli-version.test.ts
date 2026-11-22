@@ -69,7 +69,7 @@ function loadConfig(opts: {
                 require('node:fs').readFileSync(resolve(shellRoot, '../../NOTICE'), 'utf8').trim(),
                 `${PRODUCT_NAME} — Third-Party Software Notices`,
                 '@embedpdf/pdfium\nCopyright 2014 PDFium Authors\nApache License',
-                '1 crates, all under permissive terms:\n1 crates, all under permissive terms:\n',
+                '1 crates, all under permissive terms:\n'.repeat(6),
               ].join('\n')
             }
             return require('node:fs').readFileSync(path, encoding as BufferEncoding)

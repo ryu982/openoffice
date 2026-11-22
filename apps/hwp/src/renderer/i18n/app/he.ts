@@ -21,6 +21,8 @@ export const he = {
   saveVerifyFailed:
     'דבר לא נשמר: העותק שעמד להיכתב לא תאם, בקריאה חוזרת, את המסמך שעל המסך. נסו "שמירה בשם" כדי לכתוב קובץ חדש.',
   saveVerifyHint: 'הקובץ המקורי לא השתנה. ב«שמור בשם», בחר HWPX, או השתמש ב«ייצוא כ-PDF».',
+  saveVerifyPages: 'במסך: {before} עמודים ← בקריאה חוזרת: {after} עמודים',
+  saveAsHwpx: 'שמירה כ-HWPX…',
   saveProtected: 'לא נשמר: המסמך מוגן בסיסמה, ושמירה כאן תכתוב אותו ללא הסיסמה.',
   backupKept: 'נשמר. הגרסה הקודמת נשמרה בשם {name}.',
   openedTracked:

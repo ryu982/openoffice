@@ -10,6 +10,7 @@ export const th = {
   item_html: 'ตัวแก้ไข HTML',
   item_mindmap: 'ตัวแก้ไขแผนที่ความคิด',
   item_diagram: 'ตัวแก้ไขไดอะแกรม',
+  item_whiteboard: "ตัวแก้ไขไวท์บอร์ด",
   item_hwp: 'ตัวแก้ไขฮันกึล (HWP)',
   item_epub: 'ตัวแก้ไข EPUB',
   offMessage: '{item} ปิดอยู่ เปิดใช้แล้วเปิดไฟล์ไหม',

@@ -41,6 +41,8 @@ O login fica guardado neste PC com a criptografia que o sistema operacional ofer
 - A IA não pode alterar, excluir nem compartilhar arquivos do Drive.
 - Quando uma conversa contém algo lido do Drive, essa conversa deixa de usar a pesquisa na web, a pesquisa de imagens, a leitura de páginas por endereço da web e a inserção de imagens por endereço da web. Comece uma nova conversa para usá-las de novo.
 
+Você também pode ativar ou desativar a leitura do Google Drive apenas nesta conversa pelo botão **Serviços conectados**. Com os recursos de IA desativados, o Google Drive continua visível em **Configurações ▸ Integrações** para abrir e salvar arquivos, ocultando apenas a opção de IA.
+
 ## Desconectar
 
 Clique em **Desconectar** em **Configurações ▸ Integrações**. O GenOffice remove o login deste PC e pede ao Google que revogue o acesso. As cópias de arquivos que já estão neste PC permanecem. Você também pode remover o acesso a qualquer momento em **Conexões de terceiros** na sua Conta do Google.

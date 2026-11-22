@@ -96,9 +96,12 @@ describe('the files skill of the HWP panel', () => {
     expect(failed.output).toBe('password-protected')
   })
 
-  it('tells the model that an attached image cannot be put into the document', () => {
+  it('tells the model that an attached image goes into the document with insert_image only', () => {
     const prompt = createFilesSkill(() => []).systemPrompt
-    expect(prompt).toContain('cannot be placed into the document')
+    expect(prompt).not.toContain('cannot be placed into the document')
+    expect(prompt).toContain(
+      'An attached image goes into the document only with insert_image (attachment set to its name) when the user asks for it',
+    )
     expect(prompt).not.toContain('attachment://')
   })
 })

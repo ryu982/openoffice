@@ -221,8 +221,10 @@ function attach(made: DrawioUi): void {
   ui.editor.addListener('pageSelected', () => {
     emit({ name: 'currentPage', id: currentPageId() })
     // the page's marks, once draw.io has drawn it
-    setTimeout(() => cellMarks.redraw(), 0)
+    cellMarks.redrawSoon()
   })
+  // a marked cell deleted and brought back (undo, redo) is marked again
+  ui.editor.graph.getModel().addListener(mxEvent.CHANGE, () => cellMarks.redrawSoon())
   emit({ name: 'ready' })
 }
 
@@ -563,6 +565,21 @@ async function answer(request: BridgeRequestMessage): Promise<unknown> {
       )
       cellMarks.set(cells, String(args.fill ?? ''), String(args.line ?? ''))
       return {}
+    }
+    case 'focusCell': {
+      const pageId = typeof args.page === 'string' ? args.page : ''
+      const cellId = typeof args.id === 'string' ? args.id : ''
+      if (!cellId) return { focused: false }
+      if (pageId && pageId !== currentPageId()) {
+        const targetPage = ui.getPageById?.(pageId)
+        if (targetPage) ui.selectPage?.(targetPage)
+      }
+      const graph = ui.editor.graph
+      const cell = graph.model.getCell(cellId)
+      if (!cell) return { focused: false }
+      graph.setSelectionCell(cell)
+      graph.scrollCellToVisible?.(cell, true)
+      return { focused: true }
     }
     case 'setDark':
       ui.setDarkMode(args.dark === true)

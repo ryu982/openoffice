@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { EDITOR_ITEM_IDS } from '@genoffice/electron-utils/app-choice'
 import { PRODUCT_NAME } from '../packages/i18n/src/product'
 import { launchShell, closeAndSaveVideo, screenshotPath } from './helpers'
 
@@ -20,7 +21,8 @@ test.describe('first-run onboarding', () => {
       await page.locator('.onb-next').click()
       const pick = page.locator('.onb-slide.active[data-step="pick"]')
       await expect(pick).toBeVisible()
-      await expect(pick.locator('.ec-row [role="switch"]')).toHaveCount(12)
+      // every editor, the PDF tools and AI itself: adding an editor must not need a new number here
+      await expect(pick.locator('.ec-row [role="switch"]')).toHaveCount(EDITOR_ITEM_IDS.length + 1)
       await expect(pick.locator('.ec-row [role="switch"][aria-checked="false"]')).toHaveCount(0)
       await page.screenshot({ path: screenshotPath('onboarding-slide-2') })
 

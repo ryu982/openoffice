@@ -10,6 +10,7 @@ export const zhTW = {
   item_html: 'HTML 編輯器',
   item_mindmap: '心智圖編輯器',
   item_diagram: '圖表編輯器',
+  item_whiteboard: "白板編輯器",
   item_hwp: '韓文(HWP)編輯器',
   item_epub: 'EPUB 電子書編輯器',
   offMessage: '{item}已關閉。要啟用並開啟嗎？',

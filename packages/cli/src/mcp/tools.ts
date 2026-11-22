@@ -550,6 +550,52 @@ export const TOOLS: ToolSpec[] = [
     ],
   },
   {
+    name: 'whiteboard_read',
+    command: 'whiteboard',
+    verb: 'read',
+    readOnly: true,
+    description:
+      'Read pages and objects of a .whiteboard file via Rust WASM (no app). Returns structured page/object tables for whiteboard_apply.',
+    positionals: [{ key: 'file', description: 'path of the .whiteboard' }],
+    options: [{ key: 'page', kind: 'string', description: 'page id, title, or 1-based index' }],
+  },
+  {
+    name: 'whiteboard_apply',
+    command: 'whiteboard',
+    verb: 'apply',
+    description:
+      'Edit a .whiteboard with ops (guide whiteboard): add, update, move, delete, add_page, rename_page, delete_page, set_page_format. Local WASM, atomic by default. ' +
+      GUI_OPEN,
+    positionals: [{ key: 'file', description: 'path of the .whiteboard' }],
+    options: [
+      {
+        key: 'ops',
+        kind: OPS_JSON,
+        typed: 'whiteboard-ops',
+        description: 'JSON array of ops',
+        required: true,
+      },
+      { key: 'page', kind: 'string', description: 'default page id or title' },
+      'best-effort',
+      'stop-on-error',
+      'out',
+      'force',
+    ],
+  },
+  {
+    name: 'create_whiteboard',
+    command: 'create',
+    fixed: ['--type', 'whiteboard'],
+    description:
+      'Create a new .whiteboard file locally from a declarative layout template and/or whiteboard_apply ops.',
+    options: [
+      { key: 'template', kind: OPS_JSON, description: 'TemplateDocument v1 JSON' },
+      { key: 'ops', kind: OPS_JSON, description: 'whiteboard_apply ops' },
+      { key: 'out', description: 'output .whiteboard path (required)', required: true },
+      'force',
+    ],
+  },
+  {
     name: 'sheet_read',
     command: 'sheet',
     verb: 'read',
@@ -718,9 +764,9 @@ export const TOOLS: ToolSpec[] = [
     readOnly: true,
     plainText: true,
     description:
-      'The op reference an agent reads before writing ops: guide("docs"), guide("sheets"), guide("slides"), guide("hwp"), guide("diagram") or guide("map") list the groups; topic narrows to one group or one op. guide("slides", "design") is the staged deck workflow and guide("slides", "spec") the outline and page spec format (deck_start returns both). guide("slides", "templates") lists the built-in design templates; guide("slides", "templates", "<id>") prints one as a ready-made style sheet to save as style.md. Also available as ieumoffice://guide/* resources.',
+      'The op reference an agent reads before writing ops: guide("docs"), guide("sheets"), guide("slides"), guide("hwp"), guide("diagram"), guide("map") or guide("whiteboard") list the groups; topic narrows to one group or one op. guide("slides", "design") is the staged deck workflow and guide("slides", "spec") the outline and page spec format (deck_start returns both). guide("slides", "templates") lists the built-in design templates; guide("slides", "templates", "<id>") prints one as a ready-made style sheet to save as style.md. Also available as ieumoffice://guide/* resources.',
     positionals: [
-      { key: 'domain', description: 'slides | docs | sheets | hwp | diagram | map' },
+      { key: 'domain', description: 'slides | docs | sheets | hwp | diagram | map | whiteboard' },
       {
         key: 'topic',
         description: 'a group, an op name, or for slides: design | spec | templates',

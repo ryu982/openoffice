@@ -101,6 +101,26 @@ export function rhwpWasmPath(): string {
   throw new Error('rhwp_bg.wasm not found (set GENOFFICE_RHWP_WASM)')
 }
 
+/** The HWP 5 container and record WASM module used by apps/hwp. */
+export function hwp5WasmPath(
+  env: NodeJS.ProcessEnv = process.env,
+  packaged: string | null = packagedResourcesDir(),
+  root: string | null = repoRoot(),
+): string {
+  if (env.GENOFFICE_HWP5_WASM_PATH) return env.GENOFFICE_HWP5_WASM_PATH
+  if (packaged) return join(packaged, 'wasm', 'hwp5_bg.wasm')
+  if (root) {
+    try {
+      return createRequire(join(root, 'package.json')).resolve(
+        '@genoffice/hwp5-wasm/pkg/hwp5_wasm_bg.wasm',
+      )
+    } catch {}
+    const direct = join(root, 'packages', 'hwp5-wasm', 'pkg', 'hwp5_wasm_bg.wasm')
+    if (existsSync(direct)) return direct
+  }
+  throw new Error('hwp5_bg.wasm not found (set GENOFFICE_HWP5_WASM_PATH)')
+}
+
 export function xlsxSidecarPath(): string | null {
   if (process.env.XLSX_SIDECAR_PATH) return process.env.XLSX_SIDECAR_PATH
   const executable = process.platform === 'win32' ? 'xlsx-sidecar.exe' : 'xlsx-sidecar'

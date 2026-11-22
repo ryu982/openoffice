@@ -79,6 +79,7 @@ export const ATTACHABLE_EXTS: ReadonlySet<string> = new Set([
   'xlsm',
   'xls',
   'xmind',
+  'whiteboard',
   'hwp',
   'hwpx',
   'epub',
@@ -105,6 +106,7 @@ const SIZE_FREE_EXTS = new Set([
   'odt',
   'epub',
   'xmind',
+  'whiteboard',
   'pdf',
 ])
 

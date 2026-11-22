@@ -42,13 +42,13 @@ import { txnFailure, txnDetail } from './txn'
 import { hwpOpsOf, hwpOutputFormat, runHwpBatch } from './hwp'
 
 /** Document types that can be built here. */
-const TYPES = ['pptx', 'xlsx', 'docx', 'pdf', 'hwp', 'hwpx', 'drawio'] as const
+const TYPES = ['pptx', 'xlsx', 'docx', 'pdf', 'hwp', 'hwpx', 'drawio', 'whiteboard'] as const
 
 export const createCommand: CommandDef = {
   name: 'create',
   summary: 'Create a new document from structured content.',
   usage:
-    'create --type <pptx|xlsx|docx|pdf|hwp|hwpx|drawio> (--ops <file|-> | --spec <file|dir|-> [--outline <file>] | --from <file> | --mermaid <file|->) --out <path> [--force]',
+    'create --type <pptx|xlsx|docx|pdf|hwp|hwpx|drawio|whiteboard> (--ops <file|-> | --template <JSON|@file|-> | --spec <file|dir|-> [--outline <file>] | --from <file> | --mermaid <file|->) --out <path> [--force]',
   options: [
     { name: 'type', value: 'type', description: `document type: ${TYPES.join(', ')}` },
     {
@@ -92,6 +92,12 @@ export const createCommand: CommandDef = {
       description:
         'drawio: Mermaid source drawn by draw.io on the new diagram before any --ops (needs the app); "-" reads stdin',
     },
+    {
+      name: 'template',
+      value: 'JSON|@file|-',
+      description:
+        'whiteboard: declarative layout JSON (TemplateDocument v1) applied before any --ops; "-" reads stdin',
+    },
     { name: 'out', value: 'path', description: 'output file (required)' },
     { name: 'force', description: 'overwrite an existing output file' },
     {
@@ -133,6 +139,11 @@ export const createCommand: CommandDef = {
         reason: 'invalid_argument',
       })
     }
+    if (type !== 'whiteboard' && args.flags['template'] !== undefined) {
+      throw new CliError(EXIT.usage, '--template goes with --type whiteboard', undefined, {
+        reason: 'invalid_argument',
+      })
+    }
     const output = resolveOutput(flagString(args, 'out'), ctx, {
       force: flagBool(args, 'force'),
       fresh: true,
@@ -159,6 +170,13 @@ export const createCommand: CommandDef = {
       const ops = args.flags['ops'] !== undefined ? diagram.diagramOpsOf(args, ctx) : undefined
       const mermaid = diagram.mermaidTextOf(args, ctx)
       return diagram.createDrawio(output, ops, mermaid, ctx, writeOutput)
+    }
+    if (type === 'whiteboard') {
+      const wb = await import('../formats/whiteboard')
+      wb.assertWhiteboardCliPath(output)
+      const ops = args.flags['ops'] !== undefined ? wb.whiteboardOpsOf(args, ctx) : undefined
+      const template = wb.whiteboardTemplateOf(args, ctx)
+      return wb.createWhiteboard(output, ops, template, ctx, writeOutput)
     }
     if (type === 'docx') {
       const r = await createDocx(args, ctx)

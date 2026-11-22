@@ -6,6 +6,7 @@ export const ar = {
   kindSlides: 'عرض تقديمي (PPT)',
   kindHtml: 'صفحة ويب (HTML)',
   kindMindmap: 'خريطة ذهنية',
+  kindWhiteboard: "لوح أبيض",
   materialsLabel: 'المواد',
   addMaterials: 'إضافة ملفات…',
   removeMaterial: 'إزالة',

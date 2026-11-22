@@ -20,6 +20,7 @@
     "./find-panel.css": "./src/find-panel.css",
     "./ribbon-collapse.css": "./src/ribbon-collapse.css",
     "./markdown.css": "./src/markdown.css",
+    "./ai-panel.css": "./src/ai-panel.css",
     "./ai-panel-prefs.css": "./src/ai-panel-prefs.css",
     "./ai-scope-quote.css": "./src/ai-scope-quote.css",
     "./ai-queue-strip.css": "./src/ai-queue-strip.css",

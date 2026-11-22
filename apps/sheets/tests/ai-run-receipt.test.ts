@@ -8,7 +8,9 @@ import {
   UNIVER_UNDO_CAPACITY,
   adapterRevertVerdict,
   joinUndoGuards,
+  planChangeLines,
   receiptState,
+  statusAfterRevert,
   univerApplyGuard,
   univerRevertOutcome,
   univerRevertVerdict,
@@ -140,5 +142,40 @@ describe('receiptState', () => {
     for (const state of ['reverted', 'partial', 'refused', 'expired'] as const) {
       expect(receiptState({ opCount: 3, undoSteps: 1, guard, state })).toBe(state)
     }
+  })
+})
+
+describe('statusAfterRevert', () => {
+  it('replaces only the notice that offered undo for the run', () => {
+    expect(
+      statusAfterRevert('applied, undo with Ctrl+Z', 'applied, undo with Ctrl+Z', 'undone'),
+    ).toBe('undone')
+    expect(statusAfterRevert('saved', 'applied, undo with Ctrl+Z', 'undone')).toBe('saved')
+  })
+})
+
+describe('planChangeLines', () => {
+  it('builds clickable sheetnav lines from applied cell, format, and rename changes', () => {
+    const lines = planChangeLines(
+      {
+        cellChanges: [
+          {
+            sheetId: 's1',
+            address: 'B2',
+            before: { value: null },
+            after: { value: 42 },
+          },
+        ],
+        formatChanges: [{ sheetId: 's1', range: 'A1:C1', label: 'Bold header', format: {} }],
+        structuralChanges: [],
+        sheetRenames: [{ sheetId: 's1', before: 'Sheet1', after: 'Summary' }],
+      },
+      (id) => (id === 's1' ? 'Summary' : undefined),
+    )
+    expect(lines).toHaveLength(3)
+    expect(lines[0]).toMatchObject({ kind: 'replace', from: 'Sheet1', to: 'Summary', showable: true })
+    expect(lines[1]).toMatchObject({ kind: 'named', from: 'Summary!A1:C1', showable: true })
+    expect(lines[2]).toMatchObject({ kind: 'insert', to: 'Summary!B2 = 42', showable: true })
+    expect(lines[2]!.navHref).toBe('sheetnav://Summary!B2')
   })
 })

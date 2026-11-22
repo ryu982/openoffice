@@ -407,6 +407,9 @@ describe('waiting for the PC’s fonts before a print', () => {
     })
     const hidden = { visibilityState: 'hidden' }
     await expect(pc.printFontsReady({ doc: hidden as never })).resolves.toBe(false)
+    // hidden BrowserWindow in Electron reports visibilityState === 'visible'; headless skips wait
+    const visible = { visibilityState: 'visible' }
+    await expect(pc.printFontsReady({ doc: visible as never, headless: true })).resolves.toBe(false)
   })
 
   it('goes on after the wait when the look takes too long', async () => {

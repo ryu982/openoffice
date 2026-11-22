@@ -1,13 +1,20 @@
 import {
   aiPanelWidthAtPointer,
+  AiAttachMenu,
   AiBlockedNotice,
   AiConnectPrompt,
   AiFirstConnectionNotice,
   AiInputTruncatedNotice,
   AiMark,
+  AiPanelHeader,
   AiPanelSideButton,
+  AiReplyFooter,
+  AiScrollToBottom,
   AiModelPicker,
   AiToolsUnsupportedNotice,
+  AiWorkSteps,
+  AiEmptyHints,
+  useScrollToBottom,
   type AiModelPickerBridge,
   AiQueueStrip,
   AI_QUEUE_LABELS,
@@ -18,9 +25,7 @@ import {
   aiSubscriptionText,
   useAiSendGate,
   useChatRunQueue,
-  DriveAttachButton,
   type DriveAttachPicked,
-  DocAttachButton,
   McpPermissionCard,
   McpServerButton,
   useMcpWindow,
@@ -114,10 +119,13 @@ import { boundChatHistory } from './chat-retention'
 import {
   afterRollback,
   clearAiMarksTransaction,
+  collectAiMarkedChangeLines,
   countAiMarkedBlocks,
+  docChangeLineFromTool,
   hasLaterAppliedRun,
   isAiMarksClear,
   runChangesState,
+  type DocsChangeLine,
   type DocsRunChanges,
 } from './run-changes'
 import { createElectronTransport } from './transport'
@@ -139,10 +147,6 @@ import {
   type AiComposerDocs,
   type AiScopeQuoteData,
 } from '@genoffice/ui'
-import sendEnterOn from '../assets/send-enter-on.png'
-import sendEnterOff from '../assets/send-enter-off.png'
-import sendStop from '../assets/send-stop.png'
-import attachIcon from '../assets/attach-icon.png'
 import filePdfIcon from '../assets/file-pdf.png'
 import fileWordIcon from '../assets/file-word.png'
 import fileExcelIcon from '../assets/file-excel.png'
@@ -671,7 +675,6 @@ export function AiPanel({
   const [trackChanges, setTrackChanges] = useState(
     () => localStorage.getItem(TRACK_CHANGES_KEY) === '1',
   )
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
   const [attachNotice, setAttachNotice] = useState<string | null>(null)
   /** data-URL previews for image attachments, keyed by path (composer thumbnails) */
@@ -774,6 +777,7 @@ export function AiPanel({
   /** the scope chip's expandable preview of the selected text */
   const [scopePreviewOpen, setScopePreviewOpen] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
+  const scrollBottom = useScrollToBottom(logRef)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   /** false once the user scrolls up to read; re-arms near the bottom */
   const stickToBottomRef = useRef(true)
@@ -929,13 +933,30 @@ export function AiPanel({
    */
   const takeRunChanges = (): { changes: DocsRunChanges } | Record<string, never> => {
     if (!runSnapshotRef.current) return {}
-    if (trackChangesRef.current) return { changes: { state: 'applied' } }
-    const count = countAiMarkedBlocks(editorRef.current.state.doc)
+    if (trackChangesRef.current) {
+      const lines = runEditLinesRef.current.length > 0 ? [...runEditLinesRef.current] : undefined
+      return { changes: { state: 'applied', ...(lines ? { lines } : {}) } }
+    }
+    const doc = editorRef.current.state.doc
+    const count = countAiMarkedBlocks(doc)
     if (count > 0) {
       marksShownRef.current = true
       setMarksShown(true)
     }
-    return { changes: { state: 'applied', ...(count > 0 ? { count } : {}) } }
+    const markedLines = collectAiMarkedChangeLines(doc)
+    const lines =
+      markedLines.length > 0
+        ? markedLines
+        : runEditLinesRef.current.length > 0
+          ? [...runEditLinesRef.current]
+          : undefined
+    return {
+      changes: {
+        state: 'applied',
+        ...(count > 0 ? { count } : {}),
+        ...(lines ? { lines } : {}),
+      },
+    }
   }
   /**
    * A new run or chat starts without the last run's marks. With tracking off no block
@@ -978,6 +999,8 @@ export function AiPanel({
   const runToolsRef = useRef<
     Array<{ name: string; summary: string; isError?: boolean; input?: string; output?: string }>
   >([])
+  /** fallback change lines captured from mutating tool calls during the run */
+  const runEditLinesRef = useRef<DocsChangeLine[]>([])
   /** tokens billed so far in the in-flight run (summed across turns; usage chips read it live) */
   const runUsageRef = useRef<AiTokenUsageView | undefined>(undefined)
   /** tokens billed across the panel's session (the composer chip) */
@@ -1301,6 +1324,11 @@ export function AiPanel({
         onToolExecuted: ({ call, execution, snapshotBefore }) => {
           // The run's first pre-edit state wins so one roll-back undoes the whole run
           if (snapshotBefore && !runSnapshotRef.current) runSnapshotRef.current = snapshotBefore
+          if (execution.mutated && !execution.isError) {
+            runEditLinesRef.current.push(
+              docChangeLineFromTool(call.name, call.input, execution.summary),
+            )
+          }
           // tracking off: the edit is accepted, its yellow marks stay until the next run (or
           // the card's clear); tracking on: revisions stay pending, handled in the Review tab
           // mind maps ride the UI-only display side channel onto the message
@@ -1514,6 +1542,7 @@ export function AiPanel({
     const el = logRef.current
     if (!el) return
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    scrollBottom.onScroll()
   }
 
   const run = () => {
@@ -1602,6 +1631,7 @@ export function AiPanel({
     instructionRef.current = instruction
     lastInstructionRef.current = instruction
     runToolsRef.current = []
+    runEditLinesRef.current = []
     runSnapshotRef.current = null
     runUsageRef.current = undefined
     dropRunMarks()
@@ -1780,12 +1810,6 @@ export function AiPanel({
     showStoredChat(opened.entries)
   }
 
-  const copyMessage = (text: string, idx: number) => {
-    void navigator.clipboard.writeText(text)
-    setCopiedIdx(idx)
-    window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
-  }
-
   const mergeAttachments = (result: AttachmentAddResult | null) => {
     if (!result) return
     if (result.accepted.length > 0) {
@@ -1954,39 +1978,40 @@ export function AiPanel({
         aria-orientation="vertical"
         aria-label={aiSubscriptionText(lang, 'aiAssistant')}
       />
-      <div className="ai-panel-header">
-        <span className="ai-panel-title">
-          <AiMark size={22} />
-          {aiSubscriptionText(lang, 'aiAssistant')}
-        </span>
-        {project.chatMenu}
-        <div className="ai-panel-header-actions">
-          <AiPanelSideButton
-            lang={lang}
-            onMove={(side) => window.desktop.setAiPanelPrefs({ side })}
-          />
-          {(chat.length > 0 || historicChat.length > 0) && (
-            <button
-              className="ai-header-btn"
-              onClick={newChat}
-              data-tip={t('aiNewChatTitle')}
-              aria-label={t('aiNewChatTitle')}
-            >
-              <IconNewChat size={16} />
-            </button>
-          )}
-          {onCollapse && (
-            <button
-              className="ai-header-btn ai-panel-collapse"
-              onClick={onCollapse}
-              data-tip={t('aiCollapseTitle')}
-              aria-label={t('aiCollapseTitle')}
-            >
-              <IconSidebarCollapse size={15} />
-            </button>
-          )}
-        </div>
-      </div>
+      <AiPanelHeader
+        lang={lang}
+        chatMenu={project.chatMenu}
+        actions={
+          <>
+            <AiPanelSideButton
+              lang={lang}
+              onMove={(side) => window.desktop.setAiPanelPrefs({ side })}
+            />
+            {(chat.length > 0 || historicChat.length > 0) && (
+              <button
+                type="button"
+                className="ai-header-btn"
+                onClick={newChat}
+                data-tip={t('aiNewChatTitle')}
+                aria-label={t('aiNewChatTitle')}
+              >
+                <IconNewChat size={16} />
+              </button>
+            )}
+            {onCollapse && (
+              <button
+                type="button"
+                className="ai-header-btn ai-panel-collapse"
+                onClick={onCollapse}
+                data-tip={t('aiCollapseTitle')}
+                aria-label={t('aiCollapseTitle')}
+              >
+                <IconSidebarCollapse size={15} />
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div ref={logRef} className="ai-chat" onScroll={onLogScroll}>
         {/* past conversation (read-only transcript, not fed to the model), shown continuously with the current turn */}
@@ -2005,7 +2030,9 @@ export function AiPanel({
                 {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                   <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
                 )}
-                {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
+                {entry.tools && entry.tools.length > 0 && (
+                  <AiWorkSteps lang={lang} steps={entry.tools} />
+                )}
                 <SkillUsedNotes tools={entry.tools} />
                 {project.messageParts(entry)}
                 {entry.skillProposals?.map((key) => skillCards.render(key))}
@@ -2021,6 +2048,9 @@ export function AiPanel({
         )}
         {chat.length === 0 && historicChat.length === 0 && (
           <div className="ai-chat-empty">
+            <div className="ai-chat-empty-badge" aria-hidden="true">
+              <AiMark size={24} />
+            </div>
             <div className="ai-chat-empty-title">
               {t(docEmpty ? 'aiEmptyDraftTitle' : 'aiEmptyTitle')}
             </div>
@@ -2034,6 +2064,7 @@ export function AiPanel({
             <div className="ai-starter-list">
               {(docEmpty ? DRAFT_STARTER_PROMPTS : EDIT_STARTER_PROMPTS).map((p) => (
                 <button
+                  type="button"
                   key={p}
                   className="ai-starter"
                   onClick={() => {
@@ -2045,6 +2076,7 @@ export function AiPanel({
                 </button>
               ))}
             </div>
+            <AiEmptyHints lang={lang} showSkill={Boolean(skills.composer)} showDocMention />
           </div>
         )}
         {chat.map((entry, i) => {
@@ -2082,6 +2114,9 @@ export function AiPanel({
               {entry.role === 'user' && entry.attachments && entry.attachments.length > 0 && (
                 <SentAttachments atts={entry.attachments} previews={attachmentPreviews} />
               )}
+              {entry.role === 'assistant' && entry.tools && entry.tools.length > 0 && (
+                <AiWorkSteps lang={lang} steps={entry.tools} />
+              )}
               {entry.role === 'assistant' ? (
                 entry.text && (
                   <div dir="auto">
@@ -2091,12 +2126,6 @@ export function AiPanel({
               ) : (
                 <span dir="auto">{entry.text}</span>
               )}
-              {entry.role === 'assistant' && entry.usage && (
-                <div className="ai-message-usage">
-                  <AiUsageChip usage={entry.usage} lang={lang} />
-                </div>
-              )}
-              {entry.tools && entry.tools.length > 0 && <ToolChipList tools={entry.tools} />}
               {entry.mindmap && (
                 <MindMapCard
                   tree={entry.mindmap}
@@ -2136,6 +2165,11 @@ export function AiPanel({
                   lang={lang}
                   state={runChangesState(entry.changes, entry.snapshot)}
                   count={entry.changes.count}
+                  lines={entry.changes.lines}
+                  onShowLine={(lineIdx) => {
+                    const idx = entry.changes?.lines?.[lineIdx]?.blockIndex
+                    if (idx !== undefined) navigateToBlock(editorRef.current, idx)
+                  }}
                   canRevert={!busy}
                   revertsLater={hasLaterAppliedRun(chat, i)}
                   onRevert={() => {
@@ -2146,65 +2180,16 @@ export function AiPanel({
                 />
               )}
               <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
-              {showToolbar && (
-                <div className="ai-msg-toolbar">
-                  {entry.text && (
-                    <button
-                      className="ai-msg-tool-btn"
-                      onClick={() => copyMessage(entry.text, i)}
-                      aria-label={t('aiCopyReplyTitle')}
-                      data-tip={t('aiCopyReplyTitle')}
-                    >
-                      {copiedIdx === i ? (
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      ) : (
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                          <path
-                            d="M14.6113 5.34253C16.0608 5.3428 17.2363 6.518 17.2363 7.96753V15.5066C17.2361 16.956 16.0607 18.1313 14.6113 18.1316H7.07227C5.62267 18.1316 4.44751 16.9561 4.44727 15.5066V7.96753C4.44732 6.51783 5.62255 5.34253 7.07227 5.34253H14.6113ZM7.07227 6.59253C6.31291 6.59253 5.69732 7.20819 5.69727 7.96753V15.5066C5.69751 16.2658 6.31302 16.8816 7.07227 16.8816H14.6113C15.3703 16.8813 15.9861 16.2656 15.9863 15.5066V7.96753C15.9863 7.20835 15.3705 6.5928 14.6113 6.59253H7.07227ZM10.0176 2.8689C10.3626 2.86905 10.6426 3.14882 10.6426 3.4939C10.6425 3.83888 10.3626 4.11874 10.0176 4.1189H4.59961C3.84022 4.1189 3.22461 4.73451 3.22461 5.4939V11.324C3.22433 11.6689 2.94461 11.949 2.59961 11.949C2.25461 11.949 1.97489 11.6689 1.97461 11.324V5.4939C1.97461 4.04415 3.14987 2.8689 4.59961 2.8689H10.0176Z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  )}
-                  {isLast && !busy && lastInstructionRef.current && (
-                    <button
-                      className="ai-msg-tool-btn"
-                      onClick={retry}
-                      aria-label={t('aiRegenerateTitle')}
-                      data-tip={t('aiRegenerateTitle')}
-                    >
-                      {/* 24-canvas glyph at 18px (near-full-bleed paths, sized for optical
-                          parity with the copy icon): stroke 1.5 paints 1.125px (1:16) */}
-                      <svg
-                        style={{ width: 18, height: 18 }}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                      >
-                        <path d="M3.68881 9.85339C4.1791 8.0054 5.28205 6.30704 6.9459 5.09101C10.8046 2.27085 16.2188 3.11279 19.0389 6.97147C19.7242 7.90904 20.1932 8.93842 20.4553 10.0001" />
-                        <path d="M2.00452 8.46411L2.87229 10.7059C2.96814 10.9535 3.24658 11.0765 3.4942 10.9807L5.73594 10.1129" />
-                        <path d="M20.3308 14.4908C19.8405 16.3388 18.7376 18.0372 17.0738 19.2532C13.215 22.0734 7.80083 21.2314 4.98071 17.3728C4.22167 16.3342 3.72792 15.183 3.48686 13.9999" />
-                        <path d="M22.0151 15.8801L21.1474 13.6384C21.0515 13.3908 20.7731 13.2677 20.5255 13.3636L18.2837 14.2314" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+              {entry.role === 'assistant' && (showToolbar || entry.usage) && (
+                <AiReplyFooter
+                  lang={lang}
+                  isLast={isLast}
+                  copyText={showToolbar && entry.text ? entry.text : undefined}
+                  onRetry={
+                    showToolbar && isLast && !busy && lastInstructionRef.current ? retry : undefined
+                  }
+                  usage={entry.usage}
+                />
               )}
               {entry.turnLimit && isLast && !busy && (
                 <button className="ai-continue-btn" onClick={continueRun}>
@@ -2218,6 +2203,15 @@ export function AiPanel({
         {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
         <McpPermissionCard lang={lang} />
       </div>
+
+      <AiScrollToBottom
+        lang={lang}
+        visible={scrollBottom.showButton}
+        onClick={() => {
+          stickToBottomRef.current = true
+          scrollBottom.scrollToBottom()
+        }}
+      />
 
       <div className="ai-composer">
         {sendGate.connectChoice && (
@@ -2416,9 +2410,8 @@ export function AiPanel({
           sendLabel={t('aiSend')}
           stopLabel={t('aiStop')}
           iconOnly
-          sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}
-          sendIconDisabled={<img src={sendEnterOff} alt="" aria-hidden />}
-          stopIcon={<img src={sendStop} alt="" aria-hidden />}
+          lang={lang}
+          showSkillButton
           textareaRef={inputRef}
           onChange={setInput}
           onSend={run}
@@ -2427,27 +2420,18 @@ export function AiPanel({
           docs={docMention}
           onPasteFiles={(files) => void onPasteFiles(files)}
           footerBelow={project.picker}
+          footerBelowEnd={sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
           footerStart={
             <>
-              <AiModelPicker
-                bridge={MODEL_BRIDGE}
+              <AiAttachMenu
                 lang={lang}
-                subscriptionStatuses={subscription.statuses}
-                onRefreshSubscriptions={subscription.refresh}
+                onPickPc={() => void pickAttachments()}
+                onPickedDocs={attachFromDrive}
+                onPickedDrive={attachFromDrive}
               />
-              {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <button
-                className="ai-attach-btn"
-                onClick={pickAttachments}
-                data-tip={t('aiAttachTitle')}
-                aria-label={t('aiAttachTitle')}
-              >
-                <img src={attachIcon} alt="" aria-hidden />
-              </button>
-              <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
-              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
               <McpServerButton lang={lang} />
               <button
+                type="button"
                 className={`ai-track-btn${trackOn ? ' on' : ''}`}
                 onClick={toggleTrackChanges}
                 data-tip={trackOn ? t('aiTrackOnTitle') : t('aiTrackOffTitle')}
@@ -2458,143 +2442,16 @@ export function AiPanel({
               </button>
             </>
           }
+          footerEnd={
+            <AiModelPicker
+              bridge={MODEL_BRIDGE}
+              lang={lang}
+              subscriptionStatuses={subscription.statuses}
+              onRefreshSubscriptions={subscription.refresh}
+            />
+          }
         />
       </div>
     </aside>
-  )
-}
-
-/** Tool row list (unified with slides/sheets): dot + summary; expandable details when there's output; arrow shows on hover */
-/** Step-row status icons (timeline glyphs: 14px in a 20px slot, 1.6 stroke) */
-function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
-  if (status === 'running') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M6.5 3.5h11M6.5 20.5h11M8 3.5v3.2c0 2.6 4 4.2 4 5.3 0 1.1 4 2.7 4 5.3v3.2M16 3.5v3.2c0 2.6-4 4.2-4 5.3 0 1.1-4 2.7-4 5.3v3.2" />
-      </svg>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
-      </svg>
-    )
-  }
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.4 2.4 2.4 4.6-5" />
-    </svg>
-  )
-}
-
-/** Tool activity group: a single quiet summary row
- *  that auto-opens while tools run, auto-collapses into "Worked · N steps" when they finish,
- *  and a manual toggle that always wins. Rows inside are step rows with 1px connectors. */
-function ToolChipList({ tools }: { tools: ToolActivity[] }) {
-  const { t: tr } = useI18n()
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [userOpen, setUserOpen] = useState<boolean | null>(null)
-
-  const toggle = (j: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(j)) next.delete(j)
-      else next.add(j)
-      return next
-    })
-  }
-
-  const anyRunning = tools.some((tool) => tool.running)
-  const open = userOpen ?? anyRunning
-  const label = anyRunning ? tr('aiGroupWorking') : tr('aiWorkedSteps', { n: tools.length })
-
-  return (
-    <div className="ai-work-group">
-      <button
-        type="button"
-        className={`ai-work-group-summary${anyRunning ? ' running' : ''}`}
-        aria-expanded={open}
-        onClick={() => setUserOpen(!open)}
-      >
-        {anyRunning && !open && <span className="ai-tool-chip-spinner" aria-hidden />}
-        <span className="ai-work-group-label">{label}</span>
-        <span className={`ai-tool-chip-caret${open ? ' open' : ''}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      <div className={`ai-work-group-body${open ? ' open' : ''}`}>
-        <div className="ai-work-group-body-inner">
-          {tools.map((tool, j) => {
-            const hasOutput = !tool.running && !!tool.output
-            const isOpen = expanded.has(j)
-            const stepStatus = tool.running ? 'running' : tool.isError ? 'error' : 'done'
-            return (
-              <div key={j} className="ai-step-row">
-                <span className={`ai-step-icon ${stepStatus}`} aria-hidden>
-                  <StepIcon status={stepStatus} />
-                </span>
-                <div className="ai-step-content">
-                  {hasOutput ? (
-                    <button
-                      type="button"
-                      className="ai-step-title clickable"
-                      data-tip={tool.name}
-                      aria-expanded={isOpen}
-                      onClick={() => toggle(j)}
-                    >
-                      {tool.summary}
-                    </button>
-                  ) : (
-                    <span className="ai-step-title" data-tip={tool.name}>
-                      {tool.summary}
-                    </span>
-                  )}
-                  {hasOutput && isOpen && (
-                    <div className="ai-step-detail">
-                      <div className="ai-tool-output">
-                        <div className="ai-tool-output-pre">{tool.output}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 }

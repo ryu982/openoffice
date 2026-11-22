@@ -6,7 +6,16 @@
 
 /** every editor that can take a hand-off; each opens it in a new untitled tab */
 export type HandoffEditor =
-  'docs' | 'sheets' | 'slides' | 'pdf' | 'markdown' | 'html' | 'mindmap' | 'hwp' | 'epub'
+  | 'docs'
+  | 'sheets'
+  | 'slides'
+  | 'pdf'
+  | 'markdown'
+  | 'html'
+  | 'mindmap'
+  | 'whiteboard'
+  | 'hwp'
+  | 'epub'
 
 export const HANDOFF_EDITORS: readonly HandoffEditor[] = Object.freeze([
   'docs',
@@ -16,6 +25,7 @@ export const HANDOFF_EDITORS: readonly HandoffEditor[] = Object.freeze([
   'markdown',
   'html',
   'mindmap',
+  'whiteboard',
   'hwp',
   'epub',
 ])
@@ -35,6 +45,7 @@ export const HANDOFF_ATTACH_EDITORS: readonly HandoffEditor[] = Object.freeze([
   'slides',
   'html',
   'mindmap',
+  'whiteboard',
   'hwp',
 ])
 

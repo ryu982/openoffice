@@ -10,6 +10,7 @@ export const id = {
   item_html: 'Editor HTML',
   item_mindmap: 'Editor peta pikiran',
   item_diagram: 'Editor diagram',
+  item_whiteboard: "Editor papan tulis",
   item_hwp: 'Editor Hangul (HWP)',
   item_epub: 'Editor EPUB',
   offMessage: '{item} sedang nonaktif. Aktifkan lalu buka?',

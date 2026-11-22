@@ -1,5 +1,6 @@
 import {
   AI_QUEUE_LABELS,
+  AiAttachMenu,
   AiBlockedNotice,
   AiComposer,
   AiRunStopNotice,
@@ -9,21 +10,25 @@ import {
   AiMark,
   AiModelPicker,
   type AiModelPickerBridge,
+  AiPanelHeader,
   AiPanelSideButton,
   AiQueueStrip,
+  AiReplyFooter,
   AiScopeQuote,
+  AiScrollToBottom,
   type AiScopeQuoteData,
   AiSubscriptionUsageLine,
   AiToolsUnsupportedNotice,
   AiReplyProgress,
+  AiWorkSteps,
   Markdown,
+  AiEmptyHints,
   aiPanelWidthAtPointer,
   aiSubscriptionText,
   useAiSendGate,
   useChatRunQueue,
-  DriveAttachButton,
+  useScrollToBottom,
   type DriveAttachPicked,
-  DocAttachButton,
   McpPermissionCard,
   McpServerButton,
   useMcpWindow,
@@ -75,10 +80,6 @@ import type {
 } from '@genoffice/ai-provider/browser'
 import { localModelCapabilities } from '@genoffice/ai-provider/browser'
 import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
-import sendEnterOn from '../assets/send-enter-on.png'
-import sendEnterOff from '../assets/send-enter-off.png'
-import sendStop from '../assets/send-stop.png'
-import attachIcon from '../assets/attach-icon.png'
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { AttachmentAddResult, AttachmentMeta } from '../../shared/ipc'
 import type { AgentMemoRemovalRefusal } from '../../../studio-plugin/agent-plugin.mjs'
@@ -233,6 +234,8 @@ export function AiPanel({
   onSkillHandoff,
   prefill,
   onPrefillTaken,
+  marksOnPage,
+  loadGeneratedHwpx,
 }: {
   /** the document operations of the open editor */
   bridge: AgentBridge
@@ -253,6 +256,17 @@ export function AiPanel({
    * request runs once even when the panel mounts again with the same props
    */
   onPrefillTaken?: (taken: AiPrefill) => void
+  /**
+   * the pages carry marks of the AI's changes now, as the editor's plugin tells: a user edit
+   * takes them off, and the card's button to clear them goes with them
+   */
+  marksOnPage?: boolean
+  /** load an externally generated .hwpx/.hwp (e.g. from kordoc MCP) into this blank tab or a new tab */
+  loadGeneratedHwpx?: (
+    path: string,
+  ) => Promise<
+    { ok: true; mode: 'current' | 'new-tab'; title: string } | { ok: false; error: string }
+  >
 }): ReactElement {
   const { lang, t } = useI18n()
   const [chat, setChat] = useState<ChatEntry[]>([])
@@ -272,6 +286,12 @@ export function AiPanel({
   const [reverting, setReverting] = useState(false)
   /** the editor shows marks over what the last run changed */
   const [marksShown, setMarksShown] = useState(false)
+  /** what the plugin said last, for the end of a run: a run that only removed things marks none */
+  const marksOnPageRef = useRef(marksOnPage === true)
+  marksOnPageRef.current = marksOnPage === true
+  useEffect(() => {
+    if (!marksOnPage) setMarksShown(false)
+  }, [marksOnPage])
   /** the memos an edit would remove, while the user decides whether to go on */
   const [memoApproval, setMemoApproval] = useState<AgentMemoRemovalRefusal | null>(null)
   const memoGateRef = useRef<MemoApprovalGate | null>(null)
@@ -559,25 +579,6 @@ export function AiPanel({
       window.clearInterval(timer)
     }
   }, [busy])
-  // the plugin takes the marks off by itself when the user edits the document: the card's
-  // button to clear them goes with them
-  useEffect(() => {
-    if (busy || !marksShown) return
-    let stopped = false
-    const readMarks = async (): Promise<void> => {
-      try {
-        const result = await bridgeRef.current.hasMarks()
-        if (!stopped && !result.shown) setMarksShown(false)
-      } catch {
-        // the editor is not ready, or is gone: the button stays as it is
-      }
-    }
-    const timer = window.setInterval(() => void readMarks(), SELECTION_POLL_MS)
-    return () => {
-      stopped = true
-      window.clearInterval(timer)
-    }
-  }, [busy, marksShown])
   const scope = selected && selected.key !== scopeCleared ? selected : null
   const scopeRef = useRef(scope)
   scopeRef.current = scope
@@ -586,8 +587,8 @@ export function AiPanel({
   }, [scope])
   /** the selection of the run in progress, for a retry of it */
   const runScopeRef = useRef<SelectionScope | null>(null)
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
+  const scrollBottom = useScrollToBottom(chatRef)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottomRef = useRef(true)
   // preferred = the user's chosen width (the only value persisted); panelWidth =
@@ -724,8 +725,8 @@ export function AiPanel({
     const items = runChangesRef.current
     runChangesRef.current = []
     if (items.length === 0) return {}
-    // the plugin marked each change on the pages as it made it
-    setMarksShown(true)
+    // the plugin marked each change on the pages as it made it (and said so)
+    setMarksShown(marksOnPageRef.current)
     const foreign = runForeignRef.current
     // a run whose starting point is unknown cannot be checked, so it is not offered for undo
     return {
@@ -770,6 +771,8 @@ export function AiPanel({
 
   /** the person's words of the run that is going: import_attachment may hand them to a new tab */
   const runRequestRef = useRef('')
+  const loadGeneratedHwpxRef = useRef(loadGeneratedHwpx)
+  loadGeneratedHwpxRef.current = loadGeneratedHwpx
   const skillRef = useRef<ReturnType<typeof createHwpSkill> | null>(null)
   if (!skillRef.current)
     skillRef.current = createHwpSkill({
@@ -780,8 +783,12 @@ export function AiPanel({
       label: tGlobal,
       onChange: (change) => {
         runChangesRef.current.push(change)
-        // the view follows the work: a change far down the document would go unseen
-        if (change.place) void bridgeRef.current.reveal(change.place).catch(() => {})
+        // the view follows the work: a change far down the document would go unseen. The
+        // caret goes there without selecting it: the mark shows the change, and a selection
+        // laid over the last change would hide its mark once the run ends
+        if (change.place) {
+          void bridgeRef.current.reveal({ ...change.place, length: 0 }).catch(() => {})
+        }
       },
       confirmMemoRemoval: (refusal) => memoGateRef.current!.ask(refusal),
       imageGenAvailable: () => imageGenAvailableRef.current,
@@ -796,6 +803,16 @@ export function AiPanel({
         }
         const request = handOver ? runRequestRef.current.trim() : ''
         return window.hwpApi.importAttachmentAsDocument(attachment.path, request || undefined)
+      },
+      loadGeneratedHwpx: (path) => {
+        const fn = loadGeneratedHwpxRef.current
+        if (!fn) {
+          return Promise.resolve({
+            ok: false as const,
+            error: 'Opening generated HWP files is not available here.',
+          })
+        }
+        return fn(path)
       },
       // the model names an attachment; only files the panel shows can be found
       attachmentPath: (name) =>
@@ -978,6 +995,7 @@ export function AiPanel({
     const el = chatRef.current
     if (!el) return
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    scrollBottom.onScroll()
   }
 
   /**
@@ -1182,12 +1200,6 @@ export function AiPanel({
   /** "Continue with …" on a blocked run: that provider becomes the selection, then the request reruns */
   const continueWith = (provider: AiSubscriptionProviderId): void =>
     sendGate.continueWith(provider, retry)
-
-  const copyMessage = (text: string, idx: number): void => {
-    void navigator.clipboard.writeText(text)
-    setCopiedIdx(idx)
-    window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
-  }
 
   // the editor's history is one stack: only the newest run still in the document can be taken back
   const revertableIdx = revertableIndex(chat.map((entry) => entry.changes?.state))
@@ -1410,51 +1422,64 @@ export function AiPanel({
         aria-orientation="vertical"
         aria-label={aiSubscriptionText(lang, 'aiAssistant')}
       />
-      <header className="ai-panel-header">
-        <span className="ai-panel-title">
-          <AiMark size={22} />
-          {aiSubscriptionText(lang, 'aiAssistant')}
-        </span>
-        {project.chatMenu}
-        <div className="ai-panel-header-actions">
-          <AiPanelSideButton
-            lang={lang}
-            onMove={(side) => window.hwpApi.setAiPanelPrefs({ side })}
-          />
-          {chat.length > 0 && (
+      <AiPanelHeader
+        lang={lang}
+        chatMenu={project.chatMenu}
+        actions={
+          <>
+            <AiPanelSideButton
+              lang={lang}
+              onMove={(side) => window.hwpApi.setAiPanelPrefs({ side })}
+            />
+            {chat.length > 0 && (
+              <button
+                type="button"
+                className="ai-header-btn"
+                onClick={startNewChat}
+                data-tip={t('aiNewChat')}
+                aria-label={t('aiNewChat')}
+              >
+                <IconNewChat />
+              </button>
+            )}
             <button
-              className="ai-header-btn"
-              onClick={startNewChat}
-              data-tip={t('aiNewChat')}
-              aria-label={t('aiNewChat')}
+              type="button"
+              className="ai-header-btn ai-panel-collapse"
+              onClick={onCollapse}
+              data-tip={t('aiCollapsePanel')}
+              aria-label={t('aiCollapsePanel')}
             >
-              <IconNewChat />
+              <IconCollapse />
             </button>
-          )}
-          <button
-            className="ai-header-btn ai-panel-collapse"
-            onClick={onCollapse}
-            data-tip={t('aiCollapsePanel')}
-            aria-label={t('aiCollapsePanel')}
-          >
-            <IconCollapse />
-          </button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="ai-chat" ref={chatRef} onScroll={onChatScroll}>
         {chat.length === 0 && (
           <div className="ai-chat-empty">
+            <div className="ai-chat-empty-badge" aria-hidden="true">
+              <AiMark size={24} />
+            </div>
             <div className="ai-chat-empty-title">{t('aiEmptyTitle')}</div>
             <div className="ai-chat-empty-body">{t('aiEmptyBody')}</div>
             <div className="ai-starter-list">
-              <button className="ai-starter" onClick={() => starter(t('aiStarterSummarizePrompt'))}>
+              <button
+                type="button"
+                className="ai-starter"
+                onClick={() => starter(t('aiStarterSummarizePrompt'))}
+              >
                 {t('aiStarterSummarize')}
               </button>
-              <button className="ai-starter" onClick={() => starter(t('aiStarterProofreadPrompt'))}>
+              <button
+                type="button"
+                className="ai-starter"
+                onClick={() => starter(t('aiStarterProofreadPrompt'))}
+              >
                 {t('aiStarterProofread')}
               </button>
             </div>
+            <AiEmptyHints lang={lang} showSkill={Boolean(skills.composer)} showDocMention />
           </div>
         )}
         {chat.map((entry, i) => {
@@ -1507,6 +1532,7 @@ export function AiPanel({
               key={i}
               className={`ai-msg ai-msg-assistant${entry.isError && !blocked && !entry.stop ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
+              {hasTools && <AiWorkSteps lang={lang} steps={entry.tools!} />}
               {blocked ? (
                 <AiBlockedNotice
                   kind={blocked.kind}
@@ -1534,7 +1560,6 @@ export function AiPanel({
                 )
               )}
               {entry.unfinished && <UnfinishedSteps steps={entry.unfinished} />}
-              {hasTools && <ToolChipList tools={entry.tools!} />}
               <SkillUsedNotes tools={entry.tools} />
               {project.messageParts(entry)}
               {entry.skillProposals?.map((key) => skillCards.render(key))}
@@ -1554,18 +1579,7 @@ export function AiPanel({
                 />
               )}
               <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
-              {showToolbar && (
-                <div className="ai-msg-toolbar">
-                  <button
-                    className="ai-msg-tool-btn"
-                    onClick={() => copyMessage(entry.text, i)}
-                    aria-label={t('aiCopyReplyTitle')}
-                    data-tip={t('aiCopyReplyTitle')}
-                  >
-                    {copiedIdx === i ? <IconCheck /> : <IconCopy />}
-                  </button>
-                </div>
-              )}
+              {showToolbar && <AiReplyFooter lang={lang} isLast={isLast} copyText={entry.text} />}
             </div>
           )
         })}
@@ -1606,6 +1620,15 @@ export function AiPanel({
         {project.hint}
         {project.notices}
       </div>
+
+      <AiScrollToBottom
+        lang={lang}
+        visible={scrollBottom.showButton}
+        onClick={() => {
+          stickToBottomRef.current = true
+          scrollBottom.scrollToBottom()
+        }}
+      />
 
       <div className="ai-composer">
         {attachments.length > 0 && (
@@ -1684,33 +1707,29 @@ export function AiPanel({
           sendLabel={t('aiSend')}
           stopLabel={t('aiStop')}
           iconOnly
+          lang={lang}
+          showSkillButton
           footerStart={
             <>
-              <AiModelPicker
-                bridge={MODEL_BRIDGE}
+              <AiAttachMenu
                 lang={lang}
-                subscriptionStatuses={statuses ?? {}}
-                onRefreshSubscriptions={subscription.refresh}
+                onPickPc={() => void pickAttachments()}
+                onPickedDocs={attachFromDrive}
+                onPickedDrive={attachFromDrive}
               />
-              <button
-                type="button"
-                className="ai-attach-btn"
-                onClick={() => void pickAttachments()}
-                data-tip={t('aiAttachTitle')}
-                aria-label={t('aiAttachTitle')}
-              >
-                <img src={attachIcon} alt="" aria-hidden />
-              </button>
-              <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
-              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
               <McpServerButton lang={lang} />
             </>
           }
+          footerEnd={
+            <AiModelPicker
+              bridge={MODEL_BRIDGE}
+              lang={lang}
+              subscriptionStatuses={statuses ?? {}}
+              onRefreshSubscriptions={subscription.refresh}
+            />
+          }
           footerBelow={project.picker}
           onPasteFiles={(files) => void onPasteFiles(files)}
-          sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}
-          sendIconDisabled={<img src={sendEnterOff} alt="" aria-hidden />}
-          stopIcon={<img src={sendStop} alt="" aria-hidden />}
           textareaRef={inputRef}
           onChange={setPrompt}
           onSend={sendPrompt}
@@ -1783,61 +1802,6 @@ export function AiPanel({
   )
 }
 
-/** Step-row status icons (timeline glyphs, unified with the other apps) */
-function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
-  if (status === 'running') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M6.5 3.5h11M6.5 20.5h11M8 3.5v3.2c0 2.6 4 4.2 4 5.3 0 1.1 4 2.7 4 5.3v3.2M16 3.5v3.2c0 2.6-4 4.2-4 5.3 0 1.1-4 2.7-4 5.3v3.2" />
-      </svg>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
-      </svg>
-    )
-  }
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.4 2.4 2.4 4.6-5" />
-    </svg>
-  )
-}
-
 /** The edits a run left undone, under its reply: the count, and their labels when opened. */
 function UnfinishedSteps({ steps }: { steps: string[] }): ReactElement {
   const { t: tr } = useI18n()
@@ -1853,84 +1817,6 @@ function UnfinishedSteps({ steps }: { steps: string[] }): ReactElement {
         ))}
       </ul>
     </details>
-  )
-}
-
-/** Tool activity group (docs parity): auto-opens while tools run, auto-collapses into
- *  "Worked · N steps" when they finish; a manual toggle always wins */
-function ToolChipList({ tools }: { tools: ToolActivity[] }) {
-  const { t: tr } = useI18n()
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [userOpen, setUserOpen] = useState<boolean | null>(null)
-
-  const toggle = (j: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(j)) next.delete(j)
-      else next.add(j)
-      return next
-    })
-  }
-
-  const anyRunning = tools.some((tool) => tool.running)
-  const open = userOpen ?? anyRunning
-  const label = anyRunning ? tr('aiGroupWorking') : tr('aiWorkedSteps', { n: tools.length })
-
-  return (
-    <div className="ai-work-group">
-      <button
-        type="button"
-        className={`ai-work-group-summary${anyRunning ? ' running' : ''}`}
-        aria-expanded={open}
-        onClick={() => setUserOpen(!open)}
-      >
-        {anyRunning && !open && <span className="ai-tool-chip-spinner" aria-hidden />}
-        <span className="ai-work-group-label">{label}</span>
-        <span className={`ai-tool-chip-caret${open ? ' open' : ''}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      <div className={`ai-work-group-body${open ? ' open' : ''}`}>
-        <div className="ai-work-group-body-inner">
-          {tools.map((tool, j) => {
-            const hasOutput = !tool.running && !!tool.output
-            const isOpen = expanded.has(j)
-            const stepStatus = tool.running ? 'running' : tool.isError ? 'error' : 'done'
-            return (
-              <div key={j} className="ai-step-row">
-                <span className={`ai-step-icon ${stepStatus}`} aria-hidden>
-                  <StepIcon status={stepStatus} />
-                </span>
-                <div className="ai-step-content">
-                  {hasOutput ? (
-                    <button
-                      type="button"
-                      className="ai-step-title clickable"
-                      data-tip={tool.name}
-                      aria-expanded={isOpen}
-                      onClick={() => toggle(j)}
-                    >
-                      {tool.summary}
-                    </button>
-                  ) : (
-                    <span className="ai-step-title" data-tip={tool.name}>
-                      {tool.summary}
-                    </span>
-                  )}
-                  {hasOutput && isOpen && (
-                    <div className="ai-step-detail">
-                      <div className="ai-tool-output">
-                        <div className="ai-tool-output-pre">{tool.output}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -1970,35 +1856,6 @@ function IconCollapse(): ReactElement {
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M5.5 2.5v11" />
       <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function IconCheck(): ReactElement {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
-}
-
-function IconCopy(): ReactElement {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path
-        d="M14.6113 5.34253C16.0608 5.3428 17.2363 6.518 17.2363 7.96753V15.5066C17.2361 16.956 16.0607 18.1313 14.6113 18.1316H7.07227C5.62267 18.1316 4.44751 16.9561 4.44727 15.5066V7.96753C4.44732 6.51783 5.62255 5.34253 7.07227 5.34253H14.6113ZM7.07227 6.59253C6.31291 6.59253 5.69732 7.20819 5.69727 7.96753V15.5066C5.69751 16.2658 6.31302 16.8816 7.07227 16.8816H14.6113C15.3703 16.8813 15.9861 16.2656 15.9863 15.5066V7.96753C15.9863 7.20835 15.3705 6.5928 14.6113 6.59253H7.07227ZM10.0176 2.8689C10.3626 2.86905 10.6426 3.14882 10.6426 3.4939C10.6425 3.83888 10.3626 4.11874 10.0176 4.1189H4.59961C3.84022 4.1189 3.22461 4.73451 3.22461 5.4939V11.324C3.22433 11.6689 2.94461 11.949 2.59961 11.949C2.25461 11.949 1.97489 11.6689 1.97461 11.324V5.4939C1.97461 4.04415 3.14987 2.8689 4.59961 2.8689H10.0176Z"
-        fill="currentColor"
-      />
     </svg>
   )
 }

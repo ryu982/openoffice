@@ -17,7 +17,7 @@ import {
 import { classifyOpError, type OpFailure } from '../op-errors'
 import { CliError, EXIT } from '../result'
 import type { BatchMode } from '../batch'
-import { rhwpWasmPath } from '../resources'
+import { hwp5WasmPath, rhwpWasmPath } from '../resources'
 
 /**
  * Editing a Hangul (HWP / HWPX) document without the editor: the app's own AI tools
@@ -63,7 +63,7 @@ function loadEngine(): Promise<Engine> {
 }
 
 async function appModules() {
-  const [plugin, skill, saveFixes, savePlan, tails, kinds, tabs, tracked, memos] =
+  const [plugin, skill, saveFixes, savePlan, tails, kinds, tabs, tracked, memos, hwp5File] =
     await Promise.all([
       import('../../../../apps/hwp/studio-plugin/agent-plugin.mjs'),
       import('../../../../apps/hwp/src/renderer/ai/hwp-skill'),
@@ -74,7 +74,9 @@ async function appModules() {
       import('../../../../apps/hwp/src/main/tab-widths'),
       import('../../../../apps/hwp/src/main/tracked-changes'),
       import('../../../../apps/hwp/src/main/memos'),
+      import('../../../../apps/hwp/src/main/hwp5-file'),
     ])
+  hwp5File.setHwp5WasmPathResolver(() => hwp5WasmPath())
   return { plugin, skill, saveFixes, savePlan, tails, kinds, tabs, tracked, memos }
 }
 
@@ -467,9 +469,13 @@ export async function saveHwpSession(
       verify = {}
     }
     if (!verify.recovered || verify.pageCountBefore !== verify.pageCountAfter) {
+      const pages =
+        typeof verify.pageCountBefore === 'number' && typeof verify.pageCountAfter === 'number'
+          ? ` (${verify.pageCountBefore} -> ${verify.pageCountAfter} pages)`
+          : ''
       throw new CliError(
         EXIT.conversion,
-        'the HWP the engine wrote does not read back the same; nothing was written',
+        `the HWP the engine wrote does not read back the same${pages}; nothing was written`,
         { verify },
         {
           reason: 'conversion_failed',

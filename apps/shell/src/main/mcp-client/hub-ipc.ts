@@ -9,7 +9,9 @@ import {
 import { MCP_SERVERS_CHANNELS, type McpSettingsResult } from '../../shared/mcp-servers-api'
 import type { McpHub } from './hub'
 import {
+  addVaultInputOf,
   booleanOf,
+  connectPresetInputOf,
   mcpServerInputOf,
   mcpServerPatchOf,
   pasteTextOf,
@@ -17,6 +19,7 @@ import {
   planFingerprintOf,
   serverIdOf,
   toolNameOf,
+  vaultNameOf,
 } from './hub-input'
 
 /**
@@ -96,7 +99,11 @@ export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
     const request = mcpToolCallRequestOf(raw)
     if (!request) return { ok: false, error: 'The MCP call was malformed.' }
     watch(event.sender)
-    return hub.call(caller(event), request.server, request.tool, request.input, request.callId)
+    return request.disabledVaults
+      ? hub.call(caller(event), request.server, request.tool, request.input, request.callId, {
+          disabledVaults: request.disabledVaults,
+        })
+      : hub.call(caller(event), request.server, request.tool, request.input, request.callId)
   })
   ipcMain.handle(MCP_TOOLS_CHANNELS.cancel, (event, raw) => {
     const callId = mcpCallIdOf(raw)
@@ -110,6 +117,7 @@ export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
     const name = mcpServerNameOf(raw)
     return name ? hub.openSettingsByName(name) : { ok: false }
   })
+  ipcMain.handle(MCP_TOOLS_CHANNELS.openIntegrations, () => hub.openIntegrations())
 
   // ---- Settings (the shell window only) ----
 
@@ -217,6 +225,29 @@ export function registerMcpHubIpc(deps: McpHubIpcDeps): () => void {
     C.retry,
     withId((id) => hub.retry(id)),
   )
+  settings(C.connectPreset, (raw) => {
+    const input = connectPresetInputOf(raw)
+    return input ? hub.connectPreset(input) : malformed
+  })
+  settings(C.pickVaultFolder, () => hub.pickVaultFolder(), { ok: false, reason: 'cancelled' })
+  settings(C.addVault, (raw) => {
+    const input = addVaultInputOf(raw)
+    return input ? hub.addVault(input) : malformed
+  })
+  settings(
+    C.removeVault,
+    withId((vaultId) => hub.removeVault(vaultId)),
+  )
+  settings(C.renameVault, (rawId, rawName) => {
+    const id = serverIdOf(rawId)
+    const name = vaultNameOf(rawName)
+    return id && name ? hub.renameVault(id, name) : malformed
+  })
+  settings(C.setVaultEnabled, (rawId, rawOn) => {
+    const id = serverIdOf(rawId)
+    const on = booleanOf(rawOn)
+    return id && on !== undefined ? hub.setVaultEnabled(id, on) : malformed
+  })
 
   // ---- telling the windows ----
 

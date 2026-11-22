@@ -411,6 +411,7 @@ export async function startAgentForWindow(
     sessionId: result.sessionId,
     skills: result.skills,
     ...(result.mcpKeepInside ? { mcpKeepInside: result.mcpKeepInside } : {}),
+    ...(result.mcpExternalVaults ? { mcpExternalVaults: result.mcpExternalVaults } : {}),
     ...(result.instructionsTruncated
       ? { instructionsTruncated: result.instructionsTruncated }
       : {}),
@@ -651,7 +652,13 @@ export function configureAgentWindow(next: AgentWindowDeps): void {
     startRelays: userMcp
       ? async (session, ask) => {
           const hub = userMcp()
-          if (!hub) return { relays: [], keepResultsInside: [], stop: async () => undefined }
+          if (!hub)
+            return {
+              relays: [],
+              keepResultsInside: [],
+              externalVaults: [],
+              stop: async () => undefined,
+            }
           return startAgentMcpRelays({
             hub,
             ask,

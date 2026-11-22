@@ -2,6 +2,16 @@
 
 Máy chủ MCP là một dịch vụ cung cấp các công cụ mà AI có thể dùng từ bên ngoài ứng dụng, chẳng hạn tra cứu luật hoặc tìm trong tài liệu do nhóm của bạn quản lý. Sau khi kết nối máy chủ, các cửa sổ AI trong GenOffice có thể gọi công cụ của máy chủ đó trong lúc trò chuyện. Bạn tự quyết định, từng công cụ một, AI được dùng gì và dùng thế nào.
 
+## Dịch vụ kết nối đề xuất
+
+Ở đầu **Cài đặt ▸ Tích hợp**, GenOffice gom Google Drive cùng năm dịch vụ sẵn dùng phía trên các máy chủ MCP tùy chỉnh:
+
+- **Notion** và **Canva**: kết nối bằng một lượt đăng nhập trình duyệt. Bạn cũng có thể đính kèm trực tiếp tối đa 20 trang Notion từ trình đơn **+** trong trình soạn thảo (bản tạm được dọn sau 7 ngày).
+- **Kho Obsidian**: tích hợp sẵn trong GenOffice mà không cần ứng dụng ngoài. Thêm thư mục cục bộ để tìm, đọc và sửa ghi chú `.md` trực tiếp (chỉ xóa vào thùng rác hệ thống, không tạo tệp phụ trong kho, vẫn dùng được khi tắt công cụ Internet) và đính kèm từ trình đơn **+**.
+- **Korean Law MCP**: tra cứu luật và án lệ Hàn Quốc sau khi nhập `LAW_OC` và cho phép lệnh chạy cục bộ.
+- **kordoc MCP**: đọc và chuyển đổi trực tiếp tệp HWP/HWPX cục bộ sau khi cho phép lệnh chạy. Tính năng che thông tin của trình soạn thảo không áp dụng cho tệp kordoc đọc trực tiếp.
+- **Nút Dịch vụ đã kết nối**: luôn hiện cạnh ô nhập AI để bật/tắt Google Drive (trong trình soạn thảo), từng kho Obsidian hoặc máy chủ MCP cho cuộc trò chuyện hiện tại, hoặc mở **Cài đặt ▸ Tích hợp**.
+
 ## Thêm máy chủ
 
 1. Mở **Cài đặt ▸ Tích hợp** và nhấn **Thêm máy chủ** trên thẻ **Máy chủ MCP**.

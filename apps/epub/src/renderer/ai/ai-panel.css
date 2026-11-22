@@ -1115,18 +1115,8 @@
   background: var(--epai-error-bg);
 }
 
-/* ---- the book's own placement: the panel sits at the right end, beside the chapter ---- */
+/* ---- the book's own placement: on the side chosen in Settings ---- */
 
-.epub-main > .ai-dock {
-  --ai-panel-border-left: 1px;
-  --ai-panel-border-right: 0px;
-}
-
-.epub-main .ai-panel-resizer {
-  left: 0;
-  right: auto;
-}
-
-.epub-main .ai-panel-collapse svg {
-  transform: scaleX(-1);
+html:not([data-ai-panel-side='right']) .epub-main > .ai-dock {
+  order: -1;
 }

@@ -6,6 +6,7 @@ export const id = {
   kindSlides: 'Presentasi (PPT)',
   kindHtml: 'Halaman web (HTML)',
   kindMindmap: 'Peta pikiran',
+  kindWhiteboard: "Papan Tulis",
   materialsLabel: 'Materi',
   addMaterials: 'Tambahkan file…',
   removeMaterial: 'Hapus',

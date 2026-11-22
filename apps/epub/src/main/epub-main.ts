@@ -171,8 +171,8 @@ function isPathOpenInTab(path: string): boolean {
 // ── Split-copy save guard (decision 0036), as in the other editors ──
 const docDiskStates = new Map<number, Map<string, SaveDiskState>>()
 
-async function rememberDiskState(wcId: number, path: string): Promise<void> {
-  const state = await recordDiskState(path)
+async function rememberDiskState(wcId: number, path: string, read?: Uint8Array): Promise<void> {
+  const state = await recordDiskState(path, read)
   if (!state) return
   const states = docDiskStates.get(wcId) ?? new Map<string, SaveDiskState>()
   states.set(path, state)
@@ -663,7 +663,7 @@ function registerEpubIpc(): void {
       }
       session = opened.session
       sessionByWc.set(wcId, session)
-      await rememberDiskState(wcId, path)
+      await rememberDiskState(wcId, path, bytes)
     }
     // Seen open, here: only now is the path a save target.
     unopenedByWc.delete(wcId)

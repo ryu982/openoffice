@@ -12,6 +12,7 @@ import { convertCommand } from './commands/convert'
 import { docsCommand } from './commands/docs'
 import { diagramCommand } from './commands/diagram'
 import { mapCommand } from './commands/map'
+import { whiteboardCommand } from './commands/whiteboard'
 import { createCommand } from './commands/create'
 import { guideCommand } from './commands/guide'
 import { imageCommand } from './commands/image'
@@ -75,6 +76,7 @@ export function defaultRegistry(): CommandRegistry {
     .register(hwpCommand)
     .register(diagramCommand)
     .register(mapCommand)
+    .register(whiteboardCommand)
     .register(renderCommand)
     .register(guideCommand)
     .register(searchCommand)

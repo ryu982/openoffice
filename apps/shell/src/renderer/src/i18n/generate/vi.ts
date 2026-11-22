@@ -6,6 +6,7 @@ export const vi = {
   kindSlides: 'Bài thuyết trình (PPT)',
   kindHtml: 'Trang web (HTML)',
   kindMindmap: 'Sơ đồ tư duy',
+  kindWhiteboard: "Bảng trắng",
   materialsLabel: 'Tài liệu nguồn',
   addMaterials: 'Thêm tệp…',
   removeMaterial: 'Bỏ ra',

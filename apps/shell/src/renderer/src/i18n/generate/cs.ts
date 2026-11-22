@@ -6,6 +6,7 @@ export const cs = {
   kindSlides: 'Prezentace (PPT)',
   kindHtml: 'Webová stránka (HTML)',
   kindMindmap: 'Myšlenková mapa',
+  kindWhiteboard: "Tabule",
   materialsLabel: 'Podklady',
   addMaterials: 'Přidat soubory…',
   removeMaterial: 'Odebrat',

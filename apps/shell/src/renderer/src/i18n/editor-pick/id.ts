@@ -27,6 +27,7 @@ export const id = {
   itemHtml: 'HTML',
   itemMindmap: 'Peta pikiran',
   itemDiagram: 'Diagram',
+  itemWhiteboard: "Papan Tulis",
   itemHwp: 'HWP (Hangul)',
   itemEpub: 'Buku elektronik (EPUB)',
 } satisfies Record<keyof typeof zh, string>

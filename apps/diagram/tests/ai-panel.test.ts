@@ -19,7 +19,7 @@ import { LANGS, PRODUCT_NAME, type Lang } from '@genoffice/i18n'
 import { LocaleProvider } from '../src/renderer/i18n/locale'
 import { aiStrings } from '../src/renderer/i18n/strings-ai'
 import { AiPanel } from '../src/renderer/ai/AiPanel'
-import { diagramAiHost } from '../src/renderer/ai/AiDock'
+import { diagramAiHost, type DiagramFrameHost } from '../src/renderer/ai/AiDock'
 import type { DiagramApi } from '../src/shared/ipc'
 import { fakeFrame } from './helpers/fake-drawio'
 
@@ -104,12 +104,15 @@ async function settle(turns = 16): Promise<void> {
   }
 }
 
-async function mount(api: DiagramApi, fake: ReturnType<typeof fakeFrame>): Promise<void> {
+async function mount(
+  api: DiagramApi,
+  fake: ReturnType<typeof fakeFrame>,
+  host: DiagramFrameHost = diagramAiHost({ client: () => fake.frame, ready: () => true }),
+): Promise<void> {
   ;(window as unknown as { diagramApi: DiagramApi }).diagramApi = api
   container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
-  const host = diagramAiHost({ client: () => fake.frame, ready: () => true })
   await act(async () => {
     root.render(
       createElement(LocaleProvider, {
@@ -293,6 +296,48 @@ describe('a run', () => {
     await settle()
     expect(drawio.marks()).toEqual([])
     expect(cards()).toHaveLength(0)
+  })
+
+  it('draws the marks again when draw.io starts anew (a language change), and keeps them off once hidden', async () => {
+    const first = fakeFrame()
+    let frame = first
+    let up = true
+    const host = diagramAiHost({ client: () => frame.frame, ready: () => up })
+    const { api } = fakeApi((_request, nth) =>
+      nth === 1
+        ? toolCall('apply_diagram_ops', { ops: [{ op: 'update', id: 'a', label: 'AI' }] })
+        : [{ type: 'delta', text: 'Renamed.' }, { type: 'done' }],
+    )
+    await mount(api, first, host)
+    await sendMessage('rename a')
+    expect(first.marks()).toEqual(['p1:a'])
+    const unmark = () =>
+      cards()[0]!.querySelector<HTMLButtonElement>('[data-action="ai-changes-unmark"]')
+
+    // the frame restarts with the same diagram: a new bridge that has no marks
+    up = false
+    frame = fakeFrame(first.drawio)
+    host.frameReady()
+    expect(frame.calls).not.toContain('markCells')
+    up = true
+    await act(async () => host.frameReady())
+    await settle()
+    expect(frame.marks()).toEqual(['p1:a'])
+    // the card's "Hide marks" still means what it says, and marking is not a change
+    expect(unmark()).not.toBeNull()
+    expect(first.drawio.history).toHaveLength(1)
+
+    // hidden while draw.io starts again: the next frame comes up without them
+    up = false
+    frame = fakeFrame(first.drawio)
+    act(() => unmark()!.click())
+    await settle()
+    expect(unmark()).toBeNull()
+    up = true
+    await act(async () => host.frameReady())
+    await settle()
+    expect(frame.marks()).toEqual([])
+    expect(frame.calls.filter((op) => op === 'markCells')).toHaveLength(0)
   })
 
   it('reports a refused call to the model and leaves the diagram as it was', async () => {

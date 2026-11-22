@@ -41,6 +41,8 @@ L'accesso è conservato su questo PC con la cifratura che il sistema operativo f
 - L'IA non può modificare, eliminare né condividere i file di Drive.
 - Quando una chat contiene qualcosa letto da Drive, quella chat smette di usare la ricerca web, la ricerca di immagini, la lettura di pagine tramite indirizzo web e l'inserimento di immagini tramite indirizzo web. Avvia una nuova chat per usarle di nuovo.
 
+Puoi anche attivare o disattivare la lettura di Google Drive per la chat corrente dal pulsante **Servizi connessi**. Quando le funzioni IA sono disattivate, Google Drive resta visibile in **Impostazioni ▸ Integrazioni** per aprire e salvare file, nascondendo solo l’interruttore IA.
+
 ## Scollegare
 
 Fai clic su **Scollega** in **Impostazioni ▸ Integrazioni**. GenOffice rimuove l'accesso da questo PC e chiede a Google di revocare il suo accesso. Le copie dei file già su questo PC restano. Puoi anche rimuovere l'accesso in qualsiasi momento in **Connessioni di terze parti** del tuo Account Google.

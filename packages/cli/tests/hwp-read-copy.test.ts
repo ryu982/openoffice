@@ -3,10 +3,9 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { deflateRawSync } from 'node:zlib'
 import init, { HwpDocument } from '@rhwp/core'
-import * as CFB from 'cfb'
 import JSZip from 'jszip'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { openHwp, streamOf, writeContainer } from '../../../apps/hwp/src/main/hwp5-file'
+import { openHwp, rewriteStreams, streamOf } from '../../../apps/hwp/src/main/hwp5-file'
 import { run, tempDir } from './helpers'
 const env = { ...process.env, GENOFFICE_AUDIT_LOG: 'off' }
 beforeAll(async () => {
@@ -29,13 +28,13 @@ async function fixture(ext: 'hwp' | 'hwpx') {
       })
     }
     const opened = openHwp(doc.exportHwp())!
+    const changed = new Map<string, Buffer>()
+    const plain = new Set<string>()
     for (const path of ['/DocInfo', '/BodyText/Section0']) {
-      const entry = CFB.find(opened.cfb, path)!
-      const content = deflateRawSync(streamOf(opened, path)!, { level: 0 })
-      entry.content = content
-      entry.size = content.length
+      changed.set(path, deflateRawSync(streamOf(opened, path)!, { level: 0 }))
+      plain.add(path)
     }
-    return Buffer.from(writeContainer(opened.cfb))
+    return rewriteStreams(opened, changed, plain)!
   } finally {
     doc.free()
   }

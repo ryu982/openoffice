@@ -96,6 +96,7 @@ export type DriveEntryType =
   | 'hwp'
   | 'epub'
   | 'diagram'
+  | 'whiteboard'
   | 'other'
 
 export type DriveListResult =

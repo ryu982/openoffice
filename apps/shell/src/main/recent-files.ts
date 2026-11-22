@@ -101,6 +101,8 @@ export const EXT_FAMILY: Record<string, readonly string[]> = {
   xmind: ['xmind', 'mm'],
   // the diagram editor's formats, a Visio drawing it imports included
   drawio: ['drawio', 'dio', 'drawio.svg', 'drawio.png', 'vsdx'],
+  // the whiteboard editor's native format plus Excalidraw imports
+  whiteboard: ['whiteboard', 'excalidraw', 'excalidraw.png', 'excalidraw.svg'],
 }
 
 /** Family-aware extension match for sidebar filters (recents and starred share it). */

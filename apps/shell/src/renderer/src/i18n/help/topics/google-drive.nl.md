@@ -41,6 +41,8 @@ De aanmelding wordt op deze pc bewaard met de versleuteling die je besturingssys
 - De AI kan Drive-bestanden niet wijzigen, verwijderen of delen.
 - Zodra een chat inhoud bevat die uit Drive is gelezen, gebruikt die chat geen zoeken op internet, zoeken naar afbeeldingen, pagina's lezen via een webadres en afbeeldingen invoegen via een webadres meer. Begin een nieuwe chat om ze weer te gebruiken.
 
+Via de knop **Verbonden services** naast het AI-veld kun je Google Drive-lezen ook voor dit gesprek uitschakelen. Als AI-functies uitstaan, blijft Google Drive zichtbaar in **Instellingen ▸ Integraties** voor openen en opslaan, met alleen de AI-schakelaar verborgen.
+
 ## Ontkoppelen
 
 Klik op **Ontkoppelen** in **Instellingen ▸ Integraties**. GenOffice verwijdert de aanmelding van deze pc en vraagt Google de toegang in te trekken. Kopieën van bestanden op deze pc blijven bewaard. Je kunt de toegang ook altijd verwijderen onder **Verbindingen met derden** in je Google-account.

@@ -1,0 +1,11 @@
+# Statically link the MSVC CRT so the shipped ieum-parse-sidecar.exe has no
+# vcruntime140.dll dependency on clean Windows installs lacking the VC++
+# redistributable.
+#
+# NOTE: cargo discovers .cargo/config.toml from the *working directory*,
+# not from --manifest-path, so pass this file explicitly via `--config`.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

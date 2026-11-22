@@ -54,6 +54,10 @@ const PANELS: Record<SkillEditorId, { list: string; tools: string }> = {
     list: 'apps/diagram/src/renderer/ai/AiPanel.tsx',
     tools: 'apps/diagram/src/renderer/ai/AiPanel.tsx',
   },
+  whiteboard: {
+    list: 'apps/whiteboard/src/renderer/ai/AiPanel.tsx',
+    tools: 'apps/whiteboard/src/renderer/ai/AiPanel.tsx',
+  },
 }
 
 const callOptions = (text: string, call: string): string => {

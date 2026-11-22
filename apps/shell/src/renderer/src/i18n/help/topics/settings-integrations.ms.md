@@ -69,6 +69,8 @@ Tetapan boleh mendaftar GenOffice sebagai aplikasi yang mengendalikan fail .docx
 
 Di bawah **Pelayan HTTP tempatan**, aplikasi ini juga boleh menjalankan pelayan itu sendiri — suis pendayakan dan port — dan **Lanjutan** menambah URL semakan kesihatan serta fail log, dan bukannya meninggalkannya kepada pembantu. Ia hanya mendengarkan pada localhost.
 
+Di bahagian atas **Tetapan ▸ Integrasi**, **Perkhidmatan bersambung** menghimpunkan Google Drive, Notion, Canva, Peti Obsidian, Korean Law MCP, kordoc MCP dan pelayan MCP tersuai di atas bahagian ejen pengekodan.
+
 ## Ringkasan baris arahan
 
 | Perintah            | Fungsinya                             |

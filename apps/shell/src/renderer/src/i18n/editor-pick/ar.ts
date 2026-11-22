@@ -27,6 +27,7 @@ export const ar = {
   itemHtml: 'HTML',
   itemMindmap: 'خريطة ذهنية',
   itemDiagram: 'مخطط',
+  itemWhiteboard: "لوح أبيض",
   itemHwp: 'HWP (الهانغول)',
   itemEpub: 'كتاب إلكتروني (EPUB)',
 } satisfies Record<keyof typeof zh, string>

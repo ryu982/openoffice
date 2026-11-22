@@ -6,4 +6,6 @@ export const de = {
   permAllowToolSession: 'Dieses Werkzeug in dieser Sitzung immer erlauben',
   mcpKeepInsideWarning:
     'In diesem Fenster können Inhalte, die von {server} empfangen wurden, diesen PC verlassen.',
+  mcpExternalVaultWarning:
+    'Diese Sitzung kann über verbundene Obsidian-Vaults ({vaults}) Notizen außerhalb des Projektordners lesen und bearbeiten.',
 } satisfies Record<keyof typeof zh, string>

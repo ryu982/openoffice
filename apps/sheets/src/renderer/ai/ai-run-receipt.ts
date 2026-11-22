@@ -11,7 +11,9 @@
  * the card has expired. The in-memory blank workbook keeps AI applies in the
  * adapter's history instead, checked by its revision.
  */
-import type { AiChangesState } from '@genoffice/ui'
+import type { AiChangeLine, AiChangesState } from '@genoffice/ui'
+import type { ChangePlan } from '@genoffice/xlsx-gateway/domain/workbook.types'
+import { SHEET_NAV_SCHEME } from './sheet-nav'
 
 /** Univer keeps this many undo entries per workbook (STACK_CAPACITY of @univerjs/core) */
 export const UNIVER_UNDO_CAPACITY = 20
@@ -37,6 +39,11 @@ export type AiRunUndoGuard =
 export type UniverUndoGuard = Extract<AiRunUndoGuard, { kind: 'univer' }>
 export type AdapterUndoGuard = Extract<AiRunUndoGuard, { kind: 'adapter' }>
 
+/** One detailed row in the Sheets changes card, optionally linked to a sheet range. */
+export interface SheetsChangeLine extends AiChangeLine {
+  readonly navHref?: string | undefined
+}
+
 /** what an applied run shows in its message */
 export interface AiRunReceipt {
   /** places changed: cells, ranges, renames and structural edits as planned */
@@ -47,6 +54,8 @@ export interface AiRunReceipt {
   readonly state?: AiChangesState | undefined
   /** the cells of this run carry marks on the grid */
   readonly marked?: boolean | undefined
+  /** detailed change rows rendered inside AiChangesCard */
+  readonly lines?: readonly SheetsChangeLine[] | undefined
 }
 
 /**
@@ -137,4 +146,130 @@ export function receiptState(receipt: AiRunReceipt): AiChangesState {
   if (receipt.undoSteps <= 0) return 'expired'
   if (receipt.guard?.kind === 'univer' && !receipt.guard.complete) return 'expired'
   return 'applied'
+}
+
+/**
+ * The status line after the card took a run back: the notice that offered undo
+ * for the run's unsaved changes now says they went back; any other line stays.
+ */
+export function statusAfterRevert(
+  current: string,
+  appliedNotice: string,
+  reverted: string,
+): string {
+  return current === appliedNotice ? reverted : current
+}
+
+const MAX_SHEET_CHANGE_LINES = 40
+const MAX_INDIVIDUAL_CELL_LINES = 16
+const CELL_TEXT_MAX = 40
+
+function clipCell(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  return clean.length > CELL_TEXT_MAX ? `${clean.slice(0, CELL_TEXT_MAX - 1)}…` : clean
+}
+
+function sheetRef(sheetName: string | undefined, address: string): string {
+  return sheetName ? `${sheetName}!${address}` : address
+}
+
+function sheetNavHref(sheetName: string | undefined, address: string): string {
+  const ref = sheetRef(sheetName, address)
+  return `${SHEET_NAV_SCHEME}${encodeURIComponent(ref)}`
+}
+
+function cellDisplay(cell: { readonly value: unknown; readonly formula?: string | undefined }): string {
+  if (cell.formula) return clipCell(cell.formula)
+  if (cell.value === null || cell.value === undefined || cell.value === '') return ''
+  return clipCell(String(cell.value))
+}
+
+/**
+ * Convert an applied ChangePlan into clickable change lines for AiChangesCard.
+ * Small cell batches list individual cells; larger batches collapse per-sheet
+ * ranges so the card stays concise while every row jumps to its target range.
+ */
+export function planChangeLines(
+  plan: Pick<ChangePlan, 'cellChanges' | 'formatChanges' | 'structuralChanges' | 'sheetRenames'>,
+  sheetNameById: (sheetId: string) => string | undefined,
+): SheetsChangeLine[] {
+  const lines: SheetsChangeLine[] = []
+  const push = (line: SheetsChangeLine): void => {
+    if (lines.length < MAX_SHEET_CHANGE_LINES) lines.push(line)
+  }
+
+  for (const rename of plan.sheetRenames) {
+    push({
+      kind: 'replace',
+      from: rename.before,
+      to: rename.after,
+      showable: true,
+      navHref: sheetNavHref(rename.after, 'A1'),
+    })
+  }
+
+  for (const change of plan.structuralChanges) {
+    const op = change.op as { sheetId?: string; range?: string; target?: string }
+    const sName = op.sheetId ? sheetNameById(op.sheetId) : undefined
+    const range = op.target ?? op.range
+    const navHref = range ? sheetNavHref(sName, range) : sName ? sheetNavHref(sName, 'A1') : undefined
+    push({
+      kind: 'named',
+      from: range ? sheetRef(sName, range) : (sName ?? ''),
+      to: clipCell(change.label),
+      showable: navHref !== undefined,
+      navHref,
+    })
+  }
+
+  for (const change of plan.formatChanges) {
+    const sName = sheetNameById(change.sheetId)
+    push({
+      kind: 'named',
+      from: sheetRef(sName, change.range),
+      to: clipCell(change.label),
+      showable: true,
+      navHref: sheetNavHref(sName, change.range),
+    })
+  }
+
+  if (plan.cellChanges.length <= MAX_INDIVIDUAL_CELL_LINES) {
+    for (const change of plan.cellChanges) {
+      const sName = sheetNameById(change.sheetId)
+      const place = sheetRef(sName, change.address)
+      const before = cellDisplay(change.before)
+      const after = cellDisplay(change.after)
+      const navHref = sheetNavHref(sName, change.address)
+      if (!before && after) {
+        push({ kind: 'insert', to: `${place} = ${after}`, showable: true, navHref })
+      } else if (before && !after) {
+        push({ kind: 'delete', from: `${place} (${before})`, showable: true, navHref })
+      } else {
+        push({ kind: 'named', from: place, to: after || '—', showable: true, navHref })
+      }
+    }
+  } else {
+    const bySheet = new Map<string, string[]>()
+    for (const change of plan.cellChanges) {
+      const list = bySheet.get(change.sheetId) ?? []
+      list.push(change.address)
+      bySheet.set(change.sheetId, list)
+    }
+    for (const [sheetId, addrs] of bySheet) {
+      const sName = sheetNameById(sheetId)
+      const first = addrs[0]!
+      const last = addrs[addrs.length - 1]!
+      const span = first === last ? first : `${first}:${last}`
+      push({
+        kind: 'named',
+        from: sheetRef(sName, span),
+        to: `${addrs.length}`,
+        count: addrs.length,
+        showable: true,
+        navHref: sheetNavHref(sName, span),
+      })
+    }
+  }
+
+  return lines
 }

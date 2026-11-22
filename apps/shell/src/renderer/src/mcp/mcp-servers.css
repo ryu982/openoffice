@@ -428,3 +428,113 @@
 .mcp-empty {
   margin: 8px 0;
 }
+
+.mcp-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.mcp-preset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.mcp-preset-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mcp-preset-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.mcp-preset-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mcp-preset-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+}
+
+.mcp-preset-link {
+  color: var(--accent, var(--text-primary));
+  font-size: 12.5px;
+  text-decoration: underline;
+  align-self: flex-start;
+}
+
+.mcp-preset-embedded {
+  margin: 0;
+}
+
+.mcp-vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border-subtle);
+  list-style: none;
+}
+
+.mcp-vault-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+}
+
+.mcp-vault-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mcp-vault-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.mcp-vault-path {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+
+.mcp-vault-rename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -66,16 +66,22 @@ describe('CLI output save failure recovery', () => {
     expect(renameSync).not.toHaveBeenCalled()
   })
 
-  it('cleans a staging file whose permissions cannot be set', () => {
-    const { dir, target } = fixture()
-    const error = errno('EACCES')
-    vi.mocked(chmodSync).mockImplementationOnce(() => {
-      throw error
-    })
-    expect(() => writeOutput(target, newBytes)).toThrow(error)
-    expect(readFileSync(target)).toEqual(oldBytes)
-    expect(readdirSync(dir)).toEqual(['document.docx'])
-  })
+  it.each(['ENOTSUP', 'EPERM', 'EACCES'])(
+    'still writes the output when the staging file cannot take the target mode (%s)',
+    (code) => {
+      const { dir, target } = fixture()
+      actual.chmodSync(target, 0o600)
+      vi.mocked(chmodSync).mockImplementationOnce(() => {
+        throw errno(code)
+      })
+      writeOutput(target, newBytes)
+      expect(readFileSync(target)).toEqual(newBytes)
+      expect(readdirSync(dir)).toEqual(['document.docx'])
+      // the staging file was created with the target's mode, so a refused chmod widens nothing
+      if (process.platform !== 'win32')
+        expect(actual.statSync(target).mode & 0o777 & ~0o600).toBe(0)
+    },
+  )
 
   it('leaves the original unchanged on a non-retryable rename failure', () => {
     const { dir, target } = fixture()

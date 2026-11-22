@@ -45,6 +45,17 @@ export const hexTo255 = (hex: string): [number, number, number] => [
 ]
 const luminance = ([r, g, b]: readonly [number, number, number]): number =>
   (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+/** The run's base ink as CSS, unless it is indistinguishable from the paper behind the
+    preview box (it would vanish; the default ink shows then) */
+export const visibleInk = (
+  baseColor: readonly [number, number, number],
+  paper: string | undefined,
+): string | undefined => {
+  const back = paper ? hexTo255(paper) : ([255, 255, 255] as const)
+  return Math.abs(luminance(baseColor) - luminance(back)) > 0.15
+    ? rgb255ToHex(baseColor)
+    : undefined
+}
 export const rgb255ToHex = (c: readonly [number, number, number]): string =>
   `#${c
     .map((v) =>
@@ -281,6 +292,257 @@ export const resolveTextEdit = (
       : input,
     replaces,
     moveBy,
+  }
+}
+
+type StyleRun = NonNullable<TextEditInput['styleRuns']>[number]
+type RunStyleFields = Omit<StyleRun, 'start' | 'end'>
+/** The engine's report of a fragment match: the whole run it will rewrite */
+export type FragmentRun = NonNullable<TextEditValidation['run']>
+
+const definedStyle = (s: RunStyleFields): RunStyleFields =>
+  Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined)) as RunStyleFields
+
+/**
+ * A line edit whose oldText is only part of a PDF text object, widened to that whole
+ * object. The engine rewrites a fragment match as the entire run drawn from the run's
+ * own origin (the text after the fragment moves to follow the replacement), so only
+ * the widened form lets the preview and the live page render (which erases exactly
+ * the edit's run) show what the save will write. The edit-level styles the caller
+ * asked for apply to the replaced fragment alone: they become a style run over it,
+ * leaving the rest of the run as it is.
+ */
+export const widenToRun = (input: TextEditInput, run: FragmentRun): TextEditInput => {
+  const b = run.bounds
+  const base = definedStyle({
+    color: input.newColor,
+    font: input.newFont,
+    size: input.newFontSize,
+    bold: input.newBold,
+    italic: input.newItalic,
+  })
+  // Selection-level runs of the fragment (offsets into input.newText) move with it
+  const own = (input.styleRuns ?? input.colorRuns ?? []).map((r) => ({ ...r }))
+  const runs: StyleRun[] = []
+  const from = run.start
+  const to = run.newEnd
+  let at = from
+  const pushBase = (end: number) => {
+    if (end > at && Object.keys(base).length > 0) runs.push({ start: at, end, ...base })
+    at = Math.max(at, end)
+  }
+  for (const r of own) {
+    const start = Math.min(to, from + r.start)
+    const end = Math.min(to, from + r.end)
+    if (end <= start) continue
+    pushBase(start)
+    const { start: _s, end: _e, ...fields } = r
+    runs.push({ start, end, ...base, ...definedStyle(fields) })
+    at = end
+  }
+  pushBase(to)
+  return {
+    pageIndex: input.pageIndex,
+    // x: the whole run; y: the caller's layout box (the preview box is a line box)
+    rect: [
+      Math.min(input.rect[0], b[0]),
+      input.rect[1],
+      Math.max(input.rect[2], b[2]),
+      input.rect[3],
+    ],
+    oldText: run.oldText,
+    newText: run.newText,
+    fontSize: input.fontSize,
+    ...(runs.length > 0 ? { styleRuns: runs } : {}),
+  }
+}
+
+const squashWs = (s: string) => s.replace(/\s+/g, '')
+const rectsTouch = (a: readonly number[], b: readonly number[]) =>
+  a[0]! < b[2]! && b[0]! < a[2]! && a[1]! < b[3]! && b[1]! < a[3]!
+
+/** Pending line edits addressing the same run as `input` (same page, same original
+    text, overlapping position). Paragraph-level edits are resolveTextEdit's business. */
+export const sameRunEdits = (edits: LocalTextEdit[], input: TextEditInput): LocalTextEdit[] =>
+  edits.filter(
+    (e) =>
+      e.input.pageIndex === input.pageIndex &&
+      !isBlockEdit(e) &&
+      !e.input.translate &&
+      squashWs(e.input.oldText) === squashWs(input.oldText) &&
+      rectsTouch(e.input.rect, input.rect),
+  )
+
+/** Raw offset in `s` of the k-th non-space character (s.length past the last one) */
+const nsOffset = (s: string, k: number): number => {
+  let seen = 0
+  for (let i = 0; i < s.length; i++) {
+    if (/\s/.test(s[i]!)) continue
+    if (seen === k) return i
+    seen++
+  }
+  return s.length
+}
+const nsCount = (s: string, end: number): number => squashWs(s.slice(0, end)).length
+
+/** Splice code-unit style runs: [at, at + removed) is replaced by `inserted` units */
+const spliceRuns = (runs: StyleRun[], at: number, removed: number, inserted: number) => {
+  const delta = inserted - removed
+  const out: StyleRun[] = []
+  for (const r of runs) {
+    if (r.end <= at) out.push(r)
+    else if (r.start >= at + removed) out.push({ ...r, start: r.start + delta, end: r.end + delta })
+    else {
+      if (r.start < at) out.push({ ...r, end: at })
+      if (r.end > at + removed) out.push({ ...r, start: at + inserted, end: r.end + delta })
+    }
+  }
+  return out
+}
+
+/**
+ * A second fragment edit on a run that already has a pending line edit: both would
+ * claim the same text objects, and the save applies only the first. Fold the new
+ * replacement into the pending edit's text instead, when it touches only text that
+ * edit left unchanged; otherwise refuse with a reason that shows the line as it now
+ * reads. Returns null when no pending edit owns the run.
+ */
+export const foldIntoRunEdit = (
+  edits: LocalTextEdit[],
+  widened: TextEditInput,
+  run: FragmentRun,
+): { owner: LocalTextEdit; input: TextEditInput } | { reason: string } | null => {
+  const owner = sameRunEdits(edits, widened)[0]
+  if (!owner) return null
+  const before = owner.input.oldText
+  const now = owner.input.newText
+  // The fragment's span in the owner's oldText (equal to run.oldText up to whitespace)
+  const ps = before === run.oldText ? run.start : nsOffset(before, nsCount(run.oldText, run.start))
+  const pe =
+    before === run.oldText
+      ? run.oldEnd
+      : Math.max(ps, nsOffset(before, nsCount(run.oldText, run.oldEnd) - 1) + 1)
+  // The window the owner changed: everything outside it is still the original text
+  const max = Math.min(before.length, now.length)
+  let pre = 0
+  while (pre < max && before[pre] === now[pre]) pre++
+  let suf = 0
+  while (suf < max - pre && before[before.length - 1 - suf] === now[now.length - 1 - suf]) suf++
+  const shift = now.length - before.length
+  const at = pe <= pre ? ps : ps >= before.length - suf ? ps + shift : -1
+  if (at < 0) {
+    return {
+      reason: `this text is part of a line that already has a pending edit changing it (the line now reads "${now}"); edit only text outside that change, or replace the line's original text "${before}" as a whole`,
+    }
+  }
+  const replacement = run.newText.slice(run.start, run.newEnd)
+  const ownRuns = (owner.input.styleRuns ?? owner.input.colorRuns ?? []).map((r) => ({ ...r }))
+  const added = (widened.styleRuns ?? [])
+    .filter((r) => r.end > run.start && r.start < run.newEnd)
+    .map((r) => ({
+      ...r,
+      start: Math.max(r.start, run.start) - run.start + at,
+      end: Math.min(r.end, run.newEnd) - run.start + at,
+    }))
+  const styleRuns = [...spliceRuns(ownRuns, at, pe - ps, replacement.length), ...added].sort(
+    (a, b) => a.start - b.start,
+  )
+  const input: TextEditInput = {
+    ...owner.input,
+    newText: now.slice(0, at) + replacement + now.slice(at + (pe - ps)),
+    colorRuns: undefined,
+    styleRuns: styleRuns.length > 0 ? styleRuns : undefined,
+  }
+  return { owner, input }
+}
+
+/** An AI text edit resolved against the pending edits and the engine's dry-run */
+export interface PlannedAiTextEdit {
+  input: TextEditInput
+  /** Ink bounds of the matched run (the preview cover) */
+  cover?: [number, number, number, number]
+  /** The run's base fill (0-255), for the preview's ink */
+  baseColor?: [number, number, number]
+  /** The pending edit of the same run this one folds into (kept by id, rewritten) */
+  owner?: LocalTextEdit
+  /** Pending edits the new one supersedes */
+  gone: Set<string>
+  moveBy?: [number, number]
+  /** A single-run edit (edit_text), not a paragraph rebuild */
+  lineEdit: boolean
+}
+
+/**
+ * Where an AI edit (edit_text / edit_block) lands: resolveTextEdit's paragraph rules,
+ * then the engine's dry-run. A line edit the engine matches as a fragment of a larger
+ * text object is widened to that whole object (widenToRun) — folded into a pending
+ * edit of the same object if there is one — and must re-match as the whole run; a
+ * whole-run line edit supersedes a pending line edit of the same run. `pending` is
+ * read live: the dry-runs are async. `validate` null = no file to check against.
+ */
+export const planAiTextEdit = async (
+  pending: () => LocalTextEdit[],
+  raw: TextEditInput,
+  validate: ((e: TextEditInput) => Promise<TextEditValidation | undefined>) | null,
+): Promise<PlannedAiTextEdit | { reason: string }> => {
+  const resolved = resolveTextEdit(pending(), raw)
+  if ('reason' in resolved) return resolved
+  const { replaces, moveBy } = resolved
+  let input = resolved.input
+  let cover: [number, number, number, number] | undefined
+  let baseColor: [number, number, number] | undefined
+  let owner: LocalTextEdit | undefined
+  const lineEdit = input.origin === undefined && input.lineLeading === undefined
+  if (validate) {
+    try {
+      const v = await validate(input)
+      if (v?.reason) return { reason: v.reason }
+      cover = v?.bounds
+      baseColor = v?.baseColor
+      if (v?.run && lineEdit) {
+        // old_text is only part of a PDF text object: the save rewrites that whole
+        // object, so the pending edit must address it whole — else the preview draws
+        // the fragment's replacement over the rest of the run, which the live page
+        // render redraws moved to the run's start
+        const widened = widenToRun(input, v.run)
+        const fold = foldIntoRunEdit(pending(), widened, v.run)
+        if (fold && 'reason' in fold) return fold
+        const next = fold ? fold.input : widened
+        const b = v.run.bounds
+        // Second try when the layout box clips the run's ink: its full bounds
+        const inkRect: [number, number, number, number] = [
+          Math.min(next.rect[0], b[0]),
+          Math.min(next.rect[1], b[1]),
+          Math.max(next.rect[2], b[2]),
+          Math.max(next.rect[3], b[3]),
+        ]
+        for (const cand of [next, { ...next, rect: inkRect }]) {
+          const w = await validate(cand)
+          if (!w || w.reason || w.run) continue
+          input = cand
+          owner = fold?.owner
+          cover = w.bounds
+          baseColor = w.baseColor
+          break
+        }
+        // Neither form re-matched as the whole run: keep the fragment edit (the
+        // save still writes it correctly; only its preview is approximate)
+      }
+    } catch {
+      /* best-effort: the save path skips-and-reports unmatched edits anyway */
+    }
+  }
+  // A whole-run line edit of a run that already has a pending line edit replaces it:
+  // both would claim the same text objects and the save would drop the later one
+  const superseded = owner || !lineEdit ? [] : sameRunEdits(pending(), input)
+  return {
+    input,
+    cover,
+    baseColor,
+    owner,
+    gone: new Set([...replaces, ...superseded].map((e) => e.id)),
+    moveBy: owner ? owner.moveBy : moveBy,
+    lineEdit,
   }
 }
 
@@ -549,11 +811,9 @@ export const previewsTextEdit = (
     rebuild still preserves the colors on save). */
 export const seedDraftColors = (d: TextDraft, v: TextEditValidation): TextDraft => {
   let next = d
-  // Ink indistinguishable from the box behind it would vanish; keep default ink then
   if (v.baseColor && !next.color && !next.seedInk) {
-    const paper = next.paper ? hexTo255(next.paper) : ([255, 255, 255] as const)
-    if (Math.abs(luminance(v.baseColor) - luminance(paper)) > 0.15)
-      next = { ...next, seedInk: rgb255ToHex(v.baseColor) }
+    const ink = visibleInk(v.baseColor, next.paper)
+    if (ink) next = { ...next, seedInk: ink }
   }
   if (!v.colorRuns || v.colorRuns.length === 0) return next
   if (next.charStyles || next.seedStyleRuns || next.value !== next.oldText) return next

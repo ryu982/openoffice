@@ -41,6 +41,8 @@ Oturum bilgisi bu bilgisayarda, işletim sisteminizin kullanıcı hesabınız i�
 - AI, Drive dosyalarını değiştiremez, silemez veya paylaşamaz.
 - Drive’dan okunan içerik bir sohbete girdikten sonra o sohbet web aramasını, görsel aramasını, sayfaları web adresinden okumayı ve web adresinden görsel eklemeyi kullanmayı bırakır. Bunları yeniden kullanmak için yeni bir sohbet başlatın.
 
+AI girişinin yanındaki **Bağlı hizmetler** düğmesinden yalnızca bu sohbet için Google Drive okumayı açıp kapatabilirsiniz. AI özellikleri kapatıldığında bile dosya açma ve kaydetme için Google Drive **Ayarlar ▸ Entegrasyonlar** altında kalır, yalnızca AI anahtarı gizlenir.
+
 ## Bağlantıyı kesme
 
 **Ayarlar ▸ Entegrasyonlar** altında **Bağlantıyı kes**’e basın. GenOffice oturum bilgisini bu bilgisayardan kaldırır ve Google’dan erişimi iptal etmesini ister. Bu bilgisayarda zaten bulunan dosya kopyaları kalır. Erişimi istediğiniz zaman Google Hesabınızdaki **Üçüncü taraf bağlantıları** altından da kaldırabilirsiniz.

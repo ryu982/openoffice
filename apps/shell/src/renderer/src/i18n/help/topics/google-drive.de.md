@@ -41,6 +41,8 @@ Die Anmeldung wird auf diesem PC mit der Verschlüsselung gespeichert, die Ihr B
 - Die KI kann Drive-Dateien nicht ändern, löschen oder freigeben.
 - Sobald ein Chat aus Drive gelesene Inhalte enthält, nutzt er keine Websuche, Bildsuche, kein Lesen von Seiten per Webadresse und kein Einfügen von Bildern per Webadresse mehr. Starten Sie einen neuen Chat, um sie wieder zu nutzen.
 
+Über die Schaltfläche **Verbundene Dienste** neben dem KI-Feld können Sie den Google-Drive-Lesezugriff auch für diesen Chat umschalten. Bei deaktivierten KI-Funktionen bleibt Google Drive unter **Einstellungen ▸ Integrationen** zum Öffnen und Speichern sichtbar; nur der KI-Schalter wird ausgeblendet.
+
 ## Trennen
 
 Klicken Sie in **Einstellungen ▸ Integrationen** auf **Trennen**. GenOffice entfernt die Anmeldung von diesem PC und bittet Google, den Zugriff zu widerrufen. Kopien von Dateien auf diesem PC bleiben erhalten. Sie können den Zugriff auch jederzeit in Ihrem Google-Konto unter **Verbindungen mit Drittanbietern** entfernen.

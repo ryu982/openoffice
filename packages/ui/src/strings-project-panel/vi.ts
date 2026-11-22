@@ -45,6 +45,7 @@ export const vi = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Sơ đồ tư duy',
+  editorWhiteboard: 'Bảng trắng',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Trang chủ',

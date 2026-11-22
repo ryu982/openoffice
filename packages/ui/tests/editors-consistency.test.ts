@@ -110,8 +110,14 @@ describe('the AI entry label', () => {
 
   it.each(Object.keys(EDITORS))('%s: the panel title and its resizer label use it', (name) => {
     const panel = source(EDITORS[name]!.panel)
-    const title = panel.match(/className="ai-panel-title">[\s\S]{0,160}?<\/span>/)
-    expect(title?.[0], 'panel title').toContain(LABEL_CALL)
+    const usesSharedHeader = /<AiPanelHeader\b/.test(panel)
+    if (usesSharedHeader) {
+      const header = source('packages/ui/src/AiPanelHeader.tsx')
+      expect(header, 'shared AiPanelHeader title').toContain(LABEL_CALL)
+    } else {
+      const title = panel.match(/className="ai-panel-title">[\s\S]{0,160}?<\/span>/)
+      expect(title?.[0], 'panel title').toContain(LABEL_CALL)
+    }
     const resizer = panel.match(/className="ai-panel-resizer"[\s\S]{0,260}?\/>/)
     expect(resizer?.[0], 'resizer label').toContain(`aria-label={${LABEL_CALL}}`)
   })
@@ -198,6 +204,7 @@ describe('the subscription usage heads-up', () => {
     mindmap: 'apps/mindmap/src/renderer/ai/AiPanel.tsx',
     hwp: 'apps/hwp/src/renderer/ai/AiPanel.tsx',
     epub: 'apps/epub/src/renderer/ai/AiPanel.tsx',
+    diagram: 'apps/diagram/src/renderer/ai/AiPanel.tsx',
   }
 
   it.each(Object.entries(PANELS))('%s: renders it above the input card', (_name, path) => {

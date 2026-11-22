@@ -25,6 +25,7 @@ export const zhTW = {
   itemHtml: 'HTML',
   itemMindmap: '心智圖',
   itemDiagram: '圖表',
+  itemWhiteboard: "白板",
   itemHwp: 'HWP',
   itemEpub: '電子書（EPUB）',
 } satisfies Record<keyof typeof zh, string>

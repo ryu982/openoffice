@@ -8,6 +8,7 @@ export const zh = {
   item_html: 'HTML 编辑器',
   item_mindmap: '思维导图编辑器',
   item_diagram: '图表编辑器',
+  item_whiteboard: "白板编辑器",
   item_hwp: '韩文(HWP)编辑器',
   item_epub: 'EPUB 电子书编辑器',
   offMessage: '{item}已关闭。要启用并打开吗？',

@@ -121,7 +121,12 @@ describe('sheets AI panel: attach from a document', () => {
     await settle()
     await settle()
 
-    const button = host.querySelector<HTMLButtonElement>('.ai-doc-attach-btn')
+    const menuBtn = host.querySelector<HTMLButtonElement>('.ai-attach-menu-btn')
+    expect(menuBtn).not.toBeNull()
+    act(() => {
+      menuBtn!.click()
+    })
+    const button = host.querySelector<HTMLButtonElement>('.ai-attach-menu-item[data-source="docs"]')
     expect(button).not.toBeNull()
     await act(async () => {
       button!.click()

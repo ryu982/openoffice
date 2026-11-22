@@ -10,6 +10,7 @@ export const ja = {
   item_html: 'HTML エディター',
   item_mindmap: 'マインドマップエディター',
   item_diagram: 'ダイアグラムエディター',
+  item_whiteboard: "ホワイトボードエディター",
   item_hwp: 'ハングル(HWP)エディター',
   item_epub: 'EPUB エディター',
   offMessage: '{item}はオフになっています。オンにして開きますか？',

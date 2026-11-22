@@ -1,14 +1,28 @@
 import { Worker } from 'node:worker_threads'
-import type { Extracted } from './extract'
+import { REDACT_NS } from '@genoffice/agent-core/redact-range'
+import {
+  isParseSidecarEnabled,
+  ParseSidecarClient,
+  SIDECAR_EXTS,
+  SidecarInfraError,
+  type ParseSidecarClientOptions,
+} from '@genoffice/file-parse'
+import { documentExtension } from '../app-routing'
+import {
+  MAX_BODY_CHARS,
+  MAX_EXTRACT_BYTES,
+  ZIP_INDEX_UNLIMITED_EXTS,
+  type Extracted,
+} from './extract'
 import type { WorkerRequest, WorkerResponse } from './extract-worker'
 import { isSupportedTreeFile } from '../folder-tree'
 import { statOrNull, type ScannedFile } from './scan'
-import type { FileIndexStore } from './store'
+import type { FileIndexStore, PretokenizedBody } from './store'
 
 export interface IndexProgress {
   /** files currently in the index */
   indexed: number
-  /** files waiting for extraction */
+  /** files waiting for extraction (queued + in-flight) */
   pending: number
   scanning: boolean
 }
@@ -25,6 +39,17 @@ export interface IndexerSources {
    * it. Absent: every file is extracted, as before.
    */
   nameOnly?: (paths: readonly string[]) => Promise<ReadonlySet<string>>
+}
+
+export interface FileIndexerOptions {
+  /** Use the dedicated indexer-owned Rust parse sidecar when enabled (default: true). */
+  useSidecar?: boolean
+  /** Background parallel extraction concurrency (default: 2, clamped to 1..4). */
+  concurrency?: number
+  /** Optional overrides for the dedicated indexer ParseSidecarClient. */
+  sidecarOptions?: ParseSidecarClientOptions
+  /** Optional injected ParseSidecarClient instance (primarily for tests). */
+  sidecarClient?: ParseSidecarClient
 }
 
 /** a scanned file and whether its body is left out (not on this PC) */
@@ -46,21 +71,34 @@ const WORKER_REQUEST_TIMEOUT_MS = 120_000
  */
 const WORKER_HEAP_LIMIT_MB = 1024
 
+/** default and upper bound for low-priority background sidecar concurrency (tunable) */
+const DEFAULT_SIDECAR_CONCURRENCY = 2
+const MAX_SIDECAR_CONCURRENCY = 4
+const INDEXER_SIDECAR_IDLE_TIMEOUT_MS = 120_000
+
 /** name-only rows written in one go before yielding to the event loop */
 const NAME_ONLY_BATCH = 64
 
 /**
  * Keeps the store in step with the disk: a scan diffs mtime/size against the
- * index, changed files queue for extraction on the worker one at a time, and
- * vanished files are dropped. Scans coalesce; extraction is sequential so the
- * user's foreground work keeps the CPU.
+ * index, changed files queue for extraction, and vanished files are dropped.
+ * Supported ZIP and non-redacted text formats run in a dedicated low-priority
+ * Rust sidecar process (bounded concurrency) with pre-tokenization off the main
+ * thread; unsupported formats, redaction delegations, and infra failures fall
+ * back to the sequential extraction worker.
  */
 export class FileIndexer {
   private worker: Worker | null = null
+  private sidecar: ParseSidecarClient | null = null
+  private readonly useSidecar: boolean
+  private readonly concurrency: number
+  private readonly sidecarOptions: ParseSidecarClientOptions | undefined
+  private readonly injectedSidecar: ParseSidecarClient | null
   private nextId = 1
   private readonly waiting = new Map<number, (r: WorkerResponse) => void>()
   private readonly queue: QueuedFile[] = []
   private readonly queued = new Set<string>()
+  private inFlight = 0
   private draining = false
   private scanning = false
   private scanRequested = false
@@ -74,10 +112,32 @@ export class FileIndexer {
     private readonly sources: IndexerSources,
     private readonly requestTimeoutMs = WORKER_REQUEST_TIMEOUT_MS,
     private readonly workerHeapLimitMb = WORKER_HEAP_LIMIT_MB,
-  ) {}
+    options: FileIndexerOptions = {},
+  ) {
+    this.useSidecar = options.useSidecar ?? true
+    const rawConcurrency = options.concurrency ?? DEFAULT_SIDECAR_CONCURRENCY
+    this.concurrency = Math.max(
+      1,
+      Math.min(
+        MAX_SIDECAR_CONCURRENCY,
+        Number.isFinite(rawConcurrency) ? Math.floor(rawConcurrency) : DEFAULT_SIDECAR_CONCURRENCY,
+      ),
+    )
+    this.sidecarOptions = options.sidecarOptions
+    this.injectedSidecar = options.sidecarClient ?? null
+  }
 
   progress(): IndexProgress {
-    return { indexed: this.store.count(), pending: this.queue.length, scanning: this.scanning }
+    return {
+      indexed: this.store.count(),
+      pending: this.queue.length + this.inFlight,
+      scanning: this.scanning,
+    }
+  }
+
+  /** PID of the indexer's own sidecar child process, or null when not running. */
+  sidecarPid(): number | null {
+    return this.sidecar?.pid() ?? null
   }
 
   /** schedule a scan soon; repeated calls within the debounce window fold into one */
@@ -107,22 +167,51 @@ export class FileIndexer {
       let walked = true
       let complete = true
       for (const root of this.sources.roots()) {
-        const res = await this.ask({ id: 0, type: 'scan', root })
-        // a crashed worker answers with an extract error; dropping the index on that would empty search
-        if (res.type === 'scan') {
-          for (const f of res.files) seen.set(f.path, f)
-          if (res.truncated) complete = false
-        } else walked = false
+        if (this.stopped) {
+          walked = false
+          break
+        }
+        const scanned = await this.scanRoot(root)
+        if (scanned) {
+          for (const f of scanned.files) seen.set(f.path, f)
+          if (scanned.truncated) complete = false
+        } else {
+          walked = false
+        }
       }
-      if (walked) await this.diff(seen, complete)
+      if (walked && !this.stopped) await this.diff(seen, complete)
     } finally {
       this.scanning = false
     }
     // a refresh that arrived mid-scan runs now, whether or not the walk succeeded
-    if (this.scanRequested) {
+    if (this.scanRequested && !this.stopped) {
       this.scanRequested = false
       void this.scan()
     }
+  }
+
+  private async scanRoot(
+    root: string,
+  ): Promise<{ files: readonly ScannedFile[]; truncated?: boolean } | null> {
+    const sidecar = this.ensureSidecar()
+    if (sidecar) {
+      try {
+        const res = await sidecar.scanDir({ root })
+        return { files: res.files, truncated: res.truncated }
+      } catch (err) {
+        if (this.stopped) return null
+        if (!(err instanceof SidecarInfraError) || err.code === 'stopped') {
+          return null
+        }
+        // Infra error (missing binary, spawn failure, crash, protocol mismatch): fall back to Worker scan
+      }
+    }
+    const res = await this.ask({ id: 0, type: 'scan', root })
+    // a crashed worker answers with an extract error; dropping the index on that would empty search
+    if (res.type === 'scan') {
+      return { files: res.files, truncated: res.truncated }
+    }
+    return null
   }
 
   /** bring the store in step with what the walk saw; extra paths are stat-ed here */
@@ -141,14 +230,22 @@ export class FileIndexer {
       this.store.remove(gone)
     }
     const changed: ScannedFile[] = []
-    // name-only for want of the content: looked at again, extracted once local
+    // name-only for want of the content (cloud files, or ZIP docs previously capped at 64 MiB):
+    // looked at again so their body is filled gradually without bumping EXTRACT_VERSION
     const recheck: ScannedFile[] = []
     for (const f of seen.values()) {
       // an unchanged file that already failed is not retried: a parse that
       // kills the worker would otherwise be re-run on every scan
       const k = known.get(f.path)
       if (k && k.mtimeMs === f.mtimeMs && k.sizeBytes === f.sizeBytes) {
-        if (k.status === 'cloud') recheck.push(f)
+        if (k.status === 'cloud') {
+          recheck.push(f)
+        } else if (
+          k.status === 'name-only' &&
+          ZIP_INDEX_UNLIMITED_EXTS.has(documentExtension(f.path))
+        ) {
+          recheck.push(f)
+        }
         continue
       }
       changed.push(f)
@@ -181,43 +278,131 @@ export class FileIndexer {
     if (this.draining) return
     this.draining = true
     try {
+      const workerCount = this.useSidecar && isParseSidecarEnabled() ? this.concurrency : 1
       let nameOnlyRun = 0
-      while (this.queue.length && !this.stopped) {
-        const f = this.queue.shift()!
-        this.queued.delete(f.path)
-        // the file may have changed again while queued; index what is on disk now
-        const st = statOrNull(f.path)
-        if (!st) {
-          this.store.remove([f.path])
-          continue
+      const runSlot = async (): Promise<void> => {
+        while (this.queue.length && !this.stopped) {
+          const f = this.queue.shift()!
+          this.queued.delete(f.path)
+          this.inFlight++
+          try {
+            // the file may have changed again while queued; index what is on disk now
+            const st = statOrNull(f.path)
+            if (!st) {
+              this.store.remove([f.path])
+              continue
+            }
+            if (f.cloud) {
+              // name and folder only: the content is never opened, so never downloaded
+              this.apply(st, { kind: 'name-only' }, 'cloud')
+              if (++nameOnlyRun % NAME_ONLY_BATCH === 0) {
+                await new Promise((r) => setImmediate(r))
+              }
+              continue
+            }
+            await this.extractAndApply(st)
+          } finally {
+            this.inFlight--
+          }
         }
-        if (f.cloud) {
-          // name and folder only: the content is never opened, so never downloaded
-          this.apply(st, { kind: 'name-only' }, 'cloud')
-          if (++nameOnlyRun % NAME_ONLY_BATCH === 0) await new Promise((r) => setImmediate(r))
-          continue
-        }
-        const res = await this.ask({ id: 0, type: 'extract', path: st.path })
-        if (res.type !== 'extract') continue
-        this.apply(st, res.result)
       }
+      const slots = Array.from({ length: workerCount }, () => runSlot())
+      await Promise.all(slots)
     } finally {
       this.draining = false
     }
+  }
+
+  private async extractAndApply(st: ScannedFile): Promise<void> {
+    const ext = documentExtension(st.path)
+    const sidecar = this.ensureSidecar()
+    if (sidecar && SIDECAR_EXTS.has(ext)) {
+      if (!ZIP_INDEX_UNLIMITED_EXTS.has(ext) && st.sizeBytes > MAX_EXTRACT_BYTES) {
+        this.apply(st, { kind: 'name-only' })
+        return
+      }
+      try {
+        const res = await sidecar.extractFile({
+          path: st.path,
+          ext,
+          tokenize: true,
+          maxBodyChars: MAX_BODY_CHARS,
+          redactNamespaces: [REDACT_NS],
+        })
+        if (this.stopped) return
+        if (res.status === 'ok') {
+          this.apply(
+            st,
+            { kind: 'text', text: res.text.slice(0, MAX_BODY_CHARS) },
+            'name-only',
+            res.tokens ?? null,
+          )
+          return
+        }
+        if (res.status === 'rejected') {
+          // Never fall back to TS/Worker on security or semantic rejections
+          this.apply(st, { kind: 'error', error: res.message })
+          return
+        }
+        if (res.status === 'unsupported') {
+          this.apply(st, { kind: 'name-only' })
+          return
+        }
+        // res.status === 'fallback' (e.g. redaction_present, legacy OLE2 .doc): delegate to Worker below
+      } catch (err) {
+        if (this.stopped) return
+        if (err instanceof SidecarInfraError) {
+          if (err.code === 'stopped') return
+          if (err.code === 'request_timeout') {
+            // The indexer's own sidecar was killed/recycled on timeout; record error without retrying on Worker
+            this.apply(st, { kind: 'error', error: err.message })
+            return
+          }
+          // Other infra failure (missing binary, spawn failure, crash, protocol mismatch): fall back to Worker
+        } else {
+          this.apply(st, {
+            kind: 'error',
+            error: err instanceof Error ? err.message : String(err),
+          })
+          return
+        }
+      }
+    }
+    const res = await this.ask({ id: 0, type: 'extract', path: st.path })
+    if (this.stopped || res.type !== 'extract') return
+    this.apply(st, res.result)
   }
 
   private apply(
     f: ScannedFile,
     r: Extracted,
     nameOnlyStatus: 'name-only' | 'cloud' = 'name-only',
+    pretokenized?: PretokenizedBody | null,
   ): void {
     try {
-      if (r.kind === 'text') this.store.upsert(f, r.text, 'ok')
+      if (r.kind === 'text') this.store.upsert(f, r.text, 'ok', pretokenized)
       else if (r.kind === 'name-only') this.store.upsert(f, null, nameOnlyStatus)
       else this.store.upsert(f, null, 'error')
     } catch {
       // a corrupt row must not stall the queue; the next scan retries it
     }
+  }
+
+  private ensureSidecar(): ParseSidecarClient | null {
+    if (!this.useSidecar || !isParseSidecarEnabled()) return null
+    if (this.sidecar) return this.sidecar
+    if (this.injectedSidecar) {
+      this.sidecar = this.injectedSidecar
+      return this.sidecar
+    }
+    this.sidecar = new ParseSidecarClient({
+      lowPriority: true,
+      requestTimeoutMs: this.requestTimeoutMs,
+      killOnTimeout: true,
+      idleTimeoutMs: INDEXER_SIDECAR_IDLE_TIMEOUT_MS,
+      ...this.sidecarOptions,
+    })
+    return this.sidecar
   }
 
   private ask(req: WorkerRequest): Promise<WorkerResponse> {
@@ -265,8 +450,12 @@ export class FileIndexer {
 
   private ensureWorker(): Worker {
     if (this.worker) return this.worker
+    // Force pure TypeScript extraction inside the fallback worker so delegated
+    // files (e.g. redacted .pptx, legacy .doc, or sidecar infra fallback) never
+    // spawn a hidden third untracked ieum-parse-sidecar process.
     const w = new Worker(this.workerPath, {
       resourceLimits: { maxOldGenerationSizeMb: this.workerHeapLimitMb },
+      env: { ...process.env, GENOFFICE_PARSE_SIDECAR: '0' },
     })
     w.on('message', (msg: WorkerResponse) => {
       const cb = this.waiting.get(msg.id)
@@ -291,8 +480,11 @@ export class FileIndexer {
   stop(): void {
     this.stopped = true
     if (this.rescanTimer) clearTimeout(this.rescanTimer)
+    this.rescanTimer = null
     this.queue.length = 0
     this.queued.clear()
+    this.sidecar?.stop()
+    this.sidecar = null
     void this.worker?.terminate()
     this.worker = null
   }

@@ -10,6 +10,7 @@ export const ar = {
   item_html: 'محرر HTML',
   item_mindmap: 'محرر الخرائط الذهنية',
   item_diagram: 'محرر المخططات',
+  item_whiteboard: "محرّر اللوح الأبيض",
   item_hwp: 'محرر الهانغول (HWP)',
   item_epub: 'محرر EPUB',
   offMessage: '{item} متوقف. هل تريد تشغيله والفتح؟',

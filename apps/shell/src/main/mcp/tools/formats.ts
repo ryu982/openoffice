@@ -23,7 +23,15 @@ export type SessionFamily = 'docx' | 'pptx' | 'xlsx'
 
 /** every family the app can edit, including ones MCP does not drive yet */
 export type EditorFamily =
-  SessionFamily | 'md' | 'html' | 'pdf' | 'xmind' | 'hwp' | 'epub' | 'drawio'
+  | SessionFamily
+  | 'md'
+  | 'html'
+  | 'pdf'
+  | 'xmind'
+  | 'hwp'
+  | 'epub'
+  | 'drawio'
+  | 'whiteboard'
 
 export interface McpFormats {
   /** format the headless `create_*` tool writes, when exposed */
@@ -155,6 +163,14 @@ export const FORMAT_FAMILIES: readonly FormatFamily[] = [
     // no `mcp` block: there is no session, generator or file reader for
     // diagrams; an open diagram is listed, read, saved and closed through
     // open_documents and read and edited through read_diagram / apply_diagram_ops
+  },
+  {
+    family: 'whiteboard',
+    label: 'whiteboard',
+    // Excalidraw files are GUI import-only and never overwritten
+    editorOpen: ['whiteboard', 'excalidraw', 'excalidraw.png', 'excalidraw.svg'],
+    editorSave: ['whiteboard'],
+    editorExport: ['png', 'svg', 'pdf'],
   },
 ]
 

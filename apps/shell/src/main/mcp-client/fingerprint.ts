@@ -98,7 +98,7 @@ export function planFingerprint(plan: PlanShape): string {
 
 /** The fields of a stored server the launch fingerprints read */
 export interface LaunchFields {
-  kind: 'remote' | 'local'
+  kind: 'remote' | 'local' | 'vault'
   command: string
   args: readonly string[]
   env: Record<string, string>

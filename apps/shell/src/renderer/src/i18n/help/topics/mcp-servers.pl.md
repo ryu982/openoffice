@@ -2,6 +2,16 @@
 
 Serwer MCP to usługa, która daje AI narzędzia spoza aplikacji, na przykład wyszukiwanie przepisów albo materiałów prowadzonych przez Twój zespół. Po połączeniu serwera okna AI w GenOffice mogą wywoływać jego narzędzia podczas rozmowy. Dla każdego narzędzia sam decydujesz, czego AI może używać i w jaki sposób.
 
+## Polecane połączone usługi
+
+Na górze **Ustawienia ▸ Integracje** GenOffice grupuje Dysk Google oraz pięć gotowych usług nad własnymi serwerami MCP:
+
+- **Notion** i **Canva**: łączenie w jednym kroku przez logowanie w przeglądarce. Z menu **+** w edytorach można też bezpośrednio dołączyć do 20 stron Notion (kopie tymczasowe są usuwane po 7 dniach).
+- **Skarbiec Obsidian**: wbudowany w GenOffice bez dodatkowej aplikacji. Dodaj lokalne foldery, aby wyszukiwać, czytać i edytować notatki `.md` (usuwanie trafia wyłącznie do kosza, w skarbcu nie powstają żadne pliki pomocnicze, działa także bez narzędzi internetowych) i dołączać je z menu **+**.
+- **Korean Law MCP**: wyszukuje koreańskie przepisy po podaniu `LAW_OC` i zezwoleniu na uruchomienie polecenia.
+- **kordoc MCP**: odczytuje i konwertuje lokalne pliki HWP/HWPX po zezwoleniu na polecenie. Maskowanie w edytorze nie obejmuje plików czytanych bezpośrednio przez kordoc.
+- **Przycisk Połączone usługi**: zawsze widoczny przy polu AI; pozwala przełączać Dysk Google (w edytorach), poszczególne skarbce Obsidian i serwery MCP dla bieżącej rozmowy lub przejść do **Ustawienia ▸ Integracje**.
+
 ## Dodawanie serwera
 
 1. Otwórz **Ustawienia ▸ Integracje** i na karcie **Serwery MCP** kliknij **Dodaj serwer**.

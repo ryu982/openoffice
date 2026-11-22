@@ -30,6 +30,7 @@ const FAMILY_BY_KIND: Record<Exclude<TabKind, 'home' | 'help'>, EditorFamily> = 
   hwp: 'hwp',
   epub: 'epub',
   diagram: 'drawio',
+  whiteboard: 'whiteboard',
 }
 
 /** families whose live content can be read back over MCP */
@@ -43,6 +44,7 @@ const READABLE_KINDS: ReadonlySet<TabKind> = new Set<TabKind>([
   'hwp',
   'epub',
   'diagram',
+  'whiteboard',
 ])
 
 export interface OpenDocumentsControl {

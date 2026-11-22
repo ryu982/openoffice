@@ -45,6 +45,7 @@ export const ms = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Peta minda',
+  editorWhiteboard: 'Papan putih',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Laman utama',

@@ -270,6 +270,9 @@ export default function App(): React.JSX.Element {
       },
     [],
   )
+  const focusBlockForAi = useCallback((spineIndex: number, blockId: string) => {
+    void goToRef.current?.(spineIndex, { kind: 'block', id: blockId })
+  }, [])
   const ai = useEpubAi({
     book,
     readChapter: readChapterForAi,
@@ -277,6 +280,7 @@ export default function App(): React.JSX.Element {
     shownChapter: shownRef,
     frameDoc: frameDocRef,
     startBookTranslation,
+    focusBlock: focusBlockForAi,
   })
   const aiMarksRef = useRef(ai.marks)
   aiMarksRef.current = ai.marks

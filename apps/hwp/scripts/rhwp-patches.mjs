@@ -34,6 +34,24 @@
  *   deletes the table a selection or a caret points at, in the body or in a
  *   cell, and the three paths call it: the inner table goes, the outer stays.
  *
+ * studio-nested-table-dispatch, studio-nested-table-path-calls, studio-nested-table-keys,
+ * studio-textbox-table-cell-block, studio-textbox-table-context-menu, studio-nested-table-move-drag
+ *   The other table commands name their table by the outer table's numbers (the caret's
+ *   parentParaIndex/controlIndex/cellIndex, a cell block's or a selected table's sec/ppi/ci),
+ *   so in a table inside a cell or a text box they changed the outer table: a row went into
+ *   the form, M merged its cells. The dispatcher asks studio-plugin/hancom-keys.mjs
+ *   (nestedTableCommand) before an enabled command runs. There the editing commands run with
+ *   services whose bridge sends a flat table call named with those numbers to the path call
+ *   for the inner table (vendor/rhwp-core patch 0055; the bridge gains those calls) and whose
+ *   edits are one snapshot on it. (The studio's list of document-changing bridge calls,
+ *   core/mutation-method-registry.ts, is read only by its own tests, which the build does not
+ *   compile; it is left as it is.) The others (split, captions, formulas, transposing, order,
+ *   wrap) leave the document alone and say why. Tab in the last cell of an inner table adds a row to it, as in a body
+ *   table and as Hangul does. A table in a text box is a table to the keys too: Tab moves
+ *   between its cells, F5 opens a cell block and a right click gives the table cell menu (the
+ *   studio had them for tables in cells only). A selected inner table is not dragged or moved
+ *   by the arrow keys (the move takes the outer table's numbers).
+ *
  * studio-hancom-shortcuts, studio-hancom-labels, studio-hancom-commands,
  * studio-hancom-equal-cells, studio-hancom-chords
  *   A Hangul tab takes Hancom Hangul's keys (decision 0060). The table of them and
@@ -131,6 +149,15 @@
  *   kept one (studio-plugin/pc-fonts.mjs), then tells the font lists as the button does.
  *   It also hands that module what the studio knows of the PC's fonts, for the marks below.
  *
+ * studio-font-file-reads
+ *   The studio's detection reads the name, OS/2 and head tables of every installed font in
+ *   one go through FontData.blob() inside the renderer. That exhausts open files on Linux
+ *   (#488) and pulls gigabytes of 100MB+ CJK .ttc collections through renderer Blobs on
+ *   macOS, crashing the renderer (#591). Inside the app, collectLocalFontRecords asks
+ *   studio-plugin/pc-fonts.mjs (readHostFontNames) for per-face SFNT metadata read from disk
+ *   by the main process (@genoffice/font-metrics), skipping FontData.blob() completely. When
+ *   no host reader is present (standalone browser), fontFilesToRead keeps the Linux cap.
+ *
  * studio-missing-font-marks
  *   A font that is not on the PC is drawn with another one, while the font menu and the
  *   font box showed its name as if it were there. The menu marks such an entry and the box
@@ -148,16 +175,69 @@
  *   name. Upstream had the same defect (edwardkim/rhwp#9077) and fixed it on devel the same
  *   way (PR #9093); the patch is dropped with the release that has that fix.
  *
+ * studio-hancom-object-drag, studio-hancom-object-drag-cancel
+ *   The studio sized a picture or drawing object freely from every handle and had no keys
+ *   while dragging one. Hangul keeps a picture's width to height on a corner handle, and a
+ *   drawing object's with Shift; Shift while moving keeps the object on its row or column;
+ *   Esc while dragging puts the object back (help: 개체 크기 조절, 개체 이동하기). The size
+ *   drag asks studio-plugin/object-drag.mjs (dragKeepsRatio) whether to keep the ratio: a
+ *   single object goes through the studio's own diagonal sizing for a turned picture, a
+ *   multiple selection through ratioResizedBox. The move drag holds the pointer on one axis
+ *   (axisLockedPoint), and the key handler hands Esc to cancelObjectDrag before anything else.
+ *
+ * studio-hancom-object-step
+ *   With a picture or drawing object selected, studio-hancom-chords hands the key to
+ *   hancomPictureObjectKey, which takes Hangul's object keys (arrows 0.2 mm, Shift+arrows 1 mm,
+ *   Tab, Shift+PageUp/Down/Home/End, G/U/L/C, Ctrl+E, Ctrl+Insert, Shift+Delete). The studio
+ *   moves objects by its 격자 설정 step (3 mm unless set); once the user sets that step it stays
+ *   theirs, so the studio's setter marks that it was set.
+ *
+ * studio-hancom-object-mouse, studio-object-duplicate
+ *   Hangul's Alt+click selects the object under the pointer even when another lies over it or
+ *   it lies behind the text, and the next one down on each further click (help: 개체 선택). The
+ *   studio's mousedown hands an Alt+click to hancomAltClickObject before its own picture
+ *   handling, which would start dragging the selected object or open a text box for typing.
+ *   A move drag that ends with Ctrl held goes to copyObjectDrag first: the object goes back and
+ *   a copy lands where the drag ended, through the engine call of vendor/rhwp-core patch 0054,
+ *   which the bridge gains (studio-object-duplicate). A picture's Shift+corner crops it
+ *   (cropDragBox, cropChange, in studio-hancom-object-drag; the engine keeps the crop in the
+ *   resize undo since patch 0052).
+ *
+ * studio-note-text, studio-note-typing, studio-submode-symbols
+ *   While a footnote or endnote is open the studio keeps the body caret where it was and
+ *   tracks the note's place apart. Its paste, copy and cut ignored that: a paste went into the
+ *   body at the note's mark, and Ctrl+C and Ctrl+X in the note copied nothing. Its 문자표
+ *   dialog put the symbol at the body caret too, and the note's keys let only undo, redo,
+ *   go-to and select-all through, so Ctrl+F10 did nothing there (2026-11-17 feedback). The
+ *   paste, copy and cut events ask studio-plugin/note-text.mjs first, the note's keys let
+ *   문자표 through, and the dialog hands its character to the module when a note, a header
+ *   or a footer is being edited. A click in a note leaves a selection anchor that nothing
+ *   cleared, so text typed after it read as selected; typing, composing and the note's keys
+ *   now ask the module first, which takes a real selection out (as typing over a selection
+ *   does) and drops an empty one.
+ *
  * studio-wheel-zoom
  *   The studio scales its zoom by the wheel's pixel delta, so how far one notch zoomed
  *   followed the OS scroll setting. Ctrl/⌘+wheel now goes through the app's shared
  *   classifier (packages/ui/src/wheel-zoom.ts), as in the other editors: five percentage
  *   points per notch onto the 5% grid, a trackpad pinch in the same steps.
+ *
+ * studio-hyperlink-open, studio-hyperlink-preview
+ *   Clicking a web hyperlink in the document or the preview button in the hyperlink dialog
+ *   calls `window.open('about:blank', '_blank')` and then writes the real URL into the popup
+ *   window. In Electron `setWindowOpenHandler` routes the opened URL through `safeExternalUrl`
+ *   to `shell.openExternal` and returns `{ action: 'deny' }` (so `window.open` always returns
+ *   `null`, and `'about:blank'` is rejected). The user therefore got a "popup blocked" error
+ *   and nothing opened. Open the validated URL directly with `window.open(url, '_blank',
+ *   'noopener,noreferrer')` without expecting a window handle back; route `mailto:` the same
+ *   way so it goes through `safeExternalUrl` + `shell.openExternal` instead of navigating the
+ *   editor iframe.
  */
 
 import { CLIPBOARD_HTML_MODULE } from '../studio-plugin/clipboard-html.mjs'
 import { EASY_WORDS_COMMAND } from '../studio-plugin/agent-plugin.mjs'
 import { HANCOM_KEYS_MODULE, studioCommandIds } from '../studio-plugin/hancom-keys.mjs'
+import { NOTE_TEXT_MODULE } from '../studio-plugin/note-text.mjs'
 import { PC_FONTS_MODULE } from '../studio-plugin/pc-fonts.mjs'
 
 /** Must equal RENDERER_SCHEME in packages/electron-utils/src/renderer-scheme.ts. */
@@ -180,6 +260,9 @@ export { CLIPBOARD_HTML_MODULE }
 
 /** Module specifier the studio-pc-fonts patch imports; build-studio.mjs aliases it. */
 export { PC_FONTS_MODULE }
+
+/** Module specifier the studio-note-text patches import; build-studio.mjs aliases it. */
+export { NOTE_TEXT_MODULE }
 
 /** Module specifier the studio-wheel-zoom patch imports; build-studio.mjs aliases it. */
 export const WHEEL_ZOOM_MODULE = '@ieum/wheel-zoom'
@@ -326,6 +409,222 @@ const PATCHES = {
       '        safeTableOp(() => ih.executeOperation({',
       "          kind: 'snapshot',",
       "          operationType: 'deleteTable',",
+    ].join('\n'),
+  },
+  'studio-nested-table-dispatch': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]command[\\/]dispatcher\.ts$/,
+    edits: [
+      {
+        find: "import type { CommandResult, CommandServices, EditorContext } from './types';",
+        replace:
+          "import type { CommandResult, CommandServices, EditorContext } from './types';\n" +
+          `import { nestedTableCommand } from '${HANCOM_KEYS_MODULE}';`,
+      },
+      {
+        find: [
+          '    if (def.canExecute && !def.canExecute(ctx)) {',
+          '      // canExecute 실패 — 비활성 상태',
+          "      return { ok: false, reason: 'disabled' };",
+          '    }',
+          '',
+          '    try {',
+          '      def.execute(this.services, params);',
+        ].join('\n'),
+        replace: [
+          '    if (def.canExecute && !def.canExecute(ctx)) {',
+          '      // canExecute 실패 — 비활성 상태',
+          "      return { ok: false, reason: 'disabled' };",
+          '    }',
+          '    // ieum: a table command on a table inside a cell or a text box runs on that table by',
+          '    // its path (the outer numbers would change the outer table), or is refused with the reason',
+          '    const nested = nestedTableCommand(commandId, this.services);',
+          '    if (nested === false) {',
+          "      return { ok: false, reason: 'disabled', message: 'nested-table' };",
+          '    }',
+          '',
+          '    try {',
+          '      def.execute(nested ?? this.services, params);',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-nested-table-path-calls': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: '  getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string): TableDimensions {',
+    replace: [
+      '  // ieum: the flat table calls for the table a cell path names, inside a cell or a text box',
+      '  // (vendor/rhwp-core patch 0055). The path ends at the table; the answers are the flat ones.',
+      '  insertTableRowByPath(sec: number, parentPara: number, pathJson: string, rowIdx: number, below: boolean): { ok: boolean; rowCount: number; colCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.insertTableRowByPath(sec, parentPara, pathJson, rowIdx, below));',
+      '  }',
+      '',
+      '  insertTableColumnByPath(sec: number, parentPara: number, pathJson: string, colIdx: number, right: boolean): { ok: boolean; rowCount: number; colCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.insertTableColumnByPath(sec, parentPara, pathJson, colIdx, right));',
+      '  }',
+      '',
+      '  deleteTableRowByPath(sec: number, parentPara: number, pathJson: string, rowIdx: number): { ok: boolean; rowCount: number; colCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.deleteTableRowByPath(sec, parentPara, pathJson, rowIdx));',
+      '  }',
+      '',
+      '  deleteTableColumnByPath(sec: number, parentPara: number, pathJson: string, colIdx: number): { ok: boolean; rowCount: number; colCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.deleteTableColumnByPath(sec, parentPara, pathJson, colIdx));',
+      '  }',
+      '',
+      '  mergeTableCellsByPath(sec: number, parentPara: number, pathJson: string, startRow: number, startCol: number, endRow: number, endCol: number): { ok: boolean; cellCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.mergeTableCellsByPath(sec, parentPara, pathJson, startRow, startCol, endRow, endCol));',
+      '  }',
+      '',
+      '  splitTableCellByPath(sec: number, parentPara: number, pathJson: string, row: number, col: number): { ok: boolean; cellCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.splitTableCellByPath(sec, parentPara, pathJson, row, col));',
+      '  }',
+      '',
+      '  splitTableCellIntoByPath(',
+      '    sec: number, parentPara: number, pathJson: string, row: number, col: number,',
+      '    nRows: number, mCols: number, equalRowHeight: boolean, mergeFirst: boolean,',
+      '  ): { ok: boolean; cellCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.splitTableCellIntoByPath(sec, parentPara, pathJson, row, col, nRows, mCols, equalRowHeight, mergeFirst));',
+      '  }',
+      '',
+      '  splitTableCellsInRangeByPath(',
+      '    sec: number, parentPara: number, pathJson: string,',
+      '    startRow: number, startCol: number, endRow: number, endCol: number,',
+      '    nRows: number, mCols: number, equalRowHeight: boolean,',
+      '  ): { ok: boolean; cellCount: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.splitTableCellsInRangeByPath(sec, parentPara, pathJson, startRow, startCol, endRow, endCol, nRows, mCols, equalRowHeight));',
+      '  }',
+      '',
+      '  getCellOwnPropertiesByPath(sec: number, parentPara: number, pathJson: string, cellIdx: number): CellProperties {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.getCellOwnPropertiesByPath(sec, parentPara, pathJson, cellIdx));',
+      '  }',
+      '',
+      "  setCellPropertiesByPath(sec: number, parentPara: number, pathJson: string, cellIdx: number, props: Partial<CellProperties>): ReturnType<WasmBridge['setCellProperties']> {",
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.setCellPropertiesByPath(sec, parentPara, pathJson, cellIdx, JSON.stringify(props)));',
+      '  }',
+      '',
+      '  setCellZonePropertiesByPath(',
+      '    sec: number, parentPara: number, pathJson: string,',
+      '    range: { startRow: number; startCol: number; endRow: number; endCol: number },',
+      '    props: Partial<CellProperties>,',
+      "  ): ReturnType<WasmBridge['setCellZoneProperties']> {",
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.setCellZonePropertiesByPath(',
+      '      sec, parentPara, pathJson, range.startRow, range.startCol, range.endRow, range.endCol, JSON.stringify(props),',
+      '    ));',
+      '  }',
+      '',
+      "  applyCellBorderFillIdsByPath(sec: number, parentPara: number, pathJson: string, payload: Parameters<WasmBridge['applyCellBorderFillIds']>[3]): { ok: boolean } {",
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.applyCellBorderFillIdsByPath(sec, parentPara, pathJson, JSON.stringify(payload)));',
+      '  }',
+      '',
+      '  getTablePropertiesByPath(sec: number, parentPara: number, pathJson: string): TableProperties {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.getTablePropertiesByPath(sec, parentPara, pathJson));',
+      '  }',
+      '',
+      '  setTablePropertiesByPath(sec: number, parentPara: number, pathJson: string, props: Partial<TableProperties>): { ok: boolean } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.setTablePropertiesByPath(sec, parentPara, pathJson, JSON.stringify(props)));',
+      '  }',
+      '',
+      '  resizeTableCellByPath(',
+      '    sec: number, parentPara: number, pathJson: string,',
+      '    row: number, col: number, vertical: boolean, forward: boolean,',
+      '  ): { ok: boolean; moved?: boolean; reason?: string } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.resizeTableCellByPath(sec, parentPara, pathJson, row, col, vertical, forward));',
+      '  }',
+      '',
+      '  setTableCellExtentsByPath(',
+      '    sec: number, parentPara: number, pathJson: string, vertical: boolean,',
+      '    extents: Array<{ cellIdx: number; start: number; end: number }>,',
+      '  ): { ok: boolean; reason?: string } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse(this.doc.setTableCellExtentsByPath(sec, parentPara, pathJson, vertical, JSON.stringify(extents)));',
+      '  }',
+      '',
+      '  getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string): TableDimensions {',
+    ].join('\n'),
+  },
+  'studio-nested-table-keys': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      // Tab in the last cell of a table inside a cell or a text box adds a row to that table
+      {
+        find: 'function insertRowAfterLastTableCellByTab(this: any): boolean {',
+        replace: [
+          `import { innerTableTabRow } from '${HANCOM_KEYS_MODULE}';`,
+          '',
+          'function insertRowAfterLastTableCellByTab(this: any): boolean {',
+        ].join('\n'),
+      },
+      {
+        find: '  if (isNestedCellPosition(pos)) return false;',
+        replace: '  if (isNestedCellPosition(pos)) return innerTableTabRow(this);',
+      },
+      // a table in a text box takes Tab as a table does (Hangul moves to the next cell there)
+      {
+        find: [
+          '      if (this.cursor.isInCell() && !this.cursor.isInTextBox()) {',
+          '        if (e.shiftKey) {',
+          '          this.cursor.moveToCellPrev();',
+        ].join('\n'),
+        replace: [
+          '      if (this.cursor.isInCell() && (!this.cursor.isInTextBox() || this.cursor.nestingDepth() > 1)) {',
+          '        if (e.shiftKey) {',
+          '          this.cursor.moveToCellPrev();',
+        ].join('\n'),
+      },
+      // and F5 opens a cell block there
+      {
+        find: [
+          '    if (this.cursor.isInCell() && !this.cursor.isInTextBox()) {',
+          '      if (this.cursor.isInCellSelectionMode()) {',
+        ].join('\n'),
+        replace: [
+          '    if (this.cursor.isInCell() && (!this.cursor.isInTextBox() || this.cursor.nestingDepth() > 1)) {',
+          '      if (this.cursor.isInCellSelectionMode()) {',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-textbox-table-cell-block': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]cursor\.ts$/,
+    find: [
+      "  enterCellSelectionMode(reason: CellSelectionReason = 'manual'): boolean {",
+      '    if (!this.isInCell() || this.isInTextBox()) return false;',
+    ].join('\n'),
+    replace: [
+      "  enterCellSelectionMode(reason: CellSelectionReason = 'manual'): boolean {",
+      '    // ieum: a table in a text box takes a cell block as any table; the text box itself does not',
+      '    if (!this.isInCell() || (this.isInTextBox() && this.nestingDepth() < 2)) return false;',
+    ].join('\n'),
+  },
+  'studio-textbox-table-context-menu': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-mouse\.ts$/,
+    find: '    inTable = hit.parentParaIndex !== undefined && !hit.isTextBox;',
+    replace: [
+      "    // ieum: a table in a text box gets the table cell menu (Hangul's), the text box itself not",
+      '    inTable = hit.parentParaIndex !== undefined && (!hit.isTextBox || (hit.cellPath?.length ?? 0) > 1);',
+    ].join('\n'),
+  },
+  'studio-nested-table-move-drag': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-mouse\.ts$/,
+    find: '    if (ref && e.button === 0) {',
+    replace: [
+      "    // ieum: a selected table inside a cell or a text box is not dragged; its ref's numbers",
+      '    // are the outer table, which the move would take. The click places the caret instead.',
+      '    if (ref && e.button === 0 && (ref.cellPath?.length ?? 0) < 2) {',
     ].join('\n'),
   },
   'studio-hancom-shortcuts': {
@@ -687,7 +986,7 @@ const PATCHES = {
         find: "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';",
         replace:
           "import { matchShortcut, defaultShortcuts } from '@/command/shortcut-map';\n" +
-          `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
+          `import { hancomCellBlockKey, hancomCellKey, hancomChordKey, hancomChordStart, hancomContextKey, hancomCtrlKey, hancomPictureObjectKey, hancomTableObjectKey } from '${HANCOM_KEYS_MODULE}';`,
       },
       // the second key, first of all (the studio's own Ctrl+K/M/G flags are never set again)
       {
@@ -701,6 +1000,7 @@ const PATCHES = {
         find: '  if (this.connectorDrawingMode) {',
         replace:
           '  if (hancomTableObjectKey(this, e)) return;\n' +
+          '  if (hancomPictureObjectKey(this, e)) return;\n' +
           '  if (hancomCellBlockKey(this, e, (ev: KeyboardEvent) => matchShortcut(ev, defaultShortcuts))) return;\n' +
           '  if (hancomCellKey(this, e)) return;\n' +
           '  if (this.connectorDrawingMode) {',
@@ -1139,6 +1439,38 @@ const PATCHES = {
       },
     ],
   },
+  'studio-font-file-reads': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]local-fonts\.ts$/,
+    edits: [
+      {
+        find: "import { setRawCanvasFont } from './canvas-font-raw.ts';",
+        replace: [
+          "import { setRawCanvasFont } from './canvas-font-raw.ts';",
+          `import { fontFilesToRead, readHostFontNames } from '${PC_FONTS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: ['  let nextIndex = 0;', '  const worker = async (): Promise<void> => {'].join('\n'),
+        replace: [
+          '  const hostNames = await readHostFontNames(fontDataList);',
+          '  if (hostNames) {',
+          '    for (let index = 0; index < fontDataList.length; index += 1) {',
+          "      records[index] = makeLocalFontRecord(fontDataList[index], (hostNames[index] as SfntFontNames | null) ?? emptySfntFontNames(), 'local-font-access');",
+          '    }',
+          '    return normalizeLocalFontRecords(records.filter((record): record is LocalFontRecord => record !== null));',
+          '  }',
+          '  let nextIndex = 0;',
+          '  const readsFile = fontFilesToRead(fontDataList);',
+          '  const worker = async (): Promise<void> => {',
+        ].join('\n'),
+      },
+      {
+        find: "      records[index] = makeLocalFontRecord(fontData, await readSfntFontNames(fontData), 'local-font-access');",
+        replace:
+          "      records[index] = makeLocalFontRecord(fontData, readsFile(index) ? await readSfntFontNames(fontData) : emptySfntFontNames(), 'local-font-access');",
+      },
+    ],
+  },
   // Hancom's equation fonts are written in private code points, which mean nothing in the
   // font the substitution would put in their place while the PC's fonts are not known yet
   // or the font is not there. The app's own layer (equation-fonts.mjs) sits under the
@@ -1280,6 +1612,336 @@ const PATCHES = {
       },
     ],
   },
+  // Hangul's corner handle keeps a picture's ratio, and any object's with Shift; Shift while
+  // moving keeps the object on one axis (studio-plugin/object-drag.mjs)
+  'studio-hancom-object-drag': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-picture\.ts$/,
+    edits: [
+      {
+        find: "import { computeArrowResize, MIN_SIZE_HWP, type ArrowKey } from './picture-resize';",
+        replace: [
+          "import { computeArrowResize, MIN_SIZE_HWP, type ArrowKey } from './picture-resize';",
+          `import { axisLockedPoint, cropChange, cropDragBox, dragKeepsRatio, ratioResizedBox } from '${HANCOM_KEYS_MODULE}';`,
+        ].join('\n'),
+      },
+      // one object: the studio's diagonal sizing of a turned picture, for every kept ratio
+      {
+        find: '  if (isRotatedImageCornerResize(state, angleDeg)) {',
+        replace:
+          '  if (isRotatedImageCornerResize(state, angleDeg) || dragKeepsRatio(state, e.shiftKey)) {',
+      },
+      // a picture's Shift+corner crops it: the frame follows the crop (cropDragBox), live and at
+      // the end, and the crop amounts are written with the frame (cropChange)
+      {
+        find: [
+          '  const newBbox = state.multiRefs',
+          '    ? this.calcResizedBbox(e, zoom)',
+          '    : calcResizedBboxRotated(state, e, zoom);',
+        ].join('\n'),
+        replace: [
+          '  const newBbox = state.multiRefs',
+          '    ? this.calcResizedBbox(e, zoom)',
+          '    : (cropDragBox(this, state, e, zoom) ?? calcResizedBboxRotated(state, e, zoom));',
+        ].join('\n'),
+      },
+      {
+        find: '        vertOffset: beforeVertOffset + (newVertOffset - origVertOffset),\n      });',
+        replace:
+          '        vertOffset: beforeVertOffset + (newVertOffset - origVertOffset),\n        ...cropChange(state),\n      });',
+      },
+      {
+        find: [
+          '  // 단일 선택 리사이즈 (회전 반영: pivot 고정, 위치도 갱신)',
+          '  const newBbox = calcResizedBboxRotated(state, e, zoom);',
+        ].join('\n'),
+        replace: [
+          '  // 단일 선택 리사이즈 (회전 반영: pivot 고정, 위치도 갱신)',
+          '  const newBbox = cropDragBox(this, state, e, zoom) ?? calcResizedBboxRotated(state, e, zoom);',
+        ].join('\n'),
+      },
+      {
+        find: '    if (Object.keys(updated).length > 0) {',
+        replace:
+          '    Object.assign(updated, cropChange(state));\n    if (Object.keys(updated).length > 0) {',
+      },
+      // several objects: their common box
+      {
+        find: '  return { x, y, width: w, height: h };',
+        replace: [
+          '  if (dragKeepsRatio(s, e.shiftKey)) return ratioResizedBox(s.bbox, dir, dx, dy);',
+          '  return { x, y, width: w, height: h };',
+        ].join('\n'),
+      },
+      {
+        find: [
+          '  const cx = e.clientX - cr.left;',
+          '  const cy = e.clientY - cr.top;',
+          '  // 이동량은 끌기를',
+        ].join('\n'),
+        replace: [
+          '  let cx = e.clientX - cr.left;',
+          '  let cy = e.clientY - cr.top;',
+          '  if (e.shiftKey && this.pictureMoveState) {',
+          '    const ieumFrom = this.pictureMoveState;',
+          '    const ieumPoint = axisLockedPoint({',
+          '      x: this.virtualScroll.getPageLeftResolved(ieumFrom.pageIndex, sc.clientWidth) + ieumFrom.startPageX * zoom,',
+          '      y: this.virtualScroll.getPageOffset(ieumFrom.pageIndex) + ieumFrom.startPageY * zoom,',
+          '    }, { x: cx, y: cy });',
+          '    cx = ieumPoint.x;',
+          '    cy = ieumPoint.y;',
+          '  }',
+          '  // 이동량은 끌기를',
+        ].join('\n'),
+      },
+    ],
+  },
+  // a move step the user set in 격자 설정 is kept for objects; otherwise their arrows take
+  // Hangul's steps (hancomPictureObjectKey)
+  'studio-hancom-object-step': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler\.ts$/,
+    find: '  setGridStep(mm: number): void { this.gridStepMm = mm; }',
+    replace:
+      '  setGridStep(mm: number): void { this.gridStepMm = mm; (this as any).ieumGridStepSet = true; }',
+  },
+  // Hangul's Alt+click selects the object under the pointer, and the next one down on the
+  // next click (hancomAltClickObject)
+  'studio-hancom-object-mouse': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-mouse\.ts$/,
+    edits: [
+      {
+        find: "import { shouldStartPersistentTableResize } from './table-resize-updates';",
+        replace: [
+          "import { shouldStartPersistentTableResize } from './table-resize-updates';",
+          `import { copyObjectDrag, hancomAltClickObject } from '${HANCOM_KEYS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: [
+          '  // 그림/글상자 객체 선택 중 클릭 처리',
+          '  if (this.cursor.isInPictureObjectSelection()) {',
+        ].join('\n'),
+        replace: [
+          '  if (hancomAltClickObject(this, e)) return;',
+          '  // 그림/글상자 객체 선택 중 클릭 처리',
+          '  if (this.cursor.isInPictureObjectSelection()) {',
+        ].join('\n'),
+      },
+      // Hangul's Ctrl+drag: the object stays and a copy lands where the drag ends
+      {
+        find: '  // 그림 이동 드래그 종료\n  if (this.isPictureMoveDragging) {',
+        replace:
+          '  // 그림 이동 드래그 종료\n  if (copyObjectDrag(this, _e)) return;\n  if (this.isPictureMoveDragging) {',
+      },
+    ],
+  },
+  // the engine call of vendor/rhwp-core patch 0054 (copyObjectDrag)
+  'studio-object-duplicate': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]core[\\/]wasm-bridge\.ts$/,
+    find: '  changeShapeZOrder(\n',
+    replace: [
+      '  /** A floating picture or shape copied into its own paragraph, moved by (dx, dy) HWPUNIT. */',
+      '  duplicateFloatingControl(',
+      '    sec: number,',
+      '    para: number,',
+      '    ci: number,',
+      '    dx: number,',
+      '    dy: number,',
+      '  ): { ok: boolean; paraIdx?: number; controlIdx?: number } {',
+      "    if (!this.doc) throw new Error('문서가 로드되지 않았습니다');",
+      '    return JSON.parse((this.doc as any).duplicateFloatingControl(sec, para, ci, dx, dy));',
+      '  }',
+      '',
+      '  changeShapeZOrder(\n',
+    ].join('\n'),
+  },
+  // Esc while dragging an object puts it back, before any other use of the key
+  'studio-hancom-object-drag-cancel': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      {
+        find: "import { scrollByPageStep, type PageScrollDirection } from '@/view/page-scroll';",
+        replace: [
+          "import { scrollByPageStep, type PageScrollDirection } from '@/view/page-scroll';",
+          `import { cancelObjectDrag } from '${HANCOM_KEYS_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: [
+          'export function onKeyDown(this: any, e: KeyboardEvent): void {',
+          '  if (!this.active) return;',
+        ].join('\n'),
+        replace: [
+          'export function onKeyDown(this: any, e: KeyboardEvent): void {',
+          '  if (!this.active) return;',
+          "  if (e.key === 'Escape' && cancelObjectDrag(this)) {",
+          '    e.preventDefault();',
+          '    return;',
+          '  }',
+        ].join('\n'),
+      },
+    ],
+  },
+  // Paste, copy and cut in a footnote or endnote being edited, and 문자표 from its keys
+  // (studio-plugin/note-text.mjs)
+  'studio-note-text': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-keyboard\.ts$/,
+    edits: [
+      {
+        find: "import * as _connector from './input-handler-connector';",
+        replace: [
+          "import * as _connector from './input-handler-connector';",
+          `import { ieumNoteCopy, ieumNoteCut, ieumNoteKey, ieumNotePaste } from '${NOTE_TEXT_MODULE}';`,
+        ].join('\n'),
+      },
+      // the note's keys let 문자표 (Ctrl+F10, Alt+F10) through as they do undo and redo
+      {
+        find: "  'edit:select-all',\n]);",
+        replace: "  'edit:select-all',\n  'insert:symbols',\n]);",
+      },
+      // Backspace and Delete take the note's selection out, Enter replaces it, a move leaves it
+      {
+        find: [
+          '  if (this.cursor.isInFootnote()) {',
+          '    if (dispatchSubmodeGlobalShortcut.call(this, e)) return;',
+        ].join('\n'),
+        replace: [
+          '  if (this.cursor.isInFootnote()) {',
+          '    if (dispatchSubmodeGlobalShortcut.call(this, e)) return;',
+          '    if (ieumNoteKey(this, e)) return;',
+        ].join('\n'),
+      },
+      {
+        find: [
+          'export function onCopy(this: any, e: ClipboardEvent): boolean {',
+          '  if (!this.active) return false;',
+        ].join('\n'),
+        replace: [
+          'export function onCopy(this: any, e: ClipboardEvent): boolean {',
+          '  if (!this.active) return false;',
+          '  if (ieumNoteCopy(this, e)) return true;',
+        ].join('\n'),
+      },
+      {
+        find: [
+          'export function onCut(this: any, e: ClipboardEvent): void {',
+          '  if (!this.active) return;',
+        ].join('\n'),
+        replace: [
+          'export function onCut(this: any, e: ClipboardEvent): void {',
+          '  if (!this.active) return;',
+          '  if (ieumNoteCut(this, e)) return;',
+        ].join('\n'),
+      },
+      {
+        find: '  // HF는 이번 이슈에서 rich clipboard round-trip을 만들지 않는다.',
+        replace: [
+          '  if (ieumNotePaste(this, e)) return;',
+          '  // HF는 이번 이슈에서 rich clipboard round-trip을 만들지 않는다.',
+        ].join('\n'),
+      },
+    ],
+  },
+  // typing or composing in a note replaces its selection, and drops the anchor a click left
+  'studio-note-typing': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-text\.ts$/,
+    edits: [
+      {
+        find: "import { normalizeTextNewlines } from '../core/text-newlines';",
+        replace: [
+          "import { normalizeTextNewlines } from '../core/text-newlines';",
+          `import { ieumNoteBeforeEdit } from '${NOTE_TEXT_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: '  // 선택 영역이 있으면 삭제 후 조합 시작',
+        replace: ['  ieumNoteBeforeEdit(this);', '  // 선택 영역이 있으면 삭제 후 조합 시작'].join(
+          '\n',
+        ),
+      },
+      {
+        find: ['  // 각주 편집 모드', '  if (this.cursor.isInFootnote()) {', '    try {'].join(
+          '\n',
+        ),
+        replace: [
+          '  // 각주 편집 모드',
+          '  if (this.cursor.isInFootnote()) {',
+          '    ieumNoteBeforeEdit(this);',
+          '    try {',
+        ].join('\n'),
+      },
+    ],
+  },
+  // 문자표 into the note, header or footer being edited instead of at the body caret
+  'studio-submode-symbols': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]symbols-dialog\.ts$/,
+    edits: [
+      {
+        find: "import { InsertTextCommand } from '@/engine/command';",
+        replace: [
+          "import { InsertTextCommand } from '@/engine/command';",
+          `import { ieumInsertAtSubmodeCaret } from '${NOTE_TEXT_MODULE}';`,
+        ].join('\n'),
+      },
+      {
+        find: [
+          '    const pos = ih.getCursorPosition();',
+          '    ih.executeOperation({',
+          "      kind: 'command',",
+          '      command: new InsertTextCommand(pos, this.selectedChar),',
+          '    });',
+        ].join('\n'),
+        replace: [
+          '    if (!ieumInsertAtSubmodeCaret(ih, this.selectedChar)) {',
+          '      const pos = ih.getCursorPosition();',
+          '      ih.executeOperation({',
+          "        kind: 'command',",
+          '        command: new InsertTextCommand(pos, this.selectedChar),',
+          '      });',
+          '    }',
+        ].join('\n'),
+      },
+    ],
+  },
+  'studio-hyperlink-open': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]engine[\\/]input-handler-hyperlink\.ts$/,
+    find: [
+      '      web: uri => {',
+      '        const url = new URL(uri);',
+      "        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;",
+      "        const opened = window.open('about:blank', '_blank');",
+      "        if (!opened) { showToast({ message: '팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요.' }); return false; }",
+      '        opened.opener = null; opened.location.replace(url.href); return true;',
+      '      },',
+      '      mail: uri => { window.location.assign(uri); return true; },',
+    ].join('\n'),
+    replace: [
+      '      web: uri => {',
+      '        const url = new URL(uri);',
+      "        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false;",
+      "        window.open(url.href, '_blank', 'noopener,noreferrer');",
+      '        return true;',
+      '      },',
+      "      mail: uri => { window.open(uri, '_blank', 'noopener,noreferrer'); return true; },",
+    ].join('\n'),
+  },
+  'studio-hyperlink-preview': {
+    file: /[\\/]rhwp-studio[\\/]src[\\/]ui[\\/]hyperlink-dialog\.ts$/,
+    find: [
+      '        const url = webHyperlinkUrl(this.uriInput.value);',
+      "        if (!url) throw new Error('http:// 또는 https://로 시작하는 웹 주소를 입력해 주세요.');",
+      "        const opened = window.open('about:blank', '_blank');",
+      "        if (!opened) throw new Error('팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요.');",
+      '        opened.opener = null;',
+      '        opened.location.replace(url);',
+      "        this.error.textContent = '';",
+    ].join('\n'),
+    replace: [
+      '        const url = webHyperlinkUrl(this.uriInput.value);',
+      "        if (!url) throw new Error('http:// 또는 https://로 시작하는 웹 주소를 입력해 주세요.');",
+      "        window.open(url, '_blank', 'noopener,noreferrer');",
+      "        this.error.textContent = '';",
+    ].join('\n'),
+  },
 }
 
 /** The patches the studio build applies, in order; the SDK's own is applied by the renderer builds. */
@@ -1291,6 +1953,12 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-nested-table-delete',
   'studio-nested-table-cut',
   'studio-nested-table-command',
+  'studio-nested-table-dispatch',
+  'studio-nested-table-path-calls',
+  'studio-nested-table-keys',
+  'studio-textbox-table-cell-block',
+  'studio-textbox-table-context-menu',
+  'studio-nested-table-move-drag',
   'studio-hancom-shortcuts',
   'studio-hancom-labels',
   'studio-hancom-commands',
@@ -1315,11 +1983,22 @@ export const STUDIO_PATCHES = /** @type {const} */ ([
   'studio-memo-label-ko',
   'studio-memo-label-en',
   'studio-cell-block-paste',
+  'studio-note-text',
+  'studio-note-typing',
+  'studio-submode-symbols',
   'studio-pc-fonts',
+  'studio-font-file-reads',
   'studio-missing-font-marks',
   'studio-equation-fonts',
   'studio-source-font-alias',
+  'studio-hancom-object-drag',
+  'studio-hancom-object-drag-cancel',
+  'studio-hancom-object-step',
+  'studio-hancom-object-mouse',
+  'studio-object-duplicate',
   'studio-wheel-zoom',
+  'studio-hyperlink-open',
+  'studio-hyperlink-preview',
 ])
 
 /** Whether a patch is written against this file. */
@@ -1440,9 +2119,11 @@ export const hancomHooks = [
       'moveToLineEnd(): void',
       'moveHorizontal(delta: number): void',
       'getSelection(): { anchor: DocumentPosition; focus: DocumentPosition } | null',
+      'getSelectedTableRef(): { sec: number; ppi: number; ci: number; cellPath?: CellPathEntry[] } | null',
       'isInHeaderFooter(): boolean',
       'isInFootnote(): boolean',
       'isInTextBox(): boolean',
+      'nestingDepth(): number',
       'isInPictureObjectSelection(): boolean',
       'isInTableObjectSelection(): boolean',
       'getPosition(): DocumentPosition',
@@ -1495,6 +2176,37 @@ export const hancomHooks = [
       'applyHangingIndentAtCursor(): boolean',
       // Hangul's Ctrl+PageUp/PageDown: the studio's Ctrl+Home/End (documentEdgeKey)
       'private handleCtrlKey(e: KeyboardEvent): void',
+      // Esc while dragging an object (cancelObjectDrag in object-drag.mjs)
+      'private isPictureResizeDragging = false;',
+      'private pictureResizeState: {',
+      'private isPictureMoveDragging = false;',
+      'private pictureMoveState: {',
+      'private dragRafId = 0;',
+      'private cleanupPictureResizeDrag(): void {',
+      'private renderPictureObjectSelection(): void {',
+      'private setObjectProperties(ref:',
+      'private container: HTMLElement,',
+      'private eventBus: EventBus,',
+      // a selected picture or drawing object's Hancom keys (hancomPictureObjectKey)
+      'private gridStepMm = 3;',
+      'private moveSelectedPicture(key:',
+      'private resizeSelectedPicture(key:',
+      'private findPictureBbox(',
+      'private getObjectProperties(ref:',
+      'private exitPictureObjectSelectionIfNeeded(): void',
+      // Alt+click (hancomAltClickObject)
+      'private virtualScroll: VirtualScroll,',
+      'private viewportManager: ViewportManager,',
+      // Ctrl+drop copies the object and selects the copy (copyObjectDrag)
+      'selectPictureObject(sec: number, ppi: number, ci: number,',
+    ],
+  },
+  {
+    file: 'src/engine/cursor.ts',
+    needles: [
+      'enterPictureObjectSelectionDirect(',
+      'getSelectedPictureRef(): PictureSelectionRef | null',
+      'getSelectedPictureRefs(): PictureSelectionRef[]',
     ],
   },
   {
@@ -1507,7 +2219,11 @@ export const hancomHooks = [
   },
   {
     file: 'src/command/dispatcher.ts',
-    needles: ['dispatch(commandId: string', 'isEnabled(commandId: string): boolean'],
+    needles: [
+      'dispatch(commandId: string',
+      'dispatchWithResult(commandId: string',
+      'isEnabled(commandId: string): boolean',
+    ],
   },
   { file: 'src/command/contextual-shortcut.ts', needles: ['arm('] },
   {
@@ -1556,6 +2272,9 @@ export const hancomHooks = [
       'getCellParagraphLengthByPath(sec: number, parentPara: number, pathJson: string)',
       'getTableDimensionsByPath(sec: number, parentPara: number, pathJson: string)',
       'getCellInfoByPath(sec: number, parentPara: number, pathJson: string)',
+      // a table inside a cell or a text box (innerTableBridge): the path calls upstream already has
+      'getTableCellBboxesByPath(sec: number, parentPara: number, pathJson: string): CellBbox[]',
+      'resizeTableCellsByPath(',
       'runInBatch<T>(fn: () => T): T',
       // the cell copy's table HTML and the 셀 붙이기 dialog's new rows and columns
       "exportControlHtml(sec: number, para: number, ci: number, cellPathJson = ''): string",
@@ -1678,6 +2397,50 @@ export const hancomHooks = [
 ]
 
 /**
+ * What studio-plugin/note-text.mjs uses of the studio, on the same terms as pluginHooks: the
+ * note's caret and selection, the engine's note calls, and the snapshot step that brings the
+ * caret back into the note on undo.
+ */
+export const noteTextHooks = [
+  {
+    file: 'src/engine/cursor.ts',
+    needles: [
+      'isInFootnote(): boolean',
+      'isInHeaderFooter(): boolean',
+      'get fnSectionIdx(): number',
+      'get fnParaIdx(): number',
+      'get fnControlIdx(): number',
+      'get fnInnerParaIdx(): number',
+      'get fnCharOffset(): number',
+      'get fnFootnoteIndex(): number',
+      'get fnPageNum(): number',
+      'getFootnoteSelectionOrdered(): {',
+      'clearSelection(): void',
+      'getPosition(): DocumentPosition',
+    ],
+  },
+  {
+    file: 'src/core/wasm-bridge.ts',
+    needles: [
+      'getFootnoteInfo(sec: number, para: number, controlIdx: number)',
+      'insertTextInFootnote(sec: number, para: number, controlIdx: number, fnParaIdx: number, charOffset: number, text: string)',
+      'deleteTextInFootnote(sec: number, para: number, controlIdx: number, fnParaIdx: number, charOffset: number, count: number)',
+      'splitParagraphInFootnote(sec: number, para: number, controlIdx: number, fnParaIdx: number, charOffset: number',
+      'mergeParagraphInFootnote(sec: number, para: number, controlIdx: number, fnParaIdx: number)',
+    ],
+  },
+  {
+    file: 'src/engine/input-handler.ts',
+    needles: [
+      'executeOperation(desc: OperationDescriptor): void',
+      'private replaceHeaderFooterSelection(',
+      'isFormMode(): boolean',
+      "if (ctx?.mode === 'footnote') {",
+    ],
+  },
+]
+
+/**
  * The studio commands the Hangul keys run that the studio's command sources no longer name;
  * `sources` is the text of every file in src/command/commands.
  */
@@ -1692,7 +2455,7 @@ export function missingHancomCommands(sources) {
 /** The hooks a studio source tree lacks; `read` gives the text of one of its files, or null. */
 export function missingPluginHooks(read) {
   const missing = []
-  for (const { file, needles } of [...pluginHooks, ...hancomHooks]) {
+  for (const { file, needles } of [...pluginHooks, ...hancomHooks, ...noteTextHooks]) {
     const text = read(file)
     for (const needle of needles) {
       if (text === null || !text.includes(needle)) missing.push(`${file}: ${needle}`)

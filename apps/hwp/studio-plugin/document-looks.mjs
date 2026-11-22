@@ -490,14 +490,35 @@ export function headerPieces(text) {
 /** The letters Korean documents count with: 가, 나, 다, … */
 const HANGUL_ORDER = '가나다라마바사아자차카타파하'
 
+/** A day of a month as Korean documents write it: 12. */
+const DAY = String.raw`(?:0?[1-9]|[12]\d|3[01])\.`
+/** A month and a day as Korean documents write them: 11. 12. */
+const MONTH_DAY = String.raw`(?:0?[1-9]|1[0-2])\.\s*${DAY}`
+/** The marks a range of dates is written with: ~, ～, ∼ and -. */
+const RANGE = '[~\uFF5E\u223C-]'
+/** What follows a date and not a number: the weekday in brackets ((목)) or a time (09:00). */
+const DATE_TAIL = String.raw`\([월화수목금토일](?:요일)?\)|\d{1,2}:\d{2}`
+
+/**
+ * A line that starts with a date as Korean documents write one: a month and a day followed
+ * by the weekday in brackets (11. 12.(목)), by a time (11. 12. 09:00), by a range to another
+ * month and day (11. 12.~11. 14., 11. 12.-11. 14.) or to a day that the weekday, a time or
+ * the line's end follows (11. 12.~14.(토)), or by nothing (12. 25.). A number followed by a
+ * reference to other parts (10. 1.~3.의, 6. 1.~3. 문항을, 1. 2.(가)를) is not a date.
+ */
+export const DATE_START = new RegExp(
+  String.raw`^${MONTH_DAY.replace('\\s*', '\\s+')}\s*(?:${DATE_TAIL}|${RANGE}\s*(?:${MONTH_DAY}|${DAY}\s*(?:${DATE_TAIL}|$))|$)`,
+)
+
 /**
  * How the numbered levels of a Korean official document start, named by the first number of
  * each level (Ⅰ, 1., 가., 1), 가), (1), (가), ①), as the first characters of a paragraph tell
- * it, leading spaces aside. "1." is not the start of a decimal (1.5) or of a year (2026.).
+ * it, leading spaces aside. "1." is not the start of a decimal (1.5), of a year (2026.) or
+ * of a date (DATE_START).
  */
 export const NUMBERED_MARKS = {
   Ⅰ: /^(?:[Ⅰ-Ⅻ]+(?:[.\s]|$)|[IVX]{1,4}\.(?:\s|$))/,
-  '1.': /^\d{1,2}\.(?!\d)/,
+  '1.': new RegExp(`^(?!${DATE_START.source.slice(1)})\\d{1,2}\\.(?!\\d)`),
   '가.': new RegExp(`^[${HANGUL_ORDER}]\\.(?:\\s|$)`),
   '1)': /^\d{1,2}\)/,
   '가)': new RegExp(`^[${HANGUL_ORDER}]\\)`),
@@ -513,6 +534,71 @@ export function numberedMarkOf(text) {
     if (mark.test(head)) return name
   }
   return null
+}
+
+/** A 가. line with no space after its mark (가.접수), which is not taken for the level. */
+export const NUMBERED_WITHOUT_SPACE = { '가.': new RegExp(`^[${HANGUL_ORDER}]\\.(?=\\S)`) }
+
+/** A cut line: dashes and spaces round a short text, six dashes or more (- - - 절취선 - - -). */
+function isCutLine(line) {
+  const text = line.trim()
+  const dashes = (text.match(/-/g) ?? []).length
+  const rest = [...text.replace(/[-\s]/g, '')].length
+  return dashes >= 6 && rest <= 6 && text.startsWith('-') && text.endsWith('-')
+}
+
+/**
+ * Why a rule that gives a style to the lines starting with `mark` leaves paragraph text
+ * `head` (its leading spaces already removed) out although it starts so: a mark of one
+ * character skips a line where the same character follows it with no space between
+ * (`placeholder`: ○○ 사업) and a `cutLine`. Null when the line is not left out.
+ */
+export function markSkipOf(head, mark) {
+  if (!head.startsWith(mark) || [...mark].length !== 1) return null
+  if (head.slice(mark.length).startsWith(mark)) return 'placeholder'
+  return isCutLine(head) ? 'cutLine' : null
+}
+
+/**
+ * Whether a rule that gives a style to the lines starting with `mark` names paragraph text
+ * `head` (its leading spaces already removed): it starts so and is not left out (markSkipOf).
+ */
+export function startsWithMark(head, mark) {
+  return head.startsWith(mark) && markSkipOf(head, mark) === null
+}
+
+/** A mark at the start of a line that is not a numbered level: □, ○, -, ※ and the like. */
+const SYMBOL_MARK = /^[^\p{L}\p{N}\s]{1,3}(?=\s)/u
+/** A letter with a dot or a bracket as a mark: ㄱ. ㄴ. or a) b). */
+const LETTER_MARK = /^\p{L}[.)](?=\s)/u
+
+/**
+ * How many characters of `text` come before the words its later lines hang under: the
+ * leading spaces, the mark and the spaces after it; 0 when the line has no mark. `rule` says
+ * what the mark is when a style rule named the line (`{ startsWith }` or `{ numbered }`);
+ * without one, a numbered level, a symbol or a letter with a dot or bracket is taken.
+ */
+export function markLengthOf(text, rule = null) {
+  const line = String(text ?? '')
+  const head = line.trimStart()
+  let mark = 0
+  if (typeof rule?.startsWith === 'string') {
+    mark = head.startsWith(rule.startsWith) ? rule.startsWith.length : 0
+  } else {
+    const patterns = rule?.numbered
+      ? [NUMBERED_MARKS[rule.numbered]]
+      : [...Object.values(NUMBERED_MARKS), SYMBOL_MARK, LETTER_MARK]
+    for (const pattern of patterns) {
+      const found = pattern.exec(head)
+      if (found) {
+        mark = found[0].length
+        break
+      }
+    }
+  }
+  if (mark === 0) return 0
+  const after = head.slice(mark)
+  return line.length - head.length + mark + (after.length - after.trimStart().length)
 }
 
 /** Most columns a section's text is laid out in. */

@@ -412,6 +412,7 @@ export class MapController {
         },
       },
       // Text from the clipboard that is not a copied topic is not pasted into the map.
+      // A picture is: the map card puts it on a new topic (`use-picture-drop.ts`).
       pasteHandler: () => {},
     })
     this.mind = mind
@@ -1809,6 +1810,16 @@ export class MapController {
     if (next.size === 0 && this.#aiMarked.size === 0) return
     this.#aiMarked = next
     if (!this.#destroyed) drawAiMarks(this.mind.nodes, next)
+  }
+
+  /** Selects and scrolls a topic into view (used when clicking a line in AiChangesCard). */
+  focusTopic(topicId: string): boolean {
+    if (this.#destroyed) return false
+    const element = this.#element(topicId)
+    if (!element) return false
+    this.mind.selectNode(element)
+    element.scrollIntoView?.({ block: 'center', inline: 'center', behavior: 'smooth' })
+    return true
   }
 
   /** Draws the sheet again from the source tree. */

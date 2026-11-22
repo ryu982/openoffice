@@ -238,7 +238,10 @@ describe('turned-off editors (Settings → Editors and AI)', () => {
 
   it('leaves out the types of the editors that are off', () => {
     expect(claimableOfficeTypes([]).map((t) => t.ext)).toEqual(OFFICE_TYPES.map((t) => t.ext))
-    expect(claimableOfficeTypes(['sheets', 'diagram']).map((t) => t.ext)).toEqual(['docx', 'pptx'])
+    expect(claimableOfficeTypes(['sheets', 'diagram', 'whiteboard']).map((t) => t.ext)).toEqual([
+      'docx',
+      'pptx',
+    ])
   })
 
   it('checks and claims only the types of editors that are on', async () => {
@@ -251,7 +254,7 @@ describe('turned-off editors (Settings → Editors and AI)', () => {
       ...base,
       platform: 'linux',
       run,
-      editorsOff: () => ['docs', 'sheets', 'diagram'],
+      editorsOff: () => ['docs', 'sheets', 'diagram', 'whiteboard'],
     })
     expect(await svc.status()).toMatchObject({ state: 'default' })
     await svc.set()
@@ -272,7 +275,7 @@ describe('turned-off editors (Settings → Editors and AI)', () => {
       ...base,
       platform: 'linux',
       run,
-      editorsOff: () => ['docs', 'sheets', 'slides', 'diagram'],
+      editorsOff: () => ['docs', 'sheets', 'slides', 'diagram', 'whiteboard'],
     })
     expect(await svc.status()).toMatchObject({ state: 'unsupported' })
     expect(await svc.set()).toMatchObject({ state: 'unsupported' })

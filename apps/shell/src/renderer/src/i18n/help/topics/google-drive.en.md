@@ -41,6 +41,8 @@ The sign-in is kept on this PC with the encryption your operating system provide
 - The AI cannot change, delete or share Drive files.
 - Once content read from Drive is in a chat, that chat stops using web search, image search, reading pages by web address and inserting pictures by web address. Start a new chat to use them again.
 
+You can also turn Google Drive reading off or on for the current chat from the **Connected services** button next to the AI input. When AI features are turned off in Settings, Google Drive stays visible in **Settings ▸ Integrations** for opening and saving files, with only its AI toggle hidden.
+
 ## Disconnecting
 
 Press **Disconnect** under **Settings ▸ Integrations**. GenOffice removes the sign-in from this PC and asks Google to revoke its access. Copies of files already on this PC stay. You can also remove access at any time under **Third-party connections** in your Google Account.

@@ -19,7 +19,7 @@ export const DROP_OPEN_CHANNEL = 'app:open-dropped-files'
  *  draw.io picture is known by its double extension (`.drawio.svg`,
  *  `.drawio.png`); a plain picture is not a document. */
 export const OPENABLE_DOC_RE =
-  /\.(docx|doc|dot|odt|xlsx|xlsm|xls|csv|tsv|ods|pptx|ppt|pdf|md|markdown|html|htm|xmind|mm|hwp|hwpx|epub|drawio|dio|vsdx|drawio\.svg|drawio\.png)$/i
+  /\.(docx|doc|dot|odt|xlsx|xlsm|xls|csv|tsv|ods|pptx|ppt|pdf|md|markdown|html|htm|xmind|mm|hwp|hwpx|epub|drawio|dio|vsdx|drawio\.svg|drawio\.png|whiteboard|excalidraw|excalidraw\.svg|excalidraw\.png)$/i
 
 /** Recognized-but-unsupported formats: kept in the sent payload so the shell
  *  can show its "not supported" dialog instead of dropping them silently.

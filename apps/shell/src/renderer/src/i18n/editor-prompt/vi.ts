@@ -10,6 +10,7 @@ export const vi = {
   item_html: 'Trình soạn thảo HTML',
   item_mindmap: 'Trình soạn thảo sơ đồ tư duy',
   item_diagram: 'Trình soạn thảo sơ đồ',
+  item_whiteboard: "Trình soạn thảo bảng trắng",
   item_hwp: 'Trình soạn thảo Hangul (HWP)',
   item_epub: 'Trình soạn thảo EPUB',
   offMessage: '{item} đang tắt. Bật lên và mở?',

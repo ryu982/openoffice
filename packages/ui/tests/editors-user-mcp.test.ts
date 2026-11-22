@@ -51,6 +51,10 @@ const PANELS: Record<string, { loop: string; view: string }> = {
     loop: 'apps/epub/src/renderer/ai/AiPanel.tsx',
     view: 'apps/epub/src/renderer/ai/AiPanel.tsx',
   },
+  diagram: {
+    loop: 'apps/diagram/src/renderer/ai/AiPanel.tsx',
+    view: 'apps/diagram/src/renderer/ai/AiPanel.tsx',
+  },
   'home ask': {
     loop: 'apps/shell/src/renderer/src/KbAskPanel.tsx',
     view: 'apps/shell/src/renderer/src/KbAskPanel.tsx',
@@ -76,9 +80,17 @@ describe.each(Object.entries(PANELS))('%s AI panel', (_name, panel) => {
   })
 
   it('puts the server button once in the composer footer', () => {
-    expect(view.split('<McpServerButton lang={lang} />')).toHaveLength(2)
-    // beside the attach buttons where the panel has them, else in AiComposer's footer
-    const anchor = view.includes('<DocAttachButton') ? '<DocAttachButton' : 'footerStart={'
+    const matches = view.match(/<McpServerButton\s+lang=\{lang\}(?:\s+showDrive=\{false\})?\s*\/>/g)
+    expect(matches).toHaveLength(1)
+    if (_name === 'home ask') {
+      expect(view).toContain('<McpServerButton lang={lang} showDrive={false} />')
+    }
+    // beside the attach button where the panel has one, else in AiComposer's footer
+    const anchor = view.includes('<AiAttachMenu')
+      ? '<AiAttachMenu'
+      : view.includes('<DocAttachButton')
+        ? '<DocAttachButton'
+        : 'footerStart={'
     const at = view.indexOf(anchor)
     expect(at).toBeGreaterThan(-1)
     expect(view.indexOf('<McpServerButton')).toBeGreaterThan(at)

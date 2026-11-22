@@ -6,6 +6,7 @@ export const th = {
   kindSlides: 'งานนำเสนอ (PPT)',
   kindHtml: 'หน้าเว็บ (HTML)',
   kindMindmap: 'แผนผังความคิด',
+  kindWhiteboard: "ไวท์บอร์ด",
   materialsLabel: 'เอกสารอ้างอิง',
   addMaterials: 'เพิ่มไฟล์…',
   removeMaterial: 'นำออก',

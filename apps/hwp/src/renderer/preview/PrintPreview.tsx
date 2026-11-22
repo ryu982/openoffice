@@ -543,7 +543,7 @@ export function PrintPreview({
     return () => window.removeEventListener('keydown', onKey, true)
   }, [doPrint, editCurrent, go, onClose, page, percent, view])
 
-  // Ctrl+wheel zooms without moving the page under the pointer, five percentage points
+  // Ctrl/⌘+wheel zooms without moving the page under the pointer, five percentage points
   // per notch whatever the OS scroll setting (the zoom list and +/- keep their steps).
   // A native listener is needed: React's wheel listener is passive, where preventDefault
   // does nothing. The classifier outlives the listener, which is re-attached per zoom.
@@ -552,7 +552,7 @@ export function PrintPreview({
     const paneEl = paneRef.current
     if (!paneEl) return
     const onWheel = (event: globalThis.WheelEvent): void => {
-      if (!event.ctrlKey) return
+      if (!event.ctrlKey && !event.metaKey) return
       event.preventDefault()
       zoomWheelRef.current ??= createZoomWheelClassifier()
       const intent = zoomWheelRef.current.feed(event, event.timeStamp)

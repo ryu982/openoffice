@@ -5,4 +5,6 @@ export const en = {
   permMcpTool: 'Use the “{tool}” tool of server {server}',
   permAllowToolSession: 'Always allow this tool for this session',
   mcpKeepInsideWarning: 'In this window, content received from {server} can be sent out.',
+  mcpExternalVaultWarning:
+    'This session can read and write notes outside the project folder through connected Obsidian vault(s): {vaults}.',
 } satisfies Record<keyof typeof zh, string>

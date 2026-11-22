@@ -4,6 +4,7 @@ export const zh = {
   kindSlides: '演示文稿（PPT）',
   kindHtml: '网页（HTML）',
   kindMindmap: '思维导图',
+  kindWhiteboard: "白板",
   materialsLabel: '资料',
   addMaterials: '添加文件…',
   removeMaterial: '移除',

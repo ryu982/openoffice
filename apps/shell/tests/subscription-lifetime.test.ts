@@ -47,7 +47,10 @@ describe('subscription CLI lifetime in the shell main process', () => {
 
   it('ends them on the exits that skip the quit events', () => {
     // app.exit() (the headless export) emits neither before-quit nor will-quit
-    expect(source).toMatch(/process\.on\('exit', \(\) => shutdownSubscriptionChildren\(\)\)/)
+    const onExit = blockAfter("process.on('exit', () => {")
+    expect(onExit).toContain('shutdownSubscriptionChildren()')
+    expect(onExit).toContain('fileIndexer?.stop()')
+    expect(onExit).toContain('stopParseSidecar()')
   })
 
   it('has no crash handler that would leave the CLIs running', () => {

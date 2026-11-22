@@ -635,25 +635,48 @@ describe("Hangul's table row keys inside a cell", () => {
     expect(e.preventDefault).not.toHaveBeenCalled()
   })
 
-  it('does not page-break in a table that sits in a cell (Phase 2)', () => {
-    const ih = inCell()
-    ih.getCursorPosition = () => ({
-      sectionIndex: 0,
-      paragraphIndex: 0,
-      charOffset: 0,
-      parentParaIndex: 1,
-      controlIndex: 0,
-      cellIndex: 0,
-      cellParaIndex: 0,
-      cellPath: [
+  it('takes the row keys in a table that sits in a cell too, for that table', () => {
+    const nested = () => {
+      const ih = inCell()
+      ih.getCursorPosition = () => ({
+        sectionIndex: 0,
+        paragraphIndex: 0,
+        charOffset: 0,
+        parentParaIndex: 1,
+        controlIndex: 0,
+        cellIndex: 0,
+        cellParaIndex: 0,
+        cellPath: [
+          { controlIndex: 0, cellIndex: 0, cellParaIndex: 0 },
+          { controlIndex: 1, cellIndex: 0, cellParaIndex: 0 },
+        ],
+      })
+      return ih
+    }
+    const enter = key({ key: 'Enter', code: 'Enter', ctrlKey: true })
+    const ih = nested()
+    expect(hancomContextKey(ih, enter)).toBe(true)
+    expect(enter.preventDefault).toHaveBeenCalled()
+    // the dispatcher hands the command the inner table (nestedTableCommand)
+    expect(ih.dispatcher.dispatch).toHaveBeenCalledWith('ieum:table-insert-row-below')
+    const back = nested()
+    // the inner table's rows, read by its path: the last row stays
+    back.wasm.getTableDimensionsByPath = vi.fn(() => ({ rowCount: 1, colCount: 2, cellCount: 2 }))
+    expect(
+      hancomContextKey(back, key({ key: 'Backspace', code: 'Backspace', ctrlKey: true })),
+    ).toBe(true)
+    expect(back.wasm.getTableDimensionsByPath).toHaveBeenCalledWith(
+      0,
+      1,
+      JSON.stringify([
         { controlIndex: 0, cellIndex: 0, cellParaIndex: 0 },
         { controlIndex: 1, cellIndex: 0, cellParaIndex: 0 },
-      ],
-    })
-    const e = key({ key: 'Enter', code: 'Enter', ctrlKey: true })
-    expect(hancomContextKey(ih, e)).toBe(true)
-    expect(e.preventDefault).toHaveBeenCalled()
-    expect(ih.dispatcher.dispatch).not.toHaveBeenCalled()
+      ]),
+    )
+    expect(back.dispatcher.dispatch).not.toHaveBeenCalled()
+    back.wasm.getTableDimensionsByPath = vi.fn(() => ({ rowCount: 3, colCount: 2, cellCount: 6 }))
+    hancomContextKey(back, key({ key: 'Backspace', code: 'Backspace', ctrlKey: true }))
+    expect(back.dispatcher.dispatch).toHaveBeenCalledWith('table:delete-row')
   })
 })
 

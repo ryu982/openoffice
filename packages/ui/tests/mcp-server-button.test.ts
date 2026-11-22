@@ -3,7 +3,10 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  createDriveWindowState,
   createMcpWindowState,
+  type DriveBridgeLike,
+  type DriveWindowState,
   type McpServerView,
   type McpToolsBridgeLike,
   type McpWindowState,
@@ -27,6 +30,7 @@ function fakeBridge(servers: RawServer[]) {
     }),
     retry: vi.fn(async () => {}),
     openSettings: vi.fn(async () => {}),
+    openIntegrations: vi.fn(async () => {}),
   } satisfies McpToolsBridgeLike
   return {
     bridge,
@@ -79,11 +83,17 @@ async function render(servers: RawServer[], lang: 'en' | 'ko' = 'en') {
 const open = () => act(() => trigger()!.click())
 
 describe('McpServerButton', () => {
-  it('is hidden with no servers, or only servers turned off in Settings', async () => {
-    await render([])
-    expect(trigger()).toBeNull()
-    await render([{ name: 'a', status: 'disabled' }])
-    expect(trigger()).toBeNull()
+  it('stays visible with no servers (showing empty notice and manage button) and badge only when >= 1 active', async () => {
+    const fake = await render([])
+    expect(trigger()).not.toBeNull()
+    expect(trigger()!.querySelector('.ai-mcp-badge')).toBeNull()
+    open()
+    expect(pop()?.textContent).toContain('Obsidian')
+    const manageBtn = pop()!.querySelector<HTMLButtonElement>('.ai-mcp-manage-btn')!
+    expect(manageBtn).not.toBeNull()
+    act(() => manageBtn.click())
+    expect(fake.bridge.openIntegrations).toHaveBeenCalledTimes(1)
+    expect(pop()).toBeNull()
   })
 
   it('is hidden without an MCP bridge', () => {
@@ -91,12 +101,79 @@ describe('McpServerButton', () => {
     expect(host.innerHTML).toBe('')
   })
 
-  it('appears when a server is turned on in Settings', async () => {
+  it('shows badge count when a server is turned on in Settings', async () => {
     const fake = await render([{ name: 'a', status: 'disabled' }])
+    expect(trigger()!.querySelector('.ai-mcp-badge')).toBeNull()
     fake.change([{ name: 'a', status: 'connected' }])
     await flush()
     expect(trigger()).not.toBeNull()
-    expect(trigger()!.getAttribute('aria-label')).toBe('Connected servers')
+    expect(trigger()!.getAttribute('aria-label')).toBe('Connected services')
+    expect(trigger()!.querySelector('.ai-mcp-badge')?.textContent).toBe('1')
+  })
+
+  it('renders Drive row (hidden when showDrive=false) and per-vault Obsidian rows with accurate badge count', async () => {
+    const driveBridge: DriveBridgeLike = {
+      driveAiEnabled: vi.fn(async () => true),
+      driveSearch: vi.fn(async () => ({ ok: true, hits: [] })),
+      driveRead: vi.fn(async () => ({ ok: false, error: 'none' })),
+    }
+    const driveState: DriveWindowState = createDriveWindowState(driveBridge)
+    const fake = fakeBridge([
+      {
+        name: 'obsidian',
+        status: 'connected',
+        localOnly: true,
+        vaults: [
+          { id: 'v1', name: 'Personal', enabled: true },
+          { id: 'v2', name: 'Work', enabled: true },
+          { id: 'v3', name: 'OffVault', enabled: false },
+        ],
+      },
+      { name: 'notion', status: 'connected' },
+    ])
+    state = createMcpWindowState(fake.bridge)
+    act(() =>
+      root.render(
+        createElement(McpServerButton, { lang: 'ko', state, driveState, showDrive: true }),
+      ),
+    )
+    await flush()
+    // 1 (Drive) + 2 (Personal, Work) + 1 (notion) = 4
+    expect(trigger()!.querySelector('.ai-mcp-badge')?.textContent).toBe('4')
+
+    open()
+    expect(pop()!.querySelector('[data-connector="google-drive"]')).not.toBeNull()
+    expect(pop()!.querySelector('[data-vault-id="v1"]')?.textContent).toContain(
+      'Obsidian · Personal',
+    )
+    expect(pop()!.querySelector('[data-vault-id="v2"]')?.textContent).toContain('Obsidian · Work')
+    expect(pop()!.querySelector('[data-vault-id="v3"]')).toBeNull()
+
+    // Toggle off v1 -> badge drops to 3
+    const v1Box = pop()!.querySelector<HTMLInputElement>(
+      '[data-vault-id="v1"] input[type="checkbox"]',
+    )!
+    act(() => v1Box.click())
+    expect(state!.vaultsOffInChat().has('v1')).toBe(true)
+    expect(trigger()!.querySelector('.ai-mcp-badge')?.textContent).toBe('3')
+
+    // Toggle off Drive -> badge drops to 2
+    const driveBox = pop()!.querySelector<HTMLInputElement>(
+      '[data-connector="google-drive"] input[type="checkbox"]',
+    )!
+    act(() => driveBox.click())
+    expect(driveState.offInChat()).toBe(true)
+    expect(trigger()!.querySelector('.ai-mcp-badge')?.textContent).toBe('2')
+
+    // showDrive=false hides Drive row (Home AI mode)
+    act(() =>
+      root.render(
+        createElement(McpServerButton, { lang: 'ko', state, driveState, showDrive: false }),
+      ),
+    )
+    await flush()
+    expect(pop()!.querySelector('[data-connector="google-drive"]')).toBeNull()
+    driveState.dispose()
   })
 
   it('lists each server with its status and new tools', async () => {
@@ -215,7 +292,7 @@ describe('McpServerButton', () => {
       ],
       'ko',
     )
-    expect(trigger()!.getAttribute('aria-label')).toBe('연결한 서버')
+    expect(trigger()!.getAttribute('aria-label')).toBe('연결한 서비스')
     open()
     expect(row('cal')?.textContent).toContain('다시 로그인 필요')
     expect(row('cal')?.textContent).toContain('새 도구 2개')

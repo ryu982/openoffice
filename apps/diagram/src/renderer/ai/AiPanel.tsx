@@ -14,6 +14,8 @@
  * next run, "clear marks", a revert or a new chat.
  */
 import {
+  aiPanelWidthAtPointer,
+  AiAttachMenu,
   AiBlockedNotice,
   AiChangesCard,
   type AiChangesState,
@@ -23,11 +25,19 @@ import {
   AiInputTruncatedNotice,
   AiMark,
   AiModelPicker,
+  AiPanelHeader,
+  AiPanelSideButton,
+  AiReplyFooter,
+  AiScrollToBottom,
   AiToolsUnsupportedNotice,
   type AiModelPickerBridge,
   AiQueueStrip,
   AI_QUEUE_LABELS,
   AiSubscriptionUsageLine,
+  AiWorkSteps,
+  IconArrowUp,
+  IconStop,
+  AiEmptyHints,
   aiSubscriptionText,
   AiReplyProgress,
   AiUsageChip,
@@ -37,9 +47,8 @@ import {
   Markdown,
   useAiSendGate,
   useChatRunQueue,
-  DriveAttachButton,
+  useScrollToBottom,
   type DriveAttachPicked,
-  DocAttachButton,
   McpPermissionCard,
   McpServerButton,
   useMcpWindow,
@@ -82,13 +91,16 @@ import { createFilesSkill } from './files-skill'
 import { createSearchSkill } from './search-skill'
 import { createElectronTransport } from './transport'
 import { RunCellChanges } from '../../shared/ai-marks'
-import { addRun, revertChain, revertsLater, type RunChange, settleRuns } from './run-changes'
+import {
+  addRun,
+  revertChain,
+  revertsLater,
+  type DiagramChangeLine,
+  type RunChange,
+  settleRuns,
+} from './run-changes'
 import { blockedRunFor, mergeSubscriptionUsage, type BlockedRun } from './connection'
 import { useSubscriptionConnection } from './subscription-client'
-import sendEnterOn from './assets/send-enter-on.png'
-import sendEnterOff from './assets/send-enter-off.png'
-import sendStop from './assets/send-stop.png'
-import attachIcon from './assets/attach-icon.png'
 import fileDocumentIcon from './assets/file-document.png'
 import fileExcelIcon from './assets/file-excel.png'
 import fileGeneralIcon from './assets/file-general.png'
@@ -224,6 +236,22 @@ interface TurnPoint {
 }
 
 const newTurnPoint = (): TurnPoint => ({ tokens: [], cells: new RunCellChanges() })
+
+const MAX_DIAGRAM_CHANGE_LINES = 24
+
+function collectDiagramChangeLines(cells: RunCellChanges): DiagramChangeLine[] {
+  return cells
+    .marked()
+    .slice(0, MAX_DIAGRAM_CHANGE_LINES)
+    .map((ref) => ({
+      kind: 'named' as const,
+      from: ref.page,
+      to: ref.id,
+      showable: true,
+      page: ref.page,
+      cellId: ref.id,
+    }))
+}
 
 /** composer chips (removable) and the read-only echo on a sent message share one renderer */
 function AttachmentList({
@@ -392,7 +420,6 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
   /** a reply runs (set at once by `send`, before the state renders) */
   const busyRef = useRef(busy)
   busyRef.current = busy
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   /** the runs that changed the diagram, oldest first: each one's card can take it back */
   const [turns, setTurns] = useState<RunChange<TurnPoint>[]>([])
   const [reverting, setReverting] = useState(false)
@@ -404,6 +431,11 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
   const chatRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const stickToBottomRef = useRef(true)
+  const {
+    showButton: showScrollBottom,
+    onScroll: onScrollBottom,
+    scrollToBottom,
+  } = useScrollToBottom(chatRef)
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
   const attachmentsRef = useRef(attachments)
   attachmentsRef.current = attachments
@@ -729,7 +761,10 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           if (execution.mutated && runId !== null) {
             const cells = runTokensRef.current.cells
             const count = cells.count
-            setTurns((prev) => prev.map((run) => (run.id === runId ? { ...run, count } : run)))
+            const lines = collectDiagramChangeLines(cells)
+            setTurns((prev) =>
+              prev.map((run) => (run.id === runId ? { ...run, count, lines } : run)),
+            )
             showMarksRef.current(runId, cells)
           }
           const activity: ToolActivity = {
@@ -928,6 +963,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     const el = chatRef.current
     if (!el) return
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    onScrollBottom()
   }
 
   /** false when nothing was started (empty text, a run already active, or the gate held or refused it) */
@@ -1117,12 +1153,6 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     void aiApi().openSourcePath?.(path)
   })
 
-  const copyMessage = (text: string, idx: number): void => {
-    void navigator.clipboard?.writeText(text)
-    setCopiedIdx(idx)
-    window.setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1200)
-  }
-
   /**
    * Takes back the run `id` and every later one still applied, newest first,
    * one call at a time while each is still the newest step of draw.io's
@@ -1168,6 +1198,13 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
         lang={lang}
         state={run.state}
         count={run.count > 0 ? run.count : undefined}
+        lines={run.lines}
+        onShowLine={(idx) => {
+          const line = run.lines?.[idx]
+          if (line?.page && line.cellId) {
+            void hostRef.current.focus?.({ page: line.page, id: line.cellId }).catch(() => {})
+          }
+        }}
         canRevert={!busy && !reverting}
         revertsLater={revertsLater(turns, id)}
         onRevert={() => revert(id)}
@@ -1186,7 +1223,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
   const resizeCleanupRef = useRef<(() => void) | null>(null)
   useEffect(() => () => resizeCleanupRef.current?.(), [])
 
-  /** Dragging the panel's inner edge (its left one: the panel sits at the right of the window). */
+  /** Dragging the panel's inner edge: the one facing draw.io, on whichever side the panel sits. */
   const startResize = (e: ReactPointerEvent<HTMLDivElement>): void => {
     e.preventDefault()
     const resizer = e.currentTarget
@@ -1194,7 +1231,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
     const onMove = (ev: PointerEvent): void => {
-      const w = clampPanelWidth(window.innerWidth - ev.clientX)
+      const w = clampPanelWidth(aiPanelWidthAtPointer(ev.clientX))
       preferredWidthRef.current = w
       setPanelWidth(w)
     }
@@ -1245,38 +1282,44 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
         aria-orientation="vertical"
         aria-label={aiSubscriptionText(lang, 'aiAssistant')}
       />
-      <header className="ai-panel-header">
-        <span className="ai-panel-title">
-          <AiMark size={22} />
-          {aiSubscriptionText(lang, 'aiAssistant')}
-        </span>
-        <div className="ai-panel-header-actions">
-          {chat.length > 0 && (
+      <AiPanelHeader
+        lang={lang}
+        actions={
+          <>
+            <AiPanelSideButton
+              lang={lang}
+              onMove={(side) => window.diagramApi.setAiPanelPrefs({ side })}
+            />
+            {chat.length > 0 && (
+              <button
+                type="button"
+                className="ai-header-btn"
+                onClick={newChat}
+                data-tip={t('aiNewChat')}
+                aria-label={t('aiNewChat')}
+              >
+                <IconNewChat />
+              </button>
+            )}
             <button
               type="button"
-              className="ai-header-btn"
-              onClick={newChat}
-              data-tip={t('aiNewChat')}
-              aria-label={t('aiNewChat')}
+              className="ai-header-btn ai-panel-collapse"
+              onClick={onCollapse}
+              data-tip={t('aiCollapsePanel')}
+              aria-label={t('aiCollapsePanel')}
             >
-              <IconNewChat />
+              <IconCollapse />
             </button>
-          )}
-          <button
-            type="button"
-            className="ai-header-btn ai-panel-collapse"
-            onClick={onCollapse}
-            data-tip={t('aiCollapsePanel')}
-            aria-label={t('aiCollapsePanel')}
-          >
-            <IconCollapse />
-          </button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="ai-chat" ref={chatRef} onScroll={onChatScroll}>
         {chat.length === 0 && (
           <div className="ai-chat-empty">
+            <div className="ai-chat-empty-badge">
+              <AiMark size={24} />
+            </div>
             <div className="ai-chat-empty-title">{t('aiEmptyTitle')}</div>
             <div className="ai-chat-empty-body">{t('aiEmptyBody')}</div>
             <div className="ai-starter-list">
@@ -1294,6 +1337,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
                 </button>
               ))}
             </div>
+            <AiEmptyHints lang={lang} showSkill={Boolean(skills.composer)} showDocMention />
           </div>
         )}
         {chat.map((entry, i) => {
@@ -1338,6 +1382,7 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
               key={i}
               className={`ai-msg ai-msg-assistant${entry.isError ? ' ai-msg-error' : ''}${entry.streaming ? ' ai-msg-streaming' : ''}`}
             >
+              {hasTools && <AiWorkSteps lang={lang} steps={entry.tools!} />}
               {entry.blocked ? (
                 <AiBlockedNotice
                   kind={entry.blocked.kind}
@@ -1357,39 +1402,20 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
                   </div>
                 )
               )}
-              {hasTools && <ToolChipList tools={entry.tools!} />}
               <SkillUsedNotes tools={entry.tools} />
               {entry.skillProposals?.map((key) => skillCards.render(key))}
               {entry.changes !== undefined && changesCard(entry.changes)}
-              {entry.usage && (
-                <div className="ai-message-usage">
-                  <AiUsageChip usage={entry.usage} lang={lang} />
-                </div>
-              )}
               <AiReplyProgress reply={entry} thinking={t('aiThinking')} working={t('aiWorking')} />
-              {showToolbar && (
-                <div className="ai-msg-toolbar">
-                  <button
-                    type="button"
-                    className="ai-msg-tool-btn"
-                    onClick={() => copyMessage(entry.text, i)}
-                    aria-label={t('aiCopyReplyTitle')}
-                    data-tip={t('aiCopyReplyTitle')}
-                  >
-                    {copiedIdx === i ? <IconCheck /> : <IconCopy />}
-                  </button>
-                  {isLast && !busy && runInstructionRef.current && (
-                    <button
-                      type="button"
-                      className="ai-msg-tool-btn"
-                      onClick={retry}
-                      aria-label={t('aiRegenerateTitle')}
-                      data-tip={t('aiRegenerateTitle')}
-                    >
-                      <IconRegenerate />
-                    </button>
-                  )}
-                </div>
+              {(showToolbar || entry.usage) && (
+                <AiReplyFooter
+                  lang={lang}
+                  isLast={isLast}
+                  copyText={showToolbar ? entry.text : undefined}
+                  onRetry={
+                    showToolbar && isLast && !busy && runInstructionRef.current ? retry : undefined
+                  }
+                  usage={entry.usage}
+                />
               )}
             </div>
           )
@@ -1397,6 +1423,15 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
         {/* an MCP tool waiting for the person's yes (user MCP spec 7.4) */}
         <McpPermissionCard lang={lang} />
       </div>
+
+      <AiScrollToBottom
+        visible={showScrollBottom && chat.length > 0}
+        lang={lang}
+        onClick={() => {
+          stickToBottomRef.current = true
+          scrollToBottom()
+        }}
+      />
 
       {(sendGate.connectChoice || sendGate.noticeDue) && (
         <div className="ai-composer">
@@ -1474,9 +1509,11 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           sendLabel={t('aiSend')}
           stopLabel={t('aiStop')}
           iconOnly
-          sendIconEnabled={<img src={sendEnterOn} alt="" aria-hidden />}
-          sendIconDisabled={<img src={sendEnterOff} alt="" aria-hidden />}
-          stopIcon={<img src={sendStop} alt="" aria-hidden />}
+          lang={lang}
+          showSkillButton
+          sendIconEnabled={<IconArrowUp size={15} />}
+          sendIconDisabled={<IconArrowUp size={15} />}
+          stopIcon={<IconStop size={12} />}
           textareaRef={inputRef}
           onChange={setPrompt}
           onSend={sendDraft}
@@ -1484,145 +1521,29 @@ export function AiPanel({ host, filePath, onCollapse }: AiPanelProps): ReactElem
           skills={skills.composer}
           docs={docMention}
           onPasteFiles={(files) => void onPasteFiles(files)}
+          footerBelowEnd={sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
           footerStart={
             <>
-              <AiModelPicker
-                bridge={MODEL_BRIDGE}
+              <AiAttachMenu
                 lang={lang}
-                subscriptionStatuses={subscription.statuses}
-                onRefreshSubscriptions={subscription.refresh}
+                onPickPc={() => void pickAttachments()}
+                onPickedDocs={attachFromDrive}
+                onPickedDrive={attachFromDrive}
               />
-              {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
-              <button
-                type="button"
-                className="ai-attach-btn"
-                onClick={() => void pickAttachments()}
-                data-tip={t('aiAttachTitle')}
-                aria-label={t('aiAttachTitle')}
-              >
-                <img src={attachIcon} alt="" aria-hidden />
-              </button>
-              <DriveAttachButton lang={lang} onPicked={attachFromDrive} />
-              <DocAttachButton lang={lang} onPicked={attachFromDrive} />
               <McpServerButton lang={lang} />
             </>
+          }
+          footerEnd={
+            <AiModelPicker
+              bridge={MODEL_BRIDGE}
+              lang={lang}
+              subscriptionStatuses={subscription.statuses}
+              onRefreshSubscriptions={subscription.refresh}
+            />
           }
         />
       </div>
     </aside>
-  )
-}
-
-/** Step-row status icons (the same timeline glyphs as the other editors) */
-function StepIcon({ status }: { status: 'running' | 'done' | 'error' }) {
-  const common = {
-    viewBox: '0 0 24 24',
-    width: 14,
-    height: 14,
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.6,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  }
-  if (status === 'running') {
-    return (
-      <svg {...common}>
-        <path d="M6.5 3.5h11M6.5 20.5h11M8 3.5v3.2c0 2.6 4 4.2 4 5.3 0 1.1 4 2.7 4 5.3v3.2M16 3.5v3.2c0 2.6-4 4.2-4 5.3 0 1.1-4 2.7-4 5.3v3.2" />
-      </svg>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" />
-      </svg>
-    )
-  }
-  return (
-    <svg {...common}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.4 2.4 2.4 4.6-5" />
-    </svg>
-  )
-}
-
-/** Tool activity of a reply: open while tools run, folded into "Worked · N steps" when they finish; a click always wins */
-function ToolChipList({ tools }: { tools: ToolActivity[] }) {
-  const { t: tr } = useI18n()
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [userOpen, setUserOpen] = useState<boolean | null>(null)
-
-  const toggle = (j: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(j)) next.delete(j)
-      else next.add(j)
-      return next
-    })
-  }
-
-  const anyRunning = tools.some((tool) => tool.running)
-  const open = userOpen ?? anyRunning
-  const label = anyRunning ? tr('aiGroupWorking') : tr('aiWorkedSteps', { n: tools.length })
-
-  return (
-    <div className="ai-work-group">
-      <button
-        type="button"
-        className={`ai-work-group-summary${anyRunning ? ' running' : ''}`}
-        aria-expanded={open}
-        onClick={() => setUserOpen(!open)}
-      >
-        {anyRunning && !open && <span className="ai-tool-chip-spinner" aria-hidden />}
-        <span className="ai-work-group-label">{label}</span>
-        <span className={`ai-tool-chip-caret${open ? ' open' : ''}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      <div className={`ai-work-group-body${open ? ' open' : ''}`}>
-        <div className="ai-work-group-body-inner">
-          {tools.map((tool, j) => {
-            const hasOutput = !tool.running && !!tool.output
-            const isOpen = expanded.has(j)
-            const stepStatus = tool.running ? 'running' : tool.isError ? 'error' : 'done'
-            return (
-              <div key={j} className="ai-step-row">
-                <span className={`ai-step-icon ${stepStatus}`} aria-hidden>
-                  <StepIcon status={stepStatus} />
-                </span>
-                <div className="ai-step-content">
-                  {hasOutput ? (
-                    <button
-                      type="button"
-                      className="ai-step-title clickable"
-                      data-tip={tool.name}
-                      aria-expanded={isOpen}
-                      onClick={() => toggle(j)}
-                    >
-                      {tool.summary}
-                    </button>
-                  ) : (
-                    <span className="ai-step-title" data-tip={tool.name}>
-                      {tool.summary}
-                    </span>
-                  )}
-                  {hasOutput && isOpen && (
-                    <div className="ai-step-detail">
-                      <div className="ai-tool-output">
-                        <div className="ai-tool-output-pre">{tool.output}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -1659,32 +1580,6 @@ function IconCollapse(): ReactElement {
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M5.5 2.5v11" />
       <path d="M12.5 8H8.1M9.8 5.9 7.7 8l2.1 2.1" strokeWidth="1.3" />
-    </Svg>
-  )
-}
-
-function IconCopy(): ReactElement {
-  return (
-    <Svg size={16}>
-      <rect x="5.2" y="5.2" width="8.3" height="8.8" rx="1.6" />
-      <path d="M8.2 2.6H4.1A1.6 1.6 0 0 0 2.5 4.2v5.4" />
-    </Svg>
-  )
-}
-
-function IconCheck(): ReactElement {
-  return (
-    <Svg size={14}>
-      <path d="m3.4 8.4 3 3 6.2-6.6" />
-    </Svg>
-  )
-}
-
-function IconRegenerate(): ReactElement {
-  return (
-    <Svg size={18}>
-      <path d="M 12.68 6.65 a 4.86 4.86 0 0 0 -9 -1.08 M 3.32 9.35 a 4.86 4.86 0 0 0 9 1.08" />
-      <path d="M 12.95 3.05 v 2.7 h -2.7 M 3.05 12.95 v -2.7 h 2.7" />
     </Svg>
   )
 }

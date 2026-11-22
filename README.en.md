@@ -492,11 +492,16 @@ IeumOffice is built with help from many people. See
 - [@CauchyRiemannEquations](https://github.com/CauchyRiemannEquations) — math editing in the HTML editor
 - [@dossamlab](https://github.com/dossamlab) — spreadsheet PDF export
 - [@hahadark](https://github.com/hahadark) — first-run hang under Controlled Folder Access
+- [@HubInSoft](https://github.com/HubInSoft) — paste a capture into a mind map
 - [@hunkim](https://github.com/hunkim) — Upstage Solar provider, test fixes
+- [@jmkim](https://github.com/jmkim) — network-folder saves, faster file opening
+- [@kimisjun](https://github.com/kimisjun) — mind map on the command line and in MCP
 - [@Neosiki](https://github.com/Neosiki) — CLI, HWP and ODT fixes
+- [@ryu982](https://github.com/ryu982) — 5% wheel zoom steps
 - [@thecodinglog](https://github.com/thecodinglog) — spreadsheet formula bar and cell menu
 - [@wlsgur11](https://github.com/wlsgur11) — Markdown export
 - [@wonby1n](https://github.com/wonby1n) — EPUB MCP reads
+- [@yazzang-homelab](https://github.com/yazzang-homelab) — Hangul document reading and checks
 
 ## License and acknowledgement
 

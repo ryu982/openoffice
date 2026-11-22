@@ -18,6 +18,10 @@ scripts/drivers/driver.*.mjs
 packages/*/src/vendor/
 vendor/rhwp-core/
 
+# Prebuilt wasm-pack output (tools/build-hwp5-wasm.mjs, tools/build-print-layout-wasm.mjs), kept verbatim.
+packages/hwp5-wasm/pkg/
+packages/print-layout/wasm/pkg/
+
 # LLM prompt text: prettier rewrites *_* markers and list indentation, changing what the model reads.
 apps/slides/src/renderer/ai/prompts/*.md
 

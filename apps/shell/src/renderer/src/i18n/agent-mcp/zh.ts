@@ -8,4 +8,6 @@ export const zh = {
   permMcpTool: '使用 {server} 服务器的“{tool}”工具',
   permAllowToolSession: '本次会话中始终允许此工具',
   mcpKeepInsideWarning: '在此窗口中，从 {server} 收到的内容可能会被发送到外部。',
+  mcpExternalVaultWarning:
+    '此会话可通过已连接的 Obsidian 仓库（{vaults}）读写项目文件夹之外的笔记。',
 }

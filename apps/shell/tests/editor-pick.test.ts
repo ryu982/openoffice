@@ -176,7 +176,17 @@ describe('EditorChoiceList', () => {
   it('turns items off and on, and leaves the last editor on with its reason', async () => {
     render(
       createElement(Harness, {
-        initialOff: ['docs', 'sheets', 'slides', 'pdf', 'markdown', 'html', 'mindmap', 'diagram'],
+        initialOff: [
+          'docs',
+          'sheets',
+          'slides',
+          'pdf',
+          'markdown',
+          'html',
+          'mindmap',
+          'diagram',
+          'whiteboard',
+        ],
       }),
     )
     expect(switchOf('hwp').disabled).toBe(false)
@@ -281,7 +291,7 @@ describe('OneTimeEditorPick', () => {
     await settle()
     expect(dialog()).not.toBeNull()
     const switches = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="switch"]'))
-    expect(switches).toHaveLength(12)
+    expect(switches).toHaveLength(13)
     expect(switches.every((el) => el.getAttribute('aria-checked') === 'true')).toBe(true)
     expect(dialog()!.textContent).toContain(editorPickText('en', 'pickOneTimeTitle'))
   })

@@ -43,6 +43,7 @@ export const zh = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: '思维导图',
+  editorWhiteboard: '白板',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: '主页',

@@ -10,6 +10,7 @@ export const tr = {
   item_html: 'HTML düzenleyicisi',
   item_mindmap: 'Zihin haritası düzenleyicisi',
   item_diagram: 'Diyagram düzenleyicisi',
+  item_whiteboard: "Beyaz tahta düzenleyici",
   item_hwp: 'Hangul (HWP) düzenleyicisi',
   item_epub: 'EPUB düzenleyicisi',
   offMessage: '{item} kapalı. Etkinleştirilip açılsın mı?',

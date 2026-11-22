@@ -92,6 +92,7 @@ export const PROJECT_EDITORS = [
   'markdown',
   'html',
   'mindmap',
+  'whiteboard',
   'hwp',
   'epub',
   'home',

@@ -20,6 +20,16 @@ describe('hwp renderer strings', () => {
     }
   })
 
+  it('keeps the before and after placeholders of saveVerifyPages in every language', () => {
+    for (const lang of LANGS) {
+      expect(strings[lang].saveVerifyPages, lang).toContain('{before}')
+      expect(strings[lang].saveVerifyPages, lang).toContain('{after}')
+      if (lang !== 'en') {
+        expect(strings[lang].saveAsHwpx, lang).not.toBe(strings.en.saveAsHwpx)
+      }
+    }
+  })
+
   it('translates rather than copies English outside English', () => {
     for (const lang of LANGS) {
       if (lang === 'en') continue

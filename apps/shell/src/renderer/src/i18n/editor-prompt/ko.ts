@@ -10,6 +10,7 @@ export const ko = {
   item_html: 'HTML 편집기',
   item_mindmap: '마인드맵 편집기',
   item_diagram: '다이어그램 편집기',
+  item_whiteboard: "화이트보드 편집기",
   item_hwp: '한글 편집기',
   item_epub: '전자책(EPUB) 편집기',
   offMessage: '{item}가 꺼져 있습니다. 켜고 열까요?',

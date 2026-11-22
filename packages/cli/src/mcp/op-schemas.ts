@@ -391,6 +391,7 @@ export type TypedKey =
   | 'hwp-ops'
   | 'diagram-ops'
   | 'map-ops'
+  | 'whiteboard-ops'
   | 'slides-op-names'
   | 'cells'
   | 'xlsx-data'
@@ -400,8 +401,8 @@ export type TypedSchemas = Record<TypedKey, JsonSchema>
 
 /** Every typed parameter schema the tool table refers to; the catalogs load once per process. */
 export async function loadTypedSchemas(): Promise<TypedSchemas> {
-  const [docs, sheets, slides, hwp, diagram, map] = await Promise.all(
-    (['docs', 'sheets', 'slides', 'hwp', 'diagram', 'map'] as const).map(loadCatalog),
+  const [docs, sheets, slides, hwp, diagram, map, whiteboard] = await Promise.all(
+    (['docs', 'sheets', 'slides', 'hwp', 'diagram', 'map', 'whiteboard'] as const).map(loadCatalog),
   )
   return {
     'docs-ops': opsSchemaFromCatalog(docs),
@@ -410,6 +411,7 @@ export async function loadTypedSchemas(): Promise<TypedSchemas> {
     'hwp-ops': opsSchemaFromCatalog(hwp),
     'diagram-ops': opsSchemaFromCatalog(diagram),
     'map-ops': opsSchemaFromCatalog(map),
+    'whiteboard-ops': opsSchemaFromCatalog(whiteboard),
     'slides-op-names': opNamesSchema(slides),
     cells: cellsSchema(),
     'xlsx-data': xlsxDataSchema(),

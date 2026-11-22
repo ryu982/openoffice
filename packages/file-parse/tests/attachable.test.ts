@@ -57,6 +57,7 @@ const DOCS_MAIN_EXTS = [
   'dio',
   'drawio.svg',
   'drawio.png',
+  'whiteboard',
   'png',
   'jpg',
   'jpeg',
@@ -84,6 +85,7 @@ describe('the one shared attachable-format list', () => {
     expect(isAttachableExt('hwp')).toBe(true)
     expect(isAttachableExt('hwpx')).toBe(true)
     expect(isAttachableExt('epub')).toBe(true)
+    expect(isAttachableExt('whiteboard')).toBe(true)
     expect(isAttachableExt('exe')).toBe(false)
   })
 })

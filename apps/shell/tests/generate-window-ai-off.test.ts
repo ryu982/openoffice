@@ -102,7 +102,7 @@ afterEach(() => {
 describe('AI on', () => {
   it('shows the AI kinds, the request and the AI notices', async () => {
     await render(stateWith(), true)
-    expect(host.querySelectorAll('[data-kind]')).toHaveLength(3)
+    expect(host.querySelectorAll('[data-kind]')).toHaveLength(4)
     expect(host.querySelector<HTMLElement>('#gen-request')?.closest('section')?.hidden).toBe(false)
     expect(host.querySelector('[data-testid="gen-notices"]')).not.toBeNull()
     expect(host.querySelector('[data-testid="gen-ai-off"]')).toBeNull()

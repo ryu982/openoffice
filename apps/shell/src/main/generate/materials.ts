@@ -80,6 +80,7 @@ const PARSED_MATERIAL_EXTS: ReadonlySet<string> = new Set([
   'xlsm',
   'pdf',
   'xmind',
+  'whiteboard',
   'epub',
   'hwp',
   'hwpx',

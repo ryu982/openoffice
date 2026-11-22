@@ -45,6 +45,7 @@ export const ko = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: '마인드맵',
+  editorWhiteboard: '화이트보드',
   editorHwp: '한글',
   editorEpub: 'EPUB',
   editorHome: '홈',

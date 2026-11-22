@@ -1,5 +1,6 @@
 import { open, readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
+import { REDACT_NS } from '@genoffice/agent-core/redact-range'
 import { OdtNotTextError, isOdtOpenError } from '@genoffice/odt-engine'
 import { diagramFormatOf, readDiagramText } from './diagram'
 import { docToText } from './doc'
@@ -12,10 +13,13 @@ import { pptToText } from './ppt'
 import { pptxToText } from './pptx'
 import { xlsxToText } from './xlsx'
 import { xmindToText } from './xmind'
+import { whiteboardToText } from './whiteboard'
 import { readZipTextParts } from './zip-text-parts'
 import { decodeCsvBuffer } from '@genoffice/xlsx-gateway/gateway/csv-import'
 import { redactHtmlSource } from './html-redaction'
 import { redactMarkdownSource } from './markdown-redaction'
+import { getInteractiveParseSidecar, SidecarInfraError } from './sidecar-client'
+import { isParseSidecarEnabled } from './sidecar-path'
 
 export type ParsedFileKind = 'text' | 'image' | 'unsupported'
 
@@ -186,6 +190,7 @@ const ZIP_DOCUMENT_EXTS = new Set([
   'odt',
   'epub',
   'xmind',
+  'whiteboard',
   // a DOCX under a .doc name and an HWPX under a .hwp name are read by content
   'doc',
   'hwp',
@@ -217,6 +222,31 @@ async function readDocumentBytes(
   return readFile(filePath)
 }
 
+/**
+ * Formats routed to the native Rust `ieum-parse-sidecar` binary.
+ * Redaction-bearing text/markup (`md`, `markdown`, `txt`, `json`, `html`, `htm`)
+ * and formats handled exclusively in JS/WASM (`pdf`, `hwp`, `hwpx`,
+ * `drawio*`, images) are intentionally excluded and go directly to TypeScript.
+ */
+export const SIDECAR_EXTS: ReadonlySet<string> = new Set([
+  // ZIP-based document formats and legacy OLE2 Office formats (`.doc`, `.ppt`)
+  'docx',
+  'xlsx',
+  'xlsm',
+  'pptx',
+  'odt',
+  'epub',
+  'xmind',
+  'doc',
+  'ppt',
+  // Non-redacted plain / tabular formats
+  'csv',
+  'tsv',
+  'xml',
+  'log',
+  'py',
+])
+
 /** parse an attachment into plain text (or flag it as image / unsupported) */
 export async function parseFileToText(
   filePath: string,
@@ -244,6 +274,35 @@ export async function parseFileToText(
   }
   const imageMime = IMAGE_MIMES[ext]
   if (imageMime) return { ok: true, kind: 'image', mime: imageMime }
+
+  if (isParseSidecarEnabled() && SIDECAR_EXTS.has(ext)) {
+    try {
+      const result = await getInteractiveParseSidecar().extractFile({
+        path: filePath,
+        ext,
+        ...(opts.maxChars !== undefined ? { maxChars: opts.maxChars } : {}),
+        redactNamespaces: [REDACT_NS],
+      })
+      switch (result.status) {
+        case 'ok':
+          return { ok: true, kind: 'text', text: result.text }
+        case 'rejected':
+          // Strict gate: never fall back to TS extractors on document rejections.
+          return { ok: false, kind: 'text', error: result.message }
+        case 'unsupported':
+          // Strict gate: never fall back to TS extractors on unsupported results.
+          return { ok: false, kind: 'unsupported', error: result.message }
+        case 'fallback':
+          // Allowed fallback (`redaction_present` or `unsupported_format`, e.g. legacy OLE2 .doc).
+          break
+      }
+    } catch (e) {
+      if (!(e instanceof SidecarInfraError)) {
+        return { ok: false, kind: 'text', error: e instanceof Error ? e.message : String(e) }
+      }
+      // Allowed fallback on SidecarInfraError (binary missing, crash, IPC/protocol error).
+    }
+  }
   try {
     if (TEXT_EXTS.has(ext)) {
       const bytes = await readFile(filePath)
@@ -293,7 +352,7 @@ export async function parseFileToText(
         error: `Content mismatch: .${ext} file has ${sniffed} magic bytes`,
       }
     }
-    if ((ext === 'xmind' || ext === 'epub') && sniffed !== 'zip') {
+    if ((ext === 'xmind' || ext === 'epub' || ext === 'whiteboard') && sniffed !== 'zip') {
       return {
         ok: false,
         kind: 'text',
@@ -348,6 +407,8 @@ export async function parseFileToText(
         return { ok: true, kind: 'text', text: await pdfToText(bytes) }
       case 'xmind':
         return { ok: true, kind: 'text', text: await xmindToText(bytes) }
+      case 'whiteboard':
+        return { ok: true, kind: 'text', text: whiteboardToText(bytes) }
       case 'epub':
         return { ok: true, kind: 'text', text: await epubToText(bytes) }
     }

@@ -19,8 +19,15 @@ import { editorFontChoices, useSystemFonts } from '../editor-font'
 import { useRibbonFold } from './ribbon-overflow'
 import { useAiVisible } from '../ai-visibility'
 import { MARKDOWN_THEME_IDS, type MarkdownTheme } from '../../shared/markdown-theme'
-import type { StringKey } from '../i18n/locale'
-import { uiOp, type BlockType, type ListKind, type StylableMark } from '../editor/ops'
+import { uiOp } from '../editor/ops'
+import {
+  applyBlockStyle,
+  BLOCK_STYLES,
+  BLOCK_STYLE_LABEL,
+  currentBlockStyle,
+  toggleList,
+  toggleStyle,
+} from '../editor/formatting'
 import {
   IconBullets,
   IconHr,
@@ -97,37 +104,6 @@ interface Props {
   redactEnabled: boolean
   onToggleRedact: (on: boolean) => void
 }
-
-type BlockStyle = 'paragraph' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'codeBlock'
-
-const STYLE_LABEL: Record<BlockStyle, StringKey> = {
-  paragraph: 'styleParagraph',
-  h1: 'styleH1',
-  h2: 'styleH2',
-  h3: 'styleH3',
-  h4: 'styleH4',
-  h5: 'styleH5',
-  h6: 'styleH6',
-  quote: 'styleQuote',
-  codeBlock: 'styleCodeBlock',
-}
-
-function applyBlockStyle(editor: Editor, style: BlockStyle): void {
-  const type: BlockType =
-    style === 'quote'
-      ? 'blockquote'
-      : style === 'paragraph' || style === 'codeBlock'
-        ? style
-        : 'heading'
-  const level = type === 'heading' ? Number(style.slice(1)) : undefined
-  uiOp(editor, { op: 'setBlockType', target: 'selection', type, ...(level ? { level } : {}) })
-}
-
-const toggleStyle = (editor: Editor | null, style: StylableMark) =>
-  editor && uiOp(editor, { op: 'setStyle', target: 'selection', style, mode: 'toggle' })
-
-const toggleList = (editor: Editor | null, list: ListKind) =>
-  editor && uiOp(editor, { op: 'toggleList', target: 'selection', list })
 
 /** doc + sparkle / pen + sparkle / lines + sparkle, same glyphs as the docs ribbon */
 function AiFeatureIcon({ kind }: { kind: 'summarize' | 'polish' | 'tidy' | 'mindmap' }) {
@@ -421,15 +397,8 @@ export function Ribbon({
     editor,
     selector: ({ editor: e }) => {
       if (!e) return null
-      const style: BlockStyle = e.isActive('codeBlock')
-        ? 'codeBlock'
-        : e.isActive('blockquote')
-          ? 'quote'
-          : e.isActive('heading')
-            ? (`h${e.getAttributes('heading').level}` as BlockStyle)
-            : 'paragraph'
       return {
-        style,
+        style: currentBlockStyle(e),
         empty: e.isEmpty,
         bold: e.isActive('bold'),
         italic: e.isActive('italic'),
@@ -633,7 +602,7 @@ export function Ribbon({
   const inlinePresets = aiPresets.slice(0, aiPresets.length - fold.aiFold)
   const foldedPresets = aiPresets.slice(aiPresets.length - fold.aiFold)
   const foldedCount = foldedTools.length + foldedPresets.length
-  const styleLabel = t(STYLE_LABEL[state?.style ?? 'paragraph'])
+  const styleLabel = t(BLOCK_STYLE_LABEL[state?.style ?? 'paragraph'])
 
   const presetButton = ({ kind, btn, prompt }: (typeof aiPresets)[number]) => (
     <button
@@ -769,9 +738,9 @@ export function Ribbon({
                 value={state?.style ?? 'paragraph'}
                 tip={fold.style ? styleLabel : undefined}
                 disabled={off}
-                options={(Object.keys(STYLE_LABEL) as BlockStyle[]).map((s) => ({
+                options={BLOCK_STYLES.map((s) => ({
                   value: s,
-                  label: t(STYLE_LABEL[s]),
+                  label: t(BLOCK_STYLE_LABEL[s]),
                 }))}
                 onPick={(s) => editor && applyBlockStyle(editor, s)}
               />

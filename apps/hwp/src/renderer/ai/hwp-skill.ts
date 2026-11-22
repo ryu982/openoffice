@@ -18,6 +18,9 @@ import type {
   AgentCellText,
   AgentChangeOptions,
   AgentCutCell,
+  AgentDocumentShape,
+  AgentHangOutcome,
+  AgentPaper,
   AgentTallerRow,
   AgentEquation,
   AgentCheckBox,
@@ -146,6 +149,16 @@ export interface HwpSkillDeps {
     name: string,
     handOver: boolean,
   ) => Promise<{ ok: true; title: string; handed: boolean } | { ok: false; error: string }>
+  /**
+   * Load an externally generated .hwpx/.hwp file (e.g. written by kordoc MCP)
+   * directly into the current blank Hangul tab or open it in a new tab.
+   * Absent in headless CLI mode: open_generated_hwp is then not offered.
+   */
+  loadGeneratedHwpx?: (
+    path: string,
+  ) => Promise<
+    { ok: true; mode: 'current' | 'new-tab'; title: string } | { ok: false; error: string }
+  >
 }
 
 export interface HwpSkill {
@@ -178,6 +191,15 @@ export const IMPORT_ATTACHMENT_NOTE = [
   '- Only Markdown files can be brought in this way. For another kind of file, read it with read_attachment and write what the user asked for with the usual tools.',
 ].join('\n')
 
+/** Told to the model when externally generated .hwpx/.hwp files (e.g. from kordoc) can open in the editor. */
+export const OPEN_GENERATED_HWP_NOTE = [
+  '',
+  '',
+  '## Opening externally generated HWP / HWPX files (such as from kordoc MCP)',
+  '- For ordinary writing, tables, and formatting in this open Hangul document, prefer the built-in Hangul editor tools (insert_paragraphs, insert_table, style_paragraphs, etc.) so changes happen live with Undo support.',
+  '- When the user explicitly asks to use an external generator such as kordoc (e.g. generate_document, fill_form, patch_document, place_seal), save the output .hwpx file inside the system temp folder (never invent arbitrary drive paths) and immediately call open_generated_hwp with that exact file path so the result appears directly in the Hangul editor (loaded into this tab if blank, or opened in a new tab if this tab already has content).',
+].join('\n')
+
 /** Hidden from the tool list while no image provider is reachable (see `createHwpSkill`). */
 export const IMAGE_GEN_OFF_NOTE =
   '\n\nNote: generate_image is currently unavailable (no image provider: no Codex subscription connected and no image API key in Settings). Do not call or promise it; use image_search for imagery.' +
@@ -203,7 +225,7 @@ const SYSTEM_PROMPT = [
   '- Add a table of plain-text cells, with a header row when the first row names the columns, and with its look: a grid, an open table without side lines or lines between rows only, the colour of the header, the widths of the columns and the size of its text (insert_table).',
   '- Add a picture in a new paragraph after or before an anchor paragraph, or at the end: a real picture found on the web (image_search, then insert_image with its address) or an illustration the app draws (generate_image). A picture is saved inside the document, so it travels with the file. Only insert pictures the user asked for.',
   '- Work on the tables that are already there: list them (list_tables), read one cell by cell (read_table), write text into its cells, many at once (fill_cells), tick the choice boxes of a form (check_boxes), add or remove rows and columns (add_to_table, remove_from_table), and remove a whole table (delete_table). After writing into cells, check that their text fits (check_layout): text that runs past the bottom of a cell is cut off in print.',
-  '- Change formatting: bold, italic, underline, strikethrough, font, font size, text colour, highlight and the character style of a piece of text (format_text); alignment, line spacing, first-line indent, margins, space above and below and the paragraph style of a paragraph, and the character formatting of a whole paragraph (format_paragraph); the background colour, the border lines and the vertical alignment of table cells (format_cells).',
+  '- Change formatting: bold, italic, underline, strikethrough, font, font size, text colour, highlight and the character style of a piece of text (format_text); alignment, line spacing, indents, margins, spacing, a border, a background, tab stops, a list and the paragraph style of a paragraph, and the character formatting of a whole paragraph (format_paragraph); the background, border lines, row heights, column widths, vertical alignment and text look of table cells (format_cells).',
   '- Give a whole document its look in one call: make paragraph styles and apply each one to every paragraph that starts with a mark such as □ or ○, or to a paragraph you name (style_paragraphs). Turn a title line into a title box: bands of colour, heavy lines, a frame or a fill (insert_title_box).',
   '- Number the pages, and write a header or a footer of one line (read_page_layout, set_page_number, set_header_footer).',
   '- Lay the text out in columns, and start a paragraph on a new page or in the next column (set_columns, insert_break).',
@@ -223,7 +245,7 @@ const SYSTEM_PROMPT = [
   '## What they cannot do',
   '- You cannot draw a line between columns, a header or footer takes one line of text only (no table or picture in it), and you cannot move, replace or remove a picture that is already in the document (the user does that in the editor): you can add a new one and change the width of one in the body text. analyze_picture only looks at one. A note cannot be put inside a table cell, and neither can an equation.',
   "- A tick box that is a picture or a form control cannot be ticked: only a □ that is the paragraph's bullet or typed into the text can.",
-  '- A table inside a cell of another table can be read, filled and removed, but its cells cannot be coloured, merged or split, it cannot get or lose rows and columns, and the alignment, spacing and paragraph style of its paragraphs cannot be changed. Its text can still be formatted, character styles included.',
+  '- A table inside a cell of another table is read, filled, formatted and changed like any other: its cells can be coloured, merged and split, and it can get or lose rows and columns, the table it sits in staying as it is. Only one whose cell borders are drawn as objects cannot be changed. The alignment, spacing and paragraph style of its paragraphs cannot be changed with format_paragraph or the style tools (format_cells aligns the text of its cells); its text can still be formatted, character styles included.',
   '- You cannot remove a style. The user can do that in the style dialog of the editor (F6).',
   '- You cannot add, change or remove memos: the editor has a memo panel for that. When an edit would remove a memo, it is refused and the user is asked to approve that one edit; with a no, nothing is changed.',
   '- One piece of text is always one line: a line break inside a text argument is refused. Several paragraphs are several strings in one insert_paragraphs call.',
@@ -268,7 +290,7 @@ const SYSTEM_PROMPT = [
   '- Change the page setup only when the user asks. Margins and paper are in millimetres; say that pages may break differently afterwards.',
   '- A page number is set once for the document with set_page_number (its place, its shape, dashes or not); never type a page number into the text. A header or footer is one line with set_header_footer: {page} stands for the page number and {pages} for the number of pages. Read what is there first (read_page_layout): one laid out by hand, with a table or a picture, is left to the user.',
   '- Columns (set_columns) are for test papers, newsletters and the like. Write the text first, then set the columns, then add the tables: text written into columns already set runs past the foot of the page in this editor, and a table or title box added after them is one column wide. The head of the page, as wide as the page, is one table with across_columns in front of the first paragraph: put the title into it. insert_break starts a paragraph on a new page or in the next column, for example so that a question is not cut in two.',
-  '- For numbered or bulleted paragraphs use list on the paragraphs instead of typing 1. or ● into their text. Korean official documents often type their level marks (□, ㅇ, -, 1., 가.) as text: keep that scheme when the document uses it.',
+  "- In a document you write, type the numbers and marks of its levels as text (1., 가., □, ○), as the look below says. list gives paragraphs the editor's own numbers or bullets: use it when the user asks for that or the document numbers its paragraphs that way.",
   '',
   "## Copying another document's formatting",
   '- When the user asks to make this document look like an attached one, call read_formatting with that attachment, then read_formatting for this document, and match them: page setup (set_page_setup), note settings (set_note_settings), the styles both use (edit_style, create_style), and each kind of body paragraph (format_look for each look of this document that plays the role of a look of the other: body text with body text, headings with headings of the same level, quotations, captions).',
@@ -292,8 +314,8 @@ const SYSTEM_PROMPT = [
   '',
   '## The look of a document you write',
   '- When you write a document from scratch (an empty document, or one whose text is all in the default look) and neither a template nor a skill fixes its look, give it the look that kind of document has, without being asked: a run of default text is not a finished report. Decide the look from what the document is and who reads it, and keep it through the whole document.',
-  '- A report or a plan inside a public office, a school or a company (보고서, 계획서, written in 개조식): a title box; heading lines marked □ in a heavy gothic of 15 to 16 pt with space above; items marked ○ in a serif text face of 13 to 15 pt; sub-items marked - and notes marked ※ a little smaller; line spacing of 160 to 180 percent; each level set further in with margin_left (the top level at 0, where the text of the page starts) and given a negative indent as wide as its mark and the space after it, so that a second line starts under the text and not under the mark; tables with a shaded header row.',
-  '- Numbered levels, when the user asks for them or the organisation writes that way (Ⅰ, 1., 가., 1), 가), (1), (가), ① from the top level down, the order of Korean official documents): type the number as text at the start of each paragraph, and count each level from its first value again under a new parent. Give each level a style of its own and apply it with one rule by numbered ("1." is every 1. 2. 3. … paragraph, "가." every 가. 나. 다. …): the top level heaviest and largest and at margin_left 0, each level below lighter and with a margin_left about two characters larger than the one above, and each with a negative indent as wide as its number so that a second line starts under the text. Bold is for levels that hold short headings: a level whose lines are sentences stays regular.',
+  '- A report or a plan inside a public office, a school or a company (보고서, 계획서, written in 개조식): a title box; heading lines marked □ in a heavy gothic of 15 to 16 pt with space above; items marked ○ in a serif text face of 13 to 15 pt; sub-items marked - and notes marked ※ a little smaller; line spacing of 160 to 180 percent; each level set further in with margin_left (the top level at 0, where the text of the page starts) and given indent "mark", so that a second line starts under the text and not under the mark; tables with a shaded header row.',
+  '- Numbered levels, when the user asks for them or the organisation writes that way (Ⅰ, 1., 가., 1), 가), (1), (가), ① from the top level down, the order of Korean official documents): type the number as text at the start of each paragraph, and count each level from its first value again under a new parent. Give each level a style of its own and apply it with one rule by numbered ("1." is every 1. 2. 3. … paragraph, "가." every 가. 나. 다. …): the top level heaviest and largest and at margin_left 0, each level below lighter and with a margin_left about two characters larger than the one above, and each with indent "mark" so that a second line starts under the text. Bold is for levels that hold short headings: a level whose lines are sentences stays regular.',
   '- A test paper (시험지, 평가, 고사), from scratch or in a form that is open: read the skill hwp-exam-paper with use_skill before the first change, and follow it. A worksheet (학습지) or a quiz sheet is an ordinary document: the test-paper form (B4, approval box, points, page border, end mark) only when asked.',
   '- A notice or a letter to people outside (안내문, 가정통신문): a centred title with a frame or lines, full sentences in one text face of 11 to 12 pt at about 160 percent, the date and the sender centred or right-aligned at the end, and little decoration. A reply slip goes under a cut line: one paragraph of dashes with 절취선 in the middle, centred (type it as "- - - 절취선 - - -": the app writes as many dashes on each side as fit one line), and is a table of plain grid lines with the blanks to fill in.',
   '- An official letter (공문): no decoration; its fixed parts in one text face of 12 to 13 pt.',
@@ -395,6 +417,9 @@ const EVERY_WORD_SCHEMA = {
     'true puts the character formatting on every word even where some words differ in it (a bold word in plain text); without it such a call is refused',
 }
 
+const INDENT_IN_POINTS =
+  'indent in points (-100 to 100). Positive: the first line starts that much further in. Negative is the hanging indent of Hangul (내어쓰기): the first line stays at margin_left and the lines after it start that much further in'
+
 /** The paragraph formatting a format tool takes, as schema properties. */
 const PARAGRAPH_FORMAT_SCHEMA = {
   align: { type: 'string', enum: ['left', 'center', 'right', 'justify'] },
@@ -411,7 +436,7 @@ const PARAGRAPH_FORMAT_SCHEMA = {
       color: { type: 'string', description: 'line colour as #RRGGBB; default black' },
     },
     description:
-      'a border of the paragraph (문단 테두리): a box round it, a line under a heading (bottom), a band at its left. Paragraphs in a row with the same border make one box. The lines stand at the edges of the text column whatever the margins of the paragraph are: margin_left and margin_right move only the words in, which is the room between line and words (6 to 10 pt in a box). space_before and space_after lie inside the box',
+      'a border of the paragraph (문단 테두리): a box round it, a line under a heading (bottom), a band at its left. Neighbours with the same border make one box. Its lines stand at the edges of the text column: margin_left and margin_right move only the words in (6 to 10 pt in a box), and space_before and space_after lie inside it',
   },
   background: {
     type: 'string',
@@ -419,9 +444,8 @@ const PARAGRAPH_FORMAT_SCHEMA = {
   },
   line_spacing: { type: 'number', description: 'line spacing in percent, for example 160' },
   indent: {
-    type: 'number',
-    description:
-      'indent in points (-100 to 100). Positive: the first line starts that much further in. Negative is the hanging indent of Hangul (내어쓰기): the first line stays at margin_left and the lines after it start that much further in. So a mark or a number at the left edge with its text hanging under itself is margin_left 0 and indent minus the width of the mark and its space',
+    type: ['number', 'string'],
+    description: `${INDENT_IN_POINTS}; or "mark": the lines after the first hang by the width of the mark and its space (□, 1., 가.), measured when the call runs (send it again after the mark's size or font changes)`,
   },
   margin_left: {
     type: 'number',
@@ -465,6 +489,30 @@ const PARAGRAPH_FORMAT_SCHEMA = {
     description:
       'the tab stops of the paragraph (탭 설정), in place of the ones it has: a tab character in its text runs to the next stop. [{ "leader": "dots" }] is one stop at the right edge with dots leading to it, as in a contents line; [] takes the stops away',
   },
+}
+
+/** The context's lines on the pages, the paper and columns, and whether the text is plain. */
+function documentShapeLines(shape: AgentDocumentShape): string[] {
+  const paperOf = (paper: AgentPaper) =>
+    `${paper.paper ?? `${paper.width} x ${paper.height} mm`} ${paper.orientation}`
+  const later = shape.columnsChangeWithin ? ', other columns later in the document' : ''
+  const others = (shape.otherPapers ?? [])
+    .map((other) => `; section ${other.section} on ${paperOf(other)}`)
+    .join('')
+  const { body, tables } = shape.plain
+  const look =
+    body && tables !== false
+      ? 'all text is in the default look (바탕글, nothing formatted)'
+      : body
+        ? 'the body text is in the default look (바탕글, nothing formatted); text in tables or title boxes has formatting'
+        : tables === false
+          ? 'the body text and the text in tables have a look of their own (styles or formatting)'
+          : 'the body text has a look of its own (styles or formatting)'
+  const unread = shape.plain.unread ? '; tables inside table cells may not all have been read' : ''
+  return [
+    `Pages: ${shape.pages} (paper ${paperOf(shape)}, ${shape.columns} column(s)${later}${others}).`,
+    `Look: ${look}${unread}.`,
+  ]
 }
 
 /** Paragraph styles named in the context at most. */
@@ -522,6 +570,24 @@ const IMPORT_ATTACHMENT_TOOL: HwpToolDef = {
       },
     },
     required: ['attachment'],
+  },
+}
+
+/** offered only in the desktop editor (see `createHwpSkill`): loads a generated .hwpx/.hwp into the editor */
+const OPEN_GENERATED_HWP_TOOL: HwpToolDef = {
+  name: 'open_generated_hwp',
+  edits: false,
+  description:
+    'Open an .hwpx or .hwp file written on disk (for example by kordoc MCP generate_document, fill_form, patch_document, or place_seal) directly in the Hangul editor. If the current tab is a blank new document, it loads straight into this tab; otherwise it opens in a new Hangul tab without overwriting your open document.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'the exact local file path of the generated .hwpx or .hwp file',
+      },
+    },
+    required: ['path'],
   },
 }
 
@@ -685,7 +751,8 @@ const TOOLS: HwpToolDef[] = [
         paragraphs: {
           type: 'array',
           items: { type: 'string' },
-          description: 'the new paragraphs in order, each one line; "" is an empty line',
+          description:
+            'the new paragraphs in order, each one line, up to 100 a call; "" is an empty line',
         },
       },
       required: ['where', 'paragraphs'],
@@ -719,7 +786,7 @@ const TOOLS: HwpToolDef[] = [
         rows: {
           type: 'array',
           items: { type: 'array', items: { type: 'string' } },
-          description: 'the rows from top to bottom, each a list of cell texts',
+          description: 'the rows from top to bottom, each a list of cell texts; up to 400 cells',
         },
         header: {
           type: 'boolean',
@@ -782,7 +849,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'style_paragraphs',
     edits: true,
     description:
-      'Give paragraphs their look in one call (one undo step): make paragraph styles, or change the ones the document already has by that name, and apply them. Each apply rule gives its style to every body paragraph that starts with starts_with (leading spaces aside; table cells are left alone), or to the one paragraph find occurs in. A paragraph takes the first rule that names it. Use it to style a whole document after writing it: one style for each kind of line, told by the mark the line starts with.',
+      'Give paragraphs their look in one call (one undo step): make paragraph styles, or change the ones the document already has by that name, and apply them. Each apply rule gives its style to every body paragraph that starts with starts_with (leading spaces aside; table cells are left alone), or to the one paragraph find occurs in. Rules by find go first; any other paragraph takes the first rule that names it. A starts_with of one character skips a line where the same character follows with no space (○○) and a cut line; numbered "1." skips a date (11. 12.(목)). Up to 12 styles and 40 rules a call. Use it to style a whole document after writing it: one style for each kind of line, told by the mark the line starts with.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -839,7 +906,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'insert_title_box',
     edits: true,
     description:
-      'Turn a title paragraph of the body into a title box as wide as the text, with its words centred inside: bands (a band of colour above and below), lines (a heavy line above and below), box (a line all round) or shaded (a fill behind the title). The title keeps the font and size it has unless you pass others. Text inside a table is refused, a title box made before included: a box is never drawn again in place. One undo step.',
+      'Turn a title paragraph of the body into a title box as wide as the text, with its words centred inside: bands (a band of colour above and below), lines (a heavy line above and below), box (a line all round) or shaded (a fill behind the title); color is the colour of those and text_color that of the words. The title keeps the font and size it has unless you pass others. Text inside a table is refused, a title box made before included: a box is never drawn again in place. To recolour one, call format_cells on its table: background of rows 1 and 3 for bands, of its one cell for shaded. One undo step.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -976,7 +1043,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'format_paragraph',
     edits: true,
     description:
-      'Change the formatting of the whole paragraph that contains a piece of text: its alignment, line spacing, indent, margins, spacing and style, and character formatting for all of its text. Only the properties you pass change; a style is applied first and the rest goes over it.',
+      'Change the formatting of the whole paragraph that contains a piece of text: its alignment, line spacing, indent, margins, spacing, border, background, tab stops, list and style, and character formatting for all of its text. Only the properties you pass change; a style is applied first and the rest goes over it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1026,7 +1093,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'format_selection',
     edits: true,
     description:
-      'Change the formatting of the text the user selected in the editor. Only the properties you pass change; the paragraph properties (align, line_spacing, indent, margins, spacing, style) apply to the whole paragraphs the selection is in.',
+      'Change the formatting of the text the user selected in the editor. Only the properties you pass change; the paragraph properties (align, line_spacing, indent, margins, spacing, border, background, tabs, list, style) apply to the whole paragraphs the selection is in.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1073,6 +1140,8 @@ const TOOLS: HwpToolDef[] = [
             'paragraph style of the paragraph after one of this style (Enter); default the new style itself',
         },
         ...STYLE_LOOK_SCHEMA,
+        // a new style has no paragraph to measure a mark on
+        indent: { type: 'number', description: INDENT_IN_POINTS },
       },
       required: ['name'],
     },
@@ -1098,7 +1167,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'merge_cells',
     edits: true,
     description:
-      'Merge the cells of a table between two corners (both included) into one cell. Their text is kept, one cell after another. A merged cell must lie wholly inside the range. Not for a table inside another table.',
+      'Merge the cells of a table between two corners (both included) into one cell. Their text is kept, one cell after another. A merged cell must lie wholly inside the range.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1115,7 +1184,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'split_cell',
     edits: true,
     description:
-      'Split one cell of a table into rows × cols cells, or, without rows and cols, split a merged cell back into the cells it covers. The text stays in the first cell. Not for a table inside another table.',
+      'Split one cell of a table into rows × cols cells, or, without rows and cols, split a merged cell back into the cells it covers. The text stays in the first cell.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1132,7 +1201,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'format_cells',
     edits: true,
     description:
-      'Change how cells of a table look: their background colour (or "none"), their border lines, a diagonal across them, and where their text sits between top and bottom. Name the cells as a list (cells, by row and column from 1 as read_table shows them; a merged cell by any place it covers), as a block (range), or leave both out for the whole table. A border names the edges it means: of a block or the whole table, outer is its outline and inner the lines between its cells; of a list each cell is on its own. Later borders go over earlier ones. Not for a table inside another table.',
+      'Change how cells of a table look: their background colour (or "none"), their border lines, a diagonal across them, where their text sits between top and bottom, the height of their rows, the widths of the columns and the look of their text. Name the cells as a list (cells, by row and column from 1 as read_table shows them; a merged cell by any place it covers), as a block (range), or leave both out for the whole table. A border names the edges it means: of a block or the whole table, outer is its outline and inner the lines between its cells; of a list each cell is on its own. Later borders go over earlier ones.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1325,7 +1394,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'add_to_table',
     edits: true,
     description:
-      'Add empty rows or columns to a table, after or before one of its rows or columns. The new ones are shaped and formatted like that one. Row and column numbers after them shift: read the table again before filling. Not for a table that sits inside a cell of another table.',
+      'Add empty rows or columns to a table, after or before one of its rows or columns. The new ones are shaped and formatted like that one. Row and column numbers after them shift: read the table again before filling.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1640,7 +1709,7 @@ const TOOLS: HwpToolDef[] = [
     name: 'insert_equations',
     edits: true,
     description:
-      "Put equations (수식) into the body text, all of them in one call. Write the text first with a short placeholder where each equation goes, for example [[1]] and [[2]]; each item names its placeholder (find) and the equation in the script of Hangul's equation editor, and the equation takes the placeholder's place, as large as the text around it. The script is not LaTeX and has no backslashes: {a} over {b} is a fraction; sqrt {x} a root and root {3} of {x} a cube root; x^2 and x_1 raise and lower, with braces round more than one character (x^{n+1}, a_{ij}); times, div, +-, cdot, le, ge, ne, approx are × ÷ ± · ≤ ≥ ≠ ≈ (not <=, >=, !=); -> is an arrow and inf is ∞; Greek letters by name (alpha, beta, pi, theta, and DELTA for a capital); limits go on with _ and ^: sum _{i=1} ^{n}, int _{a} ^{b}, lim _{x -> 0}; LEFT ( ... RIGHT ) are brackets as tall as what they hold; matrix {a & b # c & d} has & between columns and # between rows (pmatrix with round brackets, dmatrix with bars); cases {x & (x ge 0) # -x & (x < 0)}; vec {a}, bar {x}, overline {AB}; angle A, triangle ABC, 90 DEG; rm makes the next word upright, as a unit is (3 rm cm); ~ is a space (a plain space only separates the words of the script). Text inside a table cell cannot take an equation.",
+      "Put equations (수식) into the body text, all of them in one call (up to 60). Write the text first with a short placeholder where each equation goes, for example [[1]] and [[2]]; each item names its placeholder (find) and the equation in the script of Hangul's equation editor, and the equation takes the placeholder's place, as large as the text around it. The script is not LaTeX and has no backslashes: {a} over {b} is a fraction; sqrt {x} a root and root {3} of {x} a cube root; x^2 and x_1 raise and lower, with braces round more than one character (x^{n+1}, a_{ij}); times, div, +-, cdot, le, ge, ne, approx are × ÷ ± · ≤ ≥ ≠ ≈ (not <=, >=, !=); -> is an arrow and inf is ∞; Greek letters by name (alpha, beta, pi, theta, and DELTA for a capital); limits go on with _ and ^: sum _{i=1} ^{n}, int _{a} ^{b}, lim _{x -> 0}; LEFT ( ... RIGHT ) are brackets as tall as what they hold; matrix {a & b # c & d} has & between columns and # between rows (pmatrix with round brackets, dmatrix with bars); cases {x & (x ge 0) # -x & (x < 0)}; vec {a}, bar {x}, overline {AB}; angle A, triangle ABC, 90 DEG; rm makes the next word upright, as a unit is (3 rm cm); ~ is a space (a plain space only separates the words of the script). Text inside a table cell cannot take an equation.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -1743,7 +1812,10 @@ const TOOLS: HwpToolDef[] = [
       type: 'object',
       properties: {
         kind: { type: 'string', enum: ['header', 'footer'] },
-        text: { type: 'string', description: 'one line; "" removes the header or footer' },
+        text: {
+          type: 'string',
+          description: 'one line of up to 200 characters; "" removes the header or footer',
+        },
         align: {
           type: 'string',
           enum: ['left', 'center', 'right'],
@@ -1804,7 +1876,7 @@ const TOOLS: HwpToolDef[] = [
   },
 ]
 
-const ALL_TOOLS: readonly HwpToolDef[] = [...TOOLS, IMPORT_ATTACHMENT_TOOL]
+const ALL_TOOLS: readonly HwpToolDef[] = [...TOOLS, OPEN_GENERATED_HWP_TOOL, IMPORT_ATTACHMENT_TOOL]
 const TOOL_BY_NAME = new Map(ALL_TOOLS.map((tool) => [tool.name, tool]))
 
 /** The tools that change the open document, by the mark of their definitions. */
@@ -1814,6 +1886,7 @@ export const HWP_EDIT_TOOLS: ReadonlySet<string> = new Set(
 
 const withoutEditsMark = ({ edits: _edits, ...tool }: HwpToolDef): AgentToolDef => tool
 const OFFERED_TOOLS = TOOLS.map(withoutEditsMark)
+const OFFERED_OPEN_GENERATED_HWP = withoutEditsMark(OPEN_GENERATED_HWP_TOOL)
 const OFFERED_IMPORT_ATTACHMENT = withoutEditsMark(IMPORT_ATTACHMENT_TOOL)
 
 const DECLARED_NAME_OF_READ_KEY = new Map([
@@ -2313,13 +2386,13 @@ function pageMapLines(map: AgentPageMap): string[] {
         line.column === undefined
           ? 'on a new page with insert_break (kind page'
           : 'in the next column with insert_break (kind column'
-      return `${named} is left alone at the foot${where}, ${after} starts on page ${line.nextPage}, and the empty line between keeps them apart in Hancom Hangul too${line.kept ? ', though it keeps with the next line' : ''}: to print it with ${after}, start it ${anew}, find with its words).`
+      return `${named} is left alone at the foot${where} in this layout, ${after} starts on page ${line.nextPage}, and an empty line stands between them${line.kept ? ': it keeps with the next line, which is that empty line' : ', so keeping it with the next line would keep it with that empty line'}. To print it with ${after}, start it ${anew}, find with its words).`
     }
     if (line.kept) {
-      return `${named} stands alone at the foot${where} in this layout, but it keeps with the next line (keep_with_next), so Hancom Hangul prints it with ${after} on page ${line.nextPage}: leave it.`
+      return `${named} stands alone at the foot${where} in this layout. It keeps with the next line (keep_with_next), which Hancom Hangul honours when it prints: leave it.`
     }
     const style = line.style || 'its style'
-    return `${named} is left alone at the foot${where}, ${after} starts on page ${line.nextPage}: keep this line with ${after} by giving it a style of its own with style_paragraphs (a new name, ${line.style ? `based_on ${line.style}, ` : ''}keep_with_next true, applied with find to this line only). Do not give ${style} itself keep_with_next: every paragraph of that style would keep with the next one.`
+    return `${named} is left alone at the foot${where} in this layout, ${after} starts on page ${line.nextPage}: keep this line with ${after} by giving it a style of its own with style_paragraphs (a new name, ${line.style ? `based_on ${line.style}, ` : ''}keep_with_next true, applied with find to this line only). Do not give ${style} itself keep_with_next: every paragraph of that style would keep with the next one.`
   })
   const below = map.pages.flatMap((page) =>
     'pastFoot' in page && page.pastFoot
@@ -2380,7 +2453,7 @@ function titleInTableRefusal(table: number | undefined): string {
 
 /** The refusal of a script written in LaTeX, which the equation editor does not read. */
 const latexHelp = (what: string): string =>
-  `Nothing was changed: ${what} is LaTeX (it has a backslash). Write it in the script of Hangul's equation editor: {a} over {b} for a fraction, sqrt {x}, x^2, x_1, times, le, ge, alpha, sum from {i=1} to {n}, LEFT ( ... RIGHT ).`
+  `Nothing was changed: ${what} is LaTeX (it has a backslash). Write it in the script of Hangul's equation editor: {a} over {b} for a fraction, sqrt {x}, x^2, x_1, times, le, ge, alpha, sum _{i=1} ^{n}, LEFT ( ... RIGHT ).`
 
 /** Where an equation stands, as list_equations shows it: the words round it, … in its place. */
 const equationPlace = (equation: { before: string; after: string; previous?: string }): string =>
@@ -2389,6 +2462,8 @@ const equationPlace = (equation: { before: string; after: string; previous?: str
 
 const HAS_OBJECTS_HELP =
   'Nothing was changed: a table, a picture, an equation or a form field sits in that paragraph, and the change would have moved or removed it. Use the paragraph before or after it as the anchor, or tell the user. An equation can be removed first with edit_equation (its number is in list_equations).'
+const OUT_OF_LINE_HELP =
+  'Nothing was changed: that paragraph holds a table or an object not set in its line (a head table laid across the columns, a floating picture or shape). It would move on with the paragraph, and this editor would lay what you add over the place of that object. Anchor to the paragraph before it with where "after", or tell the user.'
 const SPANS_OBJECT_ADVICE =
   'Replace the words in front of it or the words behind it on their own, with replace_text; an equation itself is changed with edit_equation (list_equations shows the words round each).'
 const SPANS_OBJECT_HELP = `Nothing was changed: an equation or another object of the line (a footnote mark, a picture set in the text) stands inside the text to be replaced, and the new text has no place for it. ${SPANS_OBJECT_ADVICE}`
@@ -2804,7 +2879,9 @@ function describeFormat(
     ['spacingBefore', 'aiFmtSpaceBefore'],
     ['spacingAfter', 'aiFmtSpaceAfter'],
   ] as const) {
-    if (format[key] !== undefined) parts.push(`${label(name)} ${format[key]}pt`)
+    const value = format[key]
+    if (value === 'mark') parts.push(label(name))
+    else if (value !== undefined) parts.push(`${label(name)} ${value}pt`)
   }
   if (format.list !== undefined) {
     const name = label(LIST_LABELS[format.list])
@@ -2834,7 +2911,7 @@ function placeRefusal(result: AgentPlaceRefusal): string {
     case 'unsupported_place':
       return 'That text is inside an equation, which is not a paragraph that can be edited here.'
     case 'has_objects':
-      return HAS_OBJECTS_HELP
+      return result.outOfLine ? OUT_OF_LINE_HELP : HAS_OBJECTS_HELP
     default:
       return NOT_FOUND_HELP
   }
@@ -2890,7 +2967,7 @@ function linesRefusal(table: number, what: string, result: AgentTableLinesRefusa
     case 'no_such_table':
       return noSuchTable(table, result.count)
     case 'nested':
-      return 'Nothing was changed: that table sits inside a cell of another table, and rows and columns can only be added to or removed from a table of the body text.'
+      return 'Nothing was changed: that table sits inside a cell of another table and its cell borders are drawn as objects, which cannot be moved here, so it cannot get or lose rows and columns.'
     case 'no_such_line':
       return `Nothing was changed: the table has ${result.rows} row(s) and ${result.cols} column(s), so those ${what} are not all in it.`
     case 'would_empty':
@@ -2954,7 +3031,7 @@ function noSuchPicture(count: number): string {
 const arrow = (from: string, to: string) => `“${quote(from)}” → “${quote(to)}”`
 
 const NO_FORMAT_HELP =
-  'Name at least one property to change: bold, italic, underline, strikethrough, font, size, color, highlight, and for a paragraph align, line_spacing, indent, margin_left, margin_right, space_before, space_after or style.'
+  'Name at least one property to change: bold, italic, underline, strikethrough, font, size, color, highlight, char_width, letter_spacing, char_style, and for a paragraph align, line_spacing, indent, margin_left, margin_right, space_before, space_after, border, background, tabs, list or style.'
 
 const MAX_CELLS_LISTED = 8
 
@@ -2989,6 +3066,78 @@ function styleStrings<K extends string>(
     else return null
   }
   return out
+}
+
+/** The lines a style rule left out on purpose, by kind, as the model reads them. */
+function skippedNote(
+  skipped:
+    | Partial<Record<'placeholder' | 'cutLine' | 'date', { count: number; first: string }>>
+    | undefined,
+): string {
+  if (!skipped) return ''
+  const kinds = [
+    ['placeholder', 'placeholder line(s) (a mark doubled, as in ○○)'],
+    ['cutLine', 'cut line(s)'],
+    ['date', 'line(s) that start with a date'],
+  ] as const
+  const parts = kinds.flatMap(([kind, what]) => {
+    const found = skipped[kind]
+    return found ? [`${found.count} ${what}, the first “${quote(found.first)}”`] : []
+  })
+  return parts.length > 0
+    ? ` Left out on purpose: ${parts.join('; ')}. Give one a style with find if it needs one.`
+    : ''
+}
+
+/** Why indent "mark" left paragraphs unhung, each reason as the model reads it. */
+const HANG_SKIPS_SAID = {
+  noMark: 'have no mark at their start',
+  alignment: 'are aligned right, centred or spread, where line 2 is not set under the words',
+  object: 'have a field, its guide or another object before or inside the mark',
+  split: 'have a mark that runs over two lines or fills the first',
+  tab: "have a tab in the mark whose stop moves with the first line's indent or with a widened space before it",
+  noSpace:
+    'have a justified first line with no space of a known natural width, to tell how far it was widened',
+  outOfRange: 'would hang by nothing, by more than 100 pt or by more than half their column',
+} as const
+
+/** What indent "mark" did, as the model reads it. */
+function hangNote(hang: AgentHangOutcome | undefined, lead = true): string {
+  if (!hang) return ''
+  const parts = lead
+    ? [
+        hang.hung > 0
+          ? ` Hung ${hang.hung} paragraph(s) by their marks.`
+          : ' No paragraph was hung by its mark.',
+      ]
+    : ['']
+  if (hang.apart > 0) {
+    parts.push(
+      `${hang.apart} of them have a mark of another width than most of their style's and got an indent of their own: a later indent given to the style does not reach them.`,
+    )
+  }
+  for (const [reason, said] of Object.entries(HANG_SKIPS_SAID)) {
+    const count = hang[reason as keyof typeof HANG_SKIPS_SAID]
+    if (count > 0) {
+      parts.push(`${count} paragraph(s) ${said}; their first-line indent stays as it was.`)
+    }
+  }
+  if (hang.unread) {
+    parts.push(
+      `${hang.unread} paragraph(s) in tables inside table cells were not looked at, because the editor cannot tell their style there; their first-line indent stays as it was.`,
+    )
+  }
+  if (hang.unreachedShapes) {
+    parts.push(
+      `${hang.unreachedShapes} drawn shape(s) other than pictures inside table cells or other shapes could not be looked into; a paragraph of this style in one would follow the style's hang.`,
+    )
+  }
+  if (hang.kept) {
+    parts.push(
+      `${hang.kept} paragraph(s) left unhung, empty ones included, were given the indent they had as their own, so the style's hang does not reach them.`,
+    )
+  }
+  return parts.join(' ')
 }
 
 /** What a run of format calls says about paragraphs that kept their own look under a style. */
@@ -3376,6 +3525,29 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
               ? 'No occurrence.'
               : `${found.count} occurrence(s).\n${matchLines(found.matches, found.count)}`,
           summary: label('aiToolFind', { text: quote(text), count: found.count }),
+        }
+      }
+      case 'open_generated_hwp': {
+        const loader = deps.loadGeneratedHwpx
+        if (!loader) return bad(call, 'unknown tool: open_generated_hwp')
+        const filePath = textArg(call, 'path')?.trim() ?? ''
+        if (!filePath) {
+          return bad(call, 'path must be the local path of a generated .hwpx or .hwp file')
+        }
+        if (!/\.(hwpx?)$/i.test(filePath)) {
+          return bad(call, `only .hwpx or .hwp files can be opened here; "${filePath}" is not one.`)
+        }
+        const result = await loader(filePath)
+        if (!result.ok) return bad(call, result.error)
+        const base = result.title || filePath.split(/[\\/]/).pop() || filePath
+        const msg =
+          result.mode === 'current'
+            ? `Loaded "${base}" directly into this Hangul editor tab as an unsaved document. Tell the user the document is now open on screen and ready to edit or save.`
+            : `Opened "${base}" in a new Hangul tab without changing the document open here. Tell the user the generated document opened in a new tab.`
+        return {
+          output: msg,
+          mutated: result.mode === 'current',
+          summary: label('aiToolImport', { name: base }),
         }
       }
       case 'import_attachment': {
@@ -4005,6 +4177,12 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         if (outcome.kind !== 'done')
           return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
         const result = outcome.result
+        if (!result.ok && result.reason === 'not_hung') {
+          return {
+            output: `Nothing was changed: the paragraph could not be hung by its mark.${hangNote(result.hang, false)}`,
+            summary: label('aiToolFormat', { text: quote(find) }),
+          }
+        }
         if (!result.ok) {
           if (result.reason === 'no_such_style') return bad(call, noSuchStyle(result))
           if (result.reason === 'words_set_apart') return bad(call, wordsSetApartHelp(result))
@@ -4023,7 +4201,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Formatted the paragraph${result.inTable ? ' in the table cell' : ''}.${keptOwnLookNote(result.keptOwnLook)}`,
+          output: `Formatted the paragraph${result.inTable ? ' in the table cell' : ''}.${keptOwnLookNote(result.keptOwnLook)}${hangNote(result.hang)}`,
           mutated: true,
           summary: label('aiToolFormat', { text: quote(find) }),
         }
@@ -4155,7 +4333,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Formatted the selected text (${result.count} paragraph(s)).${keptOwnLookNote(result.keptOwnLook)}`,
+          output: `Formatted the selected text (${result.count} paragraph(s)).${keptOwnLookNote(result.keptOwnLook)}${hangNote(result.hang)}`,
           mutated: true,
           summary: label('aiToolFormat', { text: quote(text) }),
         }
@@ -4290,7 +4468,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
             case 'unsupported_place':
               return bad(
                 call,
-                'Nothing was changed: that table sits inside a cell of another table, whose cells cannot be merged here.',
+                'Nothing was changed: that table sits inside a cell of another table and its cell borders are drawn as objects, which cannot be moved here, so its cells cannot be merged.',
               )
             case 'no_such_cell':
               return bad(
@@ -4365,7 +4543,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
             case 'unsupported_place':
               return bad(
                 call,
-                'Nothing was changed: that table sits inside a cell of another table, whose cells cannot be split here.',
+                'Nothing was changed: that table sits inside a cell of another table and its cell borders are drawn as objects, which cannot be moved here, so its cells cannot be split.',
               )
             case 'no_such_cell':
               return bad(
@@ -4486,6 +4664,12 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         if (outcome.kind !== 'done')
           return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
         const result = outcome.result
+        if (!result.ok && result.reason === 'not_hung') {
+          return {
+            output: `Nothing was changed: no paragraph of the style "${name}" could be hung by its mark.${hangNote(result.hang, false)}`,
+            summary: label('aiToolStyleEdit', { name: quote(name) }),
+          }
+        }
         if (!result.ok) {
           return bad(
             call,
@@ -4508,7 +4692,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
             ? ' Text this style was applied to changed with it.'
             : ' Every paragraph that uses it changed with it, in tables, text boxes, headers, footers and notes too; what a paragraph had set differently from the style stayed.'
         return {
-          output: `Changed the ${result.kind} style "${result.name}".${Object.keys(format).length > 0 ? reach : ''}`,
+          output: `Changed the ${result.kind} style "${result.name}".${Object.keys(format).length > 0 ? reach : ''}${hangNote(result.hang)}`,
           mutated: true,
           summary: label('aiToolStyleEdit', { name: quote(result.name) }),
         }
@@ -4610,7 +4794,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           if (result.reason === 'unsupported_place') {
             return bad(
               call,
-              'Nothing was changed: that table sits inside a cell of another table, whose cells cannot be coloured here.',
+              'Nothing was changed: that table sits inside a cell of another table and its cell borders are drawn as objects, which cannot be moved here, so its cells cannot be changed.',
             )
           }
           if (result.reason === 'column_count') {
@@ -5481,7 +5665,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           }
         }
         const applied = result.rules.filter((rule) => rule.paragraphs > 0)
-        const unmatched = result.rules.filter((rule) => rule.paragraphs === 0)
+        const unmatched = result.rules.filter((rule) => rule.paragraphs === 0 && !rule.skipped)
         deps.onChange({
           kind: 'format',
           from: label('aiFmtStyle'),
@@ -5498,12 +5682,21 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           count: Math.max(1, result.paragraphs),
           ...(result.place ? { place: result.place } : {}),
         })
+        const noSpace = result.withoutSpace ?? []
         return {
           output:
-            `Made ${result.made} style(s), changed ${result.changed}, and styled ${result.paragraphs} paragraph(s): ${result.rules.map((rule) => `${rule.style} ${rule.paragraphs}`).join(', ') || 'none'}.` +
+            `Made ${result.made} style(s)${result.made > 0 ? ` (${quoted(result.madeStyles)})` : ''}, changed ${result.changed}${result.changed > 0 ? ` (${quoted(result.changedStyles)}, which the document had)` : ''}, and styled ${result.paragraphs} paragraph(s): ${result.rules.map((rule) => `${rule.style} ${rule.paragraphs}`).join(', ') || 'none'}.` +
+            (result.unmatched
+              ? ` ${result.unmatched} body paragraph(s) with text are still in the default paragraph style.`
+              : '') +
+            skippedNote(result.skipped) +
             (unmatched.length > 0
               ? ` No paragraph matched the rule(s) for ${unmatched.map((rule) => rule.style).join(', ')}: check how those lines start (find_text shows the exact characters).`
               : '') +
+            (noSpace.length > 0
+              ? ` Left out because no space follows the mark: ${noSpace.map((line) => `“${quote(line)}”`).join(', ')}.`
+              : '') +
+            hangNote(result.hang) +
             keptOwnLookNote(result.keptOwnLook) +
             standInNote(result.standIn),
           mutated: true,
@@ -5923,6 +6116,12 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         if (outcome.kind !== 'done')
           return bad(call, memoRemovalDeclined(outcome.refusal, outcome.kind))
         const result = outcome.result
+        if (!result.ok && result.reason === 'not_hung') {
+          return {
+            output: `Nothing was changed: no paragraph of that look could be hung by its mark.${hangNote(result.hang, false)}`,
+            summary: label('aiToolFormatLook', { count: 0 }),
+          }
+        }
         if (!result.ok) {
           if (result.reason === 'no_such_style') return bad(call, noSuchStyle(result))
           if (result.reason === 'words_set_apart') return bad(call, wordsSetApartHelp(result))
@@ -5942,7 +6141,10 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           place: result.place,
         })
         return {
-          output: `Formatted ${result.paragraphs} paragraph(s) of that look.${keptOwnLookNote(result.keptOwnLook)} These paragraphs have a new look id now; the other looks keep theirs.`,
+          output:
+            Object.keys(format).length === 1 && result.hang
+              ? `Of the ${result.paragraphs} paragraph(s) of that look:${hangNote(result.hang)} The paragraphs hung by their marks have a new look id now; the others and the other looks keep theirs.`
+              : `Formatted ${result.paragraphs} paragraph(s) of that look.${keptOwnLookNote(result.keptOwnLook)}${hangNote(result.hang)} These paragraphs have a new look id now; the other looks keep theirs.`,
           mutated: true,
           summary: label('aiToolFormatLook', { count: result.paragraphs }),
         }
@@ -5962,15 +6164,16 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
           'call insert_image with attachment set to the name',
         )
         let base = SYSTEM_PROMPT + attached
+        if (deps.loadGeneratedHwpx) base += OPEN_GENERATED_HWP_NOTE
         if (deps.importAttachment) base += IMPORT_ATTACHMENT_NOTE
         if (!imageGenOn()) base += IMAGE_GEN_OFF_NOTE
         if (!pictureAnalysisOn()) base += PICTURE_ANALYSIS_OFF_NOTE
         return base
       },
       get tools(): AgentToolDef[] {
-        let offered = deps.importAttachment
-          ? [...OFFERED_TOOLS, OFFERED_IMPORT_ATTACHMENT]
-          : OFFERED_TOOLS
+        let offered = [...OFFERED_TOOLS]
+        if (deps.loadGeneratedHwpx) offered.push(OFFERED_OPEN_GENERATED_HWP)
+        if (deps.importAttachment) offered.push(OFFERED_IMPORT_ATTACHMENT)
         if (!imageGenOn()) offered = offered.filter((tool) => tool.name !== 'generate_image')
         if (!pictureAnalysisOn())
           offered = offered.filter((tool) => tool.name !== 'analyze_picture')
@@ -6032,19 +6235,21 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
     },
     refreshContext: async () => {
       try {
-        const [text, fields, tables, notes, styles, memos, pictures, fonts] = await Promise.all([
-          bridge.readText(),
-          bridge.listFields(),
-          bridge.listTables(),
-          // the notes are a line of the context; the document is still worth sending without it
-          bridge.listNotes().catch(() => null),
-          bridge.listStyles().catch(() => null),
-          // only the count goes into the context; a failure leaves the rest of it usable
-          bridge.listMemos().catch(() => null),
-          bridge.listPictures().catch(() => null),
-          // which document fonts this PC has, for a look the AI picks; unknown says nothing
-          bridge.documentFonts().catch(() => null),
-        ])
+        const [text, fields, tables, notes, styles, memos, pictures, fonts, shape] =
+          await Promise.all([
+            bridge.readText(),
+            bridge.listFields(),
+            bridge.listTables(),
+            // the notes are a line of the context; the document is still worth sending without it
+            bridge.listNotes().catch(() => null),
+            bridge.listStyles().catch(() => null),
+            // only the count goes into the context; a failure leaves the rest of it usable
+            bridge.listMemos().catch(() => null),
+            bridge.listPictures().catch(() => null),
+            // which document fonts this PC has, for a look the AI picks; unknown says nothing
+            bridge.documentFonts().catch(() => null),
+            bridge.documentShape().catch(() => null),
+          ])
         const footnotes = notes?.notes.filter((note) => note.kind === 'footnote').length ?? 0
         // numbered: the number is what fill_field takes, and names repeat
         const names = fields
@@ -6054,6 +6259,7 @@ export function createHwpSkill(deps: HwpSkillDeps): HwpSkill {
         context = [
           '## Open document',
           `Length: ${text.length} characters.`,
+          ...(shape ? documentShapeLines(shape) : []),
           fields.length === 0
             ? 'Form fields: none.'
             : `Form fields (${fields.length}): ${names.join(', ')}${fields.length > names.length ? ', …' : ''}`,

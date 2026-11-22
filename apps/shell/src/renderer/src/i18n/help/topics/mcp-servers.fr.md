@@ -2,6 +2,16 @@
 
 Un serveur MCP est un service qui propose à l’IA des outils extérieurs à l’application, par exemple la recherche de textes de loi ou la consultation de documents gérés par votre équipe. Une fois un serveur connecté, les fenêtres IA de GenOffice peuvent appeler ses outils pendant une conversation. Vous décidez, outil par outil, ce que l’IA peut utiliser et comment.
 
+## Services recommandés
+
+En haut de **Paramètres ▸ Intégrations**, GenOffice regroupe Google Drive et cinq services prêts à connecter au-dessus des serveurs MCP personnalisés :
+
+- **Notion** et **Canva** : connexion en une seule étape via le navigateur. Vous pouvez aussi joindre jusqu'à 20 pages Notion depuis le menu **+** des éditeurs (des copies temporaires sont stockées dans le dossier temporaire et supprimées après 7 jours).
+- **Coffre Obsidian** : intégré à GenOffice sans application ni processus externe. Ajoutez un ou plusieurs dossiers locaux pour lire et modifier vos notes `.md` (suppression vers la corbeille uniquement, aucun fichier créé dans le coffre, disponible même hors outils Internet) et joignez-les via **+**.
+- **Korean Law MCP** : recherche la législation coréenne après saisie de votre `LAW_OC` et autorisation de la commande locale.
+- **kordoc MCP** : lit et convertit les fichiers HWP/HWPX locaux après autorisation de la commande. Le masquage de l'éditeur ne s'applique pas aux fichiers lus directement par kordoc.
+- **Bouton Services connectés** : toujours visible près du champ IA pour activer ou désactiver Google Drive (éditeurs), chaque coffre Obsidian ou chaque serveur MCP pour la discussion en cours, ou ouvrir **Paramètres ▸ Intégrations**.
+
 ## Ajouter un serveur
 
 1. Ouvrez **Paramètres ▸ Intégrations** et cliquez sur **Ajouter un serveur** dans la carte **Serveurs MCP**.

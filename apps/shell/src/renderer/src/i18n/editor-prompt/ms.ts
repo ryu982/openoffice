@@ -10,6 +10,7 @@ export const ms = {
   item_html: 'Editor HTML',
   item_mindmap: 'Editor peta minda',
   item_diagram: 'Editor rajah',
+  item_whiteboard: "Editor papan putih",
   item_hwp: 'Editor Hangul (HWP)',
   item_epub: 'Editor EPUB',
   offMessage: '{item} dimatikan. Hidupkan dan buka?',

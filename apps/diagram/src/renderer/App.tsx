@@ -106,6 +106,11 @@ export default function App({ initialTheme }: { initialTheme: UiTheme }) {
     ready: () => statusRef.current === 'ready',
   })
 
+  // draw.io up again after a language change: the last AI run's marks come back
+  useEffect(() => {
+    if (status === 'ready') ai.host.frameReady()
+  }, [status, ai.host])
+
   const say = useCallback((text: string) => setToast(text), [])
   useEffect(() => {
     if (toast === null) return

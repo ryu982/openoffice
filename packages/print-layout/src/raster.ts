@@ -2,6 +2,8 @@
 // at a time, so a long job never holds every face's bitmap at once.
 import type { DpiChoice } from './options'
 import { loadRasterPdfium, type RasterPdfium } from './pdfium'
+import { encodePng } from './png'
+import { wasmConvertBgrxPixels, wasmEncodeBgrxToPng } from './wasm'
 
 /** Density the automatic choice aims for (the PDF editor's print rule). */
 export const AUTO_TARGET_DPI = 200
@@ -72,6 +74,19 @@ export interface RasterFace {
   pixels: Uint8Array
 }
 
+/** Raw BGRx face view backed by PDFium's bitmap buffer during the callback. */
+export interface RasterBgrxFace {
+  index: number
+  widthPt: number
+  heightPt: number
+  rotated: boolean
+  widthPx: number
+  heightPx: number
+  stride: number
+  /** slice into PDFium HEAPU8; valid only while `onFace` runs synchronously */
+  bgrx: Uint8Array
+}
+
 function abortIfAsked(signal: AbortSignal | undefined): void {
   if (signal?.aborted) {
     throw signal.reason instanceof Error
@@ -80,10 +95,9 @@ function abortIfAsked(signal: AbortSignal | undefined): void {
   }
 }
 
-/** BGRx rows with a stride to tight gray or RGB rows. */
-function convertPixels(
-  heap: Uint8Array,
-  ptr: number,
+/** JS fallback: BGRx rows with a stride to tight gray or RGB rows. */
+function convertPixelsJs(
+  bgrx: Uint8Array,
   stride: number,
   width: number,
   height: number,
@@ -92,11 +106,11 @@ function convertPixels(
   const out = new Uint8Array(width * height * (gray ? 1 : 3))
   let o = 0
   for (let y = 0; y < height; y++) {
-    let at = ptr + y * stride
+    let at = y * stride
     for (let x = 0; x < width; x++, at += 4) {
-      const b = heap[at]!
-      const g = heap[at + 1]!
-      const r = heap[at + 2]!
+      const b = bgrx[at]!
+      const g = bgrx[at + 1]!
+      const r = bgrx[at + 2]!
       if (gray) {
         // Rec. 601 luma in fixed point; white stays 255
         out[o++] = (r * 77 + g * 150 + b * 29 + 128) >> 8
@@ -110,14 +124,45 @@ function convertPixels(
   return out
 }
 
+/** BGRx rows with a stride to tight gray or RGB rows (Rust WASM with JS fallback). */
+export function convertBgrxPixels(
+  bgrx: Uint8Array,
+  stride: number,
+  width: number,
+  height: number,
+  gray: boolean,
+  hintPdfiumWasmPath?: string | undefined,
+): Uint8Array {
+  const wasm = wasmConvertBgrxPixels(bgrx, stride, width, height, gray, hintPdfiumWasmPath)
+  if (wasm.ok) return wasm.value
+  return convertPixelsJs(bgrx, stride, width, height, gray)
+}
+
+/** Fused BGRx-to-PNG encoding (Rust WASM single-pass with JS fallback). */
+export function encodeBgrxToPng(
+  bgrx: Uint8Array,
+  stride: number,
+  width: number,
+  height: number,
+  gray: boolean,
+  hintPdfiumWasmPath?: string | undefined,
+): Uint8Array {
+  const wasm = wasmEncodeBgrxToPng(bgrx, stride, width, height, gray, hintPdfiumWasmPath)
+  if (wasm.ok) return wasm.value
+  const pixels = convertPixelsJs(bgrx, stride, width, height, gray)
+  return encodePng(pixels, width, height, gray ? 1 : 3)
+}
+
 /**
- * Renders every face of `pdf` and hands each to `onFace` before rendering the
- * next. Returns the number of faces. Checks `signal` between faces.
+ * Internal helper: renders every face of `pdf` to a PDFium BGRx bitmap and
+ * hands the raw view to `onFace` before destroying the bitmap. Callers that
+ * perform async work after reading `face.bgrx` must consume `face.bgrx` before
+ * awaiting (e.g. encode PNG or feed `GrayPdfBuilder` synchronously).
  */
-export async function rasterizePdf(
+export async function rasterizePdfBgrx(
   pdf: Uint8Array,
   options: RasterizeOptions,
-  onFace: (face: RasterFace) => void | Promise<void>,
+  onFace: (face: RasterBgrxFace) => void | Promise<void>,
 ): Promise<number> {
   abortIfAsked(options.signal)
   const m = options.pdfium ?? (await loadRasterPdfium(options.wasmPath))
@@ -163,7 +208,6 @@ export async function rasterizePdf(
         const bh = rotated ? pw : ph
         const page = m._FPDF_LoadPage(doc, i)
         if (!page) throw new Error(`face ${i + 1} of the print job could not be read`)
-        let pixels: Uint8Array
         try {
           const bitmap = m._FPDFBitmap_Create(bw, bh, 0)
           if (!bitmap) throw new Error(`not enough memory to render face ${i + 1}`)
@@ -172,23 +216,23 @@ export async function rasterizePdf(
             m._FPDF_RenderPageBitmap(bitmap, page, 0, 0, bw, bh, rotated ? 1 : 0, RENDER_FLAGS)
             const stride = m._FPDFBitmap_GetStride(bitmap)
             const ptr = m._FPDFBitmap_GetBuffer(bitmap)
-            pixels = convertPixels(m.HEAPU8, ptr, stride, bw, bh, options.grayscale)
+            const bgrx = m.HEAPU8.subarray(ptr, ptr + bh * stride)
+            await onFace({
+              index: i,
+              widthPt: w,
+              heightPt: h,
+              rotated,
+              widthPx: bw,
+              heightPx: bh,
+              stride,
+              bgrx,
+            })
           } finally {
             m._FPDFBitmap_Destroy(bitmap)
           }
         } finally {
           m._FPDF_ClosePage(page)
         }
-        await onFace({
-          index: i,
-          widthPt: w,
-          heightPt: h,
-          rotated,
-          widthPx: bw,
-          heightPx: bh,
-          channels: options.grayscale ? 1 : 3,
-          pixels,
-        })
         options.onProgress?.({ done: i + 1, total })
       }
       return total
@@ -198,4 +242,35 @@ export async function rasterizePdf(
   } finally {
     m._free(docPtr)
   }
+}
+
+/**
+ * Renders every face of `pdf` and hands each to `onFace` before rendering the
+ * next. Returns the number of faces. Checks `signal` between faces.
+ */
+export async function rasterizePdf(
+  pdf: Uint8Array,
+  options: RasterizeOptions,
+  onFace: (face: RasterFace) => void | Promise<void>,
+): Promise<number> {
+  return rasterizePdfBgrx(pdf, options, async (raw) => {
+    const pixels = convertBgrxPixels(
+      raw.bgrx,
+      raw.stride,
+      raw.widthPx,
+      raw.heightPx,
+      options.grayscale,
+      options.wasmPath,
+    )
+    await onFace({
+      index: raw.index,
+      widthPt: raw.widthPt,
+      heightPt: raw.heightPt,
+      rotated: raw.rotated,
+      widthPx: raw.widthPx,
+      heightPx: raw.heightPx,
+      channels: options.grayscale ? 1 : 3,
+      pixels,
+    })
+  })
 }

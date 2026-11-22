@@ -45,6 +45,7 @@ export const tr = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'Zihin haritası',
+  editorWhiteboard: 'Beyaz tahta',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'Ana sayfa',

@@ -192,3 +192,113 @@ export function IconPicture(props: IconProps) {
     </Svg>
   )
 }
+
+/** plus sign for unified attach menu and new chat */
+export function IconPlus(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 3.2v9.6M3.2 8h9.6" />
+    </Svg>
+  )
+}
+
+/** slash glyph for quick skill picker button */
+export function IconSlash(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10.5 2.8 5.5 13.2" />
+    </Svg>
+  )
+}
+
+/** copy reply text */
+export function IconCopy(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5.5" y="5.5" width="7.5" height="8" rx="1.4" />
+      <path d="M10.5 5.5V4a1.4 1.4 0 0 0-1.4-1.4H4.4A1.4 1.4 0 0 0 3 4v6.6A1.4 1.4 0 0 0 4.4 12h1.1" />
+    </Svg>
+  )
+}
+
+/** regenerate / retry reply */
+export function IconRetry(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12.8 8a4.8 4.8 0 1 1-1.3-3.3" />
+      <path d="M11.6 2.6v2.3H9.3" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+/** up-right jump arrow for clickable change rows */
+export function IconArrowUpRight(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4.8 11.2 11.2 4.8M6.2 4.8h5v5" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+/** paperclip for attaching a local file */
+export function IconPaperclip(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M11.8 7.2 6.8 12.2a2.5 2.5 0 0 1-3.5-3.5l5.4-5.4a1.7 1.7 0 0 1 2.4 2.4L6 10.8a.9.9 0 0 1-1.3-1.3l4.3-4.3"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+/** document icon for attaching an open or recent app document */
+export function IconFileDoc(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 1.8h5l3 3v9.4H4zM9 1.8v3h3M6 8.2h4M6 10.8h3" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+/** generic cloud icon for cloud drive attachment */
+export function IconCloudDrive(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M4.8 12.2h6.6a2.4 2.4 0 0 0 .3-4.8A3.4 3.4 0 0 0 5.3 6a2.7 2.7 0 0 0-.5 6.2z"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  )
+}
+
+/** completed step circle */
+export function IconStepDone(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M5.5 8.2 7.2 9.9 10.6 6.3" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+/** failed step circle */
+export function IconStepError(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M6 6l4 4M10 6l-4 4" />
+    </Svg>
+  )
+}
+
+/** running step ring */
+export function IconStepRunning(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="5.5" strokeOpacity="0.25" />
+      <path d="M8 2.5A5.5 5.5 0 0 1 13.5 8" />
+    </Svg>
+  )
+}

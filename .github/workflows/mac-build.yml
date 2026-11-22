@@ -66,10 +66,12 @@ jobs:
           toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Cache cargo (xlsx-sidecar)
+      - name: Cache cargo (native sidecars)
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
-          workspaces: apps/sheets/native/xlsx-engine
+          workspaces: |
+            apps/sheets/native/xlsx-engine
+            packages/file-parse/native/parse-sidecar
 
       - name: Cache electron binaries
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -94,9 +96,12 @@ jobs:
           GENOFFICE_GOOGLE_CLIENT_SECRET: ${{ secrets.GENOFFICE_GOOGLE_CLIENT_SECRET }}
 
       # both packages ship one sidecar path, so it must hold both CPUs; the
-      # packaging hook refuses a host-only one (assertUniversalSidecar)
+      # packaging hook refuses a host-only one (assertUniversalSidecar / assertUniversalParseSidecar)
       - name: Build the xlsx sidecar for both CPUs
         run: npm run native:build:universal -w @genoffice/sheets
+
+      - name: Build the parse sidecar for both CPUs
+        run: npm run native:build:universal -w @genoffice/file-parse
 
       - name: Package
         run: npm run dist:mac -w @genoffice/shell -- --publish never
@@ -134,10 +139,13 @@ jobs:
             for bin in \
               "$app/Contents/MacOS/IeumOffice" \
               "$app/Contents/Resources/native/xlsx-sidecar" \
+              "$app/Contents/Resources/native/ieum-parse-sidecar" \
               "$app/Contents/Resources/ocr/vision-ocr"; do
               test -f "$bin" || { echo "missing: $bin"; exit 1; }
               lipo -archs "$bin" | grep -qw "$cpu" || { echo "not $cpu: $bin"; exit 1; }
             done
+            test -f "$app/Contents/Resources/wasm/hwp5_bg.wasm" || { echo "missing: hwp5_bg.wasm"; exit 1; }
+            test -f "$app/Contents/Resources/wasm/print_layout_bg.wasm" || { echo "missing: print_layout_bg.wasm"; exit 1; }
           done
           # each dmg names its CPU (config.dmg.artifactName)
           ls apps/shell/release/IeumOffice-*-arm64.dmg apps/shell/release/IeumOffice-*-x64.dmg

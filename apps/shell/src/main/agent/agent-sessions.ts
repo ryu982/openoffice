@@ -70,6 +70,8 @@ export type AgentStartResult =
        * Absent when there are none
        */
       mcpKeepInside?: string[] | undefined
+      /** enabled external Obsidian vault names relayed into this session */
+      mcpExternalVaults?: string[] | undefined
       /**
        * the project notes (CLAUDE.md, AGENTS.md) the instructions carry only the start of, by
        * file name; the window says so as the AI window does. Absent when none was cut
@@ -645,6 +647,9 @@ export function createAgentManager(deps: AgentManagerDeps): AgentManager {
           skills: skills ? await agentSessionSkillsOf(skills.skills) : [],
           ...(relays && relays.keepResultsInside.length > 0
             ? { mcpKeepInside: [...relays.keepResultsInside] }
+            : {}),
+          ...(relays && relays.externalVaults && relays.externalVaults.length > 0
+            ? { mcpExternalVaults: [...relays.externalVaults] }
             : {}),
           ...(instructions.truncated.length > 0
             ? { instructionsTruncated: instructions.truncated }

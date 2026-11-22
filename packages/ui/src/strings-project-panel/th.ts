@@ -45,6 +45,7 @@ export const th = {
   editorMarkdown: 'Markdown',
   editorHtml: 'HTML',
   editorMindmap: 'แผนผังความคิด',
+  editorWhiteboard: 'ไวท์บอร์ด',
   editorHwp: 'HWP',
   editorEpub: 'EPUB',
   editorHome: 'หน้าแรก',

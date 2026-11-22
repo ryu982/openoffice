@@ -6,6 +6,7 @@ export const ms = {
   kindSlides: 'Persembahan (PPT)',
   kindHtml: 'Halaman web (HTML)',
   kindMindmap: 'Peta minda',
+  kindWhiteboard: "Papan Putih",
   materialsLabel: 'Bahan',
   addMaterials: 'Tambah fail…',
   removeMaterial: 'Alih keluar',

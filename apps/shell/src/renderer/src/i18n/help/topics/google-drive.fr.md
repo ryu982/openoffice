@@ -41,6 +41,8 @@ La connexion est conservée sur ce PC avec le chiffrement que votre système d'e
 - L'IA ne peut pas modifier, supprimer ni partager des fichiers Drive.
 - Dès qu'une conversation contient un contenu lu dans Drive, elle n'utilise plus la recherche web, la recherche d'images, la lecture de pages par adresse web ni l'insertion d'images par adresse web. Commencez une nouvelle conversation pour les retrouver.
 
+Vous pouvez aussi activer ou désactiver la lecture Google Drive pour la discussion en cours via le bouton **Services connectés**. Si les fonctions IA sont désactivées, Google Drive reste visible dans **Paramètres ▸ Intégrations** pour ouvrir et enregistrer des fichiers, seul le commutateur IA est masqué.
+
 ## Se déconnecter
 
 Cliquez sur **Déconnecter** dans **Paramètres ▸ Intégrations**. GenOffice supprime la connexion de ce PC et demande à Google de retirer son accès. Les copies de fichiers déjà sur ce PC restent. Vous pouvez aussi retirer l'accès à tout moment dans **Connexions tierces** de votre compte Google.

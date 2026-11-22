@@ -1,5 +1,8 @@
-// Minimal PNG writer for rendered faces (8-bit gray or RGB, no alpha), on node:zlib.
+// Minimal PNG writer for rendered faces (8-bit gray or RGB, no alpha).
+// Uses the Rust WASM core (`fdeflate` + `crc32fast`) with an automatic JS
+// (`node:zlib`) fallback on infrastructure failures or `GENOFFICE_PRINT_LAYOUT_RUST=0`.
 import { deflateSync } from 'node:zlib'
+import { wasmEncodePng } from './wasm'
 
 const SIGNATURE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
 
@@ -36,22 +39,13 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
   return out
 }
 
-/**
- * Encodes rows of `channels` bytes a pixel (1 = gray, 3 = RGB), no row padding.
- * Every row uses the "up" filter, which suits page renders (long runs of white
- * and repeated rows) and costs one subtraction a byte.
- */
-export function encodePng(
+function encodePngJs(
   pixels: Uint8Array,
   width: number,
   height: number,
   channels: 1 | 3,
 ): Uint8Array {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
-    throw new Error(`invalid PNG size ${width}x${height}`)
-  }
   const rowBytes = width * channels
-  if (pixels.length < rowBytes * height) throw new Error('PNG pixel buffer is too short')
   const filtered = new Uint8Array((rowBytes + 1) * height)
   for (let y = 0; y < height; y++) {
     const to = y * (rowBytes + 1)
@@ -89,4 +83,26 @@ export function encodePng(
     at += p.length
   }
   return out
+}
+
+/**
+ * Encodes rows of `channels` bytes a pixel (1 = gray, 3 = RGB), no row padding.
+ * Every row uses the "up" filter, which suits page renders (long runs of white
+ * and repeated rows) and costs one subtraction a byte.
+ */
+export function encodePng(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+  channels: 1 | 3,
+): Uint8Array {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
+    throw new Error(`invalid PNG size ${width}x${height}`)
+  }
+  const rowBytes = width * channels
+  if (pixels.length < rowBytes * height) throw new Error('PNG pixel buffer is too short')
+
+  const wasm = wasmEncodePng(pixels, width, height, channels)
+  if (wasm.ok) return wasm.value
+  return encodePngJs(pixels, width, height, channels)
 }

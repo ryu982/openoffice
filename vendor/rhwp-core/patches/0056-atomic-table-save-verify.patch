@@ -1,0 +1,89 @@
+diff --git a/src/document_core/commands/document.rs b/src/document_core/commands/document.rs
+index 68ce81c0d..dadfa4b18 100644
+--- a/src/document_core/commands/document.rs
++++ b/src/document_core/commands/document.rs
+@@ -2840,6 +2840,28 @@ impl DocumentCore {
+                     if !self.table_text_reflowed_path_exists(section_idx, para_idx, control_idx) {
+                         continue;
+                     }
++                    // Atomic page-break tables (CellBreak / None) without prior
++                    // saved vpos=0 resets split a row only when that single row
++                    // exceeds one full page. Writing vpos=0 back into those
++                    // unavoidable cuts would flip `rowbreak_table_has_internal_saved_vpos_reset`
++                    // on reopen and disable row-atomic pagination for the entire table.
++                    let render_table = self
++                        .section_render_paragraphs(section_idx)
++                        .get(para_idx)
++                        .and_then(|p| p.controls.get(control_idx))
++                        .and_then(|c| match c {
++                            Control::Table(t) => Some(t),
++                            _ => None,
++                        })
++                        .unwrap_or(table);
++                    if (crate::renderer::typeset::none_table_is_atomic_here(render_table)
++                        || crate::renderer::typeset::cell_unit_row_is_atomic_here(render_table))
++                        && !crate::renderer::typeset::rowbreak_table_has_internal_saved_vpos_reset(
++                            render_table,
++                        )
++                    {
++                        continue;
++                    }
+                     let mut per_cell: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+                     let mut unmappable = false;
+                     for page in &pagination.pages {
+diff --git a/src/renderer/layout/table_layout.rs b/src/renderer/layout/table_layout.rs
+index 3ef63adc9..7c1c265e2 100644
+--- a/src/renderer/layout/table_layout.rs
++++ b/src/renderer/layout/table_layout.rs
+@@ -25385,9 +25385,16 @@ impl LayoutEngine {
+         end: usize,
+     ) -> f64 {
+         let profile = self.profile.get();
++        // Atomic page-break tables (CellBreak / None) without prior saved vpos=0
++        // resets do not write vpos=0 back on save, so reopening evaluates their
++        // monotonic serialized lines through this function. Evaluate the same
++        // closing-advance trim during the edit session so live and reopened cuts
++        // agree on every page boundary.
++        let atomic_no_saved_reset = (crate::renderer::typeset::none_table_is_atomic_here(table)
++            || crate::renderer::typeset::cell_unit_row_is_atomic_here(table))
++            && !crate::renderer::typeset::rowbreak_table_has_internal_saved_vpos_reset(table);
+         if !(profile.hwp5_stored_pagination_layout() || profile.hwpx_stored_layout())
+-            || profile.session_edited()
+-            || cell.dirty_flag
++            || (!atomic_no_saved_reset && (profile.session_edited() || cell.dirty_flag))
+             // Opening a freshly split row still owns its full flow advance:
+             // progressing serialized lines do not authenticate that opening
+             // frame's page tail. Once the row is a physical continuation,
+diff --git a/src/renderer/typeset.rs b/src/renderer/typeset.rs
+index 03a79eed3..9b379afd9 100644
+--- a/src/renderer/typeset.rs
++++ b/src/renderer/typeset.rs
+@@ -2057,7 +2057,7 @@ fn cell_has_internal_saved_vpos_reset(cell: &crate::model::table::Cell) -> bool
+ /// y 는 저장 사다리에서 온다. 두 좌표계가 아직 화해되지 않아(#7198 축) 표만 옮기면 글 위에
+ /// 표가 그려진다 — 1490000 149쪽 실측 겹침 134 -> 156. 오프셋 0 float 과 `treat_as_char`
+ /// 표는 흐름이 밴드를 실제로 소비하므로 해당 없다.
+-pub(in crate::renderer) fn none_table_is_atomic_here(table: &crate::model::table::Table) -> bool {
++pub(crate) fn none_table_is_atomic_here(table: &crate::model::table::Table) -> bool {
+     matches!(
+         table.layout_page_break(),
+         crate::model::table::TablePageBreak::None
+@@ -2083,7 +2083,7 @@ pub(in crate::renderer) fn none_table_is_atomic_here(table: &crate::model::table
+ ///
+ /// 조회만 한다 — 상태를 쓰지 않는다. 소비자는 `table/block/prepare.rs` 의 이월 게이트와
+ /// `table/scan/runner/row_step.rs` 의 행 내부 컷 게이트다.
+-pub(in crate::renderer) fn cell_unit_row_is_atomic_here(
++pub(crate) fn cell_unit_row_is_atomic_here(
+     table: &crate::model::table::Table,
+ ) -> bool {
+     matches!(
+@@ -2093,7 +2093,9 @@ pub(in crate::renderer) fn cell_unit_row_is_atomic_here(
+ }
+ 
+ /// RowBreak 표 셀 안에 저장된 vpos reset이 있는지 판별한다.
+-fn rowbreak_table_has_internal_saved_vpos_reset(table: &crate::model::table::Table) -> bool {
++pub(crate) fn rowbreak_table_has_internal_saved_vpos_reset(
++    table: &crate::model::table::Table,
++) -> bool {
+     // [#7639] 행마다 전체 셀을 다시 거르지 않고 셀을 한 번만 훑는다(행×셀 → 셀).
+     let row_count = table.row_count as usize;
+     table

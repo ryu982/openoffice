@@ -27,6 +27,7 @@ export const ru = {
   itemHtml: 'HTML',
   itemMindmap: 'Интеллект-карта',
   itemDiagram: 'Диаграмма',
+  itemWhiteboard: "Доска",
   itemHwp: 'HWP (хангыль)',
   itemEpub: 'Электронная книга (EPUB)',
 } satisfies Record<keyof typeof zh, string>
